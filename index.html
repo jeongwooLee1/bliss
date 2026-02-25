@@ -21,7 +21,11 @@ const SB_URL = "https://dpftlrsuqxqqeouwbfjd.supabase.co";
 const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwZnRscnN1cXhxcWVvdXdiZmpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5MDU4MjQsImV4cCI6MjA4NzQ4MTgyNH0.iydEkjtPjZ0jXpUUPJben4IWWneDqLomv-HDlcFayE4";
 const sbHeaders = {"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json","Prefer":"return=representation"};
 const sb = {
-  async get(table, filter="") { const r=await fetch(`${SB_URL}/rest/v1/${table}?select=*&order=created_at.asc.nullsfirst${filter}`,{headers:sbHeaders}); return r.ok?r.json():[]; },
+  async get(table, filter="") { 
+    const hasCreatedAt = !["rooms","services","products","service_categories","service_tags"].includes(table);
+    const order = hasCreatedAt ? "order=created_at.asc.nullsfirst" : "order=id.asc";
+    const r=await fetch(`${SB_URL}/rest/v1/${table}?select=*&${order}${filter}`,{headers:sbHeaders}); return r.ok?r.json():[]; 
+  },
   async getByBiz(table, bizId) { return this.get(table, `&business_id=eq.${bizId}`); },
   async upsert(table,rows) { if(!rows?.length)return; await fetch(`${SB_URL}/rest/v1/${table}`,{method:"POST",headers:{...sbHeaders,"Prefer":"resolution=merge-duplicates,return=representation"},body:JSON.stringify(rows)}); },
   async insert(table,row) { const r=await fetch(`${SB_URL}/rest/v1/${table}`,{method:"POST",headers:sbHeaders,body:JSON.stringify(row)}); return r.ok?r.json():null; },
@@ -41,6 +45,8 @@ const DBMAP = {
 function fromDb(table,rows){const m=DBMAP[table];if(!m)return rows;return rows.map(row=>{const r={};for(const[k,v]of Object.entries(row)){if(k==="created_at"){r.createdAt=v;continue;}const mk=m[k]||k;r[mk]=v;} 
   // Parse JSON string arrays for app_users
   if(table==="app_users"){try{if(typeof r.branches==="string")r.branches=JSON.parse(r.branches);}catch{r.branches=[];}try{if(typeof r.viewBranches==="string")r.viewBranches=JSON.parse(r.viewBranches);}catch{r.viewBranches=[];}if(!Array.isArray(r.branches))r.branches=[];if(!Array.isArray(r.viewBranches))r.viewBranches=[];}
+  // Convert booleans to Y/N for service_tags
+  if(table==="service_tags"){r.scheduleYn=(r.scheduleYn===true||r.scheduleYn==="Y")?"Y":"N";r.useYn=r.useYn!==false;}
   return r;});}
 // Valid DB columns per table (to filter out extra JS fields)
 const DB_COLS={
@@ -938,6 +944,15 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   const allBranchList = (data.branchSettings || data.branches || []).filter(b => b.useYn !== false);
   const accessibleBids = [...new Set([...userBranches, ...(viewBranches||[])])];
   const [viewBids, setViewBids] = useState(isMaster ? allBranchList.map(b=>b.id) : accessibleBids);
+  // Sync viewBids when branches change (e.g. added/removed in admin)
+  useEffect(() => {
+    const newIds = allBranchList.map(b=>b.id);
+    setViewBids(prev => {
+      const added = newIds.filter(id => !prev.includes(id) && (isMaster || accessibleBids.includes(id)));
+      const filtered = prev.filter(id => newIds.includes(id));
+      return added.length > 0 ? [...filtered, ...added] : filtered.length !== prev.length ? filtered : prev;
+    });
+  }, [allBranchList.length]);
   const toggleView = (bid) => setViewBids(prev => prev.includes(bid) ? prev.filter(x=>x!==bid) : [...prev, bid]);
   const canEdit = (bid) => isMaster || userBranches.includes(bid);
 
@@ -2928,10 +2943,10 @@ function AdminPlaces({ data, setData, bizId }) {
   const fileRef = useRef(null);
 
   const updateField = (id, field, value) => {
-    setData(prev => ({
-      ...prev,
-      branchSettings: (prev.branchSettings || (data.branches||[]).map(b=>({...b,color:"#FFFFFF",useYn:true}))).map(b => b.id===id ? {...b, [field]:value} : b)
-    }));
+    setData(prev => {
+      const updated = (prev.branchSettings || (data.branches||[]).map(b=>({...b,color:"#FFFFFF",useYn:true}))).map(b => b.id===id ? {...b, [field]:value} : b);
+      return {...prev, branchSettings: updated, branches: updated};
+    });
     setEdited(prev => ({...prev, [id]: true}));
   };
   const applyRow = (id) => {
@@ -3207,11 +3222,21 @@ function AdminSaleItems({ data, setData }) {
   const drag = useDragSort(services, setServices);
 
   const startEdit = (svc) => { setEditId(svc.id); setEditData({...svc}); };
-  const saveEdit = () => { setServices(p=>p.map(s=>s.id===editId?{...editData}:s)); setEditId(null); };
-  const deleteSvc = (id) => { setServices(p=>p.filter(s=>s.id!==id).map((s,i)=>({...s,sort:i}))); setDelConfirm(null); };
+  const saveEdit = () => { 
+    setServices(p=>p.map(s=>s.id===editId?{...editData}:s)); 
+    sb.update("services", editId, {cat:editData.cat, name:editData.name, dur:editData.dur, price_f:editData.priceF, price_m:editData.priceM, note:editData.note||"", sort:editData.sort||0}).catch(console.error);
+    setEditId(null); 
+  };
+  const deleteSvc = (id) => { 
+    setServices(p=>p.filter(s=>s.id!==id).map((s,i)=>({...s,sort:i}))); 
+    sb.del("services", id).catch(console.error);
+    setDelConfirm(null); 
+  };
   const addSvc = () => {
     if(!newSvc.name.trim()) return;
-    setServices(p=>[...p,{...newSvc, id:uid(), priceF:Number(newSvc.priceF)||0, priceM:Number(newSvc.priceM)||0, dur:Number(newSvc.dur)||20, sort:p.length}]);
+    const svc = {...newSvc, id:uid(), priceF:Number(newSvc.priceF)||0, priceM:Number(newSvc.priceM)||0, dur:Number(newSvc.dur)||20, sort:services.length};
+    setServices(p=>[...p, svc]);
+    sb.insert("services", {id:svc.id, business_id:_activeBizId, cat:svc.cat, name:svc.name, dur:svc.dur, price_f:svc.priceF, price_m:svc.priceM, note:svc.note||"", sort:svc.sort}).catch(console.error);
     setNewSvc({ cat:cats[0]?.id||"sc1", name:"", dur:20, priceF:0, priceM:0, note:"" }); setShowAdd(false);
   };
   const filtered = filterCat === "all" ? services : services.filter(s => s.cat === filterCat);
@@ -3227,7 +3252,10 @@ function AdminSaleItems({ data, setData }) {
       const cat = cats.find(c=>c.name===(r["카테고리"]||r["category"]));
       return {id:uid(), cat:cat?.id||cats[0]?.id||"sc1", name:r["시술명"]||r["name"]||"", priceF:Number(r["여성가"]||r["priceF"])||0, priceM:Number(r["남성가"]||r["priceM"])||0, dur:Number(r["소요분"]||r["dur"])||20, note:r["비고"]||"", sort:services.length};
     }).filter(r=>r.name);
-    if(newSvcs.length && window.confirm(newSvcs.length+"개 시술을 추가하시겠습니까?")) setServices(p=>[...p,...newSvcs]);
+    if(newSvcs.length && window.confirm(newSvcs.length+"개 시술을 추가하시겠습니까?")) {
+      setServices(p=>[...p,...newSvcs]);
+      newSvcs.forEach(s=>sb.insert("services",{id:s.id, business_id:_activeBizId, cat:s.cat, name:s.name, dur:s.dur, price_f:s.priceF, price_m:s.priceM, note:s.note||"", sort:s.sort}).catch(console.error));
+    }
   };
 
   return <div>
@@ -3301,11 +3329,21 @@ function AdminProductItems({ data, setData }) {
   const drag = useDragSort(items, setItems);
 
   const startEdit = (it) => { setEditId(it.id); setEditData({...it}); };
-  const saveEdit = () => { setItems(p=>p.map(x=>x.id===editId?{...editData}:x)); setEditId(null); };
-  const deleteItem = (id) => { setItems(p=>p.filter(x=>x.id!==id).map((x,i)=>({...x,sort:i}))); setDelConfirm(null); };
+  const saveEdit = () => { 
+    setItems(p=>p.map(x=>x.id===editId?{...editData}:x)); 
+    sb.update("products", editId, {name:editData.name, price:editData.price||0}).catch(console.error);
+    setEditId(null); 
+  };
+  const deleteItem = (id) => { 
+    setItems(p=>p.filter(x=>x.id!==id).map((x,i)=>({...x,sort:i}))); 
+    sb.del("products", id).catch(console.error);
+    setDelConfirm(null); 
+  };
   const addItem = () => {
     if(!newItem.name.trim()) return;
-    setItems(p=>[...p,{id:uid(),name:newItem.name,price:Number(newItem.price)||0,cat:"product",sort:p.length}]);
+    const it = {id:uid(), name:newItem.name, price:Number(newItem.price)||0, cat:"product", sort:items.length};
+    setItems(p=>[...p, it]);
+    sb.insert("products", {id:it.id, business_id:_activeBizId, name:it.name, price:it.price, cat:"product", sort:it.sort}).catch(console.error);
     setNewItem({name:"",price:0}); setShowAdd(false);
   };
 
@@ -3314,7 +3352,10 @@ function AdminProductItems({ data, setData }) {
     const file = e.target.files[0]; if(!file) return;
     const rows = await XL.readFile(file);
     const newItems = rows.map(r=>({id:uid(), name:r["제품명"]||r["name"]||"", price:Number(r["가격"]||r["price"])||0, cat:"product", sort:items.length})).filter(r=>r.name);
-    if(newItems.length && window.confirm(newItems.length+"개 제품을 추가하시겠습니까?")) setItems(p=>[...p,...newItems]);
+    if(newItems.length && window.confirm(newItems.length+"개 제품을 추가하시겠습니까?")) {
+      setItems(p=>[...p,...newItems]);
+      newItems.forEach(it=>sb.insert("products",{id:it.id, business_id:_activeBizId, name:it.name, price:it.price, cat:"product", sort:it.sort}).catch(console.error));
+    }
   };
 
   return <div>
@@ -3368,15 +3409,32 @@ function AdminServiceTags({ data, setData }) {
   const syncTags = (updated) => { setTags(updated); if(setData) setData(prev=>({...prev,serviceTags:updated})); };
   const drag = useDragSort(tags, syncTags);
 
+  const tagToDb = (t) => ({id:t.id, business_id:_activeBizId, name:t.name, dur:t.dur||0, schedule_yn:t.scheduleYn==="Y"||t.scheduleYn===true, color:t.color||"", use_yn:t.useYn!==false, sort:t.sort||0});
+
   const addTag = () => {
     if(!newTag.name.trim()) return;
-    syncTags([...tags,{id:uid(), name:newTag.name.trim(), dur:Number(newTag.dur)||0, scheduleYn:newTag.scheduleYn, color:newTag.color, useYn:true, sort:tags.length}]);
+    const t = {id:uid(), name:newTag.name.trim(), dur:Number(newTag.dur)||0, scheduleYn:newTag.scheduleYn, color:newTag.color, useYn:true, sort:tags.length};
+    syncTags([...tags, t]);
+    sb.insert("service_tags", tagToDb(t)).catch(console.error);
     setNewTag({name:"",dur:0,scheduleYn:"N",color:""}); setShowAdd(false);
   };
-  const deleteTag = (id) => { syncTags(tags.filter(t=>t.id!==id).map((t,i)=>({...t,sort:i}))); setDelConfirm(null); };
+  const deleteTag = (id) => { 
+    syncTags(tags.filter(t=>t.id!==id).map((t,i)=>({...t,sort:i}))); 
+    sb.del("service_tags", id).catch(console.error);
+    setDelConfirm(null); 
+  };
   const startEdit = (tag) => { setEditId(tag.id); setEditData({...tag}); };
-  const saveEdit = () => { syncTags(tags.map(t=>t.id===editId?{...editData}:t)); setEditId(null); };
-  const toggleUse = (id) => { syncTags(tags.map(t=>t.id===id?{...t,useYn:!t.useYn}:t)); };
+  const saveEdit = () => { 
+    syncTags(tags.map(t=>t.id===editId?{...editData}:t)); 
+    sb.update("service_tags", editId, {name:editData.name, dur:editData.dur||0, schedule_yn:editData.scheduleYn==="Y"||editData.scheduleYn===true, color:editData.color||"", use_yn:editData.useYn!==false, sort:editData.sort||0}).catch(console.error);
+    setEditId(null); 
+  };
+  const toggleUse = (id) => { 
+    const tag = tags.find(t=>t.id===id);
+    const newUse = tag?.useYn===false;
+    syncTags(tags.map(t=>t.id===id?{...t,useYn:!t.useYn}:t)); 
+    sb.update("service_tags", id, {use_yn:newUse}).catch(console.error);
+  };
 
   const inpS = {padding:"4px 6px",fontSize:11,background:"#f8f0f0",border:"1px solid #d0d0d0"};
 
@@ -3385,7 +3443,10 @@ function AdminServiceTags({ data, setData }) {
     const file = e.target.files[0]; if(!file) return;
     const rows = await XL.readFile(file);
     const newTags = rows.map(r=>({id:uid(), name:r["태그명"]||r["name"]||"", dur:Number(r["소요분"]||r["dur"])||0, scheduleYn:r["기타일정"]||"N", color:r["색상"]||"", useYn:(r["사용"]||"Y")!=="N", sort:tags.length})).filter(r=>r.name);
-    if(newTags.length && window.confirm(newTags.length+"개 태그를 추가하시겠습니까?")) syncTags([...tags,...newTags]);
+    if(newTags.length && window.confirm(newTags.length+"개 태그를 추가하시겠습니까?")) {
+      syncTags([...tags,...newTags]);
+      newTags.forEach(t=>sb.insert("service_tags", tagToDb(t)).catch(console.error));
+    }
   };
 
   return <div>
