@@ -1,24 +1,13 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/>
-<meta http-equiv="Pragma" content="no-cache"/>
-<meta http-equiv="Expires" content="0"/>
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/><meta http-equiv="Pragma" content="no-cache"/><meta http-equiv="Expires" content="0"/>
 <title>Bliss 관리시스템</title>
-<script>
-(function(){var V="2.12";var prev=localStorage.getItem("bliss_v");if(prev&&prev!==V){localStorage.setItem("bliss_v",V);location.reload(true);}else{localStorage.setItem("bliss_v",V);}})();
-</script>
+<script>(function(){var V="2.13";var prev=localStorage.getItem("bliss_v");if(prev&&prev!==V){localStorage.setItem("bliss_v",V);location.reload(true);}else{localStorage.setItem("bliss_v",V);}})();</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>*{margin:0;padding:0;box-sizing:border-box}</style>
-</head>
-<body>
-<div id="root"></div>
-<script type="text/babel">
+</head><body><div id="root"></div><script type="text/babel">
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 // React hooks provided by HTML wrapper
 
@@ -71,9 +60,15 @@ const setActiveBiz = (bizId) => { _activeBizId = bizId; };
 
 // Excel utility (uses SheetJS/XLSX global)
 const XL = {
-  download(rows, filename, sheetName="Sheet1") {
+  download(rows, filename, sheetName="Sheet1", headers) {
     if(typeof XLSX==="undefined"){alert("SheetJS 로드 중...");return;}
-    const ws=XLSX.utils.json_to_sheet(rows); const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,sheetName); XLSX.writeFile(wb,filename);
+    let ws;
+    if(rows.length===0 && headers){
+      ws=XLSX.utils.aoa_to_sheet([headers]);
+    } else {
+      ws=XLSX.utils.json_to_sheet(rows);
+    }
+    const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,sheetName); XLSX.writeFile(wb,filename);
   },
   readFile(file) {
     return new Promise((resolve) => {
@@ -924,7 +919,7 @@ function Login({ users, onLogin }) {
           <div style={{fontSize:10,color:"#bbb",textAlign:"center",marginTop:4}}>
             슈퍼관리자: admin / 1234 · 업체대표: master / 1234
           </div>
-          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.12</div>
+          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.13</div>
         </div>
       </div>
     </div>
@@ -3112,10 +3107,8 @@ function AdminPlaces({ data, setData, bizId }) {
 
   // Excel download
   const downloadExcel = () => {
-    const rows = branches.map((b,i) => ({순번:i+1, 지점명:b.name, 약칭:b.short||"", 전화:b.phone||"", 주소:b.address||"", 색상:b.color||"", 사용:b.useYn!==false?"Y":"N"}));
-    const ws = XLSX.utils.json_to_sheet(rows);
-    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "지점");
-    XLSX.writeFile(wb, "지점목록.xlsx");
+    const rows = branches.map((b,i) => ({지점명:b.name, 약칭:b.short||"", 전화:b.phone||"", 주소:b.address||"", 색상:b.color||"", 사용:b.useYn!==false?"Y":"N"}));
+    XL.download(rows, "지점목록.xlsx", "지점", ["지점명","약칭","전화","주소","색상","사용"]);
   };
   // Excel upload
   const uploadExcel = (e) => {
@@ -3273,7 +3266,7 @@ function AdminWorkers({ data, setData }) {
   };
 
   const branchName = (bid) => regBranches.find(b=>b.id===bid)?.name || "-";
-  const downloadXl = () => XL.download(rooms.map((r,i)=>({순번:i+1, 담당자명:r.name, 지점:branchName(r.branch_id), 색상:r.color||""})), "담당자목록.xlsx", "담당자");
+  const downloadXl = () => XL.download(rooms.map((r,i)=>({담당자명:r.name, 지점:branchName(r.branch_id), 색상:r.color||""})), "담당자목록.xlsx", "담당자", ["담당자명","지점","색상"]);
   const uploadXl = async (e) => {
     const file = e.target.files[0]; if(!file) return;
     const rows = await XL.readFile(file);
@@ -3385,7 +3378,7 @@ function AdminSaleItems({ data, setData }) {
     onChange={e => onChange(type==="number" ? Number(e.target.value)||0 : e.target.value)}
     style={{width:w||"100%",padding:"4px 6px",fontSize:11,background:"#f8f0f0",border:"1px solid #d0d0d0",textAlign:type==="number"?"right":"left"}} />;
 
-  const downloadXl = () => XL.download(services.map(s=>({카테고리:cats.find(c=>c.id===s.cat)?.name||"",시술명:s.name,여성가:s.priceF,남성가:s.priceM,소요분:s.dur,비고:s.note||""})),"시술목록.xlsx","시술");
+  const downloadXl = () => XL.download(services.map(s=>({카테고리:cats.find(c=>c.id===s.cat)?.name||"",시술명:s.name,여성가:s.priceF,남성가:s.priceM,소요분:s.dur,비고:s.note||""})),"시술목록.xlsx","시술",["카테고리","시술명","여성가","남성가","소요분","비고"]);
   const uploadXl = async (e) => {
     const file = e.target.files[0]; if(!file) return;
     const rows = await XL.readFile(file);
@@ -3488,7 +3481,7 @@ function AdminProductItems({ data, setData }) {
     setNewItem({name:"",price:0}); setShowAdd(false);
   };
 
-  const downloadXl = () => XL.download(items.map((p,i)=>({순번:i+1, 제품명:p.name, 가격:p.price||0})), "제품목록.xlsx", "제품");
+  const downloadXl = () => XL.download(items.map((p,i)=>({제품명:p.name, 가격:p.price||0})), "제품목록.xlsx", "제품", ["제품명","가격"]);
   const uploadXl = async (e) => {
     const file = e.target.files[0]; if(!file) return;
     const rows = await XL.readFile(file);
@@ -3579,7 +3572,7 @@ function AdminServiceTags({ data, setData }) {
 
   const inpS = {padding:"4px 6px",fontSize:11,background:"#f8f0f0",border:"1px solid #d0d0d0"};
 
-  const downloadXl = () => XL.download(tags.map((t,i)=>({순번:i+1, 태그명:t.name, 소요분:t.dur, 기타일정:t.scheduleYn, 색상:t.color||"", 사용:t.useYn!==false?"Y":"N"})), "서비스태그.xlsx", "태그");
+  const downloadXl = () => XL.download(tags.map((t,i)=>({태그명:t.name, 소요분:t.dur, 기타일정:t.scheduleYn, 색상:t.color||"", 사용:t.useYn!==false?"Y":"N"})), "서비스태그.xlsx", "태그", ["태그명","소요분","기타일정","색상","사용"]);
   const uploadXl = async (e) => {
     const file = e.target.files[0]; if(!file) return;
     const rows = await XL.readFile(file);
@@ -3743,6 +3736,4 @@ const CSS = `
 `;
 
 ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
-</script>
-</body>
-</html>
+</script></body></html>
