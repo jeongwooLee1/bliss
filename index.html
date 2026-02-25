@@ -37,8 +37,8 @@ const sb = {
 };
 // snake_case <-> camelCase column mapping per table
 const DBMAP = {
-  reservations:{business_id:"businessId",room_id:"roomId",cust_id:"custId",cust_name:"custName",cust_phone:"custPhone",cust_gender:"custGender",staff_id:"staffId",end_time:"endTime",is_schedule:"isSchedule",is_new_cust:"isNewCust",selected_tags:"selectedTags",selected_services:"selectedServices",ts_log:"tsLog",repeat_source_id:"repeatSourceId",repeat_until:"repeatUntil",updated_at:"_ua"},
-  sales:{business_id:"businessId",cust_id:"custId",cust_name:"custName",cust_phone:"custPhone",cust_gender:"custGender",cust_num:"custNum",staff_id:"staffId",staff_name:"staffName",svc_cash:"svcCash",svc_transfer:"svcTransfer",svc_card:"svcCard",svc_point:"svcPoint",prod_cash:"prodCash",prod_transfer:"prodTransfer",prod_card:"prodCard",prod_point:"prodPoint",order_num:"orderNum",reservation_id:"reservationId"},
+  reservations:{business_id:"businessId",room_id:"roomId",cust_id:"custId",cust_name:"custName",cust_phone:"custPhone",cust_gender:"custGender",staff_id:"staffId",service_id:"serviceId",is_schedule:"isSchedule",is_new_cust:"isNewCust",selected_tags:"selectedTags",selected_services:"selectedServices",repeat_group_id:"repeatSourceId",repeat_until:"repeatUntil",reservation_id:"reservationId",updated_at:"_ua"},
+  sales:{business_id:"businessId",cust_id:"custId",cust_name:"custName",cust_phone:"custPhone",cust_gender:"custGender",cust_num:"custNum",staff_id:"staffId",staff_name:"staffName",service_id:"serviceId",service_name:"serviceName",product_id:"productId",product_name:"productName",svc_cash:"svcCash",svc_transfer:"svcTransfer",svc_card:"svcCard",svc_point:"svcPoint",prod_cash:"prodCash",prod_transfer:"prodTransfer",prod_card:"prodCard",prod_point:"prodPoint",order_num:"orderNum",reservation_id:"reservationId"},
   customers:{business_id:"businessId",last_visit:"lastVisit",cust_num:"custNum"},
   service_tags:{business_id:"businessId",schedule_yn:"scheduleYn",use_yn:"useYn"},
   services:{business_id:"businessId",price_f:"priceF",price_m:"priceM"},
@@ -52,8 +52,8 @@ function fromDb(table,rows){const m=DBMAP[table];if(!m)return rows;return rows.m
   return r;});}
 // Valid DB columns per table (to filter out extra JS fields)
 const DB_COLS={
-  reservations:["id","business_id","bid","room_id","cust_id","cust_name","cust_phone","cust_gender","staff_id","date","time","end_time","dur","status","memo","type","is_schedule","is_new_cust","selected_tags","selected_services","ts_log","repeat_source_id","repeat","repeat_until","updated_at"],
-  sales:["id","business_id","bid","cust_id","cust_name","cust_phone","cust_gender","cust_num","staff_id","staff_name","date","svc_cash","svc_transfer","svc_card","svc_point","prod_cash","prod_transfer","prod_card","prod_point","gift","memo","order_num","reservation_id"],
+  reservations:["id","business_id","bid","room_id","cust_id","cust_name","cust_phone","cust_gender","staff_id","service_id","date","time","dur","status","memo","type","is_schedule","is_new_cust","selected_tags","selected_services","repeat","repeat_until","repeat_group_id","reservation_id","updated_at"],
+  sales:["id","business_id","bid","cust_id","cust_name","cust_phone","cust_gender","cust_num","staff_id","staff_name","date","service_id","service_name","product_id","product_name","svc_cash","svc_transfer","svc_card","svc_point","prod_cash","prod_transfer","prod_card","prod_point","gift","order_num","memo","reservation_id"],
   customers:["id","business_id","bid","name","phone","gender","visits","last_visit","memo","cust_num"],
   service_tags:["id","business_id","name","dur","schedule_yn","color","use_yn","sort"],
   services:["id","business_id","cat","name","dur","price_f","price_m","note","sort"],
