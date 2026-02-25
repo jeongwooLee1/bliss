@@ -445,10 +445,11 @@ function App() {
   const [sideOpen, setSideOpen] = useState(false);
   const [loadMsg, setLoadMsg] = useState("연결 중...");
 
-  // Save current page to session whenever it changes
+  // Save current page to session whenever it changes (only after app loaded)
   useEffect(() => {
+    if (phase !== "app") return;
     try{const s=JSON.parse(localStorage.getItem("bliss_session")||"{}");s.page=page;localStorage.setItem("bliss_session",JSON.stringify(s));}catch{}
-  }, [page]);
+  }, [page, phase]);
 
   // Phase 1: Load all users on mount + auto-login from saved session
   useEffect(() => {
@@ -529,7 +530,7 @@ function App() {
         setViewBranches(user.viewBranches || []);
         // Restore saved page
         const pp = window._pendingPage; delete window._pendingPage;
-        if (pp && ["timeline","sales","customers","users","admin"].includes(pp)) setPage(pp);
+        if (pp && ["timeline","reservations","sales","stats","customers","users","admin"].includes(pp)) setPage(pp);
         setPhase("app");
       } catch(e) {
         console.error("Data load error:", e);
@@ -561,7 +562,7 @@ function App() {
       setUserBranches(db.branches.map(b => b.id));
       setViewBranches([]);
       const pp = window._pendingPage; delete window._pendingPage;
-      if (pp && ["timeline","sales","customers","users","admin"].includes(pp)) setPage(pp);
+      if (pp && ["timeline","reservations","sales","stats","customers","users","admin"].includes(pp)) setPage(pp);
       setPhase("app");
     } catch(e) { console.error(e); setPhase("super"); }
   };
@@ -916,7 +917,7 @@ function Login({ users, onLogin }) {
           <div style={{fontSize:10,color:"#bbb",textAlign:"center",marginTop:4}}>
             슈퍼관리자: admin / 1234 · 업체대표: master / 1234
           </div>
-          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.8</div>
+          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.9</div>
         </div>
       </div>
     </div>
