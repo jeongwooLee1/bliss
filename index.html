@@ -442,18 +442,26 @@ function App() {
   const [sideOpen, setSideOpen] = useState(false);
   const [loadMsg, setLoadMsg] = useState("연결 중...");
 
-  // Phase 1: Load all users on mount
+  // Phase 1: Load all users on mount + auto-login from saved session
   useEffect(() => {
     (async () => {
       try {
         const users = fromDb("app_users", await sb.get("app_users"));
         if (users.length === 0) {
-          // First time: no users at all, create super admin via SQL schema
           setAllUsers([{id:"acc_super", loginId:"admin", pw:"1234", name:"Bliss 관리자", role:"super", branches:[], viewBranches:[]}]);
+          setPhase("login");
         } else {
           setAllUsers(users);
+          // Check saved session for auto-login
+          try {
+            const saved = JSON.parse(localStorage.getItem("bliss_session")||"null");
+            if (saved?.userId) {
+              const u = users.find(u => u.id === saved.userId);
+              if (u) { handleLogin(u); return; }
+            }
+          } catch{}
+          setPhase("login");
         }
-        setPhase("login");
       } catch(e) {
         console.error("DB 연결 실패:", e);
         setAllUsers([{id:"acc_super", loginId:"admin", pw:"1234", name:"Bliss 관리자", role:"super", branches:[], viewBranches:[]}]);
@@ -466,6 +474,8 @@ function App() {
   const handleLogin = async (user) => {
     setCurrentUser(user);
     setRole(user.role);
+    // Save session
+    try{localStorage.setItem("bliss_session",JSON.stringify({userId:user.id,loginId:user.loginId||user.login_id}));}catch{}
     if (user.role === "super") {
       setLoadMsg("관리자 데이터 로딩 중...");
       setPhase("loading");
@@ -535,6 +545,7 @@ function App() {
   };
 
   const handleLogout = () => {
+    try{localStorage.removeItem("bliss_session");}catch{}
     setCurrentUser(null); setCurrentBizId(null); setCurrentBiz(null);
     setData(null); setSuperData(null); setRole("staff");
     setUserBranches([]); setViewBranches([]); setPage("timeline");
@@ -2777,11 +2788,11 @@ function CustomersPage({ data, setData, userBranches, isMaster }) {
           })}
       </tbody></table>
     </div>
-    {showModal && <CustModal item={editItem} onSave={handleSave} onClose={()=>{setShowModal(false);setEditItem(null)}} defBranch={userBranches[0]} userBranches={userBranches}/>}
+    {showModal && <CustModal item={editItem} onSave={handleSave} onClose={()=>{setShowModal(false);setEditItem(null)}} defBranch={userBranches[0]} userBranches={userBranches} branches={data.branches||[]}/>}
   </div>;
 }
 
-function CustModal({ item, onSave, onClose, defBranch, userBranches }) {
+function CustModal({ item, onSave, onClose, defBranch, userBranches, branches }) {
   const [f, setF] = useState(item || { id:uid(), bid:defBranch, name:"", phone:"", gender:"F", visits:0, lastVisit:null, memo:"", custNum:String(50000+Math.floor(Math.random()*10000)) });
   const set = (k,v) => setF(p=>({...p,[k]:v}));
   return <div className="ov" onClick={onClose}>
@@ -2791,7 +2802,7 @@ function CustModal({ item, onSave, onClose, defBranch, userBranches }) {
         <button onClick={onClose} className="close-btn">✕</button>
       </div>
       <div className="form-col">
-        <FLD label="매장"><select className="inp" value={f.bid} onChange={e=>set("bid",e.target.value)}>{(data.branches||[]).filter(b=>userBranches.includes(b.id)).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select></FLD>
+        <FLD label="매장"><select className="inp" value={f.bid} onChange={e=>set("bid",e.target.value)}>{(branches||[]).filter(b=>userBranches.includes(b.id)).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select></FLD>
         <div className="grid2">
           <FLD label="이름"><input className="inp" value={f.name} onChange={e=>set("name",e.target.value)}/></FLD>
           <FLD label="연락처"><input className="inp" value={f.phone} onChange={e=>set("phone",e.target.value)} placeholder="010-0000-0000"/></FLD>
