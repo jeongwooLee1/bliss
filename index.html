@@ -457,7 +457,11 @@ function App() {
             const saved = JSON.parse(localStorage.getItem("bliss_session")||"null");
             if (saved?.userId) {
               const u = users.find(u => u.id === saved.userId);
-              if (u) { handleLogin(u); return; }
+              if (u) {
+                // Store saved bizId for super admin re-entry
+                if (saved.bizId) window._pendingBizId = saved.bizId;
+                handleLogin(u); return;
+              }
             }
           } catch{}
           setPhase("login");
@@ -482,6 +486,10 @@ function App() {
       try {
         const sd = await loadAllFromDb(null);
         setSuperData(sd);
+        // Auto re-enter business if saved in session
+        const pendingBiz = window._pendingBizId;
+        delete window._pendingBizId;
+        if (pendingBiz) { setCurrentUser(user); setRole(user.role); setSuperData(sd); handleEnterBiz(pendingBiz); return; }
         setPhase("super");
       } catch(e) {
         console.error(e);
@@ -521,6 +529,7 @@ function App() {
 
   // Super admin: enter a specific business
   const handleEnterBiz = async (bizId) => {
+    try{localStorage.setItem("bliss_session",JSON.stringify({userId:currentUser.id,loginId:currentUser.loginId||currentUser.login_id,bizId}));}catch{}
     setLoadMsg("매장 데이터 로딩 중...");
     setPhase("loading");
     try {
@@ -554,6 +563,7 @@ function App() {
   };
 
   const handleBackToSuper = async () => {
+    try{const s=JSON.parse(localStorage.getItem("bliss_session")||"{}");delete s.bizId;localStorage.setItem("bliss_session",JSON.stringify(s));}catch{}
     setLoadMsg("관리자 데이터 로딩 중...");
     setPhase("loading");
     const sd = await loadAllFromDb(null);
@@ -893,7 +903,7 @@ function Login({ users, onLogin }) {
           <div style={{fontSize:10,color:"#bbb",textAlign:"center",marginTop:4}}>
             슈퍼관리자: admin / 1234 · 업체대표: master / 1234
           </div>
-          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.6</div>
+          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.7</div>
         </div>
       </div>
     </div>
