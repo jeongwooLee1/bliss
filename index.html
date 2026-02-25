@@ -1963,12 +1963,52 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
 
 // ═══════════════════════════════════════════
 // Top-level components to avoid re-mount on parent re-render
-function SaleExtraRow({ id, color, placeholder, it, onToggle, onAmt, onLabel }) {
-  const [localLabel, setLocalLabel] = useState(it.label || "");
-  const [localAmt, setLocalAmt] = useState(it.amount || "");
+const SaleSvcRow = React.memo(function SaleSvcRow({ svc, checked, amount, defPrice, dur, onToggle, onAmt }) {
+  const disabled = defPrice === 0;
+  const [localAmt, setLocalAmt] = useState(amount || "");
+  useEffect(() => { setLocalAmt(amount || ""); }, [checked]);
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "3px 0", borderBottom: "1px solid #e0e0e030", opacity: disabled ? 0.3 : 1 }}>
+      <input type="checkbox" checked={checked} disabled={disabled}
+        onChange={onToggle}
+        style={{ accentColor: "#7c7cc8", width: 14, height: 14, flexShrink: 0, cursor: disabled ? "not-allowed" : "pointer" }} />
+      <span style={{ flex: 1, fontSize: 11, color: checked ? "#333" : "#999", fontWeight: checked ? 600 : 400 }}>
+        {svc.name}
+      </span>
+      <span style={{ fontSize: 9, color: "#d0d0d0", flexShrink: 0, width: 32, textAlign: "center" }}>{dur}분</span>
+      <input className="inp" type="number" value={checked ? localAmt : ""} placeholder={disabled ? "—" : (defPrice||0).toLocaleString()}
+        onChange={e => setLocalAmt(e.target.value)} onBlur={e => onAmt(e.target.value)} disabled={!checked}
+        style={{ width: 72, padding: "3px 5px", fontSize: 11, textAlign: "right",
+          background: checked ? "#fff" : "transparent", border: `1px solid ${checked ? "#d0d0d0" : "#e0e0e0"}`,
+          color: checked ? "#ef5350" : "#d0d0d0", fontWeight: checked ? 700 : 400 }} />
+    </div>
+  );
+});
+
+const SaleProdRow = React.memo(function SaleProdRow({ prod, checked, amount, onToggle, onAmt }) {
+  const [localAmt, setLocalAmt] = useState(amount || "");
+  useEffect(() => { setLocalAmt(amount || ""); }, [checked]);
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "3px 0", borderBottom: "1px solid #e0e0e030" }}>
+      <input type="checkbox" checked={checked} onChange={onToggle}
+        style={{ accentColor: "#6bab9e", width: 14, height: 14, flexShrink: 0, cursor: "pointer" }} />
+      <span style={{ flex: 1, fontSize: 11, color: checked ? "#333" : "#999", fontWeight: checked ? 600 : 400 }}>{prod.name}</span>
+      <input className="inp" type="number" value={checked ? localAmt : ""} placeholder="0"
+        onChange={e => setLocalAmt(e.target.value)} onBlur={e => onAmt(e.target.value)} disabled={!checked}
+        style={{ width: 72, padding: "3px 5px", fontSize: 11, textAlign: "right",
+          background: checked ? "#fff" : "transparent", border: `1px solid ${checked ? "#d0d0d0" : "#e0e0e0"}`,
+          color: checked ? "#ef5350" : "#d0d0d0", fontWeight: checked ? 700 : 400 }} />
+    </div>
+  );
+});
+
+const SaleExtraRow = React.memo(function SaleExtraRow({ color, placeholder, checked, amount, label, onToggle, onAmt, onLabel }) {
+  const [localLabel, setLocalLabel] = useState(label || "");
+  const [localAmt, setLocalAmt] = useState(amount || "");
+  useEffect(() => { setLocalAmt(amount || ""); }, [checked]);
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 0", borderTop: "1px solid #d0d0d0", marginTop: 4 }}>
-      <input type="checkbox" checked={it.checked} onChange={onToggle}
+      <input type="checkbox" checked={checked} onChange={onToggle}
         style={{ accentColor: color, width: 14, height: 14, cursor: "pointer" }} />
       <span style={{ fontSize: 10, color: "#ef5350", fontWeight: 700, flexShrink: 0 }}>추가</span>
       <input className="inp" value={localLabel} onChange={e => setLocalLabel(e.target.value)}
@@ -1976,15 +2016,15 @@ function SaleExtraRow({ id, color, placeholder, it, onToggle, onAmt, onLabel }) 
         placeholder={placeholder} style={{ flex: 1, padding: "3px 6px", fontSize: 11, background: "transparent", border: "1px solid #d0d0d0" }} />
       <input className="inp" type="number" value={localAmt} placeholder="0"
         onChange={e => setLocalAmt(e.target.value)}
-        onBlur={e => { onAmt(e.target.value); if(!it.checked && Number(e.target.value)>0) onToggle(); }}
+        onBlur={e => { onAmt(e.target.value); if(!checked && Number(e.target.value)>0) onToggle(); }}
         style={{ width: 72, padding: "3px 5px", fontSize: 11, textAlign: "right",
-          border: `1px solid ${it.checked ? "#d0d0d0" : "#e0e0e0"}`,
-          color: it.checked ? "#ef5350" : "#999", fontWeight: it.checked ? 700 : 400 }} />
+          border: `1px solid ${checked ? "#d0d0d0" : "#e0e0e0"}`,
+          color: checked ? "#ef5350" : "#999", fontWeight: checked ? 700 : 400 }} />
     </div>
   );
-}
+});
 
-function SaleDiscountRow({ checked, amount, onToggle, onAmt }) {
+const SaleDiscountRow = React.memo(function SaleDiscountRow({ checked, amount, onToggle, onAmt }) {
   const [localAmt, setLocalAmt] = useState(amount || "");
   useEffect(() => { setLocalAmt(amount || ""); }, [checked]);
   return <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "3px 0" }}>
@@ -1997,7 +2037,7 @@ function SaleDiscountRow({ checked, amount, onToggle, onAmt }) {
         background: checked ? "#fff" : "transparent", border: `1px solid ${checked ? "#d0d0d0" : "#e0e0e0"}`,
         color: checked ? "#ef5350" : "#d0d0d0", fontWeight: checked ? 700 : 400 }} />
   </div>;
-}
+});
 
 // DETAILED SALE FORM (매출 입력 - 시술상품/제품 연동)
 // ═══════════════════════════════════════════
@@ -2128,50 +2168,6 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
     onSubmit(sale);
   };
 
-  // Checkbox row for service
-  const SvcRow = ({ svc }) => {
-    const it = items[svc.id] || { checked: false, amount: 0 };
-    const defPrice = gender === "F" ? svc.priceF : svc.priceM;
-    const disabled = defPrice === 0;
-    const [localAmt, setLocalAmt] = useState(it.amount || "");
-    useEffect(() => { setLocalAmt(it.amount || ""); }, [it.checked]);
-    return (
-      <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "3px 0", borderBottom: "1px solid #e0e0e030", opacity: disabled ? 0.3 : 1 }}>
-        <input type="checkbox" checked={it.checked} disabled={disabled}
-          onChange={() => toggle(svc.id, defPrice)}
-          style={{ accentColor: "#7c7cc8", width: 14, height: 14, flexShrink: 0, cursor: disabled ? "not-allowed" : "pointer" }} />
-        <span style={{ flex: 1, fontSize: 11, color: it.checked ? "#333" : "#999", fontWeight: it.checked ? 600 : 400 }}>
-          {svc.name}
-        </span>
-        <span style={{ fontSize: 9, color: "#d0d0d0", flexShrink: 0, width: 32, textAlign: "center" }}>{svc.dur}분</span>
-        <input className="inp" type="number" value={it.checked ? localAmt : ""} placeholder={disabled ? "—" : fmt(defPrice)}
-          onChange={e => setLocalAmt(e.target.value)} onBlur={e => setAmt(svc.id, e.target.value)} disabled={!it.checked}
-          style={{ width: 72, padding: "3px 5px", fontSize: 11, textAlign: "right",
-            background: it.checked ? "#fff" : "transparent", border: `1px solid ${it.checked ? "#d0d0d0" : "#e0e0e0"}`,
-            color: it.checked ? "#ef5350" : "#d0d0d0", fontWeight: it.checked ? 700 : 400 }} />
-      </div>
-    );
-  };
-
-  // Checkbox row for product
-  const ProdRow = ({ prod }) => {
-    const it = items[prod.id] || { checked: false, amount: 0 };
-    const [localAmt, setLocalAmt] = useState(it.amount || "");
-    useEffect(() => { setLocalAmt(it.amount || ""); }, [it.checked]);
-    return (
-      <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "3px 0", borderBottom: "1px solid #e0e0e030" }}>
-        <input type="checkbox" checked={it.checked} onChange={() => toggle(prod.id, prod.price || 0)}
-          style={{ accentColor: "#6bab9e", width: 14, height: 14, flexShrink: 0, cursor: "pointer" }} />
-        <span style={{ flex: 1, fontSize: 11, color: it.checked ? "#333" : "#999", fontWeight: it.checked ? 600 : 400 }}>{prod.name}</span>
-        <input className="inp" type="number" value={it.checked ? localAmt : ""} placeholder="0"
-          onChange={e => setLocalAmt(e.target.value)} onBlur={e => setAmt(prod.id, e.target.value)} disabled={!it.checked}
-          style={{ width: 72, padding: "3px 5px", fontSize: 11, textAlign: "right",
-            background: it.checked ? "#fff" : "transparent", border: `1px solid ${it.checked ? "#d0d0d0" : "#e0e0e0"}`,
-            color: it.checked ? "#ef5350" : "#d0d0d0", fontWeight: it.checked ? 700 : 400 }} />
-      </div>
-    );
-  };
-
   // Split services into 2 columns by categories
   const allCats = SERVICE_CATS;
   const midIdx = Math.ceil(allCats.length / 2);
@@ -2288,10 +2284,10 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
               if (!svcs.length) return null;
               return <div key={cat.id} style={{ marginBottom: 8 }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: "#7c7cc8", padding: "4px 0 3px", borderBottom: "2px solid #7c7cc830", marginBottom: 1 }}>{cat.name} ({svcs.length})</div>
-                {svcs.map(svc => <SvcRow key={svc.id} svc={svc} />)}
+                {svcs.map(svc => { const it=items[svc.id]||{}; const dp=gender==="F"?svc.priceF:svc.priceM; return <SaleSvcRow key={svc.id} svc={svc} checked={!!it.checked} amount={it.amount||0} defPrice={dp} dur={svc.dur} onToggle={()=>toggle(svc.id,dp)} onAmt={v=>setAmt(svc.id,v)} />; })}
               </div>;
             })}
-            <SaleExtraRow id="extra_svc" color="#7c7cc8" placeholder="추가 시술명 입력" it={items.extra_svc||{checked:false,amount:0,label:""}} onToggle={()=>toggle("extra_svc",0)} onAmt={v=>setAmt("extra_svc",v)} onLabel={v=>setLabel("extra_svc",v)} />
+            <SaleExtraRow color="#7c7cc8" placeholder="추가 시술명 입력" checked={!!(items.extra_svc||{}).checked} amount={(items.extra_svc||{}).amount||0} label={(items.extra_svc||{}).label||""} onToggle={()=>toggle("extra_svc",0)} onAmt={v=>setAmt("extra_svc",v)} onLabel={v=>setLabel("extra_svc",v)} />
           </div>
 
           {/* Col 2: Service categories (right half) */}
@@ -2301,7 +2297,7 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
               if (!svcs.length) return null;
               return <div key={cat.id} style={{ marginBottom: 8 }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: "#7c7cc8", padding: "4px 0 3px", borderBottom: "2px solid #7c7cc830", marginBottom: 1 }}>{cat.name} ({svcs.length})</div>
-                {svcs.map(svc => <SvcRow key={svc.id} svc={svc} />)}
+                {svcs.map(svc => { const it=items[svc.id]||{}; const dp=gender==="F"?svc.priceF:svc.priceM; return <SaleSvcRow key={svc.id} svc={svc} checked={!!it.checked} amount={it.amount||0} defPrice={dp} dur={svc.dur} onToggle={()=>toggle(svc.id,dp)} onAmt={v=>setAmt(svc.id,v)} />; })}
               </div>;
             })}
             {/* Discount */}
@@ -2313,14 +2309,14 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
           {/* Col 3: Products (first half) */}
           <div>
             <div style={{ fontSize: 10, fontWeight: 700, color: "#6bab9e", padding: "4px 0 3px", borderBottom: "2px solid #6bab9e30", marginBottom: 1 }}>제품 ({PRODUCTS.length})</div>
-            {PRODUCTS.slice(0, halfProd).map(p => <ProdRow key={p.id} prod={p} />)}
+            {PRODUCTS.slice(0, halfProd).map(p => { const it=items[p.id]||{}; return <SaleProdRow key={p.id} prod={p} checked={!!it.checked} amount={it.amount||0} onToggle={()=>toggle(p.id,p.price||0)} onAmt={v=>setAmt(p.id,v)} />; })}
           </div>
 
           {/* Col 4: Products (second half) + extra */}
           <div>
             <div style={{ fontSize: 10, fontWeight: 700, color: "#6bab9e", padding: "4px 0 3px", borderBottom: "2px solid #6bab9e30", marginBottom: 1 }}>&nbsp;</div>
-            {PRODUCTS.slice(halfProd).map(p => <ProdRow key={p.id} prod={p} />)}
-            <SaleExtraRow id="extra_prod" color="#6bab9e" placeholder="추가 제품명 입력" it={items.extra_prod||{checked:false,amount:0,label:""}} onToggle={()=>toggle("extra_prod",0)} onAmt={v=>setAmt("extra_prod",v)} onLabel={v=>setLabel("extra_prod",v)} />
+            {PRODUCTS.slice(halfProd).map(p => { const it=items[p.id]||{}; return <SaleProdRow key={p.id} prod={p} checked={!!it.checked} amount={it.amount||0} onToggle={()=>toggle(p.id,p.price||0)} onAmt={v=>setAmt(p.id,v)} />; })}
+            <SaleExtraRow color="#6bab9e" placeholder="추가 제품명 입력" checked={!!(items.extra_prod||{}).checked} amount={(items.extra_prod||{}).amount||0} label={(items.extra_prod||{}).label||""} onToggle={()=>toggle("extra_prod",0)} onAmt={v=>setAmt("extra_prod",v)} onLabel={v=>setLabel("extra_prod",v)} />
           </div>
         </div>
 
