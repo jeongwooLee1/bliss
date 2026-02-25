@@ -7,6 +7,9 @@
 <meta http-equiv="Pragma" content="no-cache"/>
 <meta http-equiv="Expires" content="0"/>
 <title>Bliss 관리시스템</title>
+<script>
+(function(){var V="2.10";var prev=localStorage.getItem("bliss_v");if(prev&&prev!==V){localStorage.setItem("bliss_v",V);location.reload(true);}else{localStorage.setItem("bliss_v",V);}})();
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
@@ -464,12 +467,14 @@ function App() {
           // Check saved session for auto-login
           try {
             const saved = JSON.parse(localStorage.getItem("bliss_session")||"null");
+            console.log("Session restore:", saved);
             if (saved?.userId) {
               const u = users.find(u => u.id === saved.userId);
               if (u) {
                 if (saved.bizId) window._pendingBizId = saved.bizId;
                 if (saved.page) window._pendingPage = saved.page;
-                handleLogin(u); return;
+                console.log("Auto-login:", u.role, "bizId:", saved.bizId, "page:", saved.page);
+                handleLogin(u, true); return;
               }
             }
           } catch{}
@@ -484,11 +489,13 @@ function App() {
   }, []);
 
   // Handle login → route to super dashboard or business app
-  const handleLogin = async (user) => {
+  const handleLogin = async (user, isAutoLogin) => {
     setCurrentUser(user);
     setRole(user.role);
-    // Save session
-    try{localStorage.setItem("bliss_session",JSON.stringify({userId:user.id,loginId:user.loginId||user.login_id}));}catch{}
+    // Save session only on manual login (auto-login already has session)
+    if (!isAutoLogin) {
+      try{localStorage.setItem("bliss_session",JSON.stringify({userId:user.id,loginId:user.loginId||user.login_id}));}catch{}
+    }
     if (user.role === "super") {
       setLoadMsg("관리자 데이터 로딩 중...");
       setPhase("loading");
@@ -529,7 +536,7 @@ function App() {
         setUserBranches(user.role === "owner" ? db.branches.map(b=>b.id) : (user.branches || []));
         setViewBranches(user.viewBranches || []);
         // Restore saved page
-        const pp = window._pendingPage; delete window._pendingPage;
+        const pp = window._pendingPage; delete window._pendingPage; console.log("Restoring page:", pp);
         if (pp && ["timeline","reservations","sales","stats","customers","users","admin"].includes(pp)) setPage(pp);
         setPhase("app");
       } catch(e) {
@@ -541,7 +548,7 @@ function App() {
 
   // Super admin: enter a specific business
   const handleEnterBiz = async (bizId) => {
-    try{localStorage.setItem("bliss_session",JSON.stringify({userId:currentUser.id,loginId:currentUser.loginId||currentUser.login_id,bizId}));}catch{}
+    try{const s=JSON.parse(localStorage.getItem("bliss_session")||"{}");s.bizId=bizId;localStorage.setItem("bliss_session",JSON.stringify(s));}catch{}
     setLoadMsg("매장 데이터 로딩 중...");
     setPhase("loading");
     try {
@@ -561,7 +568,7 @@ function App() {
       setRole("owner"); // super acts as owner inside a business
       setUserBranches(db.branches.map(b => b.id));
       setViewBranches([]);
-      const pp = window._pendingPage; delete window._pendingPage;
+      const pp = window._pendingPage; delete window._pendingPage; console.log("Restoring page:", pp);
       if (pp && ["timeline","reservations","sales","stats","customers","users","admin"].includes(pp)) setPage(pp);
       setPhase("app");
     } catch(e) { console.error(e); setPhase("super"); }
@@ -917,7 +924,7 @@ function Login({ users, onLogin }) {
           <div style={{fontSize:10,color:"#bbb",textAlign:"center",marginTop:4}}>
             슈퍼관리자: admin / 1234 · 업체대표: master / 1234
           </div>
-          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.9</div>
+          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.10</div>
         </div>
       </div>
     </div>
