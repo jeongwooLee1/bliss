@@ -24,12 +24,14 @@ const sb = {
   async get(table, filter="") { 
     const hasCreatedAt = !["rooms","services","products","service_categories","service_tags"].includes(table);
     const order = hasCreatedAt ? "order=created_at.asc.nullsfirst" : "order=id.asc";
-    const r=await fetch(`${SB_URL}/rest/v1/${table}?select=*&${order}${filter}`,{headers:sbHeaders}); return r.ok?r.json():[]; 
+    const r=await fetch(`${SB_URL}/rest/v1/${table}?select=*&${order}${filter}`,{headers:sbHeaders}); 
+    if(!r.ok){const e=await r.text();console.error(`DB get ${table} failed:`,r.status,e);}
+    return r.ok?r.json():[]; 
   },
   async getByBiz(table, bizId) { return this.get(table, `&business_id=eq.${bizId}`); },
-  async upsert(table,rows) { if(!rows?.length)return; const r=await fetch(`${SB_URL}/rest/v1/${table}`,{method:"POST",headers:{...sbHeaders,"Prefer":"resolution=merge-duplicates,return=representation"},body:JSON.stringify(rows)}); if(!r.ok){const e=await r.text();console.error(`DB upsert ${table} failed:`,e);} },
-  async insert(table,row) { const r=await fetch(`${SB_URL}/rest/v1/${table}`,{method:"POST",headers:sbHeaders,body:JSON.stringify(row)}); if(!r.ok){const e=await r.text();console.error(`DB insert ${table} failed:`,e);return null;} return r.json(); },
-  async update(table,id,row) { const r=await fetch(`${SB_URL}/rest/v1/${table}?id=eq.${id}`,{method:"PATCH",headers:sbHeaders,body:JSON.stringify(row)}); if(!r.ok){const e=await r.text();console.error(`DB update ${table} failed:`,e);} },
+  async upsert(table,rows) { if(!rows?.length)return; console.log(`DB upsert ${table}:`,JSON.stringify(rows[0]).slice(0,200)); const r=await fetch(`${SB_URL}/rest/v1/${table}`,{method:"POST",headers:{...sbHeaders,"Prefer":"resolution=merge-duplicates,return=representation"},body:JSON.stringify(rows)}); if(!r.ok){const e=await r.text();console.error(`DB upsert ${table} FAILED [${r.status}]:`,e);alert(`DB저장 실패(${table}): ${e}`);} else {console.log(`DB upsert ${table} OK`);} },
+  async insert(table,row) { console.log(`DB insert ${table}:`,JSON.stringify(row).slice(0,300)); const r=await fetch(`${SB_URL}/rest/v1/${table}`,{method:"POST",headers:sbHeaders,body:JSON.stringify(row)}); if(!r.ok){const e=await r.text();console.error(`DB insert ${table} FAILED [${r.status}]:`,e);alert(`DB저장 실패(${table}): ${e}`);return null;} console.log(`DB insert ${table} OK`); return r.json(); },
+  async update(table,id,row) { console.log(`DB update ${table} ${id}:`,JSON.stringify(row).slice(0,200)); const r=await fetch(`${SB_URL}/rest/v1/${table}?id=eq.${id}`,{method:"PATCH",headers:sbHeaders,body:JSON.stringify(row)}); if(!r.ok){const e=await r.text();console.error(`DB update ${table} FAILED [${r.status}]:`,e);alert(`DB수정 실패(${table}): ${e}`);} },
   async del(table,id) { await fetch(`${SB_URL}/rest/v1/${table}?id=eq.${id}`,{method:"DELETE",headers:sbHeaders}); },
   async delWhere(table,col,val) { await fetch(`${SB_URL}/rest/v1/${table}?${col}=eq.${val}`,{method:"DELETE",headers:sbHeaders}); },
 };
