@@ -27,17 +27,17 @@ const sb = {
     const r=await fetch(`${SB_URL}/rest/v1/${table}?select=*&${order}${filter}`,{headers:sbHeaders}); return r.ok?r.json():[]; 
   },
   async getByBiz(table, bizId) { return this.get(table, `&business_id=eq.${bizId}`); },
-  async upsert(table,rows) { if(!rows?.length)return; await fetch(`${SB_URL}/rest/v1/${table}`,{method:"POST",headers:{...sbHeaders,"Prefer":"resolution=merge-duplicates,return=representation"},body:JSON.stringify(rows)}); },
-  async insert(table,row) { const r=await fetch(`${SB_URL}/rest/v1/${table}`,{method:"POST",headers:sbHeaders,body:JSON.stringify(row)}); return r.ok?r.json():null; },
-  async update(table,id,row) { await fetch(`${SB_URL}/rest/v1/${table}?id=eq.${id}`,{method:"PATCH",headers:sbHeaders,body:JSON.stringify(row)}); },
+  async upsert(table,rows) { if(!rows?.length)return; const r=await fetch(`${SB_URL}/rest/v1/${table}`,{method:"POST",headers:{...sbHeaders,"Prefer":"resolution=merge-duplicates,return=representation"},body:JSON.stringify(rows)}); if(!r.ok){const e=await r.text();console.error(`DB upsert ${table} failed:`,e);} },
+  async insert(table,row) { const r=await fetch(`${SB_URL}/rest/v1/${table}`,{method:"POST",headers:sbHeaders,body:JSON.stringify(row)}); if(!r.ok){const e=await r.text();console.error(`DB insert ${table} failed:`,e);return null;} return r.json(); },
+  async update(table,id,row) { const r=await fetch(`${SB_URL}/rest/v1/${table}?id=eq.${id}`,{method:"PATCH",headers:sbHeaders,body:JSON.stringify(row)}); if(!r.ok){const e=await r.text();console.error(`DB update ${table} failed:`,e);} },
   async del(table,id) { await fetch(`${SB_URL}/rest/v1/${table}?id=eq.${id}`,{method:"DELETE",headers:sbHeaders}); },
   async delWhere(table,col,val) { await fetch(`${SB_URL}/rest/v1/${table}?${col}=eq.${val}`,{method:"DELETE",headers:sbHeaders}); },
 };
 // snake_case <-> camelCase column mapping per table
 const DBMAP = {
-  reservations:{business_id:"businessId",branch_id:"bid",room_id:"roomId",cust_id:"custId",cust_name:"custName",cust_phone:"custPhone",cust_gender:"custGender",staff_id:"staffId",end_time:"endTime",is_schedule:"isSchedule",is_new_cust:"isNewCust",selected_tags:"selectedTags",selected_services:"selectedServices",ts_log:"tsLog",repeat_source_id:"repeatSourceId",repeat_until:"repeatUntil",updated_at:"_ua"},
-  sales:{business_id:"businessId",branch_id:"bid",cust_id:"custId",cust_name:"custName",cust_phone:"custPhone",cust_gender:"custGender",cust_num:"custNum",staff_id:"staffId",staff_name:"staffName",svc_cash:"svcCash",svc_transfer:"svcTransfer",svc_card:"svcCard",svc_point:"svcPoint",prod_cash:"prodCash",prod_transfer:"prodTransfer",prod_card:"prodCard",prod_point:"prodPoint",order_num:"orderNum",reservation_id:"reservationId"},
-  customers:{business_id:"businessId",branch_id:"bid",last_visit:"lastVisit",cust_num:"custNum"},
+  reservations:{business_id:"businessId",room_id:"roomId",cust_id:"custId",cust_name:"custName",cust_phone:"custPhone",cust_gender:"custGender",staff_id:"staffId",end_time:"endTime",is_schedule:"isSchedule",is_new_cust:"isNewCust",selected_tags:"selectedTags",selected_services:"selectedServices",ts_log:"tsLog",repeat_source_id:"repeatSourceId",repeat_until:"repeatUntil",updated_at:"_ua"},
+  sales:{business_id:"businessId",cust_id:"custId",cust_name:"custName",cust_phone:"custPhone",cust_gender:"custGender",cust_num:"custNum",staff_id:"staffId",staff_name:"staffName",svc_cash:"svcCash",svc_transfer:"svcTransfer",svc_card:"svcCard",svc_point:"svcPoint",prod_cash:"prodCash",prod_transfer:"prodTransfer",prod_card:"prodCard",prod_point:"prodPoint",order_num:"orderNum",reservation_id:"reservationId"},
+  customers:{business_id:"businessId",last_visit:"lastVisit",cust_num:"custNum"},
   service_tags:{business_id:"businessId",schedule_yn:"scheduleYn",use_yn:"useYn"},
   services:{business_id:"businessId",price_f:"priceF",price_m:"priceM"},
   app_users:{business_id:"businessId",login_id:"loginId",branch_ids:"branches",password:"pw",view_branch_ids:"viewBranches"},
@@ -50,9 +50,9 @@ function fromDb(table,rows){const m=DBMAP[table];if(!m)return rows;return rows.m
   return r;});}
 // Valid DB columns per table (to filter out extra JS fields)
 const DB_COLS={
-  reservations:["id","business_id","branch_id","room_id","cust_id","cust_name","cust_phone","cust_gender","staff_id","date","time","end_time","dur","status","memo","type","is_schedule","is_new_cust","selected_tags","selected_services","ts_log","repeat_source_id","repeat","repeat_until","updated_at"],
-  sales:["id","business_id","branch_id","cust_id","cust_name","cust_phone","cust_gender","cust_num","staff_id","staff_name","date","svc_cash","svc_transfer","svc_card","svc_point","prod_cash","prod_transfer","prod_card","prod_point","gift","memo","order_num","reservation_id"],
-  customers:["id","business_id","branch_id","name","phone","gender","visits","last_visit","memo","cust_num"],
+  reservations:["id","business_id","bid","room_id","cust_id","cust_name","cust_phone","cust_gender","staff_id","date","time","end_time","dur","status","memo","type","is_schedule","is_new_cust","selected_tags","selected_services","ts_log","repeat_source_id","repeat","repeat_until","updated_at"],
+  sales:["id","business_id","bid","cust_id","cust_name","cust_phone","cust_gender","cust_num","staff_id","staff_name","date","svc_cash","svc_transfer","svc_card","svc_point","prod_cash","prod_transfer","prod_card","prod_point","gift","memo","order_num","reservation_id"],
+  customers:["id","business_id","bid","name","phone","gender","visits","last_visit","memo","cust_num"],
   service_tags:["id","business_id","name","dur","schedule_yn","color","use_yn","sort"],
   services:["id","business_id","cat","name","dur","price_f","price_m","note","sort"],
   app_users:["id","business_id","login_id","password","name","role","branch_ids","view_branch_ids"],
@@ -1962,7 +1962,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
 }
 
 // ═══════════════════════════════════════════
-// Top-level components to avoid re-mount on parent re-render
+// Bliss v2.5 - realtime extra/discount totals
 const SaleSvcRow = React.memo(function SaleSvcRow({ id, name, dur, checked, amount, defPrice, toggle, setAmt }) {
   const disabled = defPrice === 0;
   const [localAmt, setLocalAmt] = useState(amount || "");
@@ -2096,7 +2096,8 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
   const toggle = useCallback((id, defPrice) => {
     setItems(prev => {
       const cur = prev[id] || { checked: false, amount: 0 };
-      return { ...prev, [id]: { ...cur, checked: !cur.checked, amount: !cur.checked ? (defPrice || 0) : 0 } };
+      const newChecked = !cur.checked;
+      return { ...prev, [id]: { ...cur, checked: newChecked, amount: newChecked ? (cur.amount || defPrice || 0) : 0 } };
     });
   }, []);
   const setAmt = useCallback((id, v) => setItems(prev => ({ ...prev, [id]: { ...prev[id], amount: Number(v) || 0 } })), []);
