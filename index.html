@@ -1,7 +1,7 @@
 <!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/><meta http-equiv="Pragma" content="no-cache"/><meta http-equiv="Expires" content="0"/>
 <title>Bliss 관리시스템</title>
-<script>(function(){var V="2.14";var prev=localStorage.getItem("bliss_v");if(prev&&prev!==V){localStorage.setItem("bliss_v",V);location.reload(true);}else{localStorage.setItem("bliss_v",V);}})();</script>
+<script>(function(){var V="2.15";var prev=localStorage.getItem("bliss_v");if(prev&&prev!==V){localStorage.setItem("bliss_v",V);location.reload(true);}else{localStorage.setItem("bliss_v",V);}})();</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
@@ -161,71 +161,10 @@ const SERVICE_CATS = [
 ];
 
 // 전 지점 동일가 - priceF:여성, priceM:남성 (0이면 해당 성별 불가)
-const INIT_SERVICES = [
-  // 에너지테라피
-  { id:"s1", cat:"sc1", name:"에너지테라피 60분", dur:60, priceF:198000, priceM:198000, note:"공동가", sort:0 },
-  { id:"s2", cat:"sc1", name:"에너지테라피 20분", dur:20, priceF:66000, priceM:66000, note:"공동가", sort:1 },
-  // 브라질리언
-  { id:"s3", cat:"sc2", name:"브라질리언", dur:35, priceF:154000, priceM:176000, note:"쿠폰 적용 시 할인", sort:2 },
-  { id:"s4", cat:"sc2", name:"브라질리언 + 케어", dur:50, priceF:187000, priceM:209000, note:"쿠폰 적용 시 할인", sort:3 },
-  { id:"s5", cat:"sc2", name:"브라질리언 + 궁테라피", dur:65, priceF:220000, priceM:0, note:"여성 전용", sort:4 },
-  { id:"s6", cat:"sc2", name:"브라질리언 + 머슬랜더", dur:65, priceF:0, priceM:242000, note:"남성 전용", sort:5 },
-  { id:"s7", cat:"sc2", name:"비키니", dur:25, priceF:55000, priceM:88000, sort:6 },
-  { id:"s8", cat:"sc2", name:"항문 왁싱", dur:25, priceF:55000, priceM:55000, sort:7 },
-  // 바디
-  { id:"s9", cat:"sc3", name:"겨드랑이", dur:20, priceF:20000, priceM:30000, sort:8 },
-  { id:"s10", cat:"sc3", name:"엉덩이", dur:13, priceF:10000, priceM:10000, note:"여10000~30000/남10000~50000", sort:9 },
-  { id:"s11", cat:"sc3", name:"유륜", dur:10, priceF:10000, priceM:10000, sort:10 },
-  // 팔/다리/손/발
-  { id:"s12", cat:"sc4", name:"팔 전체", dur:30, priceF:70000, priceM:90000, sort:11 },
-  { id:"s13", cat:"sc4", name:"팔 절반", dur:25, priceF:40000, priceM:60000, sort:12 },
-  { id:"s14", cat:"sc4", name:"다리 전체", dur:40, priceF:90000, priceM:110000, sort:13 },
-  { id:"s15", cat:"sc4", name:"다리 절반", dur:25, priceF:50000, priceM:70000, note:"무릎 기준", sort:14 },
-  { id:"s16", cat:"sc4", name:"손 전체", dur:10, priceF:20000, priceM:20000, sort:15 },
-  { id:"s17", cat:"sc4", name:"손 절반", dur:10, priceF:10000, priceM:10000, sort:16 },
-  { id:"s18", cat:"sc4", name:"발가락", dur:10, priceF:10000, priceM:10000, sort:17 },
-  // 등/배/가슴
-  { id:"s19", cat:"sc5", name:"등 전체", dur:25, priceF:50000, priceM:70000, sort:18 },
-  { id:"s20", cat:"sc5", name:"등 절반", dur:20, priceF:30000, priceM:40000, sort:19 },
-  { id:"s21", cat:"sc5", name:"배", dur:18, priceF:10000, priceM:10000, note:"여10000~30000/남10000~40000", sort:20 },
-  { id:"s22", cat:"sc5", name:"가슴", dur:18, priceF:10000, priceM:10000, note:"여10000~30000/남10000~40000", sort:21 },
-  // 페이셜
-  { id:"s23", cat:"sc6", name:"눈썹", dur:30, priceF:45000, priceM:45000, note:"디자인 포함", sort:22 },
-  { id:"s24", cat:"sc6", name:"인중", dur:10, priceF:15000, priceM:25000, sort:23 },
-  { id:"s25", cat:"sc6", name:"볼", dur:20, priceF:20000, priceM:30000, note:"여20000~50000/남30000~70000", sort:24 },
-  { id:"s26", cat:"sc6", name:"이마", dur:15, priceF:30000, priceM:40000, sort:25 },
-  { id:"s27", cat:"sc6", name:"헤어라인", dur:15, priceF:30000, priceM:30000, sort:26 },
-  { id:"s28", cat:"sc6", name:"구렛나루", dur:18, priceF:20000, priceM:20000, sort:27 },
-  { id:"s29", cat:"sc6", name:"턱", dur:25, priceF:10000, priceM:30000, note:"여10000~30000/남30000~50000", sort:28 },
-  // 목
-  { id:"s30", cat:"sc7", name:"앞목", dur:10, priceF:10000, priceM:10000, note:"여10000~30000/남10000~30000", sort:29 },
-  { id:"s31", cat:"sc7", name:"뒷목", dur:20, priceF:30000, priceM:30000, sort:30 },
-];
+const INIT_SERVICES = [];
 const SERVICES = INIT_SERVICES; // alias for existing code
 
-const PRODUCTS = [
-  { id: "p1", name: "GL아르간오일", price: 0, cat: "product" },
-  { id: "p2", name: "더 모 스크럽", price: 0, cat: "product" },
-  { id: "p3", name: "코코넛 스크럽", price: 0, cat: "product" },
-  { id: "p4", name: "모슬로", price: 0, cat: "product" },
-  { id: "p5", name: "인-스프레이", price: 0, cat: "product" },
-  { id: "p6", name: "미백크림", price: 0, cat: "product" },
-  { id: "p7", name: "가운(여)", price: 0, cat: "product" },
-  { id: "p8", name: "가운(남)", price: 0, cat: "product" },
-  { id: "p9", name: "전후 처리제 大", price: 0, cat: "product" },
-  { id: "p10", name: "전후 처리제 小", price: 0, cat: "product" },
-  { id: "p11", name: "인트크림", price: 0, cat: "product" },
-  { id: "p12", name: "에너지 홀이투", price: 0, cat: "product" },
-  { id: "p13", name: "에너지 주열기", price: 0, cat: "product" },
-  { id: "p14", name: "성결체", price: 0, cat: "product" },
-  { id: "p15", name: "아롬텐 카트리지", price: 0, cat: "product" },
-  { id: "p16", name: "카트리지 SET", price: 0, cat: "product" },
-  { id: "p17", name: "스트립 100장", price: 0, cat: "product" },
-  { id: "p18", name: "스파튤라 1box", price: 0, cat: "product" },
-  { id: "p19", name: "콜곡왁스", price: 0, cat: "product" },
-  { id: "p20", name: "왁스", price: 0, cat: "product" },
-  { id: "p21", name: "튜브(살구)스크림", price: 0, cat: "product" },
-];
+const PRODUCTS = [];
 
 // 상품종류 (myCream 상품종류관리 전체 데이터) - dur:소요시간(분), scheduleYn:기타일정, color:색상, useYn:사용여부
 const INIT_SERVICE_TAGS = [
@@ -919,7 +858,7 @@ function Login({ users, onLogin }) {
           <div style={{fontSize:10,color:"#bbb",textAlign:"center",marginTop:4}}>
             슈퍼관리자: admin / 1234 · 업체대표: master / 1234
           </div>
-          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.14</div>
+          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.15</div>
         </div>
       </div>
     </div>
@@ -975,6 +914,8 @@ function Sidebar({ nav, page, setPage, role, branchNames, onLogout, bizName="", 
 // TIMELINE VIEW (myCream-style)
 // ═══════════════════════════════════════════
 function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, currentUser, setPage, bizId }) {
+  const SVC_LIST = data?.services || [];
+  const PROD_LIST = data?.products || [];
   const [selDate, setSelDate] = useState(todayStr());
   const [showModal, setShowModal] = useState(false);
   const [modalData, setModalData] = useState(null);
@@ -1457,7 +1398,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                             {block.selectedTags.length>3 && <span style={{fontSize:Math.max(6,blockFs-2),color:"#999"}}>+{block.selectedTags.length-3}</span>}
                           </div>}
                           {block.selectedServices?.length>0 && <div style={{fontSize:Math.max(6,blockFs-2),color:"#6bab9e",fontWeight:600,marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                            {block.selectedServices.map(sid=>INIT_SERVICES.find(s=>s.id===sid)?.name).filter(Boolean).slice(0,2).join(", ")}
+                            {block.selectedServices.map(sid=>SVC_LIST.find(s=>s.id===sid)?.name).filter(Boolean).slice(0,2).join(", ")}
                             {block.selectedServices.length>2 && ` +${block.selectedServices.length-2}`}
                           </div>}
                         </>}
@@ -1603,6 +1544,9 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
 }
 
 function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBranch, userBranches, data, setData, setPage }) {
+  const SVC_LIST = data?.services || [];
+  const PROD_LIST = data?.products || [];
+  const CATS = data?.categories || SERVICE_CATS;
   const isNew = !item?.id || item?.roomId;
   const isReadOnly = item?.readOnly || false;
   const branchId = item?.bid || selBranch;
@@ -1662,7 +1606,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
         const tag = tags.find(t => t.id === tid);
         return sum + (tag?.dur || 0);
       }, 0);
-      const svcSum = (p.selectedServices||[]).reduce((sum, sid) => sum + (INIT_SERVICES.find(s=>s.id===sid)?.dur||0), 0);
+      const svcSum = (p.selectedServices||[]).reduce((sum, sid) => sum + (SVC_LIST.find(s=>s.id===sid)?.dur||0), 0);
       const dur = (tagSum + svcSum) || BASE_DUR;
       const [sh, sm] = p.time.split(":").map(Number);
       const endMin = sh * 60 + sm + dur;
@@ -1679,7 +1623,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
 
   // 선택된 시술 소요시간 합계
   const svcDurTotal = (f.selectedServices||[]).reduce((sum, sid) => {
-    const svc = INIT_SERVICES.find(s => s.id === sid);
+    const svc = SVC_LIST.find(s => s.id === sid);
     return sum + (svc?.dur || 0);
   }, 0);
 
@@ -1687,7 +1631,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
   const toggleService = (svcId) => {
     setF(p => {
       const newSvcs = p.selectedServices?.includes(svcId) ? p.selectedServices.filter(s=>s!==svcId) : [...(p.selectedServices||[]), svcId];
-      const svcSum = newSvcs.reduce((sum, sid) => sum + (INIT_SERVICES.find(s=>s.id===sid)?.dur||0), 0);
+      const svcSum = newSvcs.reduce((sum, sid) => sum + (SVC_LIST.find(s=>s.id===sid)?.dur||0), 0);
       const tagSum = (p.selectedTags||[]).reduce((sum, tid) => sum + (tags.find(t=>t.id===tid)?.dur||0), 0);
       const dur = (svcSum + tagSum) || BASE_DUR;
       const [sh, sm] = p.time.split(":").map(Number);
@@ -1923,7 +1867,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
             {/* 시술 상품 선택 */}
             {(() => {
               const svcPriceTotal = (f.selectedServices||[]).reduce((sum, sid) => {
-                const svc = INIT_SERVICES.find(s=>s.id===sid);
+                const svc = SVC_LIST.find(s=>s.id===sid);
                 return sum + (svc ? (f.custGender==="M"?svc.priceM:svc.priceF) : 0);
               }, 0);
               return <FLD label={`시술 상품 선택${(f.selectedServices||[]).length > 0 ? ` (${(f.selectedServices||[]).length}건, ${svcDurTotal}분, ${fmt(svcPriceTotal)}원)` : ""}`}>
@@ -1932,13 +1876,13 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
                   border:"1px dashed #7c7cc8",background:showSvcPicker?"#7c7cc810":"#fafafa",color:"#7c7cc8",
                   display:"flex",alignItems:"center",justifyContent:"space-between"}}>
                 <span>{(f.selectedServices||[]).length > 0 ?
-                  (f.selectedServices||[]).map(sid=>INIT_SERVICES.find(s=>s.id===sid)?.name).filter(Boolean).join(", ")
+                  (f.selectedServices||[]).map(sid=>SVC_LIST.find(s=>s.id===sid)?.name).filter(Boolean).join(", ")
                   : "시술 상품을 선택하세요"}</span>
                 <span style={{fontSize:13}}>{showSvcPicker?"▲":"▼"}</span>
               </button>
               {showSvcPicker && <div style={{marginTop:6,border:"1px solid #e0e0e0",borderRadius:8,background:"#fff",maxHeight:280,overflow:"auto"}}>
-                {SERVICE_CATS.map(cat=>{
-                  const catSvcs = INIT_SERVICES.filter(s=>s.cat===cat.id);
+                {CATS.map(cat=>{
+                  const catSvcs = SVC_LIST.filter(s=>s.cat===cat.id);
                   if(catSvcs.length===0) return null;
                   const genderFilter = f.custGender==="M" ? s=>s.priceM>0||s.priceM===0&&s.priceF===0 : s=>s.priceF>0||s.priceF===0&&s.priceM===0;
                   return <div key={cat.id}>
@@ -2082,6 +2026,9 @@ const SaleDiscountRow = React.memo(function SaleDiscountRow({ id, checked, amoun
 // DETAILED SALE FORM (매출 입력 - 시술상품/제품 연동)
 // ═══════════════════════════════════════════
 function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setData }) {
+  const SVC_LIST = data?.services || [];
+  const PROD_LIST = data?.products || [];
+  const CATS = data?.categories || SERVICE_CATS;
   const branchStaff = STAFF.filter(s => s.bid === branchId);
   const [manager, setManager] = useState(reservation?.staffId || branchStaff[0]?.id || "");
   const [selBranch, setSelBranch] = useState(branchId);
@@ -2133,12 +2080,12 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
   const [items, setItems] = useState(() => {
     const init = {};
     const selSvcs = reservation?.selectedServices || [];
-    INIT_SERVICES.forEach(svc => {
+    SVC_LIST.forEach(svc => {
       const preSelected = selSvcs.includes(svc.id);
       const defPrice = (reservation?.custGender||"F")==="M" ? svc.priceM : svc.priceF;
       init[svc.id] = { checked: preSelected, amount: preSelected ? defPrice : 0 };
     });
-    PRODUCTS.forEach(p => { init[p.id] = { checked: false, amount: 0 }; });
+    PROD_LIST.forEach(p => { init[p.id] = { checked: false, amount: 0 }; });
     init["discount"] = { checked: false, amount: 0 };
     init["extra_svc"] = { checked: false, amount: 0, label: "" };
     init["extra_prod"] = { checked: false, amount: 0, label: "" };
@@ -2168,16 +2115,16 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
   };
 
   // Totals
-  const svcTotal = INIT_SERVICES.reduce((sum, svc) => sum + (items[svc.id]?.checked ? items[svc.id].amount : 0), 0)
+  const svcTotal = SVC_LIST.reduce((sum, svc) => sum + (items[svc.id]?.checked ? items[svc.id].amount : 0), 0)
     + (items.extra_svc?.checked ? items.extra_svc.amount : 0);
-  const prodTotal = PRODUCTS.reduce((sum, p) => sum + (items[p.id]?.checked ? items[p.id].amount : 0), 0)
+  const prodTotal = PROD_LIST.reduce((sum, p) => sum + (items[p.id]?.checked ? items[p.id].amount : 0), 0)
     + (items.extra_prod?.checked ? items.extra_prod.amount : 0);
   const discount = items.discount?.checked ? items.discount.amount : 0;
   const grandTotal = svcTotal + prodTotal - discount - (isNaver ? naverPrepaid : 0);
 
   // Count checked
-  const checkedSvc = INIT_SERVICES.filter(s => items[s.id]?.checked).length + (items.extra_svc?.checked ? 1 : 0);
-  const checkedProd = PRODUCTS.filter(p => items[p.id]?.checked).length + (items.extra_prod?.checked ? 1 : 0);
+  const checkedSvc = SVC_LIST.filter(s => items[s.id]?.checked).length + (items.extra_svc?.checked ? 1 : 0);
+  const checkedProd = PROD_LIST.filter(p => items[p.id]?.checked).length + (items.extra_prod?.checked ? 1 : 0);
 
   // Auto-calc remaining for default payment (현금 = 총액 - 카드 - 입금 - 포인트)
   const svcRemain = Math.max(0, svcTotal - payMethod.svcCard - payMethod.svcTransfer - payMethod.svcPoint);
@@ -2213,7 +2160,7 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
       custNum: String(50000 + Math.floor(Math.random() * 10000)),
       staffId: manager, staffName: staff?.dn || "",
       date: reservation?.date || todayStr(),
-      serviceId: reservation?.serviceId || null, serviceName: INIT_SERVICES.find(s => s.id === reservation?.serviceId)?.name || "",
+      serviceId: reservation?.serviceId || null, serviceName: SVC_LIST.find(s => s.id === reservation?.serviceId)?.name || "",
       productId: null, productName: null,
       svcCash: svcRemain, svcTransfer: payMethod.svcTransfer, svcCard: payMethod.svcCard, svcPoint: payMethod.svcPoint,
       prodCash: prodRemain, prodTransfer: payMethod.prodTransfer, prodCard: payMethod.prodCard, prodPoint: payMethod.prodPoint,
@@ -2225,11 +2172,11 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
   };
 
   // Split services into 2 columns by categories
-  const allCats = SERVICE_CATS;
+  const allCats = CATS;
   const midIdx = Math.ceil(allCats.length / 2);
   const leftCats = allCats.slice(0, midIdx);
   const rightCats = allCats.slice(midIdx);
-  const halfProd = Math.ceil(PRODUCTS.length / 2);
+  const halfProd = Math.ceil(PROD_LIST.length / 2);
 
   return (
     <div className="ov" onClick={onClose}>
@@ -2337,7 +2284,7 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
           {/* Col 1: Service categories (left half) */}
           <div>
             {leftCats.map(cat => {
-              const svcs = INIT_SERVICES.filter(s => s.cat === cat.id).sort((a,b)=>a.sort-b.sort);
+              const svcs = SVC_LIST.filter(s => s.cat === cat.id).sort((a,b)=>a.sort-b.sort);
               if (!svcs.length) return null;
               return <div key={cat.id} style={{ marginBottom: 8 }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: "#7c7cc8", padding: "4px 0 3px", borderBottom: "2px solid #7c7cc830", marginBottom: 1 }}>{cat.name} ({svcs.length})</div>
@@ -2350,7 +2297,7 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
           {/* Col 2: Service categories (right half) */}
           <div>
             {rightCats.map(cat => {
-              const svcs = INIT_SERVICES.filter(s => s.cat === cat.id).sort((a,b)=>a.sort-b.sort);
+              const svcs = SVC_LIST.filter(s => s.cat === cat.id).sort((a,b)=>a.sort-b.sort);
               if (!svcs.length) return null;
               return <div key={cat.id} style={{ marginBottom: 8 }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: "#7c7cc8", padding: "4px 0 3px", borderBottom: "2px solid #7c7cc830", marginBottom: 1 }}>{cat.name} ({svcs.length})</div>
@@ -2365,14 +2312,14 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
 
           {/* Col 3: Products (first half) */}
           <div>
-            <div style={{ fontSize: 10, fontWeight: 700, color: "#6bab9e", padding: "4px 0 3px", borderBottom: "2px solid #6bab9e30", marginBottom: 1 }}>제품 ({PRODUCTS.length})</div>
-            {PRODUCTS.slice(0, halfProd).map(p => { const it=items[p.id]||{}; return <SaleProdRow key={p.id} id={p.id} name={p.name} price={p.price||0} checked={!!it.checked} amount={it.amount||0} toggle={toggle} setAmt={setAmt} />; })}
+            <div style={{ fontSize: 10, fontWeight: 700, color: "#6bab9e", padding: "4px 0 3px", borderBottom: "2px solid #6bab9e30", marginBottom: 1 }}>제품 ({PROD_LIST.length})</div>
+            {PROD_LIST.slice(0, halfProd).map(p => { const it=items[p.id]||{}; return <SaleProdRow key={p.id} id={p.id} name={p.name} price={p.price||0} checked={!!it.checked} amount={it.amount||0} toggle={toggle} setAmt={setAmt} />; })}
           </div>
 
           {/* Col 4: Products (second half) + extra */}
           <div>
             <div style={{ fontSize: 10, fontWeight: 700, color: "#6bab9e", padding: "4px 0 3px", borderBottom: "2px solid #6bab9e30", marginBottom: 1 }}>&nbsp;</div>
-            {PRODUCTS.slice(halfProd).map(p => { const it=items[p.id]||{}; return <SaleProdRow key={p.id} id={p.id} name={p.name} price={p.price||0} checked={!!it.checked} amount={it.amount||0} toggle={toggle} setAmt={setAmt} />; })}
+            {PROD_LIST.slice(halfProd).map(p => { const it=items[p.id]||{}; return <SaleProdRow key={p.id} id={p.id} name={p.name} price={p.price||0} checked={!!it.checked} amount={it.amount||0} toggle={toggle} setAmt={setAmt} />; })}
             <SaleExtraRow id="extra_prod" color="#6bab9e" placeholder="추가 제품명 입력" checked={!!(items.extra_prod||{}).checked} amount={(items.extra_prod||{}).amount||0} label={(items.extra_prod||{}).label||""} toggle={toggle} setAmt={setAmt} setLabel={setLabel} />
           </div>
         </div>
