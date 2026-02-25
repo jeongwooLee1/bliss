@@ -1,7 +1,7 @@
 <!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/><meta http-equiv="Pragma" content="no-cache"/><meta http-equiv="Expires" content="0"/>
 <title>Bliss 관리시스템</title>
-<script>(function(){var V="2.13";var prev=localStorage.getItem("bliss_v");if(prev&&prev!==V){localStorage.setItem("bliss_v",V);location.reload(true);}else{localStorage.setItem("bliss_v",V);}})();</script>
+<script>(function(){var V="2.14";var prev=localStorage.getItem("bliss_v");if(prev&&prev!==V){localStorage.setItem("bliss_v",V);location.reload(true);}else{localStorage.setItem("bliss_v",V);}})();</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
@@ -919,7 +919,7 @@ function Login({ users, onLogin }) {
           <div style={{fontSize:10,color:"#bbb",textAlign:"center",marginTop:4}}>
             슈퍼관리자: admin / 1234 · 업체대표: master / 1234
           </div>
-          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.13</div>
+          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.14</div>
         </div>
       </div>
     </div>
@@ -2173,7 +2173,7 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
   const prodTotal = PRODUCTS.reduce((sum, p) => sum + (items[p.id]?.checked ? items[p.id].amount : 0), 0)
     + (items.extra_prod?.checked ? items.extra_prod.amount : 0);
   const discount = items.discount?.checked ? items.discount.amount : 0;
-  const grandTotal = svcTotal + prodTotal - discount;
+  const grandTotal = svcTotal + prodTotal - discount - (isNaver ? naverPrepaid : 0);
 
   // Count checked
   const checkedSvc = INIT_SERVICES.filter(s => items[s.id]?.checked).length + (items.extra_svc?.checked ? 1 : 0);
@@ -2326,6 +2326,7 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
             <span style={{ fontSize: 11, color: "#888" }}>시술 <strong style={{ color: "#7c7cc8" }}>{fmt(svcTotal)}</strong> ({checkedSvc})</span>
             <span style={{ fontSize: 11, color: "#888" }}>제품 <strong style={{ color: "#6bab9e" }}>{fmt(prodTotal)}</strong> ({checkedProd})</span>
             {discount > 0 && <span style={{ fontSize: 11, color: "#888" }}>할인 <strong style={{ color: "#e8a0a0" }}>-{fmt(discount)}</strong></span>}
+            {isNaver && naverPrepaid > 0 && <span style={{ fontSize: 11, color: "#888" }}>예약금 <strong style={{ color: "#e65100" }}>-{fmt(naverPrepaid)}</strong></span>}
             <span style={{ fontSize: 17, fontWeight: 900, color: "#ef5350" }}>{fmt(grandTotal)}원</span>
           </div>
         </div>
