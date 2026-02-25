@@ -84,6 +84,7 @@ function toDb(table,obj){const m=DBMAP[table];if(!m){const r={...obj};delete r.c
   const cols=DB_COLS[table];if(cols){const f={};for(const c of cols)if(r[c]!==undefined)f[c]=r[c];
   // Auto-inject business_id if active and column exists
   if(_activeBizId && cols.includes("business_id") && !f.business_id) f.business_id=_activeBizId;
+  if(table==="reservations"||table==="sales") console.log(`toDb(${table}) final keys:`,Object.keys(f).join(","));
   return f;}return r;}
 
 // Supabase seed: push initial data if table is empty
@@ -881,6 +882,7 @@ function Login({ users, onLogin }) {
           <div style={{fontSize:10,color:"#bbb",textAlign:"center",marginTop:4}}>
             슈퍼관리자: admin / 1234 · 업체대표: master / 1234
           </div>
+          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.6</div>
         </div>
       </div>
     </div>
