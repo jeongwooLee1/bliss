@@ -2095,7 +2095,9 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
   const SvcRow = ({ svc }) => {
     const it = items[svc.id] || { checked: false, amount: 0 };
     const defPrice = gender === "F" ? svc.priceF : svc.priceM;
-    const disabled = defPrice === 0; // 해당 성별 불가
+    const disabled = defPrice === 0;
+    const [localAmt, setLocalAmt] = useState(it.amount || "");
+    useEffect(() => { setLocalAmt(it.amount || ""); }, [it.checked]);
     return (
       <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "3px 0", borderBottom: "1px solid #e0e0e030", opacity: disabled ? 0.3 : 1 }}>
         <input type="checkbox" checked={it.checked} disabled={disabled}
@@ -2105,8 +2107,8 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
           {svc.name}
         </span>
         <span style={{ fontSize: 9, color: "#d0d0d0", flexShrink: 0, width: 32, textAlign: "center" }}>{svc.dur}분</span>
-        <input className="inp" type="number" value={it.checked ? (it.amount || "") : ""} placeholder={disabled ? "—" : fmt(defPrice)}
-          onChange={e => setAmt(svc.id, e.target.value)} disabled={!it.checked}
+        <input className="inp" type="number" value={it.checked ? localAmt : ""} placeholder={disabled ? "—" : fmt(defPrice)}
+          onChange={e => setLocalAmt(e.target.value)} onBlur={e => setAmt(svc.id, e.target.value)} disabled={!it.checked}
           style={{ width: 72, padding: "3px 5px", fontSize: 11, textAlign: "right",
             background: it.checked ? "#fff" : "transparent", border: `1px solid ${it.checked ? "#d0d0d0" : "#e0e0e0"}`,
             color: it.checked ? "#ef5350" : "#d0d0d0", fontWeight: it.checked ? 700 : 400 }} />
@@ -2117,13 +2119,15 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
   // Checkbox row for product
   const ProdRow = ({ prod }) => {
     const it = items[prod.id] || { checked: false, amount: 0 };
+    const [localAmt, setLocalAmt] = useState(it.amount || "");
+    useEffect(() => { setLocalAmt(it.amount || ""); }, [it.checked]);
     return (
       <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "3px 0", borderBottom: "1px solid #e0e0e030" }}>
         <input type="checkbox" checked={it.checked} onChange={() => toggle(prod.id, prod.price || 0)}
           style={{ accentColor: "#6bab9e", width: 14, height: 14, flexShrink: 0, cursor: "pointer" }} />
         <span style={{ flex: 1, fontSize: 11, color: it.checked ? "#333" : "#999", fontWeight: it.checked ? 600 : 400 }}>{prod.name}</span>
-        <input className="inp" type="number" value={it.checked ? (it.amount || "") : ""} placeholder="0"
-          onChange={e => setAmt(prod.id, e.target.value)} disabled={!it.checked}
+        <input className="inp" type="number" value={it.checked ? localAmt : ""} placeholder="0"
+          onChange={e => setLocalAmt(e.target.value)} onBlur={e => setAmt(prod.id, e.target.value)} disabled={!it.checked}
           style={{ width: 72, padding: "3px 5px", fontSize: 11, textAlign: "right",
             background: it.checked ? "#fff" : "transparent", border: `1px solid ${it.checked ? "#d0d0d0" : "#e0e0e0"}`,
             color: it.checked ? "#ef5350" : "#d0d0d0", fontWeight: it.checked ? 700 : 400 }} />
@@ -2131,10 +2135,11 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
     );
   };
 
-  // Extra row (추가 - 텍스트 입력) - local state for label to avoid lag
+  // Extra row (추가 - 텍스트 입력) - local state to avoid lag
   const ExtraRow = ({ id, color, placeholder }) => {
     const it = items[id] || { checked: false, amount: 0, label: "" };
     const [localLabel, setLocalLabel] = useState(it.label || "");
+    const [localAmt, setLocalAmt] = useState(it.amount || "");
     return (
       <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 0", borderTop: "1px solid #d0d0d0", marginTop: 4 }}>
         <input type="checkbox" checked={it.checked} onChange={() => toggle(id, 0)}
@@ -2143,13 +2148,30 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
         <input className="inp" value={localLabel} onChange={e => setLocalLabel(e.target.value)}
           onBlur={e => setLabel(id, e.target.value)}
           placeholder={placeholder} style={{ flex: 1, padding: "3px 6px", fontSize: 11, background: "transparent", border: "1px solid #d0d0d0" }} />
-        <input className="inp" type="number" value={it.amount || ""} placeholder="0"
-          onChange={e => { if(!it.checked) toggle(id, 0); setAmt(id, e.target.value); }}
+        <input className="inp" type="number" value={localAmt} placeholder="0"
+          onChange={e => { setLocalAmt(e.target.value); if(!it.checked) toggle(id, 0); }}
+          onBlur={e => setAmt(id, e.target.value)}
           style={{ width: 72, padding: "3px 5px", fontSize: 11, textAlign: "right",
             border: `1px solid ${it.checked ? "#d0d0d0" : "#e0e0e0"}`,
             color: it.checked ? "#ef5350" : "#999", fontWeight: it.checked ? 700 : 400 }} />
       </div>
     );
+  };
+
+  // Discount row - local state to avoid lag
+  const DiscountRow = ({checked, amount, onToggle, onAmt}) => {
+    const [localAmt, setLocalAmt] = useState(amount || "");
+    useEffect(() => { setLocalAmt(amount || ""); }, [checked]);
+    return <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "3px 0" }}>
+      <input type="checkbox" checked={checked} onChange={onToggle}
+        style={{ accentColor: "#e8a0a0", width: 14, height: 14, cursor: "pointer" }} />
+      <span style={{ flex: 1, fontSize: 11, color: checked ? "#e8a0a0" : "#888", fontWeight: 600 }}>할인</span>
+      <input className="inp" type="number" value={checked ? localAmt : ""} placeholder="0"
+        onChange={e => setLocalAmt(e.target.value)} onBlur={e => onAmt(e.target.value)} disabled={!checked}
+        style={{ width: 72, padding: "3px 5px", fontSize: 11, textAlign: "right",
+          background: checked ? "#fff" : "transparent", border: `1px solid ${checked ? "#d0d0d0" : "#e0e0e0"}`,
+          color: checked ? "#ef5350" : "#d0d0d0", fontWeight: checked ? 700 : 400 }} />
+    </div>;
   };
 
   // Split services into 2 columns by categories
@@ -2286,16 +2308,7 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
             })}
             {/* Discount */}
             <div style={{ marginTop: 6, padding: "4px 0", borderTop: "1px solid #d0d0d0" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "3px 0" }}>
-                <input type="checkbox" checked={items.discount?.checked} onChange={() => toggle("discount", 0)}
-                  style={{ accentColor: "#e8a0a0", width: 14, height: 14, cursor: "pointer" }} />
-                <span style={{ flex: 1, fontSize: 11, color: items.discount?.checked ? "#e8a0a0" : "#888", fontWeight: 600 }}>할인</span>
-                <input className="inp" type="number" value={items.discount?.checked ? (items.discount.amount || "") : ""} placeholder="0"
-                  onChange={e => setAmt("discount", e.target.value)} disabled={!items.discount?.checked}
-                  style={{ width: 72, padding: "3px 5px", fontSize: 11, textAlign: "right",
-                    background: items.discount?.checked ? "#fff" : "transparent", border: `1px solid ${items.discount?.checked ? "#d0d0d0" : "#e0e0e0"}`,
-                    color: items.discount?.checked ? "#ef5350" : "#d0d0d0", fontWeight: items.discount?.checked ? 700 : 400 }} />
-              </div>
+              <DiscountRow checked={items.discount?.checked} amount={items.discount?.amount||0} onToggle={()=>toggle("discount",0)} onAmt={v=>setAmt("discount",v)} />
             </div>
           </div>
 
