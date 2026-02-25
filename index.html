@@ -8,7 +8,7 @@
 <meta http-equiv="Expires" content="0"/>
 <title>Bliss 관리시스템</title>
 <script>
-(function(){var V="2.10";var prev=localStorage.getItem("bliss_v");if(prev&&prev!==V){localStorage.setItem("bliss_v",V);location.reload(true);}else{localStorage.setItem("bliss_v",V);}})();
+(function(){var V="2.11";var prev=localStorage.getItem("bliss_v");if(prev&&prev!==V){localStorage.setItem("bliss_v",V);location.reload(true);}else{localStorage.setItem("bliss_v",V);}})();
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
@@ -924,7 +924,7 @@ function Login({ users, onLogin }) {
           <div style={{fontSize:10,color:"#bbb",textAlign:"center",marginTop:4}}>
             슈퍼관리자: admin / 1234 · 업체대표: master / 1234
           </div>
-          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.10</div>
+          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.11</div>
         </div>
       </div>
     </div>
@@ -2093,6 +2093,17 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
   const [gender, setGender] = useState(reservation?.custGender || "F");
   const [saleMemo, setSaleMemo] = useState(reservation?.saleMemo || "");
 
+  // 결제수단 분배
+  const [payMethod, setPayMethod] = useState({ svcCash:0, svcCard:0, svcTransfer:0, svcPoint:0, prodCash:0, prodCard:0, prodTransfer:0, prodPoint:0 });
+  const setPay = useCallback((k,v) => setPayMethod(prev => ({...prev, [k]: Number(v)||0})), []);
+
+  // 네이버 예약 감지
+  const isNaver = !!(reservation?.selectedTags||[]).some(tid => {
+    const tag = (data?.serviceTags||[]).find(t=>t.id===tid);
+    return tag && tag.name.includes("네이버");
+  });
+  const [naverPrepaid, setNaverPrepaid] = useState(0);
+
   // 고객 상태 (예약에서 넘어오면 자동 기입, 매출관리에서 열면 검색)
   const [cust, setCust] = useState({
     id: reservation?.custId || null,
@@ -2173,6 +2184,10 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
   const checkedSvc = INIT_SERVICES.filter(s => items[s.id]?.checked).length + (items.extra_svc?.checked ? 1 : 0);
   const checkedProd = PRODUCTS.filter(p => items[p.id]?.checked).length + (items.extra_prod?.checked ? 1 : 0);
 
+  // Auto-calc remaining for default payment (현금 = 총액 - 카드 - 입금 - 포인트)
+  const svcRemain = Math.max(0, svcTotal - payMethod.svcCard - payMethod.svcTransfer - payMethod.svcPoint);
+  const prodRemain = Math.max(0, prodTotal - payMethod.prodCard - payMethod.prodTransfer - payMethod.prodPoint);
+
   const handleSubmit = () => {
     if (grandTotal <= 0) {
       alert("매출 금액이 0원입니다. 시술 또는 제품을 선택해주세요.");
@@ -2205,10 +2220,10 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
       date: reservation?.date || todayStr(),
       serviceId: reservation?.serviceId || null, serviceName: INIT_SERVICES.find(s => s.id === reservation?.serviceId)?.name || "",
       productId: null, productName: null,
-      svcCash: svcTotal, svcTransfer: 0, svcCard: 0, svcPoint: 0,
-      prodCash: prodTotal, prodTransfer: 0, prodCard: 0, prodPoint: 0,
+      svcCash: svcRemain, svcTransfer: payMethod.svcTransfer, svcCard: payMethod.svcCard, svcPoint: payMethod.svcPoint,
+      prodCash: prodRemain, prodTransfer: payMethod.prodTransfer, prodCard: payMethod.prodCard, prodPoint: payMethod.prodPoint,
       gift: 0, orderNum: String(252000 + Math.floor(Math.random() * 200)),
-      memo: saleMemo || "",
+      memo: (isNaver && naverPrepaid > 0 ? `[네이버예약금 ${naverPrepaid.toLocaleString()}원] ` : "") + (saleMemo || ""),
       createdAt: new Date().toISOString(),
     };
     onSubmit(sale);
@@ -2364,6 +2379,79 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
             {PRODUCTS.slice(halfProd).map(p => { const it=items[p.id]||{}; return <SaleProdRow key={p.id} id={p.id} name={p.name} price={p.price||0} checked={!!it.checked} amount={it.amount||0} toggle={toggle} setAmt={setAmt} />; })}
             <SaleExtraRow id="extra_prod" color="#6bab9e" placeholder="추가 제품명 입력" checked={!!(items.extra_prod||{}).checked} amount={(items.extra_prod||{}).amount||0} label={(items.extra_prod||{}).label||""} toggle={toggle} setAmt={setAmt} setLabel={setLabel} />
           </div>
+        </div>
+
+        {/* 네이버 예약 알림 */}
+        {isNaver && <div style={{
+          padding:"10px 16px", background:"#fff3e0", borderTop:"2px solid #ff9800",
+          display:"flex", alignItems:"center", gap:10, animation:"naverBlink 1s infinite"
+        }}>
+          <span style={{fontSize:20}}>⚠️</span>
+          <div style={{flex:1}}>
+            <strong style={{color:"#e65100",fontSize:13}}>네이버 예약 고객 — 예약금을 확인하세요!</strong>
+            <div style={{fontSize:11,color:"#bf360c",marginTop:2}}>선불 입금된 예약금이 있는지 반드시 확인 후 결제 처리해주세요.</div>
+          </div>
+          <div style={{display:"flex",alignItems:"center",gap:5}}>
+            <span style={{fontSize:11,color:"#e65100",fontWeight:700}}>예약금</span>
+            <input className="inp" type="number" value={naverPrepaid||""} placeholder="0"
+              onChange={e=>setNaverPrepaid(Number(e.target.value)||0)}
+              style={{width:90,padding:"5px 8px",fontSize:13,textAlign:"right",fontWeight:700,color:"#e65100",
+                border:"2px solid #ff9800",borderRadius:6,background:"#fff8e1"}} />
+            <span style={{fontSize:11,color:"#e65100"}}>원</span>
+          </div>
+        </div>}
+
+        {/* 결제수단 */}
+        <div style={{padding:"10px 16px",borderTop:"1px solid #e0e0e0",background:"#fafafa"}}>
+          <div style={{display:"flex",gap:20,flexWrap:"wrap"}}>
+            {/* 시술 결제 */}
+            {svcTotal > 0 && <div style={{flex:1,minWidth:200}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#7c7cc8",marginBottom:6}}>💆 시술 결제 ({fmt(svcTotal)}원)</div>
+              <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+                <div style={{display:"flex",alignItems:"center",gap:3}}>
+                  <span style={{fontSize:10,color:"#666",width:28}}>현금</span>
+                  <input className="inp" type="number" value={svcRemain||""} disabled
+                    style={{width:80,padding:"4px 6px",fontSize:12,textAlign:"right",background:"#f0f0f0",color:"#333",fontWeight:600}} />
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:3}}>
+                  <span style={{fontSize:10,color:"#1565c0",width:28}}>카드</span>
+                  <input className="inp" type="number" value={payMethod.svcCard||""} placeholder="0"
+                    onChange={e=>setPay("svcCard",e.target.value)}
+                    style={{width:80,padding:"4px 6px",fontSize:12,textAlign:"right",border:"1px solid #90caf9",color:"#1565c0",fontWeight:600}} />
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:3}}>
+                  <span style={{fontSize:10,color:"#2e7d32",width:28}}>입금</span>
+                  <input className="inp" type="number" value={payMethod.svcTransfer||""} placeholder="0"
+                    onChange={e=>setPay("svcTransfer",e.target.value)}
+                    style={{width:80,padding:"4px 6px",fontSize:12,textAlign:"right",border:"1px solid #a5d6a7",color:"#2e7d32",fontWeight:600}} />
+                </div>
+              </div>
+            </div>}
+            {/* 제품 결제 */}
+            {prodTotal > 0 && <div style={{flex:1,minWidth:200}}>
+              <div style={{fontSize:11,fontWeight:700,color:"#6bab9e",marginBottom:6}}>🧴 제품 결제 ({fmt(prodTotal)}원)</div>
+              <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+                <div style={{display:"flex",alignItems:"center",gap:3}}>
+                  <span style={{fontSize:10,color:"#666",width:28}}>현금</span>
+                  <input className="inp" type="number" value={prodRemain||""} disabled
+                    style={{width:80,padding:"4px 6px",fontSize:12,textAlign:"right",background:"#f0f0f0",color:"#333",fontWeight:600}} />
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:3}}>
+                  <span style={{fontSize:10,color:"#1565c0",width:28}}>카드</span>
+                  <input className="inp" type="number" value={payMethod.prodCard||""} placeholder="0"
+                    onChange={e=>setPay("prodCard",e.target.value)}
+                    style={{width:80,padding:"4px 6px",fontSize:12,textAlign:"right",border:"1px solid #90caf9",color:"#1565c0",fontWeight:600}} />
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:3}}>
+                  <span style={{fontSize:10,color:"#2e7d32",width:28}}>입금</span>
+                  <input className="inp" type="number" value={payMethod.prodTransfer||""} placeholder="0"
+                    onChange={e=>setPay("prodTransfer",e.target.value)}
+                    style={{width:80,padding:"4px 6px",fontSize:12,textAlign:"right",border:"1px solid #a5d6a7",color:"#2e7d32",fontWeight:600}} />
+                </div>
+              </div>
+            </div>}
+          </div>
+          {(svcTotal>0||prodTotal>0) && <div style={{fontSize:9,color:"#bbb",marginTop:4}}>현금 = 총액 - 카드 - 입금 (자동계산)</div>}
         </div>
 
         {/* 매출 메모 */}
@@ -3618,6 +3706,7 @@ const CSS = `
   input,select,textarea{font-family:inherit}
   @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
   @keyframes slideIn{from{transform:translateX(-100%)}to{transform:translateX(0)}}
+  @keyframes naverBlink{0%,100%{background:#fff3e0}50%{background:#ffe0b2}}
   .fade-in{animation:fadeIn .25s ease}
   .card{background:#fff;border-radius:4px;border:1px solid #e0e0e0;box-shadow:none}
   .tw{overflow-x:auto}
