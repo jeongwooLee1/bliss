@@ -1,7 +1,7 @@
 <!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/><meta http-equiv="Pragma" content="no-cache"/><meta http-equiv="Expires" content="0"/>
 <title>Bliss 관리시스템</title>
-<script>(function(){var V="2.15";var prev=localStorage.getItem("bliss_v");if(prev&&prev!==V){localStorage.setItem("bliss_v",V);location.reload(true);}else{localStorage.setItem("bliss_v",V);}})();</script>
+<script>(function(){var V="2.16";var prev=localStorage.getItem("bliss_v");if(prev&&prev!==V){localStorage.setItem("bliss_v",V);location.reload(true);}else{localStorage.setItem("bliss_v",V);}})();</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
@@ -858,7 +858,7 @@ function Login({ users, onLogin }) {
           <div style={{fontSize:10,color:"#bbb",textAlign:"center",marginTop:4}}>
             슈퍼관리자: admin / 1234 · 업체대표: master / 1234
           </div>
-          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.15</div>
+          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.16</div>
         </div>
       </div>
     </div>
@@ -3294,6 +3294,7 @@ const DragHandle = () => <span style={{cursor:"grab",color:"#999",fontSize:14,fl
 // ─── 시술상품관리 ───
 function AdminSaleItems({ data, setData }) {
   const [services, setServices] = useState([...(data?.services||INIT_SERVICES)].sort((a,b)=>a.sort-b.sort));
+  useEffect(() => { setData(p => ({...p, services})); }, [services]);
   const cats = data?.categories || SERVICE_CATS;
   const [editId, setEditId] = useState(null);
   const [editData, setEditData] = useState({});
@@ -3403,6 +3404,7 @@ function AdminSaleItems({ data, setData }) {
 // ─── 제품관리 ───
 function AdminProductItems({ data, setData }) {
   const [items, setItems] = useState(()=>[...(data?.products||PRODUCTS)].map((p,i)=>({...p,sort:p.sort??i})).sort((a,b)=>a.sort-b.sort));
+  useEffect(() => { setData(p => ({...p, products: items})); }, [items]);
   const [editId, setEditId] = useState(null);
   const [editData, setEditData] = useState({});
   const [showAdd, setShowAdd] = useState(false);
@@ -3483,6 +3485,7 @@ function AdminProductItems({ data, setData }) {
 // ─── 서비스태그관리 ───
 function AdminServiceTags({ data, setData }) {
   const [tags, setTags] = useState(()=>[...(data?.serviceTags || INIT_SERVICE_TAGS)].sort((a,b)=>a.sort-b.sort));
+  useEffect(() => { setData(p => ({...p, serviceTags: tags})); }, [tags]);
   const [showAdd, setShowAdd] = useState(false);
   const [newTag, setNewTag] = useState({ name:"", dur:0, scheduleYn:"N", color:"" });
   const [editId, setEditId] = useState(null);
