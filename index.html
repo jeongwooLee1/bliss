@@ -2015,8 +2015,7 @@ const SaleExtraRow = React.memo(function SaleExtraRow({ id, color, placeholder, 
         onBlur={e => setLabel(id, e.target.value)}
         placeholder={placeholder} style={{ flex: 1, padding: "3px 6px", fontSize: 11, background: "transparent", border: "1px solid #d0d0d0" }} />
       <input className="inp" type="number" value={localAmt} placeholder="0"
-        onChange={e => setLocalAmt(e.target.value)}
-        onBlur={e => { setAmt(id, e.target.value); if(!checked && Number(e.target.value)>0) toggle(id, 0); }}
+        onChange={e => { setLocalAmt(e.target.value); setAmt(id, e.target.value); if(!checked && Number(e.target.value)>0) toggle(id, 0); }}
         style={{ width: 72, padding: "3px 5px", fontSize: 11, textAlign: "right",
           border: `1px solid ${checked ? "#d0d0d0" : "#e0e0e0"}`,
           color: checked ? "#ef5350" : "#999", fontWeight: checked ? 700 : 400 }} />
@@ -2032,7 +2031,7 @@ const SaleDiscountRow = React.memo(function SaleDiscountRow({ id, checked, amoun
       style={{ accentColor: "#e8a0a0", width: 14, height: 14, cursor: "pointer" }} />
     <span style={{ flex: 1, fontSize: 11, color: checked ? "#e8a0a0" : "#888", fontWeight: 600 }}>할인</span>
     <input className="inp" type="number" value={checked ? localAmt : ""} placeholder="0"
-      onChange={e => setLocalAmt(e.target.value)} onBlur={e => setAmt(id, e.target.value)} disabled={!checked}
+      onChange={e => { setLocalAmt(e.target.value); setAmt(id, e.target.value); }} disabled={!checked}
       style={{ width: 72, padding: "3px 5px", fontSize: 11, textAlign: "right",
         background: checked ? "#fff" : "transparent", border: `1px solid ${checked ? "#d0d0d0" : "#e0e0e0"}`,
         color: checked ? "#ef5350" : "#d0d0d0", fontWeight: checked ? 700 : 400 }} />
