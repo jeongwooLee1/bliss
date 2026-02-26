@@ -3,7 +3,7 @@
 <title>Bliss 관리시스템</title>
 <script>
 (function(){
-  var LOCAL_V="2.31";
+  var LOCAL_V="2.32";
   localStorage.setItem("bliss_v",LOCAL_V);
   fetch("version.txt?t="+Date.now()).then(function(r){return r.text()}).then(function(remote){
     remote=remote.trim();
@@ -1343,6 +1343,32 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
           )}
         </select>
       </div>
+
+      {/* Pending Reservations Alert */}
+      {(() => {
+        const pendingList = data.reservations.filter(r => r.status === "pending" && branchesToShow.some(b => b.id === r.bid));
+        if (pendingList.length === 0) return null;
+        return <div style={{background:"#FFF3E0",borderBottom:"1px solid #FFB74D",padding:"6px 12px",display:"flex",alignItems:"center",gap:8,flexShrink:0,cursor:"pointer",animation:"pendingBlink 2s infinite"}}
+          onClick={()=>{
+            const first = pendingList[0];
+            setSelDate(first.date);
+            setModalData({...first, readOnly: !canEdit(first.bid)});
+            setShowModal(true);
+          }}>
+          <span style={{fontSize:18}}>🔔</span>
+          <div style={{flex:1,minWidth:0}}>
+            <span style={{fontSize:12,fontWeight:700,color:"#E65100"}}>확정대기 {pendingList.length}건</span>
+            <span style={{fontSize:11,color:"#F57C00",marginLeft:8}}>
+              {pendingList.slice(0,3).map(r => {
+                const br = allBranchList.find(b=>b.id===r.bid);
+                return `${br?.short||br?.name||""} ${r.custName||"네이버"} ${r.date.slice(5)}`;
+              }).join(" · ")}
+              {pendingList.length > 3 ? ` 외 ${pendingList.length-3}건` : ""}
+            </span>
+          </div>
+          <span style={{fontSize:11,color:"#E65100",fontWeight:600,flexShrink:0}}>확인 →</span>
+        </div>;
+      })()}
 
       {/* Timeline Grid */}
       <div ref={scrollRef} className="timeline-scroll" style={{flex:1,overflow:"scroll",position:"relative",minHeight:0}}>
