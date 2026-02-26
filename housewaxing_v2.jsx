@@ -269,7 +269,7 @@ const INIT_USERS = [
 
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
-const todayStr = () => new Date().toISOString().split("T")[0];
+const todayStr = () => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
 const TIMES = [];
 for (let h = 8; h <= 22; h++) for (let m = 0; m < 60; m += 5)
   TIMES.push(`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`);
@@ -855,7 +855,7 @@ function Login({ users, onLogin }) {
           <div style={{fontSize:10,color:"#bbb",textAlign:"center",marginTop:4}}>
             슈퍼관리자: admin / 1234 · 업체대표: master / 1234
           </div>
-          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.36</div>
+          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.37</div>
         </div>
       </div>
     </div>
