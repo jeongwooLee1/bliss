@@ -3,7 +3,7 @@
 <title>Bliss 관리시스템</title>
 <script>
 (function(){
-  var LOCAL_V="2.30";
+  var LOCAL_V="2.31";
   localStorage.setItem("bliss_v",LOCAL_V);
   fetch("version.txt?t="+Date.now()).then(function(r){return r.text()}).then(function(remote){
     remote=remote.trim();
@@ -1348,7 +1348,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       <div ref={scrollRef} className="timeline-scroll" style={{flex:1,overflow:"scroll",position:"relative",minHeight:0}}>
         <div style={{display:"flex",minWidth:"fit-content"}}>
           {/* Time Labels */}
-          <div style={{width:62,flexShrink:0,position:"sticky",left:0,zIndex:20,background:"#fff",borderRight:"1px solid #eee",overflow:"hidden"}}>
+          <div style={{width:62,flexShrink:0,position:"sticky",left:0,zIndex:20,background:"#fff",borderRight:"1px solid #eee"}}>
             <div style={{height:headerH,borderBottom:"1px solid #eee",position:"sticky",top:0,zIndex:25,background:"#fff"}}/>
             <div style={{position:"relative",height:totalRows*rowH,...gridBg}}>
               {timeLabels.map(({i, isHour, m, text}) => {
