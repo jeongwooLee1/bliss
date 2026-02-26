@@ -85,15 +85,6 @@ function toDb(table,obj){const m=DBMAP[table];if(!m){const r={...obj};delete r.c
   if(table==="reservations"||table==="sales") console.log(`toDb(${table}) final keys:`,Object.keys(f).join(","));
   return f;}return r;}
 
-// Supabase seed: push initial data if table is empty
-async function seedIfEmpty(table, appRows, mapTable) {
-  const existing = await sb.get(table);
-  if (existing.length > 0) return fromDb(mapTable||table, existing);
-  const dbRows = appRows.map(r => toDb(mapTable||table, r));
-  await sb.upsert(table, dbRows);
-  return appRows;
-}
-
 // Load all data from Supabase (filtered by business_id)
 async function loadAllFromDb(bizId) {
   if (!bizId) {
@@ -117,156 +108,6 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BRANCHES = [
-  { id: "b1", name: "강남점", short: "강남", phone: "0507-1316-5141", address: "서울시 강남구 학동로30길 16 남강빌딩 5층" },
-  { id: "b2", name: "홍대점", short: "홍대", phone: "0507-1476-8005", address: "서울시 마포구 양화로 178 목화빌딩 5층" },
-  { id: "b3", name: "왕십리점", short: "왕십리", phone: "0507-1316-5141", address: "서울시 성동구 왕십리로 311-1 3층" },
-  { id: "b4", name: "잠실점", short: "잠실", phone: "0507-1384-2553", address: "서울시 송파구 올림픽로 116 메디시티 5층" },
-  { id: "b5", name: "천호점", short: "천호", phone: "0507-1305-4735", address: "서울시 강동구 올림픽로 664 대우한강베네시티 203,204호" },
-  { id: "b6", name: "마곡점", short: "마곡", phone: "0507-1413-6123", address: "서울시 강서구 마곡중앙로 59-17 3층 310호" },
-  { id: "b7", name: "용산점", short: "용산", phone: "010-2330-8088", address: "서울시 용산구 한강대로 69 용산푸르지오써밋 상가동 B1층 114-2호" },
-  { id: "b8", name: "위례점", short: "위례", phone: "0507-1424-8078", address: "경기도 성남시 수정구 위례광장로 300 중앙타워 4층 403호" },
-];
-
-const ROOMS = (() => {
-  const rooms = [];
-  const configs = {
-    b1: [
-      {n:"마1",color:"#E8F0FE"},{n:"마2",color:"#E8F0FE"},{n:"마3",color:"#E8F0FE"},
-      {n:"마4",color:"#FFF3E0"},{n:"마5",color:"#FFF3E0"},{n:"마6",color:"#FFF3E0"},
-      {n:"시니어1",color:"#F3E5F5"},{n:"시니어2",color:"#F3E5F5"},{n:"시니어3",color:"#F3E5F5"}
-    ],
-    b2: [{n:"홍1",color:"#E8F0FE"},{n:"홍2",color:"#FFF3E0"}],
-    b3: [{n:"왕마1",color:"#E8F0FE"},{n:"1 왕지원마",color:"#FFF3E0"},{n:"왕시니어1",color:"#F3E5F5"},{n:"왕시니어2",color:"#F3E5F5"}],
-    b4: [{n:"잠1",color:"#E8F0FE"},{n:"잠2",color:"#FFF3E0"},{n:"잠시니어1",color:"#F3E5F5"}],
-    b5: [{n:"천1",color:"#E8F0FE"},{n:"천2",color:"#FFF3E0"},{n:"천시니어1",color:"#F3E5F5"}],
-    b6: [{n:"마곡1",color:"#E8F0FE"},{n:"마곡2",color:"#FFF3E0"}],
-    b7: [{n:"용1",color:"#E8F0FE"},{n:"용2",color:"#FFF3E0"},{n:"용시니어1",color:"#F3E5F5"}],
-    b8: [{n:"위1",color:"#E8F0FE"},{n:"위2",color:"#FFF3E0"},{n:"위시니어1",color:"#F3E5F5"}],
-  };
-  Object.entries(configs).forEach(([bid, arr]) => {
-    arr.forEach((r, i) => rooms.push({ id: `${bid}_r${i}`, branch_id: bid, name: r.n, color: r.color || "", sort_order: i }));
-  });
-  return rooms;
-})();
-
-const SERVICE_CATS = [
-  { id: "sc1", name: "에너지테라피" }, { id: "sc2", name: "브라질리언" },
-  { id: "sc3", name: "바디" }, { id: "sc4", name: "팔/다리/손/발" },
-  { id: "sc5", name: "등/배/가슴" }, { id: "sc6", name: "페이셜" },
-  { id: "sc7", name: "목" },
-];
-
-// 전 지점 동일가 - priceF:여성, priceM:남성 (0이면 해당 성별 불가)
-const INIT_SERVICES = [];
-const SERVICES = INIT_SERVICES; // alias for existing code
-
-const PRODUCTS = [];
-
-// 상품종류 (myCream 상품종류관리 전체 데이터) - dur:소요시간(분), scheduleYn:기타일정, color:색상, useYn:사용여부
-const INIT_SERVICE_TAGS = [
-  // ── 유입채널 (소요시간 0) ──
-  { id:"t1", name:"전화", dur:0, scheduleYn:"N", color:"", useYn:true, sort:0 },
-  { id:"t2", name:"네이버", dur:0, scheduleYn:"N", color:"", useYn:true, sort:1 },
-  { id:"t3", name:"카카오", dur:0, scheduleYn:"N", color:"", useYn:true, sort:2 },
-  { id:"t4", name:"선예약", dur:0, scheduleYn:"N", color:"", useYn:true, sort:3 },
-  { id:"t5", name:"인스타", dur:0, scheduleYn:"N", color:"", useYn:true, sort:4 },
-  { id:"t6", name:"구글", dur:0, scheduleYn:"N", color:"", useYn:true, sort:5 },
-  { id:"t7", name:"왓츠앱", dur:0, scheduleYn:"N", color:"", useYn:true, sort:6 },
-  // ── 고객구분 ──
-  { id:"t8", name:"기)종료★", dur:0, scheduleYn:"N", color:"", useYn:true, sort:7 },
-  { id:"t9", name:"바프★다담", dur:0, scheduleYn:"N", color:"", useYn:true, sort:8 },
-  { id:"t10", name:"신규♥페바", dur:0, scheduleYn:"N", color:"", useYn:true, sort:9 },
-  { id:"t11", name:"기존", dur:0, scheduleYn:"N", color:"", useYn:true, sort:10 },
-  { id:"t12", name:"신규♥음모", dur:0, scheduleYn:"N", color:"", useYn:true, sort:11 },
-  { id:"t13", name:"기존♥상담", dur:0, scheduleYn:"N", color:"", useYn:true, sort:12 },
-  { id:"t14", name:"지정관리", dur:0, scheduleYn:"N", color:"", useYn:true, sort:13 },
-  { id:"t15", name:"선예약2", dur:0, scheduleYn:"N", color:"", useYn:true, sort:14 },
-  { id:"t16", name:"체험/인플", dur:0, scheduleYn:"N", color:"", useYn:true, sort:15 },
-  { id:"t17", name:"음모", dur:0, scheduleYn:"N", color:"", useYn:true, sort:16 },
-  { id:"t18", name:"예약금완료", dur:0, scheduleYn:"N", color:"", useYn:true, sort:17 },
-  { id:"t19", name:"★★초보✕", dur:0, scheduleYn:"N", color:"", useYn:true, sort:18 },
-  // ── 패키지 태그 ──
-  { id:"t20", name:"왁심PKG", dur:0, scheduleYn:"N", color:"", useYn:true, sort:19 },
-  { id:"t21", name:"토탈PKG", dur:0, scheduleYn:"N", color:"", useYn:true, sort:20 },
-  { id:"t22", name:"신)힐패", dur:0, scheduleYn:"N", color:"", useYn:true, sort:21 },
-  { id:"t23", name:"재생PKG", dur:0, scheduleYn:"N", color:"", useYn:true, sort:22 },
-  { id:"t24", name:"구)힐패", dur:0, scheduleYn:"N", color:"", useYn:true, sort:23 },
-  { id:"t25", name:"다담권보유", dur:0, scheduleYn:"N", color:"", useYn:true, sort:24 },
-  // ── 시술 태그 (소요시간 있음) ──
-  { id:"t26", name:"나노왁싱", dur:10, scheduleYn:"N", color:"", useYn:true, sort:25 },
-  { id:"t27", name:"바디", dur:10, scheduleYn:"N", color:"", useYn:true, sort:26 },
-  { id:"t28", name:"풀바디", dur:40, scheduleYn:"N", color:"", useYn:true, sort:27 },
-  { id:"t29", name:"눈썹", dur:30, scheduleYn:"N", color:"", useYn:true, sort:28 },
-  { id:"t30", name:"페이스", dur:25, scheduleYn:"N", color:"", useYn:true, sort:29 },
-  { id:"t31", name:"에너지", dur:60, scheduleYn:"N", color:"", useYn:true, sort:30 },
-  { id:"t32", name:"속눈썹펌", dur:60, scheduleYn:"N", color:"", useYn:true, sort:31 },
-  // ── 기타 태그 ──
-  { id:"t33", name:"#주차", dur:0, scheduleYn:"N", color:"", useYn:true, sort:32 },
-  { id:"t34", name:"산모님", dur:0, scheduleYn:"N", color:"", useYn:true, sort:33 },
-  { id:"t35", name:"커플룸", dur:0, scheduleYn:"N", color:"", useYn:true, sort:34 },
-  { id:"t36", name:"양도사용", dur:0, scheduleYn:"N", color:"", useYn:true, sort:35 },
-  { id:"t37", name:"케어패키지", dur:0, scheduleYn:"N", color:"", useYn:true, sort:36 },
-  { id:"t38", name:"남자선생님", dur:0, scheduleYn:"N", color:"", useYn:true, sort:37 },
-  { id:"t39", name:"직거래교육", dur:0, scheduleYn:"N", color:"", useYn:true, sort:38 },
-  // ── 기타일정 태그 (scheduleYn:Y) ──
-  { id:"t40", name:"출근", dur:20, scheduleYn:"Y", color:"#F96DA7", useYn:true, sort:39 },
-  { id:"t41", name:"출근남", dur:20, scheduleYn:"Y", color:"#3CB889", useYn:true, sort:40 },
-  { id:"t42", name:"이동", dur:60, scheduleYn:"Y", color:"#EFDFEB", useYn:true, sort:41 },
-  { id:"t43", name:"오픈A", dur:15, scheduleYn:"Y", color:"#A2B240", useYn:true, sort:42 },
-  { id:"t44", name:"오픈B30분소요", dur:30, scheduleYn:"Y", color:"#A2B240", useYn:true, sort:43 },
-  { id:"t45", name:"오픈C", dur:30, scheduleYn:"Y", color:"#A2B240", useYn:true, sort:44 },
-  { id:"t46", name:"60추게", dur:60, scheduleYn:"Y", color:"#EFDFEB", useYn:true, sort:45 },
-  { id:"t47", name:"45추게", dur:45, scheduleYn:"Y", color:"#EFDFEB", useYn:true, sort:46 },
-  { id:"t48", name:"30추게", dur:30, scheduleYn:"Y", color:"#EFDFEB", useYn:true, sort:47 },
-  { id:"t49", name:"15추게", dur:15, scheduleYn:"Y", color:"#EFDFEB", useYn:true, sort:48 },
-  { id:"t50", name:"바디도움", dur:20, scheduleYn:"Y", color:"#96ABE5", useYn:true, sort:49 },
-  { id:"t51", name:"페이스도움", dur:20, scheduleYn:"Y", color:"#96ABE5", useYn:true, sort:50 },
-  { id:"t52", name:"크로스도움", dur:10, scheduleYn:"Y", color:"#96ABE5", useYn:true, sort:51 },
-  { id:"t53", name:"케어도움", dur:15, scheduleYn:"Y", color:"#96ABE5", useYn:true, sort:52 },
-  { id:"t54", name:"에너지도움", dur:40, scheduleYn:"Y", color:"#96ABE5", useYn:true, sort:53 },
-  { id:"t55", name:"속눈썹도움", dur:60, scheduleYn:"Y", color:"", useYn:true, sort:54 },
-  { id:"t56", name:"청소", dur:30, scheduleYn:"Y", color:"#A2B240", useYn:true, sort:55 },
-  { id:"t57", name:"청소(바닥)", dur:10, scheduleYn:"Y", color:"#A2B240", useYn:true, sort:56 },
-  { id:"t58", name:"아침(빨간)", dur:30, scheduleYn:"Y", color:"#A2B240", useYn:true, sort:57 },
-  { id:"t59", name:"전일", dur:30, scheduleYn:"Y", color:"#C1AEFF", useYn:true, sort:58 },
-  { id:"t60", name:"전일크로스", dur:15, scheduleYn:"Y", color:"#C1AEFF", useYn:true, sort:59 },
-  { id:"t61", name:"재고", dur:20, scheduleYn:"Y", color:"#C1AEFF", useYn:true, sort:60 },
-  { id:"t62", name:"에너지전신60", dur:60, scheduleYn:"Y", color:"#96ABE5", useYn:true, sort:61 },
-  { id:"t63", name:"미술", dur:50, scheduleYn:"Y", color:"#96ABE5", useYn:true, sort:62 },
-  { id:"t64", name:"오늘의공부", dur:60, scheduleYn:"Y", color:"#BFBF01", useYn:true, sort:63 },
-  { id:"t65", name:"메모", dur:30, scheduleYn:"Y", color:"#BF7DDF", useYn:true, sort:64 },
-  { id:"t66", name:"직거래교육", dur:20, scheduleYn:"Y", color:"#BFBF01", useYn:false, sort:65 },
-  { id:"t67", name:"회근·연장/일퇴여기작성", dur:60, scheduleYn:"Y", color:"#EFDFEB", useYn:true, sort:66 },
-  { id:"t68", name:"★필수★5시", dur:15, scheduleYn:"Y", color:"#EF2B15", useYn:true, sort:67 },
-  { id:"t69", name:"★필수★7시", dur:30, scheduleYn:"Y", color:"#EF2B15", useYn:true, sort:68 },
-  { id:"t70", name:"★필수★9시", dur:40, scheduleYn:"Y", color:"#EF2B15", useYn:true, sort:69 },
-  { id:"t71", name:"★비약확인크로스★", dur:15, scheduleYn:"Y", color:"#EF2B15", useYn:true, sort:70 },
-  { id:"t72", name:"🔔 알람", dur:5, scheduleYn:"Y", color:"#FF6B00", useYn:true, sort:71 },
-];
-
-const STAFF = [
-  { id: "u1", bid: "b1", name: "김지은", dn: "지은쌤", role: "admin" },
-  { id: "u2", bid: "b1", name: "이수진", dn: "수진쌤", role: "staff" },
-  { id: "u3", bid: "b1", name: "박민정", dn: "민정쌤", role: "staff" },
-  { id: "u4", bid: "b1", name: "최소연", dn: "소연쌤", role: "staff" },
-  { id: "u5", bid: "b1", name: "정경아", dn: "경아쌤", role: "staff" },
-  { id: "u6", bid: "b1", name: "한수연", dn: "수연쌤", role: "staff" },
-  { id: "u7", bid: "b2", name: "오현아", dn: "현아쌤", role: "admin" },
-  { id: "u8", bid: "b3", name: "윤수민", dn: "수민쌤", role: "admin" },
-  { id: "u9", bid: "b4", name: "임수연", dn: "수연쌤", role: "admin" },
-  { id: "u10", bid: "b5", name: "강세라", dn: "세라쌤", role: "admin" },
-  { id: "u11", bid: "b6", name: "조다은", dn: "다은쌤", role: "admin" },
-  { id: "u12", bid: "b7", name: "신보라", dn: "보라쌤", role: "admin" },
-  { id: "u13", bid: "b8", name: "류하린", dn: "하린쌤", role: "admin" },
-];
-
-// ─── Users (accounts) ───
-const INIT_USERS = [
-  { id:"acc_super", name:"Bliss 관리자", loginId:"admin", pw:"1234", role:"super", branches: [], viewBranches:[] },
-  { id:"acc_hw_owner", name:"하우스왁싱 대표", loginId:"master", pw:"1234", role:"owner", branches:BRANCHES.map(b=>b.id), viewBranches:[], businessId:"biz_hw" },
-];
-
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -284,85 +125,6 @@ const STATUS_LABEL = { confirmed:"예약확정", completed:"완료", cancelled:"
 const STATUS_CLR = { confirmed:"#7c7cc8", completed:"#6bab9e", cancelled:"#e57373", no_show:"#ef5350" };
 const BLOCK_COLORS = { reservation:"#7c7cc8", memo:"#ef5350", clockin:"#d0d0d0", cleaning:"#5cb5c5", break:"#9e9ec8" };
 const BLOCK_LABELS = { reservation:"예약", memo:"메모", clockin:"출근", cleaning:"청소", break:"휴식" };
-
-function generateData() {
-  const customers = [], reservations = [], sales = [];
-  const names = ["김민지","이서윤","박지유","최수아","정예린","한소율","오하은","윤채원","임다인","강서현","조유나","송지아","신하린","류은서","백아린","남지원","전민서","고예은","문서진","홍다현","양소미","권나연","장서영","심예지","배하율"];
-  const SERVICES = INIT_SERVICES;
-  const maleNames = ["김민준","이서준","박도윤","최시우","정예준","한지호","오주원","윤하준","임건우","강현우"];
-  
-  BRANCHES.forEach(br => {
-    for (let i = 0; i < 10; i++) {
-      const isMale = Math.random() > 0.7;
-      const nm = isMale ? maleNames[Math.floor(Math.random()*maleNames.length)] : names[Math.floor(Math.random()*names.length)];
-      customers.push({ id: uid(), bid: br.id, name: nm, phone: `010-${String(1000+Math.floor(Math.random()*9000))}-${String(1000+Math.floor(Math.random()*9000))}`, gender: isMale?"M":"F", visits: Math.floor(Math.random()*15)+1, lastVisit: todayStr(), memo:"", custNum: String(50000+Math.floor(Math.random()*10000)) });
-    }
-  });
-
-  const d = new Date();
-  for (let off = 0; off < 14; off++) {
-    const dd = new Date(d); dd.setDate(dd.getDate() - off);
-    const ds = fmtLocal(dd);
-    BRANCHES.forEach(br => {
-      const bCust = customers.filter(c => c.bid === br.id);
-      const bStaff = STAFF.filter(s => s.bid === br.id);
-      const bRooms = ROOMS.filter(r => r.branch_id === br.id);
-      const n = Math.floor(Math.random()*6)+4;
-      for (let k = 0; k < n; k++) {
-        const svc = SERVICES[Math.floor(Math.random()*SERVICES.length)];
-        const cust = bCust[Math.floor(Math.random()*bCust.length)];
-        const staff = bStaff.length > 0 ? bStaff[Math.floor(Math.random()*bStaff.length)] : STAFF[0];
-        const room = bRooms.length > 0 ? bRooms[Math.floor(Math.random()*bRooms.length)] : null;
-        const h = 10 + Math.floor(Math.random()*9);
-        const m = [0,10,20,30,40,50][Math.floor(Math.random()*6)];
-        const time = `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
-        const status = off === 0 ? (Math.random()>0.4?"confirmed":"completed") : "completed";
-        
-        reservations.push({
-          id: uid(), bid: br.id, roomId: room?.id||null, custId: cust.id, custName: cust.name, custPhone: cust.phone, custGender: cust.gender,
-          staffId: staff.id, serviceId: svc.id, date: ds, time, dur: svc.dur, status, memo:"", type:"reservation"
-        });
-
-        if (status === "completed" || off > 0) {
-          const payMethod = ["cash","card","transfer","point"][Math.floor(Math.random()*4)];
-          const hasProduct = Math.random() > 0.7;
-          const prod = hasProduct ? PRODUCTS[Math.floor(Math.random()*PRODUCTS.length)] : null;
-          const svcPay = { cash:0, transfer:0, card:0, point:0 };
-          svcPay[payMethod] = cust.gender==="M" ? (svc.priceM||svc.priceF) : (svc.priceF||svc.priceM);
-          const prodPay = { cash:0, transfer:0, card:0, point:0 };
-          if (prod) prodPay[payMethod] = prod.price;
-          const gift = Math.random() > 0.9 ? 10000 : 0;
-
-          sales.push({
-            id: uid(), bid: br.id, custId: cust.id, custName: cust.name, custPhone: cust.phone, custNum: cust.custNum,
-            staffId: staff.id, staffName: staff.dn, date: ds,
-            serviceId: svc.id, serviceName: svc.name,
-            productId: prod?.id||null, productName: prod?.name||null,
-            svcCash: svcPay.cash, svcTransfer: svcPay.transfer, svcCard: svcPay.card, svcPoint: svcPay.point,
-            prodCash: prodPay.cash, prodTransfer: prodPay.transfer, prodCard: prodPay.card, prodPoint: prodPay.point,
-            gift, orderNum: String(251900+Math.floor(Math.random()*200)),
-            get svcTotal() { return this.svcCash+this.svcTransfer+this.svcCard+this.svcPoint; },
-            get prodTotal() { return this.prodCash+this.prodTransfer+this.prodCard+this.prodPoint; },
-            get total() { return this.svcTotal+this.prodTotal+this.gift; },
-          });
-        }
-      }
-      // Add some memo/cleaning blocks
-      if (bRooms.length > 0) {
-        for (let i = 0; i < 2; i++) {
-          const room = bRooms[Math.floor(Math.random()*bRooms.length)];
-          reservations.push({
-            id: uid(), bid: br.id, roomId: room.id, custId:null, custName:"", custPhone:"",
-            staffId: bStaff[0]?.id, serviceId:null, date: ds,
-            time: `${String(11+i*2).padStart(2,"0")}:30`, dur: 15, status:"completed",
-            memo: i===0?"청소":"", type: i===0?"cleaning":"memo"
-          });
-        }
-      }
-    });
-  }
-  return { customers, reservations, sales };
-}
 
 // ─── App ───
 function App() {
@@ -856,7 +618,7 @@ function Login({ users, onLogin }) {
           <div style={{fontSize:10,color:"#bbb",textAlign:"center",marginTop:4}}>
             슈퍼관리자: admin / 1234 · 업체대표: master / 1234
           </div>
-          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.37</div>
+          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.38</div>
         </div>
       </div>
     </div>
@@ -864,14 +626,6 @@ function Login({ users, onLogin }) {
 }
 
 // ─── Sidebar ───
-// Logo SVG component
-const HW_LOGO = "data:image/png;base64,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";
-
-function HWLogo({ size=1, light=false }) {
-  const w = 130*size;
-  return <img src={HW_LOGO} alt="HOUSE waxing" style={{width:w,height:"auto",objectFit:"contain",
-    filter:light?"brightness(0) invert(1)":"none"}} />;
-}
 
 function Sidebar({ nav, page, setPage, role, branchNames, onLogout, bizName="", isSuper=false, onBackToSuper }) {
   const cats = [
@@ -912,8 +666,8 @@ function Sidebar({ nav, page, setPage, role, branchNames, onLogout, bizName="", 
 // TIMELINE VIEW (myCream-style)
 // ═══════════════════════════════════════════
 function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, currentUser, setPage, bizId }) {
-  const SVC_LIST = (data?.services?.length ? data.services : INIT_SERVICES);
-  const PROD_LIST = (data?.products?.length ? data.products : PRODUCTS);
+  const SVC_LIST = (data?.services || []);
+  const PROD_LIST = (data?.products || []);
   const [selDate, setSelDate] = useState(todayStr());
   const [showModal, setShowModal] = useState(false);
   const [modalData, setModalData] = useState(null);
@@ -939,7 +693,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   const branchesToShow = allBranchList.filter(b => viewBids.includes(b.id) && (isMaster || accessibleBids.includes(b.id)));
 
   // ── Alarm system ──
-  const ALARM_TAG_ID = "t72"; // 🔔 알람
+  const ALARM_TAG_ID = (data?.serviceTags||[]).find(t=>t.name&&t.name.includes("알람"))?.id;
   const [alarmPopup, setAlarmPopup] = useState(null);
   const firedAlarmsRef = useRef(new Set());
   useEffect(() => {
@@ -981,7 +735,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   const isResizing = useRef(false);
   const resizeDurRef = useRef(0);
 
-  const allRooms = branchesToShow.flatMap(br => (data.rooms||ROOMS).filter(r=>r.branch_id===br.id).map(r=>({...r, branchName:br.short||br.name||""})));
+  const allRooms = branchesToShow.flatMap(br => (data.rooms||[]).filter(r=>r.branch_id===br.id).map(r=>({...r, branchName:br.short||br.name||""})));
   
   const blocks = data.reservations.filter(r => r.date === selDate && branchesToShow.some(b=>b.id===r.bid));
 
@@ -1412,7 +1166,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                     const blockDur = isBeingResized ? resizeDur : block.dur;
                     const h = (blockDur / timeUnit) * rowH;
                     // 서비스태그 색상 우선 적용
-                    const tags = data?.serviceTags || INIT_SERVICE_TAGS;
+                    const tags = data?.serviceTags || [];
                     const tagColor = block.type==="reservation" && block.selectedTags?.length
                       ? (block.selectedTags.map(tid=>tags.find(t=>t.id===tid)).find(t=>t?.color)?.color || "")
                       : "";
@@ -1420,7 +1174,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                     const isNaverCancelled = block.status === "naver_cancelled";
                     const isNaverPending = block.status === "pending";
                     const color = isNaverCancelled ? "#E6A700" : (tagColor || BLOCK_COLORS[block.type] || "#7c7cc8");
-                    const staff = STAFF.find(s=>s.id===block.staffId);
+                    const staff = (data.staff||[]).find(s=>s.id===block.staffId);
                     const isDrag = dragBlock?.id === block.id;
                     const isSch = block.isSchedule;
                     const isEditable = canEdit(block.bid);
@@ -1599,25 +1353,25 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
 }
 
 function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBranch, userBranches, data, setData, setPage }) {
-  const SVC_LIST = (data?.services?.length ? data.services : INIT_SERVICES);
-  const PROD_LIST = (data?.products?.length ? data.products : PRODUCTS);
-  const CATS = (data?.categories?.length ? data.categories : SERVICE_CATS);
+  const SVC_LIST = (data?.services || []);
+  const PROD_LIST = (data?.products || []);
+  const CATS = (data?.categories || []);
   const isNew = !item?.id || item?.roomId;
   const isReadOnly = item?.readOnly || false;
   const branchId = item?.bid || selBranch;
-  const branchRooms = (data.rooms||ROOMS).filter(r=>r.branch_id===branchId);
-  const branchStaff = STAFF.filter(s=>s.bid===branchId);
+  const branchRooms = (data.rooms||[]).filter(r=>r.branch_id===branchId);
+  const branchStaff = (data.staff||[]).filter(s=>s.bid===branchId);
   const [showSaleForm, setShowSaleForm] = useState(false);
   const [isSchedule, setIsSchedule] = useState(item?.isSchedule || false);
   const modalRef = useRef(null);
-  const tags = (data?.serviceTags || INIT_SERVICE_TAGS).slice().sort((a,b)=>a.sort-b.sort);
+  const tags = (data?.serviceTags || []).slice().sort((a,b)=>a.sort-b.sort);
   const visibleTags = tags.filter(tag => tag.useYn !== false && (isSchedule ? tag.scheduleYn === "Y" : tag.scheduleYn !== "Y"));
 
   const BASE_DUR = 5; // 기본 예약시간 5분
   const defaultEnd = () => { const t = item?.time||"10:00"; const [h,m] = t.split(":").map(Number); const em = m + (item?.dur||BASE_DUR); return `${String(h+Math.floor(em/60)).padStart(2,"0")}:${String(em%60).padStart(2,"0")}`; };
   const [f, setF] = useState(isNew && !item?.id ? {
     id: uid(), bid: branchId, roomId: item?.roomId||branchRooms[0]?.id, custId:null, custName:"", custPhone:"", custGender:"",
-    staffId: branchStaff[0]?.id, serviceId: SERVICES[0]?.id, date: item?.date||todayStr(), time: item?.time||"10:00",
+    staffId: branchStaff[0]?.id, serviceId: (data.services||[])[0]?.id, date: item?.date||todayStr(), time: item?.time||"10:00",
     endDate: item?.date||todayStr(), endTime: defaultEnd(),
     dur: BASE_DUR, status:"confirmed", memo:"", type:"reservation",
     selectedTags: [], isNewCust: true, tsLog: [],
@@ -2099,10 +1853,10 @@ const SaleDiscountRow = React.memo(function SaleDiscountRow({ id, checked, amoun
 // DETAILED SALE FORM (매출 입력 - 시술상품/제품 연동)
 // ═══════════════════════════════════════════
 function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setData }) {
-  const SVC_LIST = (data?.services?.length ? data.services : INIT_SERVICES);
-  const PROD_LIST = (data?.products?.length ? data.products : PRODUCTS);
-  const CATS = (data?.categories?.length ? data.categories : SERVICE_CATS);
-  const branchStaff = STAFF.filter(s => s.bid === branchId);
+  const SVC_LIST = (data?.services || []);
+  const PROD_LIST = (data?.products || []);
+  const CATS = (data?.categories || []);
+  const branchStaff = (data.staff||[]).filter(s => s.bid === branchId);
   const [manager, setManager] = useState(reservation?.staffId || branchStaff[0]?.id || "");
   const [selBranch, setSelBranch] = useState(branchId);
   const [gender, setGender] = useState(reservation?.custGender || "F");
@@ -2208,7 +1962,7 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
       alert("매출 금액이 0원입니다. 시술 또는 제품을 선택해주세요.");
       return;
     }
-    const staff = STAFF.find(s => s.id === manager);
+    const staff = (data.staff||[]).find(s => s.id === manager);
     // 신규고객이면 data.customers에 추가
     const isNewCust = cust.id?.startsWith("new_") || (!cust.id && cust.name);
     if (isNewCust && setData) {
@@ -2525,10 +2279,10 @@ function ReservationList({ data, setData, userBranches, isMaster }) {
       </tr></thead><tbody>
         {res.length===0?<tr><td colSpan={10} style={{textAlign:"center",color:"#999",padding:40}}>예약이 없습니다</td></tr>:
           res.map(r=>{
-            const svc = SERVICES.find(s=>s.id===r.serviceId);
-            const staff = STAFF.find(s=>s.id===r.staffId);
+            const svc = (data.services||[]).find(s=>s.id===r.serviceId);
+            const staff = (data.staff||[]).find(s=>s.id===r.staffId);
             const br = (data.branches||[]).find(b=>b.id===r.bid);
-            const room = ROOMS.find(rm=>rm.id===r.roomId);
+            const room = (data.rooms||[]).find(rm=>rm.id===r.roomId);
             const g = r.custGender || "";
             return <tr key={r.id}>
               <td style={{fontWeight:700,color:"#7c7cc8"}}>{r.time}</td>
@@ -2663,7 +2417,7 @@ function SalesPage({ data, setData, userBranches, isMaster }) {
     </div>
     {showModal && <DetailedSaleForm
       reservation={{id:uid(),bid:userBranches[0],custId:null,custName:"",custPhone:"",custGender:"F",
-        staffId:STAFF.find(s=>s.bid===(userBranches[0]))?.id||"",serviceId:null,date:selDate}}
+        staffId:(data.staff||[]).find(s=>s.bid===(userBranches[0]))?.id||"",serviceId:null,date:selDate}}
       branchId={userBranches[0]}
       onSubmit={(sale)=>{handleSave(sale);}}
       onClose={()=>setShowModal(false)} data={data} setData={setData} />}
@@ -3403,9 +3157,9 @@ const DragHandle = () => <span style={{cursor:"grab",color:"#999",fontSize:14,fl
 
 // ─── 시술상품관리 ───
 function AdminSaleItems({ data, setData }) {
-  const [services, setServices] = useState([...(data?.services||INIT_SERVICES)].sort((a,b)=>a.sort-b.sort));
+  const [services, setServices] = useState([...(data?.services||[])].sort((a,b)=>a.sort-b.sort));
   useEffect(() => { setData(p => ({...p, services})); }, [services]);
-  const cats = (data?.categories?.length ? data.categories : SERVICE_CATS);
+  const cats = (data?.categories || []);
   const [editId, setEditId] = useState(null);
   const [editData, setEditData] = useState({});
   const [showAdd, setShowAdd] = useState(false);
@@ -3535,7 +3289,7 @@ function AdminSaleItems({ data, setData }) {
 
 // ─── 제품관리 ───
 function AdminProductItems({ data, setData }) {
-  const [items, setItems] = useState(()=>[...(data?.products||PRODUCTS)].map((p,i)=>({...p,sort:p.sort??i})).sort((a,b)=>a.sort-b.sort));
+  const [items, setItems] = useState(()=>[...(data?.products||[])].map((p,i)=>({...p,sort:p.sort??i})).sort((a,b)=>a.sort-b.sort));
   useEffect(() => { setData(p => ({...p, products: items})); }, [items]);
   const [editId, setEditId] = useState(null);
   const [editData, setEditData] = useState({});
@@ -3634,7 +3388,7 @@ function AdminProductItems({ data, setData }) {
 
 // ─── 서비스태그관리 ───
 function AdminServiceTags({ data, setData }) {
-  const [tags, setTags] = useState(()=>[...(data?.serviceTags || INIT_SERVICE_TAGS)].sort((a,b)=>a.sort-b.sort));
+  const [tags, setTags] = useState(()=>[...(data?.serviceTags || [])].sort((a,b)=>a.sort-b.sort));
   useEffect(() => { setData(p => ({...p, serviceTags: tags})); }, [tags]);
   const [showAdd, setShowAdd] = useState(false);
   const [newTag, setNewTag] = useState({ name:"", dur:0, scheduleYn:"N", color:"" });
