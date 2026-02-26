@@ -17,7 +17,6 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>*{margin:0;padding:0;box-sizing:border-box}</style>
 </head><body><div id="root"></div><script type="text/babel">
-const { useState, useEffect, useRef, useCallback, useMemo } = React;
 // React hooks provided by HTML wrapper
 
 // ─── Supabase Config ───
@@ -867,7 +866,7 @@ function Login({ users, onLogin }) {
           <div style={{fontSize:10,color:"#bbb",textAlign:"center",marginTop:4}}>
             슈퍼관리자: admin / 1234 · 업체대표: master / 1234
           </div>
-          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.22</div>
+          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.24</div>
         </div>
       </div>
     </div>
@@ -1388,7 +1387,10 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                     const tagColor = block.type==="reservation" && block.selectedTags?.length
                       ? (block.selectedTags.map(tid=>tags.find(t=>t.id===tid)).find(t=>t?.color)?.color || "")
                       : "";
-                    const color = tagColor || BLOCK_COLORS[block.type] || "#7c7cc8";
+                    // 네이버 취소/대기 상태 처리
+                    const isNaverCancelled = block.status === "naver_cancelled";
+                    const isNaverPending = block.status === "pending";
+                    const color = isNaverCancelled ? "#E6A700" : (tagColor || BLOCK_COLORS[block.type] || "#7c7cc8");
                     const staff = STAFF.find(s=>s.id===block.staffId);
                     const isDrag = dragBlock?.id === block.id;
                     const isSch = block.isSchedule;
@@ -1398,16 +1400,18 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                         onClick={e=>handleBlockClick(block,e)}
                         onMouseDown={e=>{if(isEditable && !isResizing.current)handleDragStart(block,e)}}
                         style={{position:"absolute",top:y,left:2,right:2,height:Math.max(h,rowH*2),
-                          background:isSch?`${color}BB`:`${color}18`,
-                          border:`1px solid ${isSch?color:color+"60"}`,
-                          borderLeft:`3px solid ${color}`,
+                          background:isNaverCancelled?"#FFF8E1":isNaverPending?`${color}10`:(isSch?`${color}BB`:`${color}18`),
+                          border:isNaverCancelled?"1.5px dashed #E6A700":isNaverPending?`1.5px dashed ${color}`:`1px solid ${isSch?color:color+"60"}`,
+                          borderLeft:`3px solid ${isNaverCancelled?"#E6A700":color}`,
                           borderRadius:4,padding:"2px 4px",overflow:"hidden",fontSize:blockFs,lineHeight:1.2,
                           cursor:isEditable?"grab":"pointer",zIndex:isDrag?0:3,transition:(isDrag||isBeingResized)?"none":"all .15s",
                           opacity:isDrag?0.3:(blockOp/100),userSelect:"none"}}>
                         {block.type==="reservation" && !block.isSchedule && <>
                           <div style={{display:"flex",alignItems:"center",gap:3,overflow:"hidden",whiteSpace:"nowrap"}}>
+                            {isNaverCancelled && <span style={{fontSize:Math.max(6,blockFs-2),padding:"1px 3px",borderRadius:2,background:"#E6A700",color:"#fff",fontWeight:700,lineHeight:1,flexShrink:0}}>네이버취소</span>}
+                            {isNaverPending && <span style={{fontSize:Math.max(6,blockFs-2),padding:"1px 3px",borderRadius:2,background:"#FF9800",color:"#fff",fontWeight:700,lineHeight:1,flexShrink:0,animation:"pendingBlink 1.5s infinite"}}>확정대기</span>}
                             {block.isNewCust && <span style={{fontSize:Math.max(6,blockFs-2),padding:"1px 3px",borderRadius:2,background:"#e57373",color:"#fff",fontWeight:700,lineHeight:1,flexShrink:0}}>신규</span>}
-                            <span style={{fontWeight:600,color:"#333",overflow:"hidden",textOverflow:"ellipsis"}}><span style={{color:block.custGender==="M"?"#4a7cc8":"#e57373"}}>{block.custGender==="M"?"남":"여"}</span> {block.custName}</span>
+                            <span style={{fontWeight:600,color:isNaverCancelled?"#999":"#333",overflow:"hidden",textOverflow:"ellipsis",textDecoration:isNaverCancelled?"line-through":"none"}}><span style={{color:block.custGender==="M"?"#4a7cc8":"#e57373"}}>{block.custGender==="M"?"남":"여"}</span> {block.custName}</span>
                           </div>
                           {block.selectedTags?.length>0 && <div style={{display:"flex",flexWrap:"wrap",gap:2,marginTop:1}}>
                             {block.selectedTags.slice(0,3).map(tid=>{const tg=tags.find(t=>t.id===tid);return tg?<span key={tid} style={{fontSize:Math.max(6,blockFs-2),padding:"0 3px",borderRadius:2,background:tg.color?tg.color+"25":"#7c7cc815",color:tg.color||"#7c7cc8",fontWeight:600}}>{tg.name}</span>:null})}
@@ -1725,6 +1729,18 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
 
         <div style={{padding:"16px 20px",borderTop:"1px solid #e0e0e0",flex:1,overflowY:"auto"}} className="form-col">
 
+          {/* ═══ 네이버 예약 상태 배너 ═══ */}
+          {f.status === "naver_cancelled" && <div style={{background:"#FFF8E1",border:"1.5px solid #E6A700",borderRadius:6,padding:"8px 12px",marginBottom:12,display:"flex",alignItems:"center",gap:8}}>
+            <span style={{fontSize:16}}>⚠️</span>
+            <span style={{fontSize:13,fontWeight:700,color:"#E6A700"}}>네이버 취소 예약</span>
+            {f.reservationId && <span style={{fontSize:11,color:"#999",marginLeft:"auto"}}>#{f.reservationId}</span>}
+          </div>}
+          {f.status === "pending" && <div style={{background:"#FFF3E0",border:"1.5px solid #FF9800",borderRadius:6,padding:"8px 12px",marginBottom:12,display:"flex",alignItems:"center",gap:8,animation:"naverBlink 1.5s infinite"}}>
+            <span style={{fontSize:16}}>🔔</span>
+            <span style={{fontSize:13,fontWeight:700,color:"#E65100"}}>네이버 확정대기 — 네이버에서 확정 처리 필요</span>
+            {f.reservationId && <span style={{fontSize:11,color:"#999",marginLeft:"auto"}}>#{f.reservationId}</span>}
+          </div>}
+
           {/* ═══ 기타일정 모드 ═══ */}
           {isSchedule && <>
             <div>
@@ -1898,7 +1914,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
               </button>
               {showSvcPicker && <div style={{marginTop:6,border:"1px solid #e0e0e0",borderRadius:8,background:"#fff",maxHeight:280,overflow:"auto"}}>
                 {CATS.map(cat=>{
-                  const catSvcs = SVC_LIST.filter(s=>s.cat===cat.id);
+                  const catSvcs = SVC_LIST.filter(s=>s.cat===cat.id).sort((a,b)=>a.sort-b.sort);
                   if(catSvcs.length===0) return null;
                   const genderFilter = f.custGender==="M" ? s=>s.priceM>0||s.priceM===0&&s.priceF===0 : s=>s.priceF>0||s.priceF===0&&s.priceM===0;
                   return <div key={cat.id}>
@@ -3751,6 +3767,7 @@ const CSS = `
   @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
   @keyframes slideIn{from{transform:translateX(-100%)}to{transform:translateX(0)}}
   @keyframes naverBlink{0%,100%{background:#fff3e0}50%{background:#ffe0b2}}
+  @keyframes pendingBlink{0%,100%{opacity:1}50%{opacity:.5}}
   .fade-in{animation:fadeIn .25s ease}
   .card{background:#fff;border-radius:4px;border:1px solid #e0e0e0;box-shadow:none}
   .tw{overflow-x:auto}
@@ -3785,6 +3802,4 @@ const CSS = `
     .sidebar-m{display:none!important}
   }
 `;
-
-ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
 </script></body></html>
