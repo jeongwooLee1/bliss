@@ -3,7 +3,7 @@
 <title>Bliss 관리시스템</title>
 <script>
 (function(){
-  var LOCAL_V="2.24";
+  var LOCAL_V="2.25";
   localStorage.setItem("bliss_v",LOCAL_V);
   fetch("version.txt?t="+Date.now()).then(function(r){return r.text()}).then(function(remote){
     remote=remote.trim();
@@ -867,7 +867,7 @@ function Login({ users, onLogin }) {
           <div style={{fontSize:10,color:"#bbb",textAlign:"center",marginTop:4}}>
             슈퍼관리자: admin / 1234 · 업체대표: master / 1234
           </div>
-          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.24</div>
+          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.25</div>
         </div>
       </div>
     </div>
@@ -3336,7 +3336,7 @@ function AdminWorkers({ data, setData }) {
 }
 
 // ─── Drag Sort Helper ───
-function useDragSort(items, setItems, sortKey="sort") {
+function useDragSort(items, setItems, sortKey="sort", onComplete) {
   const dragItem = useRef(null);
   const dragOver = useRef(null);
   const onDragStart = (idx) => { dragItem.current = idx; };
@@ -3346,7 +3346,9 @@ function useDragSort(items, setItems, sortKey="sort") {
     const copy = [...items];
     const dragged = copy.splice(dragItem.current, 1)[0];
     copy.splice(dragOver.current, 0, dragged);
-    setItems(copy.map((it, i) => ({ ...it, [sortKey]: i })));
+    const reordered = copy.map((it, i) => ({ ...it, [sortKey]: i }));
+    setItems(reordered);
+    if (onComplete) onComplete(reordered);
     dragItem.current = null;
     dragOver.current = null;
   };
@@ -3367,7 +3369,9 @@ function AdminSaleItems({ data, setData }) {
   const [filterCat, setFilterCat] = useState("all");
   const [delConfirm, setDelConfirm] = useState(null);
   const [selected, setSelected] = useState(new Set());
-  const drag = useDragSort(services, setServices);
+  const drag = useDragSort(services, setServices, "sort", (reordered) => {
+    reordered.forEach(s => sb.update("services", s.id, {sort: s.sort}).catch(console.error));
+  });
 
   const filtered = filterCat === "all" ? services : services.filter(s => s.cat === filterCat);
   const allChecked = filtered.length > 0 && filtered.every(s => selected.has(s.id));
@@ -3495,7 +3499,9 @@ function AdminProductItems({ data, setData }) {
   const [newItem, setNewItem] = useState({ name:"", price:0 });
   const [delConfirm, setDelConfirm] = useState(null);
   const [selected, setSelected] = useState(new Set());
-  const drag = useDragSort(items, setItems);
+  const drag = useDragSort(items, setItems, "sort", (reordered) => {
+    reordered.forEach(s => sb.update("products", s.id, {sort: s.sort}).catch(console.error));
+  });
 
   const allChecked = items.length > 0 && items.every(it => selected.has(it.id));
   const toggleAll = () => { if (allChecked) setSelected(new Set()); else setSelected(new Set(items.map(it => it.id))); };
@@ -3593,7 +3599,9 @@ function AdminServiceTags({ data, setData }) {
   const [delConfirm, setDelConfirm] = useState(null);
   const [selected, setSelected] = useState(new Set());
   const syncTags = (updated) => { setTags(updated); if(setData) setData(prev=>({...prev,serviceTags:updated})); };
-  const drag = useDragSort(tags, syncTags);
+  const drag = useDragSort(tags, syncTags, "sort", (reordered) => {
+    reordered.forEach(s => sb.update("service_tags", s.id, {sort: s.sort}).catch(console.error));
+  });
 
   const allChecked = tags.length > 0 && tags.every(t => selected.has(t.id));
   const toggleAll = () => { if (allChecked) setSelected(new Set()); else setSelected(new Set(tags.map(t => t.id))); };
@@ -3805,4 +3813,5 @@ const CSS = `
 `;
 
 ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+
 </script></body></html>
