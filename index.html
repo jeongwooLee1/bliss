@@ -3,14 +3,11 @@
 <title>Bliss 관리시스템</title>
 <script>
 (function(){
-  var LOCAL_V="2.19";
+  var LOCAL_V="2.20";
   localStorage.setItem("bliss_v",LOCAL_V);
   fetch("version.txt?t="+Date.now()).then(function(r){return r.text()}).then(function(remote){
     remote=remote.trim();
-    if(remote && remote!==LOCAL_V){
-      localStorage.setItem("bliss_v",remote);
-      location.reload(true);
-    }
+    if(remote && remote!==LOCAL_V){localStorage.setItem("bliss_v",remote);location.reload(true);}
   }).catch(function(){});
 })();
 </script>
@@ -870,7 +867,7 @@ function Login({ users, onLogin }) {
           <div style={{fontSize:10,color:"#bbb",textAlign:"center",marginTop:4}}>
             슈퍼관리자: admin / 1234 · 업체대표: master / 1234
           </div>
-          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.19</div>
+          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.20</div>
         </div>
       </div>
     </div>
@@ -3036,7 +3033,19 @@ function AdminPlaces({ data, setData, bizId }) {
   const [deleteId, setDeleteId] = useState(null);
   const [dragIdx, setDragIdx] = useState(null);
   const [dragOverIdx, setDragOverIdx] = useState(null);
+  const [selected, setSelected] = useState(new Set());
   const fileRef = useRef(null);
+
+  const allChecked = branches.length > 0 && branches.every(b => selected.has(b.id));
+  const toggleAll = () => { if (allChecked) setSelected(new Set()); else setSelected(new Set(branches.map(b => b.id))); };
+  const toggleOne = (id) => setSelected(prev => { const s = new Set(prev); s.has(id)?s.delete(id):s.add(id); return s; });
+  const bulkDelete = () => {
+    if (selected.size === 0) return;
+    if (!window.confirm(selected.size + "개 지점을 삭제하시겠습니까?")) return;
+    selected.forEach(id => sb.del("branches", id).catch(console.error));
+    setData(prev => ({...prev, branchSettings:(prev.branchSettings||[]).filter(x=>!selected.has(x.id)), branches:(prev.branches||[]).filter(x=>!selected.has(x.id))}));
+    setSelected(new Set());
+  };
 
   const updateField = (id, field, value) => {
     setData(prev => {
@@ -3115,8 +3124,10 @@ function AdminPlaces({ data, setData, bizId }) {
   return <div>
     <div className="card" style={{padding:20}}>
       <AdminHeader title="예약장소 관리" count={branches.length} onAdd={addBranch} addLabel="＋ 지점 추가" onDownload={downloadExcel} onUpload={uploadExcel}/>
+      {selected.size > 0 && <div style={{marginBottom:8}}><button className="btn-d btn-sm" onClick={bulkDelete} style={{fontSize:10,padding:"4px 12px"}}>🗑️ 선택 삭제 ({selected.size})</button></div>}
       <div className="tw">
         <table><thead><tr>
+          <th style={{width:30}}><input type="checkbox" checked={allChecked} onChange={toggleAll}/></th>
           <th style={{width:30}}></th>
           <th style={{width:40}}>번호</th>
           <th style={{width:100}}>지점명</th>
@@ -3136,6 +3147,7 @@ function AdminPlaces({ data, setData, bizId }) {
                 background: dragOverIdx===i ? "#7c7cc815" : edited[b.id] ? "rgba(167,139,250,.05)" : "transparent",
                 opacity: dragIdx===i ? 0.4 : 1, cursor:"grab", touchAction:"none"
               }}>
+              <td><input type="checkbox" checked={selected.has(b.id)} onChange={()=>toggleOne(b.id)}/></td>
               <td style={{textAlign:"center",fontSize:14,color:"#999"}}>☰</td>
               <td style={{color:"#888",textAlign:"center"}}>{i+1}</td>
               <td><input className="inp" value={b.name} onChange={e=>updateField(b.id,"name",e.target.value)} style={{background:"transparent",border:"1px solid #d0d0d0",fontWeight:600}}/></td>
@@ -3206,6 +3218,18 @@ function AdminWorkers({ data, setData }) {
   const [editId, setEditId] = useState(null);
   const [editData, setEditData] = useState({});
   const [delId, setDelId] = useState(null);
+  const [selected, setSelected] = useState(new Set());
+
+  const allChecked = rooms.length > 0 && rooms.every(r => selected.has(r.id));
+  const toggleAll = () => { if (allChecked) setSelected(new Set()); else setSelected(new Set(rooms.map(r => r.id))); };
+  const toggleOne = (id) => setSelected(prev => { const s = new Set(prev); s.has(id)?s.delete(id):s.add(id); return s; });
+  const bulkDelete = () => {
+    if (selected.size === 0) return;
+    if (!window.confirm(selected.size + "명 담당자를 삭제하시겠습니까?")) return;
+    selected.forEach(id => sb.del("rooms", id).catch(console.error));
+    setData(p => ({...p, rooms: p.rooms.filter(r => !selected.has(r.id))}));
+    setSelected(new Set());
+  };
 
   const addRoom = () => {
     if(!newW.name.trim()||!newW.branchId) return;
@@ -3251,12 +3275,15 @@ function AdminWorkers({ data, setData }) {
         <button className="btn-p btn-sm" onClick={addRoom}>등록</button>
       </div>
     </div>}
+    {selected.size > 0 && <div style={{marginBottom:8}}><button className="btn-d btn-sm" onClick={bulkDelete} style={{fontSize:10,padding:"4px 12px"}}>🗑️ 선택 삭제 ({selected.size})</button></div>}
     <div className="card tw" style={{maxHeight:"calc(100vh - 300px)",overflow:"auto"}}>
       <table><thead><tr>
+        <th style={{width:30}}><input type="checkbox" checked={allChecked} onChange={toggleAll}/></th>
         <th style={{width:35}}>No</th><th>담당자명</th><th>지점</th><th style={{width:80}}>색상</th><th style={{width:100}}>관리</th>
       </tr></thead><tbody>
         {rooms.map((r,i) => {
           if(editId===r.id) return <tr key={r.id} style={{background:"#f5f5ff"}}>
+            <td><input type="checkbox" checked={selected.has(r.id)} onChange={()=>toggleOne(r.id)}/></td>
             <td style={{color:"#999"}}>{i+1}</td>
             <td><input className="inp" value={editData.name} onChange={e=>setEditData(p=>({...p,name:e.target.value}))} style={{width:"100%"}}/></td>
             <td><select className="inp" value={editData.branch_id} onChange={e=>setEditData(p=>({...p,branch_id:e.target.value}))}>
@@ -3266,6 +3293,7 @@ function AdminWorkers({ data, setData }) {
             <td><div style={{display:"flex",gap:3}}><button className="btn-p btn-sm" onClick={saveEdit}>저장</button><button className="btn-s btn-sm" onClick={()=>setEditId(null)}>취소</button></div></td>
           </tr>;
           return <tr key={r.id}>
+            <td><input type="checkbox" checked={selected.has(r.id)} onChange={()=>toggleOne(r.id)}/></td>
             <td style={{color:"#999"}}>{i+1}</td>
             <td style={{fontWeight:600}}>{r.name}</td>
             <td>{branchName(r.branch_id)}</td>
@@ -3539,8 +3567,20 @@ function AdminServiceTags({ data, setData }) {
   const [editId, setEditId] = useState(null);
   const [editData, setEditData] = useState({});
   const [delConfirm, setDelConfirm] = useState(null);
+  const [selected, setSelected] = useState(new Set());
   const syncTags = (updated) => { setTags(updated); if(setData) setData(prev=>({...prev,serviceTags:updated})); };
   const drag = useDragSort(tags, syncTags);
+
+  const allChecked = tags.length > 0 && tags.every(t => selected.has(t.id));
+  const toggleAll = () => { if (allChecked) setSelected(new Set()); else setSelected(new Set(tags.map(t => t.id))); };
+  const toggleOne = (id) => setSelected(prev => { const s = new Set(prev); s.has(id)?s.delete(id):s.add(id); return s; });
+  const bulkDelete = () => {
+    if (selected.size === 0) return;
+    if (!window.confirm(selected.size + "개 태그를 삭제하시겠습니까?")) return;
+    selected.forEach(id => sb.del("service_tags", id).catch(console.error));
+    syncTags(tags.filter(t => !selected.has(t.id)).map((t,i) => ({...t, sort:i})));
+    setSelected(new Set());
+  };
 
   const tagToDb = (t) => ({id:t.id, business_id:_activeBizId, name:t.name, dur:t.dur||0, schedule_yn:t.scheduleYn==="Y"||t.scheduleYn===true, color:t.color||"", use_yn:t.useYn!==false, sort:t.sort||0});
 
@@ -3611,8 +3651,11 @@ function AdminServiceTags({ data, setData }) {
       </div>
     </div>
 
+    {selected.size > 0 && <div style={{marginBottom:8}}><button className="btn-d btn-sm" onClick={bulkDelete} style={{fontSize:10,padding:"4px 12px"}}>🗑️ 선택 삭제 ({selected.size})</button></div>}
+
     <div className="tw" style={{maxHeight:"calc(100vh - 400px)",overflow:"auto"}}>
       <table><thead><tr>
+        <th style={{width:30}}><input type="checkbox" checked={allChecked} onChange={toggleAll}/></th>
         <th style={{width:22}}></th><th style={{width:25}}>No</th><th>태그명</th>
         <th style={{width:55,textAlign:"center"}}>소요</th><th style={{width:45,textAlign:"center"}}>기타</th>
         <th style={{width:80,textAlign:"center"}}>색상</th><th style={{width:55,textAlign:"center"}}>사용</th>
@@ -3621,6 +3664,7 @@ function AdminServiceTags({ data, setData }) {
       {tags.map((tag,i) => {
         const isEdit = editId===tag.id;
         if (isEdit) return <tr key={tag.id} style={{background:"#f5f5ff"}}>
+          <td><input type="checkbox" checked={selected.has(tag.id)} onChange={()=>toggleOne(tag.id)}/></td>
           <td><DragHandle/></td><td style={{color:"#999"}}>{i+1}</td>
           <td><input className="inp" value={editData.name} onChange={e=>setEditData(p=>({...p,name:e.target.value}))} style={{width:"100%",...inpS}}/></td>
           <td><input className="inp" type="number" value={editData.dur} onChange={e=>setEditData(p=>({...p,dur:Number(e.target.value)||0}))} style={{width:50,...inpS,textAlign:"center"}}/></td>
@@ -3637,6 +3681,7 @@ function AdminServiceTags({ data, setData }) {
         </tr>;
         return <tr key={tag.id} draggable onDragStart={()=>drag.onDragStart(i)} onDragEnter={()=>drag.onDragEnter(i)} onDragEnd={drag.onDragEnd} onDragOver={e=>e.preventDefault()}
           style={{opacity:tag.useYn===false?0.45:1}}>
+          <td><input type="checkbox" checked={selected.has(tag.id)} onChange={()=>toggleOne(tag.id)}/></td>
           <td><DragHandle/></td>
           <td style={{color:"#999"}}>{i+1}</td>
           <td style={{fontWeight:600,fontSize:12}}>
