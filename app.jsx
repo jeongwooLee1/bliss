@@ -269,7 +269,8 @@ const INIT_USERS = [
 
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
-const todayStr = () => { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
+const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+const todayStr = () => fmtLocal(new Date());
 const TIMES = [];
 for (let h = 8; h <= 22; h++) for (let m = 0; m < 60; m += 5)
   TIMES.push(`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`);
@@ -301,7 +302,7 @@ function generateData() {
   const d = new Date();
   for (let off = 0; off < 14; off++) {
     const dd = new Date(d); dd.setDate(dd.getDate() - off);
-    const ds = dd.toISOString().split("T")[0];
+    const ds = fmtLocal(dd);
     BRANCHES.forEach(br => {
       const bCust = customers.filter(c => c.bid === br.id);
       const bStaff = STAFF.filter(s => s.bid === br.id);
@@ -946,7 +947,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       const now = new Date();
       const nowH = now.getHours();
       const nowM = now.getMinutes();
-      const today = now.toISOString().split("T")[0];
+      const today = fmtLocal(now);
       const allRes = data.reservations || [];
       allRes.forEach(r => {
         if (!r.isSchedule || r.date !== today) return;
@@ -1258,7 +1259,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
     document.addEventListener("mouseup", onUp);
   };
 
-  const changeDate = (off) => { const d = new Date(selDate); d.setDate(d.getDate()+off); setSelDate(d.toISOString().split("T")[0]); };
+  const changeDate = (off) => { const d = new Date(selDate); d.setDate(d.getDate()+off); setSelDate(fmtLocal(d)); };
 
   // Scroll to current time on mount
   useEffect(() => {
@@ -1306,7 +1307,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
             const isSat = dt.getDay()===6;
             const isToday = d === new Date().getDate() && sd.getMonth() === new Date().getMonth() && sd.getFullYear() === new Date().getFullYear();
             const isSel = d === sd.getDate();
-            return <button key={d} onClick={()=>{const ns=new Date(sd.getFullYear(),sd.getMonth(),d);setSelDate(ns.toISOString().split("T")[0])}}
+            return <button key={d} onClick={()=>{const ns=new Date(sd.getFullYear(),sd.getMonth(),d);setSelDate(fmtLocal(ns))}}
               style={{width:22,height:22,borderRadius:isSel?11:3,border:isToday&&!isSel?"2px solid #7c7cc8":"none",
                 background:isSel?"#7c7cc8":"transparent",color:isSel?"#fff":isSun?"#e57373":isSat?"#7c7cc8":"#555",
                 fontSize:11,fontWeight:isSel||isToday?700:400,cursor:"pointer",fontFamily:"inherit",padding:0,flexShrink:0}}>
@@ -2499,7 +2500,7 @@ function ReservationList({ data, setData, userBranches, isMaster }) {
   const [selDate, setSelDate] = useState(todayStr());
   const [vb, setVb] = useState("all");
   const res = data.reservations.filter(r => r.date===selDate && r.type==="reservation" && ((vb==="all"?userBranches.includes(r.bid):r.bid===vb))).sort((a,b)=>a.time.localeCompare(b.time));
-  const changeDate = (off) => { const d = new Date(selDate); d.setDate(d.getDate()+off); setSelDate(d.toISOString().split("T")[0]); };
+  const changeDate = (off) => { const d = new Date(selDate); d.setDate(d.getDate()+off); setSelDate(fmtLocal(d)); };
   const updateStatus = (id, status) => { setData(prev=>({...prev,reservations:prev.reservations.map(r=>r.id===id?{...r,status}:r)})); sb.update("reservations",id,{status}).catch(console.error); };
   const deleteRes = (id) => setData(prev=>({...prev,reservations:prev.reservations.filter(r=>r.id!==id)}));
 
@@ -2563,7 +2564,7 @@ function SalesPage({ data, setData, userBranches, isMaster }) {
   const sales = data.sales.filter(s => {
     const brMatch = (vb==="all"?userBranches.includes(s.bid):s.bid===vb);
     if (tab==="daily") return s.date===selDate && brMatch;
-    if (tab==="prev") { const d=new Date(selDate);d.setDate(d.getDate()-1); return s.date===d.toISOString().split("T")[0] && brMatch; }
+    if (tab==="prev") { const d=new Date(selDate);d.setDate(d.getDate()-1); return s.date===fmtLocal(d) && brMatch; }
     return brMatch;
   });
 
@@ -2574,7 +2575,7 @@ function SalesPage({ data, setData, userBranches, isMaster }) {
     total:a.total+(s.svcCash+s.svcTransfer+s.svcCard+s.svcPoint+s.prodCash+s.prodTransfer+s.prodCard+s.prodPoint+s.gift)
   }),{svcCash:0,svcTransfer:0,svcCard:0,svcPoint:0,prodCash:0,prodTransfer:0,prodCard:0,prodPoint:0,gift:0,svcTotal:0,prodTotal:0,total:0});
 
-  const changeDate = (off) => { const d = new Date(selDate); d.setDate(d.getDate()+off); setSelDate(d.toISOString().split("T")[0]); };
+  const changeDate = (off) => { const d = new Date(selDate); d.setDate(d.getDate()+off); setSelDate(fmtLocal(d)); };
   const handleDelete = (id) => { setData(prev=>({...prev,sales:prev.sales.filter(s=>s.id!==id)})); sb.del("sales",id).catch(console.error); };
   const handleSave = (item) => { setData(prev=>({...prev,sales:[...prev.sales,item]})); sb.insert("sales",toDb("sales",item)).catch(console.error); setShowModal(false); };
   const handleEditSave = (item) => {
@@ -2727,7 +2728,7 @@ function StatsPage({ data, userBranches, isMaster, role }) {
   const chartDays = [];
   for (let i = 6; i >= 0; i--) {
     const d = new Date(); d.setDate(d.getDate()-i);
-    const ds = d.toISOString().split("T")[0];
+    const ds = fmtLocal(d);
     const dayData = data.sales.filter(s=>s.date===ds && ((vb==="all"?userBranches.includes(s.bid):s.bid===vb)));
     const svc = dayData.reduce((a,s)=>a+s.svcCash+s.svcTransfer+s.svcCard+s.svcPoint,0);
     const prod = dayData.reduce((a,s)=>a+s.prodCash+s.prodTransfer+s.prodCard+s.prodPoint,0);
