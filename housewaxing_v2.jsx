@@ -1,3 +1,4 @@
+const { useState, useEffect, useRef, useCallback, useMemo } = React;
 // React hooks provided by HTML wrapper
 
 // ─── Supabase Config ───
@@ -6,8 +7,9 @@ const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 const sbHeaders = {"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json","Prefer":"return=representation"};
 const sb = {
   async get(table, filter="") { 
+    const hasSortCol = ["services","products","service_tags","service_categories"].includes(table);
     const hasCreatedAt = !["rooms","services","products","service_categories","service_tags"].includes(table);
-    const order = hasCreatedAt ? "order=created_at.asc.nullsfirst" : "order=id.asc";
+    const order = hasSortCol ? "order=sort.asc.nullsfirst" : (hasCreatedAt ? "order=created_at.asc.nullsfirst" : "order=id.asc");
     const r=await fetch(`${SB_URL}/rest/v1/${table}?select=*&${order}${filter}`,{headers:sbHeaders}); 
     if(!r.ok){const e=await r.text();console.error(`DB get ${table} failed:`,r.status,e);}
     return r.ok?r.json():[]; 
@@ -27,10 +29,13 @@ const DBMAP = {
   service_tags:{business_id:"businessId",schedule_yn:"scheduleYn",use_yn:"useYn"},
   services:{business_id:"businessId",price_f:"priceF",price_m:"priceM"},
   app_users:{business_id:"businessId",login_id:"loginId",branch_ids:"branches",password:"pw",view_branch_ids:"viewBranches"},
+  branches:{business_id:"businessId",use_yn:"useYn",naver_email:"naverEmail",naver_biz_id:"naverBizId"},
 };
 function fromDb(table,rows){const m=DBMAP[table];if(!m)return rows;return rows.map(row=>{const r={};for(const[k,v]of Object.entries(row)){if(k==="created_at"){r.createdAt=v;continue;}const mk=m[k]||k;r[mk]=v;} 
   // Parse JSON string arrays for app_users
   if(table==="app_users"){try{if(typeof r.branches==="string")r.branches=JSON.parse(r.branches);}catch{r.branches=[];}try{if(typeof r.viewBranches==="string")r.viewBranches=JSON.parse(r.viewBranches);}catch{r.viewBranches=[];}if(!Array.isArray(r.branches))r.branches=[];if(!Array.isArray(r.viewBranches))r.viewBranches=[];}
+  // Parse JSON string arrays for reservations
+  if(table==="reservations"){try{if(typeof r.selectedTags==="string")r.selectedTags=JSON.parse(r.selectedTags);}catch{r.selectedTags=[];}if(!Array.isArray(r.selectedTags))r.selectedTags=[];try{if(typeof r.selectedServices==="string")r.selectedServices=JSON.parse(r.selectedServices);}catch{r.selectedServices=[];}if(!Array.isArray(r.selectedServices))r.selectedServices=[];}
   // Convert booleans to Y/N for service_tags
   if(table==="service_tags"){r.scheduleYn=(r.scheduleYn===true||r.scheduleYn==="Y")?"Y":"N";r.useYn=r.useYn!==false;}
   return r;});}
@@ -102,7 +107,7 @@ async function loadAllFromDb(bizId) {
     sb.getByBiz("reservations",bizId), sb.getByBiz("sales",bizId), sb.getByBiz("service_tags",bizId),
     sb.getByBiz("services",bizId), sb.getByBiz("products",bizId), sb.getByBiz("service_categories",bizId),
   ]);
-  return { branches, rooms, users:fromDb("app_users",users), customers:fromDb("customers",customers),
+  return { branches:fromDb("branches",branches), rooms, users:fromDb("app_users",users), customers:fromDb("customers",customers),
     reservations:fromDb("reservations",reservations), sales:fromDb("sales",sales),
     serviceTags:fromDb("service_tags",serviceTags), services:fromDb("services",services),
     products, cats };
@@ -847,7 +852,7 @@ function Login({ users, onLogin }) {
           <div style={{fontSize:10,color:"#bbb",textAlign:"center",marginTop:4}}>
             슈퍼관리자: admin / 1234 · 업체대표: master / 1234
           </div>
-          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.24</div>
+          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.35</div>
         </div>
       </div>
     </div>
@@ -977,7 +982,8 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   const blocks = data.reservations.filter(r => r.date === selDate && branchesToShow.some(b=>b.id===r.bid));
 
   // Time config - 5min intervals
-  const startHour = 8, endHour = 22;
+  const [startHour, setStartHour] = useState(8);
+  const [endHour, setEndHour] = useState(22);
   const [rowH, setRowH] = useState(14);
   const [colW, setColW] = useState(160);
   const [timeUnit, setTimeUnit] = useState(5); // 분 단위: 5,10,15,30,60
@@ -1319,11 +1325,49 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
         </select>
       </div>
 
+      {/* Pending Reservations Alert */}
+      {(() => {
+        const pendingList = data.reservations.filter(r => r.status === "pending" && branchesToShow.some(b => b.id === r.bid));
+        if (pendingList.length === 0) return null;
+        return <div style={{background:"#FFF3E0",borderBottom:"1px solid #FFB74D",padding:"6px 12px",display:"flex",alignItems:"center",gap:8,flexShrink:0,cursor:"pointer",animation:"pendingBlink 2s infinite"}}
+          onClick={()=>{
+            const first = pendingList[0];
+            setSelDate(first.date);
+            setTimeout(()=>{
+              if(!scrollRef.current) return;
+              const [h,m] = (first.time||"10:00").split(":").map(Number);
+              const y = ((h - startHour) * 60 + m) / timeUnit * rowH + headerH - 60;
+              scrollRef.current.scrollTo({top: Math.max(0, y), behavior:"smooth"});
+            }, 100);
+          }}>
+          <span style={{fontSize:18}}>🔔</span>
+          <div style={{flex:1,minWidth:0}}>
+            <span style={{fontSize:12,fontWeight:700,color:"#E65100"}}>확정대기 {pendingList.length}건</span>
+            <span style={{fontSize:11,color:"#F57C00",marginLeft:8}}>
+              {pendingList.slice(0,3).map(r => {
+                const br = allBranchList.find(b=>b.id===r.bid);
+                return `${br?.short||br?.name||""} ${r.custName||"네이버"} ${r.date.slice(5)}`;
+              }).join(" · ")}
+              {pendingList.length > 3 ? ` 외 ${pendingList.length-3}건` : ""}
+            </span>
+          </div>
+          <span style={{fontSize:11,color:"#E65100",fontWeight:600,flexShrink:0}}>확인 →</span>
+          {(() => {
+            const first = pendingList[0];
+            const br = allBranchList.find(b=>b.id===first.bid);
+            const bizId = br?.naverBizId;
+            return bizId ? <a href={`https://partner.booking.naver.com/bizes/${bizId}/booking-list-view`} target="_blank" rel="noopener noreferrer"
+              onClick={e=>e.stopPropagation()}
+              style={{fontSize:11,color:"#fff",fontWeight:700,background:"#03C75A",padding:"4px 10px",borderRadius:6,textDecoration:"none",flexShrink:0,whiteSpace:"nowrap"}}>네이버 확정</a> : null;
+          })()}
+        </div>;
+      })()}
+
       {/* Timeline Grid */}
       <div ref={scrollRef} className="timeline-scroll" style={{flex:1,overflow:"scroll",position:"relative",minHeight:0}}>
         <div style={{display:"flex",minWidth:"fit-content"}}>
           {/* Time Labels */}
-          <div style={{width:62,flexShrink:0,position:"sticky",left:0,zIndex:20,background:"#fff",borderRight:"1px solid #eee",overflow:"hidden"}}>
+          <div style={{width:62,flexShrink:0,position:"sticky",left:0,zIndex:20,background:"#fff",borderRight:"1px solid #eee"}}>
             <div style={{height:headerH,borderBottom:"1px solid #eee",position:"sticky",top:0,zIndex:25,background:"#fff"}}/>
             <div style={{position:"relative",height:totalRows*rowH,...gridBg}}>
               {timeLabels.map(({i, isHour, m, text}) => {
@@ -1456,30 +1500,36 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
 
       {/* Settings dropdown (fixed, outside overflow) */}
       {showSettings && <>
-        <div style={{position:"fixed",inset:0,zIndex:99}} onClick={()=>setShowSettings(false)}/>
-        <div style={{position:"fixed",top:(() => {const btn=document.getElementById("settings-btn");return btn?(btn.getBoundingClientRect().bottom+4)+"px":"40px"})(),
-          left:(() => {const btn=document.getElementById("settings-btn");return btn?btn.getBoundingClientRect().left+"px":"200px"})(),
-          background:"#fff",border:"1px solid #e0e0e0",borderRadius:8,padding:"12px 14px",boxShadow:"0 8px 24px rgba(0,0,0,.12)",zIndex:100,minWidth:240,display:"flex",flexDirection:"column",gap:8}}>
-          <div style={{fontSize:11,fontWeight:700,color:"#888",marginBottom:2}}>타임라인 설정</div>
+        <div style={{position:"fixed",inset:0,zIndex:99,background:"rgba(0,0,0,.3)"}} onClick={()=>setShowSettings(false)}/>
+        <div style={{position:"fixed",bottom:0,left:0,right:0,
+          background:"#fff",borderRadius:"16px 16px 0 0",padding:"20px 20px 32px",boxShadow:"0 -8px 32px rgba(0,0,0,.15)",zIndex:100,
+          maxHeight:"80vh",overflowY:"auto",
+          "@media(minWidth:600px)":{bottom:"auto",left:"auto",right:"auto"}}}>
+          <div style={{width:36,height:4,borderRadius:2,background:"#ddd",margin:"0 auto 16px"}}/>
+          <div style={{fontSize:14,fontWeight:700,color:"#333",marginBottom:12}}>⚙️ 타임라인 설정</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
           {[
             {label:"줄간격",val:rowH,dec:()=>setRowH(h=>Math.max(6,h-2)),inc:()=>setRowH(h=>Math.min(30,h+2))},
             {label:"열너비",val:colW,dec:()=>setColW(w=>Math.max(80,w-20)),inc:()=>setColW(w=>Math.min(300,w+20))},
             {label:"글자크기",val:blockFs,dec:()=>setBlockFs(f=>Math.max(6,f-1)),inc:()=>setBlockFs(f=>Math.min(16,f+1))},
-            {label:"투명도",val:blockOp,dec:()=>setBlockOp(o=>Math.max(10,o-10)),inc:()=>setBlockOp(o=>Math.min(100,o+10))},
-          ].map(r=><div key={r.label} style={{display:"flex",alignItems:"center",borderTop:"1px solid #f0f0f0",paddingTop:6}}>
-            <span style={{fontSize:11,color:"#555",width:56,flexShrink:0}}>{r.label}</span>
-            <div style={{display:"flex",alignItems:"center",gap:3,marginLeft:"auto"}}>
-              <button onClick={r.dec} style={{width:24,height:24,border:"1px solid #ccc",borderRadius:4,background:"#fff",cursor:"pointer",fontSize:14,fontWeight:700,color:"#555",display:"flex",alignItems:"center",justifyContent:"center",padding:0,fontFamily:"inherit"}}>−</button>
-              <span style={{fontSize:11,color:"#7c7cc8",fontWeight:600,width:32,textAlign:"center"}}>{r.val}{r.label==="투명도"?"%":""}</span>
-              <button onClick={r.inc} style={{width:24,height:24,border:"1px solid #ccc",borderRadius:4,background:"#fff",cursor:"pointer",fontSize:14,fontWeight:700,color:"#555",display:"flex",alignItems:"center",justifyContent:"center",padding:0,fontFamily:"inherit"}}>+</button>
+            {label:"투명도",val:blockOp,suffix:"%",dec:()=>setBlockOp(o=>Math.max(10,o-10)),inc:()=>setBlockOp(o=>Math.min(100,o+10))},
+            {label:"시작시간",val:startHour,suffix:"시",dec:()=>setStartHour(h=>Math.max(0,h-1)),inc:()=>setStartHour(h=>Math.min(endHour-1,h+1))},
+            {label:"종료시간",val:endHour,suffix:"시",dec:()=>setEndHour(h=>Math.max(startHour+1,h-1)),inc:()=>setEndHour(h=>Math.min(24,h+1))},
+          ].map(r=><div key={r.label} style={{background:"#f8f8fc",borderRadius:10,padding:"10px 12px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <span style={{fontSize:12,color:"#555",fontWeight:600}}>{r.label}</span>
+            <div style={{display:"flex",alignItems:"center",gap:6}}>
+              <button onClick={r.dec} style={{width:32,height:32,border:"1px solid #ddd",borderRadius:8,background:"#fff",cursor:"pointer",fontSize:16,fontWeight:700,color:"#555",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>−</button>
+              <span style={{fontSize:13,color:"#7c7cc8",fontWeight:700,width:36,textAlign:"center"}}>{r.val}{r.suffix||""}</span>
+              <button onClick={r.inc} style={{width:32,height:32,border:"1px solid #ddd",borderRadius:8,background:"#fff",cursor:"pointer",fontSize:16,fontWeight:700,color:"#555",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>+</button>
             </div>
           </div>)}
-          <div style={{display:"flex",alignItems:"center",borderTop:"1px solid #f0f0f0",paddingTop:6}}>
-            <span style={{fontSize:11,color:"#555",width:56,flexShrink:0}}>시간단위</span>
-            <div style={{display:"flex",gap:3,marginLeft:"auto"}}>
+          </div>
+          <div style={{background:"#f8f8fc",borderRadius:10,padding:"10px 12px",marginTop:8,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <span style={{fontSize:12,color:"#555",fontWeight:600}}>시간단위</span>
+            <div style={{display:"flex",gap:4}}>
               {[5,10,15,30,60].map(u=><button key={u} onClick={()=>setTimeUnit(u)}
-                style={{padding:"3px 8px",fontSize:10,border:"1px solid #ccc",borderRadius:4,background:timeUnit===u?"#7c7cc815":"#fff",
-                  color:timeUnit===u?"#7c7cc8":"#888",fontWeight:timeUnit===u?700:400,cursor:"pointer",fontFamily:"inherit"}}>{u}</button>)}
+                style={{padding:"6px 12px",fontSize:12,border:"1px solid #ddd",borderRadius:8,background:timeUnit===u?"#7c7cc8":"#fff",
+                  color:timeUnit===u?"#fff":"#888",fontWeight:timeUnit===u?700:400,cursor:"pointer"}}>{u}분</button>)}
             </div>
           </div>
         </div>
@@ -1716,10 +1766,16 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
             <span style={{fontSize:13,fontWeight:700,color:"#E6A700"}}>네이버 취소 예약</span>
             {f.reservationId && <span style={{fontSize:11,color:"#999",marginLeft:"auto"}}>#{f.reservationId}</span>}
           </div>}
-          {f.status === "pending" && <div style={{background:"#FFF3E0",border:"1.5px solid #FF9800",borderRadius:6,padding:"8px 12px",marginBottom:12,display:"flex",alignItems:"center",gap:8,animation:"naverBlink 1.5s infinite"}}>
+          {f.status === "pending" && <div style={{background:"#FFF3E0",border:"1.5px solid #FF9800",borderRadius:6,padding:"8px 12px",marginBottom:12,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",animation:"naverBlink 1.5s infinite"}}>
             <span style={{fontSize:16}}>🔔</span>
-            <span style={{fontSize:13,fontWeight:700,color:"#E65100"}}>네이버 확정대기 — 네이버에서 확정 처리 필요</span>
-            {f.reservationId && <span style={{fontSize:11,color:"#999",marginLeft:"auto"}}>#{f.reservationId}</span>}
+            <span style={{fontSize:13,fontWeight:700,color:"#E65100"}}>네이버 확정대기</span>
+            {(() => {
+              const br = (data.branchSettings||data.branches||[]).find(b=>b.id===branchId);
+              const bizId = br?.naverBizId;
+              return bizId ? <a href={`https://partner.booking.naver.com/bizes/${bizId}/booking-list-view`} target="_blank" rel="noopener noreferrer"
+                onClick={e=>e.stopPropagation()}
+                style={{fontSize:12,color:"#fff",fontWeight:700,background:"#03C75A",padding:"5px 14px",borderRadius:6,textDecoration:"none",marginLeft:"auto"}}>네이버 예약 확정하기 →</a> : <span style={{fontSize:11,color:"#E65100",marginLeft:"auto"}}>네이버에서 확정 처리 필요</span>;
+            })()}
           </div>}
 
           {/* ═══ 기타일정 모드 ═══ */}
@@ -3060,7 +3116,7 @@ function AdminPlaces({ data, setData, bizId }) {
   };
   const applyRow = (id) => {
     const b = branches.find(x=>x.id===id);
-    if(b) sb.update("branches", id, {name:b.name, short:b.short||b.name, phone:b.phone||"", address:b.address||"", color:b.color||"#FFFFFF", use_yn:b.useYn!==false}).catch(console.error);
+    if(b) sb.update("branches", id, {name:b.name, short:b.short||b.name, phone:b.phone||"", address:b.address||"", color:b.color||"#FFFFFF", use_yn:b.useYn!==false, naver_email:b.naverEmail||"", naver_biz_id:b.naverBizId||""}).catch(console.error);
     setEdited(prev => { const n={...prev}; delete n[id]; return n; });
   };
   const addBranch = () => {
@@ -3137,6 +3193,8 @@ function AdminPlaces({ data, setData, bizId }) {
           <th style={{width:100}}>지점명</th>
           <th>주소</th>
           <th style={{width:140}}>전화번호</th>
+          <th style={{width:180}}>네이버연동 Gmail</th>
+          <th style={{width:100}}>네이버 Biz ID</th>
           <th style={{width:80}}>사용구분</th>
           <th style={{width:140}}>표시색상</th>
           <th style={{width:55}}>적용</th>
@@ -3157,6 +3215,8 @@ function AdminPlaces({ data, setData, bizId }) {
               <td><input className="inp" value={b.name} onChange={e=>updateField(b.id,"name",e.target.value)} style={{background:"transparent",border:"1px solid #d0d0d0",fontWeight:600}}/></td>
               <td><input className="inp" value={b.address||""} onChange={e=>updateField(b.id,"address",e.target.value)} style={{background:"transparent",border:"1px solid #d0d0d0",width:"100%"}} placeholder="고객 안내용 주소를 정확히 입력하세요"/></td>
               <td><input className="inp" value={b.phone||""} onChange={e=>updateField(b.id,"phone",e.target.value)} style={{background:"transparent",border:"1px solid #d0d0d0",fontSize:11}}/></td>
+              <td><input className="inp" value={b.naverEmail||""} onChange={e=>updateField(b.id,"naverEmail",e.target.value)} style={{background:"transparent",border:"1px solid #d0d0d0",fontSize:11}} placeholder="example@gmail.com"/></td>
+              <td><input className="inp" value={b.naverBizId||""} onChange={e=>updateField(b.id,"naverBizId",e.target.value)} style={{background:"transparent",border:"1px solid #d0d0d0",fontSize:11}} placeholder="449920"/></td>
               <td>
                 <select className="inp" value={b.useYn!==false?"사용":"미사용"} onChange={e=>updateField(b.id,"useYn",e.target.value==="사용")} style={{background:"transparent",border:"1px solid #d0d0d0",fontSize:11}}>
                   <option>사용</option><option>미사용</option>
@@ -3316,7 +3376,7 @@ function AdminWorkers({ data, setData }) {
 }
 
 // ─── Drag Sort Helper ───
-function useDragSort(items, setItems, sortKey="sort") {
+function useDragSort(items, setItems, sortKey="sort", onComplete) {
   const dragItem = useRef(null);
   const dragOver = useRef(null);
   const onDragStart = (idx) => { dragItem.current = idx; };
@@ -3326,7 +3386,9 @@ function useDragSort(items, setItems, sortKey="sort") {
     const copy = [...items];
     const dragged = copy.splice(dragItem.current, 1)[0];
     copy.splice(dragOver.current, 0, dragged);
-    setItems(copy.map((it, i) => ({ ...it, [sortKey]: i })));
+    const reordered = copy.map((it, i) => ({ ...it, [sortKey]: i }));
+    setItems(reordered);
+    if (onComplete) onComplete(reordered);
     dragItem.current = null;
     dragOver.current = null;
   };
@@ -3347,7 +3409,9 @@ function AdminSaleItems({ data, setData }) {
   const [filterCat, setFilterCat] = useState("all");
   const [delConfirm, setDelConfirm] = useState(null);
   const [selected, setSelected] = useState(new Set());
-  const drag = useDragSort(services, setServices);
+  const drag = useDragSort(services, setServices, "sort", (reordered) => {
+    reordered.forEach(s => sb.update("services", s.id, {sort: s.sort}).catch(console.error));
+  });
 
   const filtered = filterCat === "all" ? services : services.filter(s => s.cat === filterCat);
   const allChecked = filtered.length > 0 && filtered.every(s => selected.has(s.id));
@@ -3475,7 +3539,9 @@ function AdminProductItems({ data, setData }) {
   const [newItem, setNewItem] = useState({ name:"", price:0 });
   const [delConfirm, setDelConfirm] = useState(null);
   const [selected, setSelected] = useState(new Set());
-  const drag = useDragSort(items, setItems);
+  const drag = useDragSort(items, setItems, "sort", (reordered) => {
+    reordered.forEach(s => sb.update("products", s.id, {sort: s.sort}).catch(console.error));
+  });
 
   const allChecked = items.length > 0 && items.every(it => selected.has(it.id));
   const toggleAll = () => { if (allChecked) setSelected(new Set()); else setSelected(new Set(items.map(it => it.id))); };
@@ -3573,7 +3639,9 @@ function AdminServiceTags({ data, setData }) {
   const [delConfirm, setDelConfirm] = useState(null);
   const [selected, setSelected] = useState(new Set());
   const syncTags = (updated) => { setTags(updated); if(setData) setData(prev=>({...prev,serviceTags:updated})); };
-  const drag = useDragSort(tags, syncTags);
+  const drag = useDragSort(tags, syncTags, "sort", (reordered) => {
+    reordered.forEach(s => sb.update("service_tags", s.id, {sort: s.sort}).catch(console.error));
+  });
 
   const allChecked = tags.length > 0 && tags.every(t => selected.has(t.id));
   const toggleAll = () => { if (allChecked) setSelected(new Set()); else setSelected(new Set(tags.map(t => t.id))); };
@@ -3783,3 +3851,6 @@ const CSS = `
     .sidebar-m{display:none!important}
   }
 `;
+
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+
