@@ -3,7 +3,7 @@
 <title>Bliss 관리시스템</title>
 <script>
 (function(){
-  var LOCAL_V="2.20";
+  var LOCAL_V="2.21";
   localStorage.setItem("bliss_v",LOCAL_V);
   fetch("version.txt?t="+Date.now()).then(function(r){return r.text()}).then(function(remote){
     remote=remote.trim();
@@ -867,7 +867,7 @@ function Login({ users, onLogin }) {
           <div style={{fontSize:10,color:"#bbb",textAlign:"center",marginTop:4}}>
             슈퍼관리자: admin / 1234 · 업체대표: master / 1234
           </div>
-          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.20</div>
+          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.21</div>
         </div>
       </div>
     </div>
@@ -1280,8 +1280,10 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
     }
   }, [selDate]);
 
-  // Current time line
-  const now = new Date();
+  // Current time line (updates every minute)
+  const [nowTick, setNowTick] = useState(Date.now());
+  useEffect(() => { const t = setInterval(() => setNowTick(Date.now()), 60000); return () => clearInterval(t); }, []);
+  const now = new Date(nowTick);
   const nowY = selDate === todayStr() ? timeToY(`${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`) : -1;
 
   // Date helpers
@@ -1349,6 +1351,11 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                   <span style={{fontSize:isHour?11:9,fontWeight:isHour?600:400,color:isHour?"#555":"#aaa",whiteSpace:"nowrap",lineHeight:1}}>{text}</span>
                 </div>;
               })}
+              {nowY > 0 && <div style={{position:"absolute",top:nowY-9,left:0,right:0,display:"flex",alignItems:"center",justifyContent:"center",zIndex:6,pointerEvents:"none"}}>
+                <span style={{fontSize:10,fontWeight:800,color:"#e57373",background:"#fff",padding:"1px 3px",borderRadius:3,lineHeight:1}}>
+                  {String(now.getHours()).padStart(2,"0")}:{String(now.getMinutes()).padStart(2,"0")}
+                </span>
+              </div>}
             </div>
           </div>
 
