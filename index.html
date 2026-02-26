@@ -3,7 +3,7 @@
 <title>Bliss 관리시스템</title>
 <script>
 (function(){
-  var LOCAL_V="2.18";
+  var LOCAL_V="2.19";
   localStorage.setItem("bliss_v",LOCAL_V);
   fetch("version.txt?t="+Date.now()).then(function(r){return r.text()}).then(function(remote){
     remote=remote.trim();
@@ -870,7 +870,7 @@ function Login({ users, onLogin }) {
           <div style={{fontSize:10,color:"#bbb",textAlign:"center",marginTop:4}}>
             슈퍼관리자: admin / 1234 · 업체대표: master / 1234
           </div>
-          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.18</div>
+          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.19</div>
         </div>
       </div>
     </div>
@@ -3314,7 +3314,23 @@ function AdminSaleItems({ data, setData }) {
   const [newSvc, setNewSvc] = useState({ cat:cats[0]?.id||"sc1", name:"", dur:20, priceF:0, priceM:0, note:"" });
   const [filterCat, setFilterCat] = useState("all");
   const [delConfirm, setDelConfirm] = useState(null);
+  const [selected, setSelected] = useState(new Set());
   const drag = useDragSort(services, setServices);
+
+  const filtered = filterCat === "all" ? services : services.filter(s => s.cat === filterCat);
+  const allChecked = filtered.length > 0 && filtered.every(s => selected.has(s.id));
+  const toggleAll = () => {
+    if (allChecked) setSelected(new Set());
+    else setSelected(new Set(filtered.map(s => s.id)));
+  };
+  const toggleOne = (id) => setSelected(prev => { const s = new Set(prev); s.has(id)?s.delete(id):s.add(id); return s; });
+  const bulkDelete = () => {
+    if (selected.size === 0) return;
+    if (!window.confirm(selected.size + "개 시술을 삭제하시겠습니까?")) return;
+    selected.forEach(id => sb.del("services", id).catch(console.error));
+    setServices(p => p.filter(s => !selected.has(s.id)).map((s,i) => ({...s, sort:i})));
+    setSelected(new Set());
+  };
 
   const startEdit = (svc) => { setEditId(svc.id); setEditData({...svc}); };
   const saveEdit = () => { 
@@ -3334,7 +3350,6 @@ function AdminSaleItems({ data, setData }) {
     sb.insert("services", {id:svc.id, business_id:_activeBizId, cat:svc.cat, name:svc.name, dur:svc.dur, price_f:svc.priceF, price_m:svc.priceM, note:svc.note||"", sort:svc.sort}).catch(console.error);
     setNewSvc({ cat:cats[0]?.id||"sc1", name:"", dur:20, priceF:0, priceM:0, note:"" }); setShowAdd(false);
   };
-  const filtered = filterCat === "all" ? services : services.filter(s => s.cat === filterCat);
   const inp = (val, onChange, w, type) => <input className="inp" type={type||"text"} value={val}
     onChange={e => onChange(type==="number" ? Number(e.target.value)||0 : e.target.value)}
     style={{width:w||"100%",padding:"4px 6px",fontSize:11,background:"#f8f0f0",border:"1px solid #d0d0d0",textAlign:type==="number"?"right":"left"}} />;
@@ -3344,13 +3359,15 @@ function AdminSaleItems({ data, setData }) {
     const file = e.target.files[0]; if(!file) return;
     const rows = await XL.readFile(file);
     const newSvcs = rows.map((r,i)=>{
-      const cat = cats.find(c=>c.name===(r["카테고리"]||r["category"]));
-      return {id:uid(), cat:cat?.id||cats[0]?.id||"sc1", name:r["시술명"]||r["name"]||"", priceF:Number(r["여성가"]||r["priceF"])||0, priceM:Number(r["남성가"]||r["priceM"])||0, dur:Number(r["소요분"]||r["dur"])||20, note:r["비고"]||"", sort:services.length+i};
+      const catName = String(r["카테고리"]||r["category"]||"").trim();
+      const cat = cats.find(c=>c.name.trim()===catName);
+      return {id:uid(), cat:cat?.id||cats[0]?.id||"sc1", name:String(r["시술명"]||r["name"]||"").trim(), priceF:Number(r["여성가"]||r["priceF"])||0, priceM:Number(r["남성가"]||r["priceM"])||0, dur:Number(r["소요분"]||r["dur"])||20, note:String(r["비고"]||"").trim(), sort:services.length+i};
     }).filter(r=>r.name);
     if(newSvcs.length && window.confirm(newSvcs.length+"개 시술을 추가하시겠습니까?")) {
       setServices(p=>[...p,...newSvcs]);
       newSvcs.forEach(s=>sb.insert("services",{id:s.id, business_id:_activeBizId, cat:s.cat, name:s.name, dur:s.dur, price_f:s.priceF, price_m:s.priceM, note:s.note||"", sort:s.sort}).catch(console.error));
     }
+    e.target.value="";
   };
 
   return <div>
@@ -3366,19 +3383,21 @@ function AdminSaleItems({ data, setData }) {
         <button className="btn-p btn-sm" onClick={addSvc} style={{padding:"6px 16px"}}>등록</button>
       </div>
     </div>}
-    <div style={{display:"flex",gap:3,marginBottom:10,flexWrap:"wrap"}}>
+    <div style={{display:"flex",gap:3,marginBottom:10,flexWrap:"wrap",alignItems:"center"}}>
       <button className={filterCat==="all"?"btn-p btn-sm":"btn-s btn-sm"} onClick={()=>setFilterCat("all")} style={{fontSize:10}}>전체 ({services.length})</button>
       {cats.map(c=><button key={c.id} className={filterCat===c.id?"btn-p btn-sm":"btn-s btn-sm"} onClick={()=>setFilterCat(c.id)} style={{fontSize:10}}>{c.name} ({services.filter(s=>s.cat===c.id).length})</button>)}
+      {selected.size > 0 && <button className="btn-d btn-sm" onClick={bulkDelete} style={{fontSize:10,marginLeft:"auto",padding:"4px 12px"}}>🗑️ 선택 삭제 ({selected.size})</button>}
     </div>
     <div className="tw" style={{maxHeight:"calc(100vh - 340px)",overflow:"auto"}}>
       <table><thead><tr>
-        <th style={{width:25}}></th><th style={{width:30}}>No</th><th style={{width:85}}>카테고리</th><th>시술명</th>
+        <th style={{width:30}}><input type="checkbox" checked={allChecked} onChange={toggleAll}/></th><th style={{width:25}}></th><th style={{width:30}}>No</th><th style={{width:85}}>카테고리</th><th>시술명</th>
         <th style={{width:85,textAlign:"right"}}>여성가</th><th style={{width:85,textAlign:"right"}}>남성가</th>
         <th style={{width:50,textAlign:"center"}}>소요</th><th style={{width:120}}>비고</th><th style={{width:75,textAlign:"center"}}>관리</th>
       </tr></thead><tbody>
         {filtered.map((svc,i)=>{
           const isEdit = editId === svc.id;
           if (isEdit) return <tr key={svc.id} style={{background:"#f5f5ff"}}>
+            <td><input type="checkbox" checked={selected.has(svc.id)} onChange={()=>toggleOne(svc.id)}/></td>
             <td><DragHandle/></td><td style={{color:"#999"}}>{i+1}</td>
             <td><select className="inp" value={editData.cat} onChange={e=>setEditData(p=>({...p,cat:e.target.value}))} style={{width:"100%",padding:"4px 6px",fontSize:11}}>{cats.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></td>
             <td>{inp(editData.name, v=>setEditData(p=>({...p,name:v})))}</td>
@@ -3392,6 +3411,7 @@ function AdminSaleItems({ data, setData }) {
             </div></td>
           </tr>;
           return <tr key={svc.id} draggable onDragStart={()=>drag.onDragStart(i)} onDragEnter={()=>drag.onDragEnter(i)} onDragEnd={drag.onDragEnd} onDragOver={e=>e.preventDefault()}>
+            <td><input type="checkbox" checked={selected.has(svc.id)} onChange={()=>toggleOne(svc.id)}/></td>
             <td><DragHandle/></td>
             <td style={{color:"#999"}}>{i+1}</td>
             <td><span className="badge" style={{background:"#f0f0ff",color:"#7c7cc8"}}>{cats.find(c=>c.id===svc.cat)?.name||"-"}</span></td>
@@ -3422,7 +3442,19 @@ function AdminProductItems({ data, setData }) {
   const [showAdd, setShowAdd] = useState(false);
   const [newItem, setNewItem] = useState({ name:"", price:0 });
   const [delConfirm, setDelConfirm] = useState(null);
+  const [selected, setSelected] = useState(new Set());
   const drag = useDragSort(items, setItems);
+
+  const allChecked = items.length > 0 && items.every(it => selected.has(it.id));
+  const toggleAll = () => { if (allChecked) setSelected(new Set()); else setSelected(new Set(items.map(it => it.id))); };
+  const toggleOne = (id) => setSelected(prev => { const s = new Set(prev); s.has(id)?s.delete(id):s.add(id); return s; });
+  const bulkDelete = () => {
+    if (selected.size === 0) return;
+    if (!window.confirm(selected.size + "개 제품을 삭제하시겠습니까?")) return;
+    selected.forEach(id => sb.del("products", id).catch(console.error));
+    setItems(p => p.filter(it => !selected.has(it.id)).map((it,i) => ({...it, sort:i})));
+    setSelected(new Set());
+  };
 
   const startEdit = (it) => { setEditId(it.id); setEditData({...it}); };
   const saveEdit = () => { 
@@ -3447,11 +3479,12 @@ function AdminProductItems({ data, setData }) {
   const uploadXl = async (e) => {
     const file = e.target.files[0]; if(!file) return;
     const rows = await XL.readFile(file);
-    const newItems = rows.map((r,i)=>({id:uid(), name:r["제품명"]||r["name"]||"", price:Number(r["가격"]||r["price"])||0, cat:"product", sort:items.length+i})).filter(r=>r.name);
+    const newItems = rows.map((r,i)=>({id:uid(), name:String(r["제품명"]||r["name"]||"").trim(), price:Number(r["가격"]||r["price"])||0, cat:"product", sort:items.length+i})).filter(r=>r.name);
     if(newItems.length && window.confirm(newItems.length+"개 제품을 추가하시겠습니까?")) {
       setItems(p=>[...p,...newItems]);
       newItems.forEach(it=>sb.insert("products",{id:it.id, business_id:_activeBizId, name:it.name, price:it.price, cat:"product", sort:it.sort}).catch(console.error));
     }
+    e.target.value="";
   };
 
   return <div>
@@ -3463,12 +3496,14 @@ function AdminProductItems({ data, setData }) {
         <button className="btn-p btn-sm" onClick={addItem} style={{padding:"6px 16px"}}>등록</button>
       </div>
     </div>}
+    {selected.size > 0 && <div style={{marginBottom:8}}><button className="btn-d btn-sm" onClick={bulkDelete} style={{fontSize:10,padding:"4px 12px"}}>🗑️ 선택 삭제 ({selected.size})</button></div>}
     <div className="tw" style={{maxHeight:"calc(100vh - 300px)",overflow:"auto"}}>
       <table><thead><tr>
-        <th style={{width:25}}></th><th style={{width:35}}>No</th><th>제품명</th><th style={{width:100,textAlign:"right"}}>가격</th><th style={{width:80,textAlign:"center"}}>관리</th>
+        <th style={{width:30}}><input type="checkbox" checked={allChecked} onChange={toggleAll}/></th><th style={{width:25}}></th><th style={{width:35}}>No</th><th>제품명</th><th style={{width:100,textAlign:"right"}}>가격</th><th style={{width:80,textAlign:"center"}}>관리</th>
       </tr></thead>
         <tbody>{items.map((it,i)=>{
           if (editId===it.id) return <tr key={it.id} style={{background:"#f5f5ff"}}>
+            <td><input type="checkbox" checked={selected.has(it.id)} onChange={()=>toggleOne(it.id)}/></td>
             <td><DragHandle/></td><td style={{color:"#999"}}>{i+1}</td>
             <td><input className="inp" value={editData.name} onChange={e=>setEditData(p=>({...p,name:e.target.value}))} style={{width:"100%"}}/></td>
             <td><input className="inp" type="number" value={editData.price} onChange={e=>setEditData(p=>({...p,price:Number(e.target.value)||0}))} style={{width:"100%",textAlign:"right"}}/></td>
@@ -3478,6 +3513,7 @@ function AdminProductItems({ data, setData }) {
             </div></td>
           </tr>;
           return <tr key={it.id} draggable onDragStart={()=>drag.onDragStart(i)} onDragEnter={()=>drag.onDragEnter(i)} onDragEnd={drag.onDragEnd} onDragOver={e=>e.preventDefault()}>
+            <td><input type="checkbox" checked={selected.has(it.id)} onChange={()=>toggleOne(it.id)}/></td>
             <td><DragHandle/></td><td style={{color:"#999"}}>{i+1}</td>
             <td style={{fontWeight:500,fontSize:12}}>{it.name}</td>
             <td style={{textAlign:"right",color:"#6bab9e",fontWeight:600,fontSize:12}}>{it.price>0?fmt(it.price)+"원":"-"}</td>
