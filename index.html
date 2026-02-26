@@ -3,7 +3,7 @@
 <title>Bliss 관리시스템</title>
 <script>
 (function(){
-  var LOCAL_V="2.35";
+  var LOCAL_V="2.36";
   localStorage.setItem("bliss_v",LOCAL_V);
   fetch("version.txt?t="+Date.now()).then(function(r){return r.text()}).then(function(remote){
     remote=remote.trim();
@@ -54,7 +54,10 @@ function fromDb(table,rows){const m=DBMAP[table];if(!m)return rows;return rows.m
   // Parse JSON string arrays for app_users
   if(table==="app_users"){try{if(typeof r.branches==="string")r.branches=JSON.parse(r.branches);}catch{r.branches=[];}try{if(typeof r.viewBranches==="string")r.viewBranches=JSON.parse(r.viewBranches);}catch{r.viewBranches=[];}if(!Array.isArray(r.branches))r.branches=[];if(!Array.isArray(r.viewBranches))r.viewBranches=[];}
   // Parse JSON string arrays for reservations
-  if(table==="reservations"){try{if(typeof r.selectedTags==="string")r.selectedTags=JSON.parse(r.selectedTags);}catch{r.selectedTags=[];}if(!Array.isArray(r.selectedTags))r.selectedTags=[];try{if(typeof r.selectedServices==="string")r.selectedServices=JSON.parse(r.selectedServices);}catch{r.selectedServices=[];}if(!Array.isArray(r.selectedServices))r.selectedServices=[];}
+  if(table==="reservations"){try{if(typeof r.selectedTags==="string")r.selectedTags=JSON.parse(r.selectedTags);}catch{r.selectedTags=[];}if(!Array.isArray(r.selectedTags))r.selectedTags=[];try{if(typeof r.selectedServices==="string")r.selectedServices=JSON.parse(r.selectedServices);}catch{r.selectedServices=[];}if(!Array.isArray(r.selectedServices))r.selectedServices=[];
+    // Auto-detect gender from naver memo (옵션: 여) or 남))
+    if(!r.custGender && r.memo){const ml=r.memo.toLowerCase();if(/여\)/.test(r.memo))r.custGender="F";else if(/남\)/.test(r.memo))r.custGender="M";}
+  }
   // Convert booleans to Y/N for service_tags
   if(table==="service_tags"){r.scheduleYn=(r.scheduleYn===true||r.scheduleYn==="Y")?"Y":"N";r.useYn=r.useYn!==false;}
   return r;});}
@@ -871,7 +874,7 @@ function Login({ users, onLogin }) {
           <div style={{fontSize:10,color:"#bbb",textAlign:"center",marginTop:4}}>
             슈퍼관리자: admin / 1234 · 업체대표: master / 1234
           </div>
-          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.35</div>
+          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.36</div>
         </div>
       </div>
     </div>
@@ -1074,7 +1077,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       item.custId = newCustId;
       const newCust = {
         id: newCustId, bid: item.bid, name: item.custName, phone: item.custPhone || "",
-        gender: item.custGender || "F", visits: 0, lastVisit: null, memo: "",
+        gender: item.custGender || "", visits: 0, lastVisit: null, memo: "",
         custNum: String(50000 + Math.floor(Math.random() * 10000))
       };
       setData(prev => ({ ...prev, customers: [...prev.customers, newCust] }));
@@ -1455,7 +1458,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                             {isNaverCancelled && <span style={{fontSize:Math.max(6,blockFs-2),padding:"1px 3px",borderRadius:2,background:"#E6A700",color:"#fff",fontWeight:700,lineHeight:1,flexShrink:0}}>네이버취소</span>}
                             {isNaverPending && <span style={{fontSize:Math.max(6,blockFs-2),padding:"1px 3px",borderRadius:2,background:"#FF9800",color:"#fff",fontWeight:700,lineHeight:1,flexShrink:0,animation:"pendingBlink 1.5s infinite"}}>확정대기</span>}
                             {block.isNewCust && <span style={{fontSize:Math.max(6,blockFs-2),padding:"1px 3px",borderRadius:2,background:"#e57373",color:"#fff",fontWeight:700,lineHeight:1,flexShrink:0}}>신규</span>}
-                            <span style={{fontWeight:600,color:isNaverCancelled?"#999":"#333",overflow:"hidden",textOverflow:"ellipsis",textDecoration:isNaverCancelled?"line-through":"none"}}><span style={{color:block.custGender==="M"?"#4a7cc8":"#e57373"}}>{block.custGender==="M"?"남":"여"}</span> {block.custName}</span>
+                            <span style={{fontWeight:600,color:isNaverCancelled?"#999":"#333",overflow:"hidden",textOverflow:"ellipsis",textDecoration:isNaverCancelled?"line-through":"none"}}>{block.custGender && <span style={{color:block.custGender==="M"?"#4a7cc8":"#e57373"}}>{block.custGender==="M"?"남":"여"}</span>} {block.custName}</span>
                           </div>
                           {block.selectedTags?.length>0 && <div style={{display:"flex",flexWrap:"wrap",gap:2,marginTop:1}}>
                             {block.selectedTags.slice(0,3).map(tid=>{const tg=tags.find(t=>t.id===tid);return tg?<span key={tid} style={{fontSize:Math.max(6,blockFs-2),padding:"0 3px",borderRadius:2,background:tg.color?tg.color+"25":"#7c7cc815",color:tg.color||"#7c7cc8",fontWeight:600}}>{tg.name}</span>:null})}
@@ -1511,7 +1514,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
         background:"#7c7cc8",color:"#fff",borderRadius:6,fontSize:10,fontWeight:700,
         boxShadow:"0 8px 24px rgba(116,141,174,.35)",pointerEvents:"none",zIndex:100,opacity:.9}}>
         <div>{dragBlock.time} → {dragSnap?.time||"?"}</div>
-        <div style={{fontWeight:500,fontSize:9,opacity:.85}}><span style={{color:dragBlock.custGender==="M"?"#4a7cc8":"#e57373"}}>{dragBlock.custGender==="M"?"남":"여"}</span> {dragBlock.custName}</div>
+        <div style={{fontWeight:500,fontSize:9,opacity:.85}}>{dragBlock.custGender && <span style={{color:dragBlock.custGender==="M"?"#4a7cc8":"#e57373"}}>{dragBlock.custGender==="M"?"남":"여"}</span>} {dragBlock.custName}</div>
         <div style={{fontSize:8,opacity:.7}}>{allRooms.find(r=>r.id===dragSnap?.roomId)?.name||""}</div>
       </div>}
 
@@ -1631,7 +1634,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
   const BASE_DUR = 5; // 기본 예약시간 5분
   const defaultEnd = () => { const t = item?.time||"10:00"; const [h,m] = t.split(":").map(Number); const em = m + (item?.dur||BASE_DUR); return `${String(h+Math.floor(em/60)).padStart(2,"0")}:${String(em%60).padStart(2,"0")}`; };
   const [f, setF] = useState(isNew && !item?.id ? {
-    id: uid(), bid: branchId, roomId: item?.roomId||branchRooms[0]?.id, custId:null, custName:"", custPhone:"", custGender:"F",
+    id: uid(), bid: branchId, roomId: item?.roomId||branchRooms[0]?.id, custId:null, custName:"", custPhone:"", custGender:"",
     staffId: branchStaff[0]?.id, serviceId: SERVICES[0]?.id, date: item?.date||todayStr(), time: item?.time||"10:00",
     endDate: item?.date||todayStr(), endTime: defaultEnd(),
     dur: BASE_DUR, status:"confirmed", memo:"", type:"reservation",
@@ -1643,7 +1646,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
     const extractedTs = memoLines.filter(l => /^\[등록:|^\[수정:/.test(l.trim()));
     const cleanMemo = memoLines.filter(l => !/^\[등록:|^\[수정:/.test(l.trim())).join("\n").trim();
     const mergedTs = existingTs.length > 0 ? existingTs : extractedTs;
-    return {...item, memo: cleanMemo, custGender: item?.custGender || "F", endDate: item?.date||todayStr(), endTime: defaultEnd(),
+    return {...item, memo: cleanMemo, custGender: item?.custGender || "", endDate: item?.date||todayStr(), endTime: defaultEnd(),
       selectedTags: item?.selectedTags || [], isNewCust: false, tsLog: mergedTs,
       selectedServices: item?.selectedServices || [],
       repeat: item?.repeat || "none", repeatUntil: item?.repeatUntil || ""};
@@ -1877,7 +1880,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
                   {custResults.map(c=><div key={c.id} onClick={()=>{selectCust(c);setF(p=>({...p,isNewCust:false}))}}
                     style={{padding:"8px 12px",cursor:"pointer",borderBottom:"1px solid #e0e0e030",display:"flex",gap:8,alignItems:"center",fontSize:12}}
                     onMouseOver={e=>e.currentTarget.style.background="#f0f0f0"} onMouseOut={e=>e.currentTarget.style.background="transparent"}>
-                    <span className="badge" style={{background:c.gender==="M"?"#e0edf5":"#fce8e8",color:c.gender==="M"?"#7c7cc8":"#e57373",fontSize:9}}>{c.gender==="M"?"남":"여"}</span>
+                    <span className="badge" style={{background:c.gender==="M"?"#e0edf5":c.gender==="F"?"#fce8e8":"#f0f0f0",color:c.gender==="M"?"#7c7cc8":c.gender==="F"?"#e57373":"#999",fontSize:9}}>{c.gender==="M"?"남":c.gender==="F"?"여":"-"}</span>
                     <span style={{fontWeight:600}}>{c.name}</span>
                     <span style={{color:"#888"}}>{c.phone}</span>
                   </div>)}
@@ -1900,9 +1903,9 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
                 style={f.isNewCust?{borderColor:"#e57373",background:"#d0d0d008"}:{}}/></FLD>
               <FLD label="성별">
                 <div style={{display:"flex",gap:2,height:34}}>
-                  <button onClick={()=>set("custGender","F")} style={{flex:1,fontSize:11,fontWeight:700,border:"1px solid #e57373",borderRadius:"4px 0 0 4px",cursor:"pointer",fontFamily:"inherit",
+                  <button onClick={()=>set("custGender",f.custGender==="F"?"":"F")} style={{flex:1,fontSize:11,fontWeight:700,border:"1px solid #e57373",borderRadius:"4px 0 0 4px",cursor:"pointer",fontFamily:"inherit",
                     background:f.custGender==="F"?"#e57373":"transparent",color:f.custGender==="F"?"#fff":"#e57373"}}>여</button>
-                  <button onClick={()=>set("custGender","M")} style={{flex:1,fontSize:11,fontWeight:700,border:"1px solid #7c7cc8",borderRadius:"0 4px 4px 0",cursor:"pointer",fontFamily:"inherit",
+                  <button onClick={()=>set("custGender",f.custGender==="M"?"":"M")} style={{flex:1,fontSize:11,fontWeight:700,border:"1px solid #7c7cc8",borderRadius:"0 4px 4px 0",cursor:"pointer",fontFamily:"inherit",
                     background:f.custGender==="M"?"#7c7cc8":"transparent",color:f.custGender==="M"?"#fff":"#7c7cc8"}}>남</button>
                 </div>
               </FLD>
@@ -2544,13 +2547,13 @@ function ReservationList({ data, setData, userBranches, isMaster }) {
             const staff = STAFF.find(s=>s.id===r.staffId);
             const br = (data.branches||[]).find(b=>b.id===r.bid);
             const room = ROOMS.find(rm=>rm.id===r.roomId);
-            const g = r.custGender || "F";
+            const g = r.custGender || "";
             return <tr key={r.id}>
               <td style={{fontWeight:700,color:"#7c7cc8"}}>{r.time}</td>
               <td>{br?.short}</td>
               <td>{room?.name||"-"}</td>
               <td style={{fontWeight:600}}>{r.custName||"-"}</td>
-              <td><span className="badge" style={{background:g==="M"?"#e0edf5":"#fce8e8",color:g==="M"?"#7c7cc8":"#e57373",fontSize:10}}>{g==="M"?"남":"여"}</span></td>
+              <td>{g ? <span className="badge" style={{background:g==="M"?"#e0edf5":"#fce8e8",color:g==="M"?"#7c7cc8":"#e57373",fontSize:10}}>{g==="M"?"남":"여"}</span> : <span style={{color:"#ccc",fontSize:10}}>-</span>}</td>
               <td style={{color:"#7c7cc8"}}>{r.custPhone||"-"}</td>
               <td>{svc?.name||"-"}</td>
               <td>{staff?.dn||"-"}</td>
@@ -2644,7 +2647,7 @@ function SalesPage({ data, setData, userBranches, isMaster }) {
             return <tr key={s.id}>
               <td>{i+1}</td><td>{br?.short}</td>
               <td>{s.custNum}</td>
-              <td style={{fontWeight:600}}><span style={{color:s.custGender==="M"?"#4a7cc8":"#e57373",marginRight:3}}>{s.custGender==="M"?"남":"여"}</span>{s.custName||"-"}</td>
+              <td style={{fontWeight:600}}>{s.custGender && <span style={{color:s.custGender==="M"?"#4a7cc8":"#e57373",marginRight:3}}>{s.custGender==="M"?"남":"여"}</span>}{s.custName||"-"}</td>
               <td style={{color:"#7c7cc8",fontSize:11}}>{s.custPhone}</td>
               <td>{s.staffName}</td>
               <td style={{fontWeight:700,color:"#5cb5c5"}}>{fmt(st+pt+(s.gift||0))}</td>

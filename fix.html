@@ -42,6 +42,13 @@ function extractNameFromMemo(memo) {
   return m ? m[1].trim() : null;
 }
 
+function detectGenderFromMemo(memo) {
+  if (!memo) return null;
+  if (/여\)/.test(memo)) return "F";
+  if (/남\)/.test(memo)) return "M";
+  return null;
+}
+
 async function scan() {
   fixes = [];
   document.getElementById('log').textContent = '';
@@ -50,26 +57,35 @@ async function scan() {
 
   try {
     // Get all naver reservations (ones with memo containing 네이버)
-    const r = await fetch(`${SB_URL}/rest/v1/reservations?select=id,cust_name,memo,date&memo=like.*네이버*&order=date.desc&limit=500`, {headers: H});
+    const r = await fetch(`${SB_URL}/rest/v1/reservations?select=id,cust_name,cust_gender,memo,date&memo=like.*네이버*&order=date.desc&limit=500`, {headers: H});
     const data = await r.json();
     log(`총 ${data.length}건의 네이버 예약 발견`);
 
     for (const row of data) {
       const nameFromMemo = extractNameFromMemo(row.memo);
-      if (!nameFromMemo) continue;
+      const genderFromMemo = detectGenderFromMemo(row.memo);
       
       const currentName = row.cust_name || '';
+      const currentGender = row.cust_gender || '';
       
-      // Check if name is different (broken)
-      if (currentName !== nameFromMemo) {
+      const needNameFix = nameFromMemo && currentName !== nameFromMemo;
+      const needGenderFix = genderFromMemo && currentGender !== genderFromMemo;
+      
+      if (needNameFix || needGenderFix) {
         fixes.push({
           id: row.id,
           date: row.date,
           oldName: currentName,
-          newName: nameFromMemo,
-          memo: row.memo?.substring(0, 80)
+          newName: needNameFix ? nameFromMemo : currentName,
+          oldGender: currentGender,
+          newGender: needGenderFix ? genderFromMemo : currentGender,
+          fixName: needNameFix,
+          fixGender: needGenderFix
         });
-        log(`❌ [${row.date}] "${currentName}" → "${nameFromMemo}"`);
+        const parts = [];
+        if (needNameFix) parts.push(`이름: "${currentName}" → "${nameFromMemo}"`);
+        if (needGenderFix) parts.push(`성별: "${currentGender||'없음'}" → "${genderFromMemo}"`);
+        log(`❌ [${row.date}] ${parts.join(' | ')}`);
       }
     }
 
@@ -77,10 +93,13 @@ async function scan() {
       document.getElementById('result').innerHTML = '<span class="ok">✅ 모든 이름이 정상입니다. 수정할 항목이 없습니다.</span>';
       document.getElementById('fixBtn').disabled = true;
     } else {
-      let html = `<p><strong>${fixes.length}건</strong>의 이름이 깨져있습니다:</p>`;
-      html += fixes.map(f => 
-        `<div class="row"><span style="width:90px;flex-shrink:0">${f.date}</span><span class="old" style="width:80px">${f.oldName || '(빈값)'}</span><span>→</span><span class="new">${f.newName}</span></div>`
-      ).join('');
+      let html = `<p><strong>${fixes.length}건</strong>의 수정이 필요합니다:</p>`;
+      html += fixes.map(f => {
+        let detail = '';
+        if (f.fixName) detail += `<span class="old">${f.oldName || '(빈값)'}</span> → <span class="new">${f.newName}</span>`;
+        if (f.fixGender) detail += (f.fixName ? ' | ' : '') + `성별: <span class="old">${f.oldGender||'-'}</span> → <span class="new">${f.newGender==='F'?'여':'남'}</span>`;
+        return `<div class="row"><span style="width:90px;flex-shrink:0">${f.date}</span>${detail}</div>`;
+      }).join('');
       document.getElementById('result').innerHTML = html;
       document.getElementById('fixBtn').disabled = false;
     }
@@ -100,14 +119,20 @@ async function fix() {
 
   for (const f of fixes) {
     try {
+      const patch = {};
+      if (f.fixName) patch.cust_name = f.newName;
+      if (f.fixGender) patch.cust_gender = f.newGender;
       const r = await fetch(`${SB_URL}/rest/v1/reservations?id=eq.${f.id}`, {
         method: 'PATCH',
         headers: H,
-        body: JSON.stringify({ cust_name: f.newName })
+        body: JSON.stringify(patch)
       });
       if (r.ok) {
         ok++;
-        log(`✅ [${f.date}] ${f.oldName} → ${f.newName}`);
+        const parts = [];
+        if (f.fixName) parts.push(`이름: ${f.oldName} → ${f.newName}`);
+        if (f.fixGender) parts.push(`성별: ${f.oldGender||'-'} → ${f.newGender}`);
+        log(`✅ [${f.date}] ${parts.join(' | ')}`);
       } else {
         fail++;
         const e = await r.text();
