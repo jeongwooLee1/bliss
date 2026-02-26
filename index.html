@@ -3,7 +3,7 @@
 <title>Bliss 관리시스템</title>
 <script>
 (function(){
-  var LOCAL_V="2.32";
+  var LOCAL_V="2.33";
   localStorage.setItem("bliss_v",LOCAL_V);
   fetch("version.txt?t="+Date.now()).then(function(r){return r.text()}).then(function(remote){
     remote=remote.trim();
@@ -1352,8 +1352,12 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
           onClick={()=>{
             const first = pendingList[0];
             setSelDate(first.date);
-            setModalData({...first, readOnly: !canEdit(first.bid)});
-            setShowModal(true);
+            setTimeout(()=>{
+              if(!scrollRef.current) return;
+              const [h,m] = (first.time||"10:00").split(":").map(Number);
+              const y = ((h - startHour) * 60 + m) / timeUnit * rowH + headerH - 60;
+              scrollRef.current.scrollTo({top: Math.max(0, y), behavior:"smooth"});
+            }, 100);
           }}>
           <span style={{fontSize:18}}>🔔</span>
           <div style={{flex:1,minWidth:0}}>
