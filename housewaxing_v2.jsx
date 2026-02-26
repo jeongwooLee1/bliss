@@ -847,7 +847,7 @@ function Login({ users, onLogin }) {
           <div style={{fontSize:10,color:"#bbb",textAlign:"center",marginTop:4}}>
             슈퍼관리자: admin / 1234 · 업체대표: master / 1234
           </div>
-          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.23</div>
+          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.24</div>
         </div>
       </div>
     </div>
@@ -1895,7 +1895,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
               </button>
               {showSvcPicker && <div style={{marginTop:6,border:"1px solid #e0e0e0",borderRadius:8,background:"#fff",maxHeight:280,overflow:"auto"}}>
                 {CATS.map(cat=>{
-                  const catSvcs = SVC_LIST.filter(s=>s.cat===cat.id);
+                  const catSvcs = SVC_LIST.filter(s=>s.cat===cat.id).sort((a,b)=>a.sort-b.sort);
                   if(catSvcs.length===0) return null;
                   const genderFilter = f.custGender==="M" ? s=>s.priceM>0||s.priceM===0&&s.priceF===0 : s=>s.priceF>0||s.priceF===0&&s.priceM===0;
                   return <div key={cat.id}>
