@@ -3,7 +3,7 @@
 <title>Bliss 관리시스템</title>
 <script>
 (function(){
-  var LOCAL_V="2.29";
+  var LOCAL_V="2.30";
   localStorage.setItem("bliss_v",LOCAL_V);
   fetch("version.txt?t="+Date.now()).then(function(r){return r.text()}).then(function(remote){
     remote=remote.trim();
@@ -1481,32 +1481,36 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
 
       {/* Settings dropdown (fixed, outside overflow) */}
       {showSettings && <>
-        <div style={{position:"fixed",inset:0,zIndex:99}} onClick={()=>setShowSettings(false)}/>
-        <div style={{position:"fixed",top:(() => {const btn=document.getElementById("settings-btn");return btn?(btn.getBoundingClientRect().bottom+4)+"px":"40px"})(),
-          left:(() => {const btn=document.getElementById("settings-btn");return btn?btn.getBoundingClientRect().left+"px":"200px"})(),
-          background:"#fff",border:"1px solid #e0e0e0",borderRadius:8,padding:"12px 14px",boxShadow:"0 8px 24px rgba(0,0,0,.12)",zIndex:100,minWidth:240,display:"flex",flexDirection:"column",gap:8}}>
-          <div style={{fontSize:11,fontWeight:700,color:"#888",marginBottom:2}}>타임라인 설정</div>
+        <div style={{position:"fixed",inset:0,zIndex:99,background:"rgba(0,0,0,.3)"}} onClick={()=>setShowSettings(false)}/>
+        <div style={{position:"fixed",bottom:0,left:0,right:0,
+          background:"#fff",borderRadius:"16px 16px 0 0",padding:"20px 20px 32px",boxShadow:"0 -8px 32px rgba(0,0,0,.15)",zIndex:100,
+          maxHeight:"80vh",overflowY:"auto",
+          "@media(minWidth:600px)":{bottom:"auto",left:"auto",right:"auto"}}}>
+          <div style={{width:36,height:4,borderRadius:2,background:"#ddd",margin:"0 auto 16px"}}/>
+          <div style={{fontSize:14,fontWeight:700,color:"#333",marginBottom:12}}>⚙️ 타임라인 설정</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
           {[
             {label:"줄간격",val:rowH,dec:()=>setRowH(h=>Math.max(6,h-2)),inc:()=>setRowH(h=>Math.min(30,h+2))},
             {label:"열너비",val:colW,dec:()=>setColW(w=>Math.max(80,w-20)),inc:()=>setColW(w=>Math.min(300,w+20))},
             {label:"글자크기",val:blockFs,dec:()=>setBlockFs(f=>Math.max(6,f-1)),inc:()=>setBlockFs(f=>Math.min(16,f+1))},
-            {label:"투명도",val:blockOp,dec:()=>setBlockOp(o=>Math.max(10,o-10)),inc:()=>setBlockOp(o=>Math.min(100,o+10))},
+            {label:"투명도",val:blockOp,suffix:"%",dec:()=>setBlockOp(o=>Math.max(10,o-10)),inc:()=>setBlockOp(o=>Math.min(100,o+10))},
             {label:"시작시간",val:startHour,suffix:"시",dec:()=>setStartHour(h=>Math.max(0,h-1)),inc:()=>setStartHour(h=>Math.min(endHour-1,h+1))},
             {label:"종료시간",val:endHour,suffix:"시",dec:()=>setEndHour(h=>Math.max(startHour+1,h-1)),inc:()=>setEndHour(h=>Math.min(24,h+1))},
-          ].map(r=><div key={r.label} style={{display:"flex",alignItems:"center",borderTop:"1px solid #f0f0f0",paddingTop:6}}>
-            <span style={{fontSize:11,color:"#555",width:56,flexShrink:0}}>{r.label}</span>
-            <div style={{display:"flex",alignItems:"center",gap:3,marginLeft:"auto"}}>
-              <button onClick={r.dec} style={{width:24,height:24,border:"1px solid #ccc",borderRadius:4,background:"#fff",cursor:"pointer",fontSize:14,fontWeight:700,color:"#555",display:"flex",alignItems:"center",justifyContent:"center",padding:0,fontFamily:"inherit"}}>−</button>
-              <span style={{fontSize:11,color:"#7c7cc8",fontWeight:600,width:32,textAlign:"center"}}>{r.val}{r.suffix||r.label==="투명도"?r.suffix||"%":""}</span>
-              <button onClick={r.inc} style={{width:24,height:24,border:"1px solid #ccc",borderRadius:4,background:"#fff",cursor:"pointer",fontSize:14,fontWeight:700,color:"#555",display:"flex",alignItems:"center",justifyContent:"center",padding:0,fontFamily:"inherit"}}>+</button>
+          ].map(r=><div key={r.label} style={{background:"#f8f8fc",borderRadius:10,padding:"10px 12px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <span style={{fontSize:12,color:"#555",fontWeight:600}}>{r.label}</span>
+            <div style={{display:"flex",alignItems:"center",gap:6}}>
+              <button onClick={r.dec} style={{width:32,height:32,border:"1px solid #ddd",borderRadius:8,background:"#fff",cursor:"pointer",fontSize:16,fontWeight:700,color:"#555",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>−</button>
+              <span style={{fontSize:13,color:"#7c7cc8",fontWeight:700,width:36,textAlign:"center"}}>{r.val}{r.suffix||""}</span>
+              <button onClick={r.inc} style={{width:32,height:32,border:"1px solid #ddd",borderRadius:8,background:"#fff",cursor:"pointer",fontSize:16,fontWeight:700,color:"#555",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>+</button>
             </div>
           </div>)}
-          <div style={{display:"flex",alignItems:"center",borderTop:"1px solid #f0f0f0",paddingTop:6}}>
-            <span style={{fontSize:11,color:"#555",width:56,flexShrink:0}}>시간단위</span>
-            <div style={{display:"flex",gap:3,marginLeft:"auto"}}>
+          </div>
+          <div style={{background:"#f8f8fc",borderRadius:10,padding:"10px 12px",marginTop:8,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <span style={{fontSize:12,color:"#555",fontWeight:600}}>시간단위</span>
+            <div style={{display:"flex",gap:4}}>
               {[5,10,15,30,60].map(u=><button key={u} onClick={()=>setTimeUnit(u)}
-                style={{padding:"3px 8px",fontSize:10,border:"1px solid #ccc",borderRadius:4,background:timeUnit===u?"#7c7cc815":"#fff",
-                  color:timeUnit===u?"#7c7cc8":"#888",fontWeight:timeUnit===u?700:400,cursor:"pointer",fontFamily:"inherit"}}>{u}</button>)}
+                style={{padding:"6px 12px",fontSize:12,border:"1px solid #ddd",borderRadius:8,background:timeUnit===u?"#7c7cc8":"#fff",
+                  color:timeUnit===u?"#fff":"#888",fontWeight:timeUnit===u?700:400,cursor:"pointer"}}>{u}분</button>)}
             </div>
           </div>
         </div>
