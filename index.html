@@ -1,7 +1,7 @@
 <!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/><meta http-equiv="Pragma" content="no-cache"/><meta http-equiv="Expires" content="0"/>
 <title>Bliss 관리시스템</title>
-<script>(function(){var V="2.16";var prev=localStorage.getItem("bliss_v");if(prev&&prev!==V){localStorage.setItem("bliss_v",V);location.reload(true);}else{localStorage.setItem("bliss_v",V);}})();</script>
+<script>(function(){var V="2.17";var prev=localStorage.getItem("bliss_v");if(prev&&prev!==V){localStorage.setItem("bliss_v",V);location.reload(true);}else{localStorage.setItem("bliss_v",V);}})();</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
@@ -858,7 +858,7 @@ function Login({ users, onLogin }) {
           <div style={{fontSize:10,color:"#bbb",textAlign:"center",marginTop:4}}>
             슈퍼관리자: admin / 1234 · 업체대표: master / 1234
           </div>
-          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.16</div>
+          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.17</div>
         </div>
       </div>
     </div>
@@ -914,8 +914,8 @@ function Sidebar({ nav, page, setPage, role, branchNames, onLogout, bizName="", 
 // TIMELINE VIEW (myCream-style)
 // ═══════════════════════════════════════════
 function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, currentUser, setPage, bizId }) {
-  const SVC_LIST = data?.services || [];
-  const PROD_LIST = data?.products || [];
+  const SVC_LIST = (data?.services?.length ? data.services : INIT_SERVICES);
+  const PROD_LIST = (data?.products?.length ? data.products : PRODUCTS);
   const [selDate, setSelDate] = useState(todayStr());
   const [showModal, setShowModal] = useState(false);
   const [modalData, setModalData] = useState(null);
@@ -1544,9 +1544,9 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
 }
 
 function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBranch, userBranches, data, setData, setPage }) {
-  const SVC_LIST = data?.services || [];
-  const PROD_LIST = data?.products || [];
-  const CATS = data?.categories || SERVICE_CATS;
+  const SVC_LIST = (data?.services?.length ? data.services : INIT_SERVICES);
+  const PROD_LIST = (data?.products?.length ? data.products : PRODUCTS);
+  const CATS = (data?.categories?.length ? data.categories : SERVICE_CATS);
   const isNew = !item?.id || item?.roomId;
   const isReadOnly = item?.readOnly || false;
   const branchId = item?.bid || selBranch;
@@ -2026,9 +2026,9 @@ const SaleDiscountRow = React.memo(function SaleDiscountRow({ id, checked, amoun
 // DETAILED SALE FORM (매출 입력 - 시술상품/제품 연동)
 // ═══════════════════════════════════════════
 function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setData }) {
-  const SVC_LIST = data?.services || [];
-  const PROD_LIST = data?.products || [];
-  const CATS = data?.categories || SERVICE_CATS;
+  const SVC_LIST = (data?.services?.length ? data.services : INIT_SERVICES);
+  const PROD_LIST = (data?.products?.length ? data.products : PRODUCTS);
+  const CATS = (data?.categories?.length ? data.categories : SERVICE_CATS);
   const branchStaff = STAFF.filter(s => s.bid === branchId);
   const [manager, setManager] = useState(reservation?.staffId || branchStaff[0]?.id || "");
   const [selBranch, setSelBranch] = useState(branchId);
@@ -3295,7 +3295,7 @@ const DragHandle = () => <span style={{cursor:"grab",color:"#999",fontSize:14,fl
 function AdminSaleItems({ data, setData }) {
   const [services, setServices] = useState([...(data?.services||INIT_SERVICES)].sort((a,b)=>a.sort-b.sort));
   useEffect(() => { setData(p => ({...p, services})); }, [services]);
-  const cats = data?.categories || SERVICE_CATS;
+  const cats = (data?.categories?.length ? data.categories : SERVICE_CATS);
   const [editId, setEditId] = useState(null);
   const [editData, setEditData] = useState({});
   const [showAdd, setShowAdd] = useState(false);
@@ -3331,9 +3331,9 @@ function AdminSaleItems({ data, setData }) {
   const uploadXl = async (e) => {
     const file = e.target.files[0]; if(!file) return;
     const rows = await XL.readFile(file);
-    const newSvcs = rows.map(r=>{
+    const newSvcs = rows.map((r,i)=>{
       const cat = cats.find(c=>c.name===(r["카테고리"]||r["category"]));
-      return {id:uid(), cat:cat?.id||cats[0]?.id||"sc1", name:r["시술명"]||r["name"]||"", priceF:Number(r["여성가"]||r["priceF"])||0, priceM:Number(r["남성가"]||r["priceM"])||0, dur:Number(r["소요분"]||r["dur"])||20, note:r["비고"]||"", sort:services.length};
+      return {id:uid(), cat:cat?.id||cats[0]?.id||"sc1", name:r["시술명"]||r["name"]||"", priceF:Number(r["여성가"]||r["priceF"])||0, priceM:Number(r["남성가"]||r["priceM"])||0, dur:Number(r["소요분"]||r["dur"])||20, note:r["비고"]||"", sort:services.length+i};
     }).filter(r=>r.name);
     if(newSvcs.length && window.confirm(newSvcs.length+"개 시술을 추가하시겠습니까?")) {
       setServices(p=>[...p,...newSvcs]);
@@ -3435,7 +3435,7 @@ function AdminProductItems({ data, setData }) {
   const uploadXl = async (e) => {
     const file = e.target.files[0]; if(!file) return;
     const rows = await XL.readFile(file);
-    const newItems = rows.map(r=>({id:uid(), name:r["제품명"]||r["name"]||"", price:Number(r["가격"]||r["price"])||0, cat:"product", sort:items.length})).filter(r=>r.name);
+    const newItems = rows.map((r,i)=>({id:uid(), name:r["제품명"]||r["name"]||"", price:Number(r["가격"]||r["price"])||0, cat:"product", sort:items.length+i})).filter(r=>r.name);
     if(newItems.length && window.confirm(newItems.length+"개 제품을 추가하시겠습니까?")) {
       setItems(p=>[...p,...newItems]);
       newItems.forEach(it=>sb.insert("products",{id:it.id, business_id:_activeBizId, name:it.name, price:it.price, cat:"product", sort:it.sort}).catch(console.error));
