@@ -3,7 +3,7 @@
 <title>Bliss 관리시스템</title>
 <script>
 (function(){
-  var LOCAL_V="2.25";
+  var LOCAL_V="2.26";
   localStorage.setItem("bliss_v",LOCAL_V);
   fetch("version.txt?t="+Date.now()).then(function(r){return r.text()}).then(function(remote){
     remote=remote.trim();
@@ -26,8 +26,9 @@ const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 const sbHeaders = {"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json","Prefer":"return=representation"};
 const sb = {
   async get(table, filter="") { 
+    const hasSortCol = ["services","products","service_tags","service_categories"].includes(table);
     const hasCreatedAt = !["rooms","services","products","service_categories","service_tags"].includes(table);
-    const order = hasCreatedAt ? "order=created_at.asc.nullsfirst" : "order=id.asc";
+    const order = hasSortCol ? "order=sort.asc.nullsfirst" : (hasCreatedAt ? "order=created_at.asc.nullsfirst" : "order=id.asc");
     const r=await fetch(`${SB_URL}/rest/v1/${table}?select=*&${order}${filter}`,{headers:sbHeaders}); 
     if(!r.ok){const e=await r.text();console.error(`DB get ${table} failed:`,r.status,e);}
     return r.ok?r.json():[]; 
@@ -867,7 +868,7 @@ function Login({ users, onLogin }) {
           <div style={{fontSize:10,color:"#bbb",textAlign:"center",marginTop:4}}>
             슈퍼관리자: admin / 1234 · 업체대표: master / 1234
           </div>
-          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.25</div>
+          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.26</div>
         </div>
       </div>
     </div>
