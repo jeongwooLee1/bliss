@@ -3,7 +3,7 @@
 <title>Bliss 관리시스템</title>
 <script>
 (function(){
-  var LOCAL_V="2.33";
+  var LOCAL_V="2.34";
   localStorage.setItem("bliss_v",LOCAL_V);
   fetch("version.txt?t="+Date.now()).then(function(r){return r.text()}).then(function(remote){
     remote=remote.trim();
@@ -48,7 +48,7 @@ const DBMAP = {
   service_tags:{business_id:"businessId",schedule_yn:"scheduleYn",use_yn:"useYn"},
   services:{business_id:"businessId",price_f:"priceF",price_m:"priceM"},
   app_users:{business_id:"businessId",login_id:"loginId",branch_ids:"branches",password:"pw",view_branch_ids:"viewBranches"},
-  branches:{business_id:"businessId",use_yn:"useYn",naver_email:"naverEmail"},
+  branches:{business_id:"businessId",use_yn:"useYn",naver_email:"naverEmail",naver_biz_id:"naverBizId"},
 };
 function fromDb(table,rows){const m=DBMAP[table];if(!m)return rows;return rows.map(row=>{const r={};for(const[k,v]of Object.entries(row)){if(k==="created_at"){r.createdAt=v;continue;}const mk=m[k]||k;r[mk]=v;} 
   // Parse JSON string arrays for app_users
@@ -1371,6 +1371,14 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
             </span>
           </div>
           <span style={{fontSize:11,color:"#E65100",fontWeight:600,flexShrink:0}}>확인 →</span>
+          {(() => {
+            const first = pendingList[0];
+            const br = (data.branchSettings||data.branches||[]).find(b=>b.id===first.bid);
+            const bizId = br?.naverBizId;
+            return bizId ? <a href={`https://partner.booking.naver.com/bizes/${bizId}/booking-list-view`} target="_blank" rel="noopener noreferrer"
+              onClick={e=>e.stopPropagation()}
+              style={{fontSize:11,color:"#fff",fontWeight:700,background:"#03C75A",padding:"4px 10px",borderRadius:6,textDecoration:"none",flexShrink:0,whiteSpace:"nowrap"}}>네이버 확정</a> : null;
+          })()}
         </div>;
       })()}
 
@@ -3121,7 +3129,7 @@ function AdminPlaces({ data, setData, bizId }) {
   };
   const applyRow = (id) => {
     const b = branches.find(x=>x.id===id);
-    if(b) sb.update("branches", id, {name:b.name, short:b.short||b.name, phone:b.phone||"", address:b.address||"", color:b.color||"#FFFFFF", use_yn:b.useYn!==false, naver_email:b.naverEmail||""}).catch(console.error);
+    if(b) sb.update("branches", id, {name:b.name, short:b.short||b.name, phone:b.phone||"", address:b.address||"", color:b.color||"#FFFFFF", use_yn:b.useYn!==false, naver_email:b.naverEmail||"", naver_biz_id:b.naverBizId||""}).catch(console.error);
     setEdited(prev => { const n={...prev}; delete n[id]; return n; });
   };
   const addBranch = () => {
@@ -3199,6 +3207,7 @@ function AdminPlaces({ data, setData, bizId }) {
           <th>주소</th>
           <th style={{width:140}}>전화번호</th>
           <th style={{width:180}}>네이버연동 Gmail</th>
+          <th style={{width:100}}>네이버 Biz ID</th>
           <th style={{width:80}}>사용구분</th>
           <th style={{width:140}}>표시색상</th>
           <th style={{width:55}}>적용</th>
@@ -3220,6 +3229,7 @@ function AdminPlaces({ data, setData, bizId }) {
               <td><input className="inp" value={b.address||""} onChange={e=>updateField(b.id,"address",e.target.value)} style={{background:"transparent",border:"1px solid #d0d0d0",width:"100%"}} placeholder="고객 안내용 주소를 정확히 입력하세요"/></td>
               <td><input className="inp" value={b.phone||""} onChange={e=>updateField(b.id,"phone",e.target.value)} style={{background:"transparent",border:"1px solid #d0d0d0",fontSize:11}}/></td>
               <td><input className="inp" value={b.naverEmail||""} onChange={e=>updateField(b.id,"naverEmail",e.target.value)} style={{background:"transparent",border:"1px solid #d0d0d0",fontSize:11}} placeholder="example@gmail.com"/></td>
+              <td><input className="inp" value={b.naverBizId||""} onChange={e=>updateField(b.id,"naverBizId",e.target.value)} style={{background:"transparent",border:"1px solid #d0d0d0",fontSize:11}} placeholder="449920"/></td>
               <td>
                 <select className="inp" value={b.useYn!==false?"사용":"미사용"} onChange={e=>updateField(b.id,"useYn",e.target.value==="사용")} style={{background:"transparent",border:"1px solid #d0d0d0",fontSize:11}}>
                   <option>사용</option><option>미사용</option>
