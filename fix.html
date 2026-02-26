@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>Bliss - 이름 수정 도구</title>
+<style>body{font-family:sans-serif;max-width:800px;margin:40px auto;padding:20px;background:#f5f5f5}
+.card{background:#fff;border-radius:12px;padding:24px;margin:16px 0;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+h1{color:#333;font-size:22px}
+pre{background:#1a1a2e;color:#e0e0e0;padding:16px;border-radius:8px;font-size:13px;max-height:400px;overflow:auto;white-space:pre-wrap}
+button{background:#7c7cc8;color:#fff;border:none;padding:12px 24px;border-radius:8px;cursor:pointer;font-size:15px;font-weight:600}
+button:hover{background:#6b6bb8}
+.fix{background:#4CAF50}.fix:hover{background:#43A047}
+.warn{color:#E65100;font-size:13px}
+.ok{color:#2E7D32;font-weight:600}
+.row{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #f0f0f0;font-size:14px}
+.old{color:#999;text-decoration:line-through}.new{color:#2E7D32;font-weight:600}
+</style></head><body>
+<h1>🔧 네이버 예약 이름 수정 도구</h1>
+<div class="card">
+<p>memo 필드에서 <code>예약자: 이름</code>을 다시 추출하여 cust_name을 수정합니다.</p>
+<p class="warn">⚠️ 수정 전에 반드시 "1. 스캔"을 먼저 실행하세요.</p>
+<div style="display:flex;gap:12px;margin-top:16px">
+  <button onclick="scan()">1. 스캔 (확인만)</button>
+  <button class="fix" onclick="fix()" id="fixBtn" disabled>2. 수정 실행</button>
+</div>
+</div>
+<div class="card"><h3>결과</h3><div id="result">아직 스캔하지 않았습니다.</div></div>
+<div class="card"><h3>로그</h3><pre id="log"></pre></div>
+
+<script>
+const SB_URL = "https://dpftlrsuqxqqeouwbfjd.supabase.co";
+const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwZnRscnN1cXhxcWVvdXdiZmpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5MDU4MjQsImV4cCI6MjA4NzQ4MTgyNH0.iydEkjtPjZ0jXpUUPJben4IWWneDqLomv-HDlcFayE4";
+const H = {"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json"};
+
+let fixes = [];
+
+function log(msg) {
+  document.getElementById('log').textContent += msg + '\n';
+}
+
+function extractNameFromMemo(memo) {
+  if (!memo) return null;
+  // Pattern: 예약자: 이름 (with possible * masking like 안*희)
+  const m = memo.match(/예약자:\s*([^\s\n]+)/);
+  return m ? m[1].trim() : null;
+}
+
+async function scan() {
+  fixes = [];
+  document.getElementById('log').textContent = '';
+  document.getElementById('result').innerHTML = '스캔 중...';
+  log('네이버 예약 데이터 로딩...');
+
+  try {
+    // Get all naver reservations (ones with memo containing 네이버)
+    const r = await fetch(`${SB_URL}/rest/v1/reservations?select=id,cust_name,memo,date&memo=like.*네이버*&order=date.desc&limit=500`, {headers: H});
+    const data = await r.json();
+    log(`총 ${data.length}건의 네이버 예약 발견`);
+
+    for (const row of data) {
+      const nameFromMemo = extractNameFromMemo(row.memo);
+      if (!nameFromMemo) continue;
+      
+      const currentName = row.cust_name || '';
+      
+      // Check if name is different (broken)
+      if (currentName !== nameFromMemo) {
+        fixes.push({
+          id: row.id,
+          date: row.date,
+          oldName: currentName,
+          newName: nameFromMemo,
+          memo: row.memo?.substring(0, 80)
+        });
+        log(`❌ [${row.date}] "${currentName}" → "${nameFromMemo}"`);
+      }
+    }
+
+    if (fixes.length === 0) {
+      document.getElementById('result').innerHTML = '<span class="ok">✅ 모든 이름이 정상입니다. 수정할 항목이 없습니다.</span>';
+      document.getElementById('fixBtn').disabled = true;
+    } else {
+      let html = `<p><strong>${fixes.length}건</strong>의 이름이 깨져있습니다:</p>`;
+      html += fixes.map(f => 
+        `<div class="row"><span style="width:90px;flex-shrink:0">${f.date}</span><span class="old" style="width:80px">${f.oldName || '(빈값)'}</span><span>→</span><span class="new">${f.newName}</span></div>`
+      ).join('');
+      document.getElementById('result').innerHTML = html;
+      document.getElementById('fixBtn').disabled = false;
+    }
+    log(`\n스캔 완료: ${fixes.length}건 수정 필요`);
+  } catch(e) {
+    log('에러: ' + e.message);
+    document.getElementById('result').innerHTML = '<span style="color:red">에러 발생 - 로그를 확인하세요</span>';
+  }
+}
+
+async function fix() {
+  if (fixes.length === 0) return;
+  if (!confirm(`${fixes.length}건의 이름을 수정하시겠습니까?`)) return;
+
+  log('\n수정 시작...');
+  let ok = 0, fail = 0;
+
+  for (const f of fixes) {
+    try {
+      const r = await fetch(`${SB_URL}/rest/v1/reservations?id=eq.${f.id}`, {
+        method: 'PATCH',
+        headers: H,
+        body: JSON.stringify({ cust_name: f.newName })
+      });
+      if (r.ok) {
+        ok++;
+        log(`✅ [${f.date}] ${f.oldName} → ${f.newName}`);
+      } else {
+        fail++;
+        const e = await r.text();
+        log(`❌ [${f.date}] 실패: ${e}`);
+      }
+    } catch(e) {
+      fail++;
+      log(`❌ [${f.date}] 에러: ${e.message}`);
+    }
+  }
+
+  log(`\n완료: 성공 ${ok}건, 실패 ${fail}건`);
+  document.getElementById('result').innerHTML = `<span class="ok">✅ 수정 완료! 성공 ${ok}건` + (fail ? `, 실패 ${fail}건` : '') + '</span><br><br>Bliss를 새로고침하면 반영됩니다.';
+  document.getElementById('fixBtn').disabled = true;
+  fixes = [];
+}
+</script>
+</body></html>
