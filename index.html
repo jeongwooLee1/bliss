@@ -3,7 +3,7 @@
 <title>Bliss 관리시스템</title>
 <script>
 (function(){
-  var LOCAL_V="2.27";
+  var LOCAL_V="2.28";
   localStorage.setItem("bliss_v",LOCAL_V);
   fetch("version.txt?t="+Date.now()).then(function(r){return r.text()}).then(function(remote){
     remote=remote.trim();
@@ -53,6 +53,8 @@ const DBMAP = {
 function fromDb(table,rows){const m=DBMAP[table];if(!m)return rows;return rows.map(row=>{const r={};for(const[k,v]of Object.entries(row)){if(k==="created_at"){r.createdAt=v;continue;}const mk=m[k]||k;r[mk]=v;} 
   // Parse JSON string arrays for app_users
   if(table==="app_users"){try{if(typeof r.branches==="string")r.branches=JSON.parse(r.branches);}catch{r.branches=[];}try{if(typeof r.viewBranches==="string")r.viewBranches=JSON.parse(r.viewBranches);}catch{r.viewBranches=[];}if(!Array.isArray(r.branches))r.branches=[];if(!Array.isArray(r.viewBranches))r.viewBranches=[];}
+  // Parse JSON string arrays for reservations
+  if(table==="reservations"){try{if(typeof r.selectedTags==="string")r.selectedTags=JSON.parse(r.selectedTags);}catch{r.selectedTags=[];}if(!Array.isArray(r.selectedTags))r.selectedTags=[];try{if(typeof r.selectedServices==="string")r.selectedServices=JSON.parse(r.selectedServices);}catch{r.selectedServices=[];}if(!Array.isArray(r.selectedServices))r.selectedServices=[];}
   // Convert booleans to Y/N for service_tags
   if(table==="service_tags"){r.scheduleYn=(r.scheduleYn===true||r.scheduleYn==="Y")?"Y":"N";r.useYn=r.useYn!==false;}
   return r;});}
