@@ -3,7 +3,7 @@
 <title>Bliss 관리시스템</title>
 <script>
 (function(){
-  var LOCAL_V="2.34";
+  var LOCAL_V="2.35";
   localStorage.setItem("bliss_v",LOCAL_V);
   fetch("version.txt?t="+Date.now()).then(function(r){return r.text()}).then(function(remote){
     remote=remote.trim();
@@ -1373,7 +1373,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
           <span style={{fontSize:11,color:"#E65100",fontWeight:600,flexShrink:0}}>확인 →</span>
           {(() => {
             const first = pendingList[0];
-            const br = (data.branchSettings||data.branches||[]).find(b=>b.id===first.bid);
+            const br = allBranchList.find(b=>b.id===first.bid);
             const bizId = br?.naverBizId;
             return bizId ? <a href={`https://partner.booking.naver.com/bizes/${bizId}/booking-list-view`} target="_blank" rel="noopener noreferrer"
               onClick={e=>e.stopPropagation()}
@@ -1785,10 +1785,16 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
             <span style={{fontSize:13,fontWeight:700,color:"#E6A700"}}>네이버 취소 예약</span>
             {f.reservationId && <span style={{fontSize:11,color:"#999",marginLeft:"auto"}}>#{f.reservationId}</span>}
           </div>}
-          {f.status === "pending" && <div style={{background:"#FFF3E0",border:"1.5px solid #FF9800",borderRadius:6,padding:"8px 12px",marginBottom:12,display:"flex",alignItems:"center",gap:8,animation:"naverBlink 1.5s infinite"}}>
+          {f.status === "pending" && <div style={{background:"#FFF3E0",border:"1.5px solid #FF9800",borderRadius:6,padding:"8px 12px",marginBottom:12,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",animation:"naverBlink 1.5s infinite"}}>
             <span style={{fontSize:16}}>🔔</span>
-            <span style={{fontSize:13,fontWeight:700,color:"#E65100"}}>네이버 확정대기 — 네이버에서 확정 처리 필요</span>
-            {f.reservationId && <span style={{fontSize:11,color:"#999",marginLeft:"auto"}}>#{f.reservationId}</span>}
+            <span style={{fontSize:13,fontWeight:700,color:"#E65100"}}>네이버 확정대기</span>
+            {(() => {
+              const br = (data.branchSettings||data.branches||[]).find(b=>b.id===branchId);
+              const bizId = br?.naverBizId;
+              return bizId ? <a href={`https://partner.booking.naver.com/bizes/${bizId}/booking-list-view`} target="_blank" rel="noopener noreferrer"
+                onClick={e=>e.stopPropagation()}
+                style={{fontSize:12,color:"#fff",fontWeight:700,background:"#03C75A",padding:"5px 14px",borderRadius:6,textDecoration:"none",marginLeft:"auto"}}>네이버 예약 확정하기 →</a> : <span style={{fontSize:11,color:"#E65100",marginLeft:"auto"}}>네이버에서 확정 처리 필요</span>;
+            })()}
           </div>}
 
           {/* ═══ 기타일정 모드 ═══ */}
