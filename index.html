@@ -3,7 +3,7 @@
 <title>Bliss 관리시스템</title>
 <script>
 (function(){
-  var LOCAL_V="2.28";
+  var LOCAL_V="2.29";
   localStorage.setItem("bliss_v",LOCAL_V);
   fetch("version.txt?t="+Date.now()).then(function(r){return r.text()}).then(function(remote){
     remote=remote.trim();
@@ -1001,7 +1001,8 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   const blocks = data.reservations.filter(r => r.date === selDate && branchesToShow.some(b=>b.id===r.bid));
 
   // Time config - 5min intervals
-  const startHour = 8, endHour = 22;
+  const [startHour, setStartHour] = useState(8);
+  const [endHour, setEndHour] = useState(22);
   const [rowH, setRowH] = useState(14);
   const [colW, setColW] = useState(160);
   const [timeUnit, setTimeUnit] = useState(5); // 분 단위: 5,10,15,30,60
@@ -1490,11 +1491,13 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
             {label:"열너비",val:colW,dec:()=>setColW(w=>Math.max(80,w-20)),inc:()=>setColW(w=>Math.min(300,w+20))},
             {label:"글자크기",val:blockFs,dec:()=>setBlockFs(f=>Math.max(6,f-1)),inc:()=>setBlockFs(f=>Math.min(16,f+1))},
             {label:"투명도",val:blockOp,dec:()=>setBlockOp(o=>Math.max(10,o-10)),inc:()=>setBlockOp(o=>Math.min(100,o+10))},
+            {label:"시작시간",val:startHour,suffix:"시",dec:()=>setStartHour(h=>Math.max(0,h-1)),inc:()=>setStartHour(h=>Math.min(endHour-1,h+1))},
+            {label:"종료시간",val:endHour,suffix:"시",dec:()=>setEndHour(h=>Math.max(startHour+1,h-1)),inc:()=>setEndHour(h=>Math.min(24,h+1))},
           ].map(r=><div key={r.label} style={{display:"flex",alignItems:"center",borderTop:"1px solid #f0f0f0",paddingTop:6}}>
             <span style={{fontSize:11,color:"#555",width:56,flexShrink:0}}>{r.label}</span>
             <div style={{display:"flex",alignItems:"center",gap:3,marginLeft:"auto"}}>
               <button onClick={r.dec} style={{width:24,height:24,border:"1px solid #ccc",borderRadius:4,background:"#fff",cursor:"pointer",fontSize:14,fontWeight:700,color:"#555",display:"flex",alignItems:"center",justifyContent:"center",padding:0,fontFamily:"inherit"}}>−</button>
-              <span style={{fontSize:11,color:"#7c7cc8",fontWeight:600,width:32,textAlign:"center"}}>{r.val}{r.label==="투명도"?"%":""}</span>
+              <span style={{fontSize:11,color:"#7c7cc8",fontWeight:600,width:32,textAlign:"center"}}>{r.val}{r.suffix||r.label==="투명도"?r.suffix||"%":""}</span>
               <button onClick={r.inc} style={{width:24,height:24,border:"1px solid #ccc",borderRadius:4,background:"#fff",cursor:"pointer",fontSize:14,fontWeight:700,color:"#555",display:"flex",alignItems:"center",justifyContent:"center",padding:0,fontFamily:"inherit"}}>+</button>
             </div>
           </div>)}
