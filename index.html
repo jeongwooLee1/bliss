@@ -118,7 +118,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.39.8";
+const BLISS_V = "2.39.9";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -177,7 +177,10 @@ function App() {
   }, []);
 
   // Phase 1: Load all users on mount + auto-login from saved session
+  const initRef = useRef(false);
   useEffect(() => {
+    if (initRef.current) return;
+    initRef.current = true;
     (async () => {
       try {
         const users = fromDb("app_users", await sb.get("app_users"));
@@ -193,8 +196,7 @@ function App() {
             if (saved?.userId) {
               const u = users.find(u => u.id === saved.userId);
               if (u) {
-                if (saved.bizId) window._pendingBizId = saved.bizId;
-                console.log("Auto-login:", u.role, "bizId:", saved.bizId, "page:", saved.page);
+                console.log("Auto-login:", u.role, "bizId:", saved.bizId);
                 handleLogin(u, true); return;
               }
             }
@@ -224,9 +226,9 @@ function App() {
         const sd = await loadAllFromDb(null);
         setSuperData(sd);
         // Auto re-enter business if saved in session
-        const pendingBiz = window._pendingBizId;
-        delete window._pendingBizId;
-        if (pendingBiz) { setCurrentUser(user); setRole(user.role); setSuperData(sd); handleEnterBiz(pendingBiz); return; }
+        let pendingBiz;
+        try { pendingBiz = JSON.parse(sessionStorage.getItem("bliss_session")||"{}").bizId; } catch(e){}
+        if (pendingBiz) { handleEnterBiz(pendingBiz); return; }
         setPhase("super");
       } catch(e) {
         console.error(e);
