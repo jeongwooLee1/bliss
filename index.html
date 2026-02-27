@@ -118,7 +118,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.39.9";
+const BLISS_V = "2.39.10";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -692,7 +692,7 @@ function Sidebar({ nav, page, setPage, role, branchNames, onLogout, bizName="", 
 // TIMELINE VIEW (myCream-style)
 // ═══════════════════════════════════════════
 function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, currentUser, setPage, bizId }) {
-  const SVC_LIST = (data?.services || []);
+  const SVC_LIST = (data?.services || []).slice().sort((a,b)=>(a.sort||0)-(b.sort||0));
   const PROD_LIST = (data?.products || []);
   const [selDate, setSelDate] = useState(todayStr());
   const [showModal, setShowModal] = useState(false);
@@ -1400,9 +1400,9 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
 }
 
 function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBranch, userBranches, data, setData, setPage }) {
-  const SVC_LIST = (data?.services || []);
+  const SVC_LIST = (data?.services || []).slice().sort((a,b)=>(a.sort||0)-(b.sort||0));
   const PROD_LIST = (data?.products || []);
-  const CATS = (data?.categories || []);
+  const CATS = (data?.categories || []).slice().sort((a,b)=>(a.sort||0)-(b.sort||0));
   const isNew = !item?.id || item?.roomId;
   const isReadOnly = item?.readOnly || false;
   const branchId = item?.bid || selBranch;
@@ -1905,9 +1905,9 @@ const SaleDiscountRow = React.memo(function SaleDiscountRow({ id, checked, amoun
 // DETAILED SALE FORM (매출 입력 - 시술상품/제품 연동)
 // ═══════════════════════════════════════════
 function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setData }) {
-  const SVC_LIST = (data?.services || []);
+  const SVC_LIST = (data?.services || []).slice().sort((a,b)=>(a.sort||0)-(b.sort||0));
   const PROD_LIST = (data?.products || []);
-  const CATS = (data?.categories || []);
+  const CATS = (data?.categories || []).slice().sort((a,b)=>(a.sort||0)-(b.sort||0));
   const branchStaff = (data.staff||[]).filter(s => s.bid === branchId);
   const [manager, setManager] = useState(reservation?.staffId || branchStaff[0]?.id || "");
   const [selBranch, setSelBranch] = useState(branchId);
