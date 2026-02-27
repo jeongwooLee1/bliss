@@ -3,7 +3,7 @@
 <title>Bliss 관리시스템</title>
 <script>
 (function(){
-  var LOCAL_V="2.39.6";
+  var LOCAL_V="2.39.7";
   localStorage.setItem("bliss_v",LOCAL_V);
   fetch("version.txt?t="+Date.now()).then(function(r){return r.text()}).then(function(remote){
     remote=remote.trim();
@@ -52,9 +52,9 @@ const DBMAP = {
 };
 function fromDb(table,rows){const m=DBMAP[table];if(!m)return rows;return rows.map(row=>{const r={};for(const[k,v]of Object.entries(row)){if(k==="created_at"){r.createdAt=v;continue;}const mk=m[k]||k;r[mk]=v;} 
   // Parse JSON string arrays for app_users
-  if(table==="app_users"){try{if(typeof r.branches==="string")r.branches=JSON.parse(r.branches);}catch{r.branches=[];}try{if(typeof r.viewBranches==="string")r.viewBranches=JSON.parse(r.viewBranches);}catch{r.viewBranches=[];}if(!Array.isArray(r.branches))r.branches=[];if(!Array.isArray(r.viewBranches))r.viewBranches=[];}
+  if(table==="app_users"){try{if(typeof r.branches==="string")r.branches=JSON.parse(r.branches);}catch(e){r.branches=[];}try{if(typeof r.viewBranches==="string")r.viewBranches=JSON.parse(r.viewBranches);}catch(e){r.viewBranches=[];}if(!Array.isArray(r.branches))r.branches=[];if(!Array.isArray(r.viewBranches))r.viewBranches=[];}
   // Parse JSON string arrays for reservations
-  if(table==="reservations"){try{if(typeof r.selectedTags==="string")r.selectedTags=JSON.parse(r.selectedTags);}catch{r.selectedTags=[];}if(!Array.isArray(r.selectedTags))r.selectedTags=[];try{if(typeof r.selectedServices==="string")r.selectedServices=JSON.parse(r.selectedServices);}catch{r.selectedServices=[];}if(!Array.isArray(r.selectedServices))r.selectedServices=[];
+  if(table==="reservations"){try{if(typeof r.selectedTags==="string")r.selectedTags=JSON.parse(r.selectedTags);}catch(e){r.selectedTags=[];}if(!Array.isArray(r.selectedTags))r.selectedTags=[];try{if(typeof r.selectedServices==="string")r.selectedServices=JSON.parse(r.selectedServices);}catch(e){r.selectedServices=[];}if(!Array.isArray(r.selectedServices))r.selectedServices=[];
     // Auto-detect gender from naver memo (옵션: 여) or 남))
     if(!r.custGender && r.memo){const ml=r.memo.toLowerCase();if(/여\)/.test(r.memo))r.custGender="F";else if(/남\)/.test(r.memo))r.custGender="M";}
   }
@@ -159,11 +159,12 @@ function App() {
   const [userBranches, setUserBranches] = useState([]);
   const [viewBranches, setViewBranches] = useState([]);
   const [page, setPageRaw] = useState(() => {
-    try { return sessionStorage.getItem("bliss_page") || "timeline"; } catch{ return "timeline"; }
+    try { const p = sessionStorage.getItem("bliss_page"); console.log("[SESSION] page restore:", p); return p || "timeline"; } catch(e){ return "timeline"; }
   });
   const setPage = useCallback((p) => {
+    console.log("[SESSION] page save:", p);
     setPageRaw(p);
-    try { sessionStorage.setItem("bliss_page", p); } catch{}
+    try { sessionStorage.setItem("bliss_page", p); } catch(e){}
   }, []);
   const [sideOpen, setSideOpen] = useState(false);
   const [loadMsg, setLoadMsg] = useState("연결 중...");
@@ -192,7 +193,7 @@ function App() {
                 handleLogin(u, true); return;
               }
             }
-          } catch{}
+          } catch(e){}
           setPhase("login");
         }
       } catch(e) {
@@ -209,7 +210,7 @@ function App() {
     setRole(user.role);
     // Save session only on manual login (auto-login already has session)
     if (!isAutoLogin) {
-      try{sessionStorage.setItem("bliss_session",JSON.stringify({userId:user.id,loginId:user.loginId||user.login_id}));}catch{}
+      try{sessionStorage.setItem("bliss_session",JSON.stringify({userId:user.id,loginId:user.loginId||user.login_id}));}catch(e){}
     }
     if (user.role === "super") {
       setLoadMsg("관리자 데이터 로딩 중...");
@@ -261,7 +262,7 @@ function App() {
 
   // Super admin: enter a specific business
   const handleEnterBiz = async (bizId) => {
-    try{const s=JSON.parse(sessionStorage.getItem("bliss_session")||"{}");s.bizId=bizId;sessionStorage.setItem("bliss_session",JSON.stringify(s));}catch{}
+    try{const s=JSON.parse(sessionStorage.getItem("bliss_session")||"{}");s.bizId=bizId;sessionStorage.setItem("bliss_session",JSON.stringify(s));}catch(e){}
     setLoadMsg("매장 데이터 로딩 중...");
     setPhase("loading");
     try {
@@ -287,7 +288,7 @@ function App() {
   };
 
   const handleLogout = () => {
-    try{sessionStorage.removeItem("bliss_session");sessionStorage.removeItem("bliss_page");sessionStorage.removeItem("bliss_adminTab");}catch{}
+    try{sessionStorage.removeItem("bliss_session");sessionStorage.removeItem("bliss_page");sessionStorage.removeItem("bliss_adminTab");}catch(e){}
     setCurrentUser(null); setCurrentBizId(null); setCurrentBiz(null);
     setData(null); setSuperData(null); setRole("staff");
     setUserBranches([]); setViewBranches([]); setPage("timeline");
@@ -296,7 +297,7 @@ function App() {
   };
 
   const handleBackToSuper = async () => {
-    try{const s=JSON.parse(sessionStorage.getItem("bliss_session")||"{}");delete s.bizId;sessionStorage.setItem("bliss_session",JSON.stringify(s));}catch{}
+    try{const s=JSON.parse(sessionStorage.getItem("bliss_session")||"{}");delete s.bizId;sessionStorage.setItem("bliss_session",JSON.stringify(s));}catch(e){}
     setLoadMsg("관리자 데이터 로딩 중...");
     setPhase("loading");
     const sd = await loadAllFromDb(null);
@@ -605,14 +606,14 @@ function SuperUsers({ users, businesses, superData, setSuperData }) {
 
 // ─── Login ───
 function Login({ users, onLogin }) {
-  const [loginId, setLoginId] = useState(() => {try{return localStorage.getItem("savedLoginId")||"";}catch{return "";}});
+  const [loginId, setLoginId] = useState(() => {try{return localStorage.getItem("savedLoginId")||"";}catch(e){return "";}});
   const [pw, setPw] = useState("");
-  const [saveId, setSaveId] = useState(() => {try{return localStorage.getItem("savedLoginId")!==null;}catch{return false;}});
+  const [saveId, setSaveId] = useState(() => {try{return localStorage.getItem("savedLoginId")!==null;}catch(e){return false;}});
   const [err, setErr] = useState("");
   const handleLogin = () => {
     const u = users.find(u => (u.loginId||u.login_id) === loginId && (u.pw||u.password) === pw);
     if (!u) { setErr("아이디 또는 비밀번호가 일치하지 않습니다."); return; }
-    try{if(saveId)localStorage.setItem("savedLoginId",loginId);else localStorage.removeItem("savedLoginId");}catch{}
+    try{if(saveId)localStorage.setItem("savedLoginId",loginId);else localStorage.removeItem("savedLoginId");}catch(e){}
     onLogin(u);
   };
   return (
@@ -636,7 +637,7 @@ function Login({ users, onLogin }) {
           <div style={{fontSize:10,color:"#bbb",textAlign:"center",marginTop:4}}>
             슈퍼관리자: admin / 1234 · 업체대표: master / 1234
           </div>
-          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.39.6</div>
+          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.39.7</div>
         </div>
       </div>
     </div>
@@ -2873,11 +2874,12 @@ function UserEditRow({ init, regBranches, allBranches, onSave, onCancel, isNew }
 // ═══════════════════════════════════════════
 function AdminPage({ data, setData, bizId }) {
   const [tab, setTabRaw] = useState(() => {
-    try { return sessionStorage.getItem("bliss_adminTab") || "places"; } catch{ return "places"; }
+    try { const t = sessionStorage.getItem("bliss_adminTab"); console.log("[SESSION] adminTab restore:", t); return t || "places"; } catch(e){ return "places"; }
   });
   const setTab = useCallback((t) => {
+    console.log("[SESSION] adminTab save:", t);
     setTabRaw(t);
-    try { sessionStorage.setItem("bliss_adminTab", t); } catch{}
+    try { sessionStorage.setItem("bliss_adminTab", t); } catch(e){}
   }, []);
   return <div>
     <h2 className="page-title">관리 설정</h2>
