@@ -166,6 +166,7 @@ const I = ({name,size=16,color="currentColor",style={},...p}) => {
     naver:<svg {...a} fill="#03C75A" stroke="none"><circle cx="12" cy="12" r="10"/><text x="12" y="16" textAnchor="middle" fill="#fff" fontSize="12" fontWeight="700" fontFamily="sans-serif">N</text></svg>,
     calPick:<svg {...a}><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/></svg>,
     grip:<svg {...a}><circle cx="9" cy="6" r="1" fill={color}/><circle cx="15" cy="6" r="1" fill={color}/><circle cx="9" cy="12" r="1" fill={color}/><circle cx="15" cy="12" r="1" fill={color}/><circle cx="9" cy="18" r="1" fill={color}/><circle cx="15" cy="18" r="1" fill={color}/></svg>,
+    minus:<svg {...a}><line x1="5" y1="12" x2="19" y2="12"/></svg>,
   };
   return icons[name] || null;
 };
@@ -1210,7 +1211,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
               {pendingList.length > 3 ? ` 외 ${pendingList.length-3}건` : ""}
             </span>
           </div>
-          <span style={{fontSize:11,color:"#E65100",fontWeight:600,flexShrink:0}}>확인 →</span>
+          <span style={{fontSize:11,color:"#E65100",fontWeight:600,flexShrink:0}}>확인 <I name="chevR" size={11} color="#E65100"/></span>
           {(() => {
             const first = pendingList[0];
             const br = allBranchList.find(b=>b.id===first.bid);
@@ -1388,9 +1389,9 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
           ].map(r=><div key={r.label} style={{background:"#f8f8fc",borderRadius:10,padding:"10px 12px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
             <span style={{fontSize:12,color:"#555",fontWeight:600}}>{r.label}</span>
             <div style={{display:"flex",alignItems:"center",gap:6}}>
-              <button onClick={r.dec} style={{width:32,height:32,border:"1px solid #ddd",borderRadius:8,background:"#fff",cursor:"pointer",fontSize:16,fontWeight:700,color:"#555",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>−</button>
+              <button onClick={r.dec} style={{width:32,height:32,border:"1px solid #ddd",borderRadius:8,background:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}><I name="minus" size={16} color="#555"/></button>
               <span style={{fontSize:13,color:"#7c7cc8",fontWeight:700,width:36,textAlign:"center"}}>{r.val}{r.suffix||""}</span>
-              <button onClick={r.inc} style={{width:32,height:32,border:"1px solid #ddd",borderRadius:8,background:"#fff",cursor:"pointer",fontSize:16,fontWeight:700,color:"#555",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}>+</button>
+              <button onClick={r.inc} style={{width:32,height:32,border:"1px solid #ddd",borderRadius:8,background:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}><I name="plus" size={16} color="#555"/></button>
             </div>
           </div>)}
           </div>
@@ -1647,7 +1648,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
               const bizId = br?.naverBizId;
               return bizId ? <a href={`https://partner.booking.naver.com/bizes/${bizId}/booking-list-view`} target="_blank" rel="noopener noreferrer"
                 onClick={e=>e.stopPropagation()}
-                style={{fontSize:11,color:"#fff",fontWeight:700,background:"#03C75A",padding:"5px 12px",borderRadius:6,textDecoration:"none"}}>네이버 확정 →</a> : null;
+                style={{fontSize:11,color:"#fff",fontWeight:700,background:"#03C75A",padding:"5px 12px",borderRadius:6,textDecoration:"none",display:"inline-flex",alignItems:"center",gap:3}}>네이버 확정 <I name="chevR" size={11} color="#fff"/></a> : null;
               })()}
             </div>
           </div>}
@@ -1665,7 +1666,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
                 <select className="inp" style={{flex:"0 0 78px",fontSize:12,padding:"5px 8px"}} value={f.endTime} onChange={e=>{set("endTime",e.target.value);set("dur",calcDur(f.time,e.target.value))}}>
                   {TIMES.filter(t=>{const h=parseInt(t);return h>=8&&h<=22}).map(t=><option key={t} value={t}>{t}</option>)}
                 </select>
-                <span style={{color:"#d0d0d0",fontSize:10,flexShrink:0}}>│</span>
+                <span style={{width:1,height:18,background:"#e0e0e0",flexShrink:0}}/>
                 <select className="inp" style={{flex:"1 1 0",minWidth:0,fontSize:12,padding:"5px 8px"}} value={`${f.roomId}|${f.staffId}`} onChange={e=>{const [r,s]=e.target.value.split("|");set("roomId",r);set("staffId",s)}}>
                   {branchRooms.map(rm => branchStaff.map(st =>
                     <option key={rm.id+st.id} value={`${rm.id}|${st.id}`}>[{(data.branches||[]).find(b=>b.id===branchId)?.short}] {rm.name}-{st.dn}</option>
@@ -1740,7 +1741,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
                     style={{padding:"10px 12px",cursor:"pointer",display:"flex",gap:8,alignItems:"center",fontSize:12,
                       background:"#d0d0d020",borderTop:"1px solid #e0e0e0",color:"#e57373",fontWeight:700}}
                     onMouseOver={e=>e.currentTarget.style.background="#d0d0d040"} onMouseOut={e=>e.currentTarget.style.background="#d0d0d020"}>
-                    <span style={{fontSize:15}}>＋</span> 신규고객으로 등록 {custSearch && <span style={{fontWeight:400,color:"#888"}}>"{custSearch}"</span>}
+                    <I name="plus" size={14}/> 신규고객으로 등록 {custSearch && <span style={{fontWeight:400,color:"#888"}}>"{custSearch}"</span>}
                   </div>
                 </div>}
               </div>
@@ -1774,7 +1775,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
                 <select className="inp" style={{flex:"0 0 78px",fontSize:12,padding:"5px 8px"}} value={f.endTime} onChange={e=>{set("endTime",e.target.value);set("dur",calcDur(f.time,e.target.value))}}>
                   {TIMES.filter(t=>{const h=parseInt(t);return h>=8&&h<=22}).map(t=><option key={t} value={t}>{t}</option>)}
                 </select>
-                <span style={{color:"#d0d0d0",fontSize:10,flexShrink:0}}>│</span>
+                <span style={{width:1,height:18,background:"#e0e0e0",flexShrink:0}}/>
                 <select className="inp" style={{flex:"1 1 0",minWidth:0,fontSize:12,padding:"5px 8px"}} value={`${f.roomId}|${f.staffId}`} onChange={e=>{const [r,s]=e.target.value.split("|");set("roomId",r);set("staffId",s)}}>
                   {branchRooms.map(rm => branchStaff.map(st =>
                     <option key={rm.id+st.id} value={`${rm.id}|${st.id}`}>[{(data.branches||[]).find(b=>b.id===branchId)?.short}] {rm.name}-{st.dn}</option>
@@ -1857,7 +1858,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
               if (!bizId) return null;
               return <a href={`https://partner.booking.naver.com/bizes/${bizId}/booking-list-view?bookingBusinessId=${bizId}`} target="_blank" rel="noopener noreferrer"
                 style={{display:"inline-flex",alignItems:"center",gap:4,marginTop:4,fontSize:11,color:"#03C75A",fontWeight:600,textDecoration:"none",padding:"4px 8px",background:"#03C75A10",borderRadius:4,border:"1px solid #03C75A30"}}>
-                <I name="naver" size={13}/> 네이버 예약 관리 바로가기 →
+                <I name="naver" size={13}/> 네이버 예약 관리 바로가기 <I name="chevR" size={12} color="#03C75A"/>
               </a>;
             })()}
             {(f.tsLog?.length > 0) && <div style={{marginTop:4,fontSize:10,color:"#999",lineHeight:1.6}}>
@@ -2212,7 +2213,7 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
                     <div onClick={() => { setNewCustMode(true); setShowCustDrop(false); setNewCustName(custSearch.replace(/[0-9\-]/g,"").trim()); setNewCustPhone(custSearch.replace(/[^0-9]/g,"")); }}
                       style={{ padding: "8px 10px", cursor: "pointer", borderTop: "1px solid #e0e0e0", display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 700, color: "#7c7cc8" }}
                       onMouseOver={e => e.currentTarget.style.background = "#e0edf520"} onMouseOut={e => e.currentTarget.style.background = "transparent"}>
-                      <span style={{ fontSize: 14 }}>＋</span> 신규고객으로 등록 {custSearch && <span style={{ fontWeight: 400, color: "#888" }}>"{custSearch}"</span>}
+                      <I name="plus" size={14}/> 신규고객으로 등록 {custSearch && <span style={{ fontWeight: 400, color: "#888" }}>"{custSearch}"</span>}
                     </div>
                   </div>
                 )}
@@ -3092,7 +3093,7 @@ function AdminPlaces({ data, setData, bizId }) {
 
   return <div>
     <div className="card" style={{padding:20}}>
-      <AdminHeader title="예약장소 관리" count={branches.length} onAdd={addBranch} addLabel="＋ 지점 추가" onDownload={downloadExcel} onUpload={uploadExcel}/>
+      <AdminHeader title="예약장소 관리" count={branches.length} onAdd={addBranch} addLabel={<><I name="plus" size={12}/> 지점 추가</>} onDownload={downloadExcel} onUpload={uploadExcel}/>
       {selected.size > 0 && <div style={{marginBottom:8}}><button className="btn-d btn-sm" onClick={bulkDelete} style={{fontSize:10,padding:"4px 12px"}}><I name="trash" size={12}/> 선택 삭제 ({selected.size})</button></div>}
       <div className="tw">
         <table><thead><tr>
@@ -3166,8 +3167,9 @@ function AdminPlaces({ data, setData, bizId }) {
 
 
 // ─── Unified Admin Header ───
-function AdminHeader({title, count, color="#7c7cc8", desc="", onAdd, addLabel="＋ 추가", onDownload, onUpload}) {
+function AdminHeader({title, count, color="#7c7cc8", desc="", onAdd, addLabel, onDownload, onUpload}) {
   const fileRef = useRef(null);
+  const defaultLabel = <><I name="plus" size={12}/> 추가</>;
   return <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,flexWrap:"wrap",gap:8}}>
     <div>
       <h3 style={{fontSize:14,fontWeight:700,color}}>{title}</h3>
@@ -3179,7 +3181,7 @@ function AdminHeader({title, count, color="#7c7cc8", desc="", onAdd, addLabel="�
         <button className="btn-s btn-sm" onClick={()=>fileRef.current?.click()}><I name="upload" size={12}/> 올리기</button>
         <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" onChange={e=>{onUpload(e);e.target.value=""}} style={{display:"none"}}/>
       </>}
-      {onAdd && <button className="btn-p btn-sm" onClick={onAdd}>{addLabel}</button>}
+      {onAdd && <button className="btn-p btn-sm" onClick={onAdd}>{addLabel||defaultLabel}</button>}
     </div>
   </div>;
 }
@@ -3240,7 +3242,7 @@ function AdminWorkers({ data, setData }) {
   };
 
   return <div>
-    <AdminHeader title="담당자 관리" count={rooms.length} onAdd={()=>setShowAdd(!showAdd)} addLabel={showAdd?"취소":"＋ 담당자 추가"} onDownload={downloadXl} onUpload={uploadXl}/>
+    <AdminHeader title="담당자 관리" count={rooms.length} onAdd={()=>setShowAdd(!showAdd)} addLabel={showAdd?"취소":<><I name="plus" size={12}/> 담당자 추가</>} onDownload={downloadXl} onUpload={uploadXl}/>
     {showAdd && <div className="card" style={{padding:14,marginBottom:14}}>
       <div style={{display:"flex",gap:8,alignItems:"flex-end",flexWrap:"wrap"}}>
         <FLD label="담당자명"><input className="inp" style={{width:140}} value={newW.name} onChange={e=>setNewW(p=>({...p,name:e.target.value}))} placeholder="담당자명"/></FLD>
@@ -3306,7 +3308,7 @@ function useDragSort(items, setItems, sortKey="sort", onComplete) {
   return { onDragStart, onDragEnter, onDragEnd };
 }
 
-const DragHandle = () => <span style={{cursor:"grab",color:"#999",fontSize:14,flexShrink:0,userSelect:"none"}}>⠿</span>;
+const DragHandle = () => <span style={{cursor:"grab",flexShrink:0,userSelect:"none"}}><I name="grip" size={14} color="#999"/></span>;
 
 // ─── 시술상품관리 ───
 function AdminSaleItems({ data, setData }) {
@@ -3415,7 +3417,7 @@ function AdminSaleItems({ data, setData }) {
   };
 
   return <div>
-    <AdminHeader title="시술 상품 관리" count={services.length} onAdd={()=>setShowAdd(!showAdd)} addLabel={showAdd?"취소":"＋ 시술 추가"} onDownload={downloadXl} onUpload={uploadXl}/>
+    <AdminHeader title="시술 상품 관리" count={services.length} onAdd={()=>setShowAdd(!showAdd)} addLabel={showAdd?"취소":<><I name="plus" size={12}/> 시술 추가</>} onDownload={downloadXl} onUpload={uploadXl}/>
     {showAdd && <div className="card" style={{padding:14,marginBottom:14}}>
       <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"flex-end"}}>
         <FLD label="카테고리"><select className="inp" style={{width:120,padding:"4px 6px",fontSize:11}} value={newSvc.cat} onChange={e=>setNewSvc(p=>({...p,cat:e.target.value}))}>{cats.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></FLD>
@@ -3535,7 +3537,7 @@ function AdminProductItems({ data, setData }) {
   };
 
   return <div>
-    <AdminHeader title="제품 관리" count={items.length} onAdd={()=>setShowAdd(!showAdd)} addLabel={showAdd?"취소":"＋ 제품 추가"} onDownload={downloadXl} onUpload={uploadXl}/>
+    <AdminHeader title="제품 관리" count={items.length} onAdd={()=>setShowAdd(!showAdd)} addLabel={showAdd?"취소":<><I name="plus" size={12}/> 제품 추가</>} onDownload={downloadXl} onUpload={uploadXl}/>
     {showAdd && <div className="card" style={{padding:14,marginBottom:14}}>
       <div style={{display:"flex",gap:8,alignItems:"flex-end"}}>
         <FLD label="제품명"><input className="inp" style={{width:180}} value={newItem.name} onChange={e=>setNewItem(p=>({...p,name:e.target.value}))} placeholder="제품명"/></FLD>
@@ -3644,7 +3646,7 @@ function AdminServiceTags({ data, setData }) {
   };
 
   return <div>
-    <AdminHeader title="서비스 태그 관리" count={tags.length} onAdd={()=>setShowAdd(!showAdd)} addLabel={showAdd?"취소":"＋ 태그 추가"} onDownload={downloadXl} onUpload={uploadXl}/>
+    <AdminHeader title="서비스 태그 관리" count={tags.length} onAdd={()=>setShowAdd(!showAdd)} addLabel={showAdd?"취소":<><I name="plus" size={12}/> 태그 추가</>} onDownload={downloadXl} onUpload={uploadXl}/>
 
     {showAdd && <div className="card" style={{padding:14,marginBottom:14}}>
       <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"flex-end"}}>
