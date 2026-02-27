@@ -118,7 +118,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.40.9";
+const BLISS_V = "2.41.0";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -2039,12 +2039,52 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
 
   // 결제수단 분배
   const [payMethod, setPayMethod] = useState({ svcCash:0, svcCard:0, svcTransfer:0, svcPoint:0, prodCash:0, prodCard:0, prodTransfer:0, prodPoint:0 });
-  const setPay = useCallback((k, v) => setPayMethod(prev => ({...prev, [k]: Number(v)||0})), []);
-  const fillField = (k, total, prefix) => {
+  const [openPay, setOpenPay] = useState({ svcCard:false, svcCash:false, svcTransfer:false, prodCard:false, prodCash:false, prodTransfer:false });
+  const [primaryPay, setPrimaryPay] = useState({ svc:null, prod:null });
+  const togglePayField = (k, total, prefix) => {
     const fields = prefix === "svc" ? ["svcCard","svcCash","svcTransfer"] : ["prodCard","prodCash","prodTransfer"];
+    setOpenPay(prev => {
+      const next = {...prev, [k]: !prev[k]};
+      if (!prev[k]) {
+        // Opening: set as primary if first, or fill remainder
+        const openOthers = fields.filter(f => f !== k && next[f]);
+        if (openOthers.length === 0) {
+          setPrimaryPay(p => ({...p, [prefix]: k}));
+          setPayMethod(pm => ({...pm, [k]: total}));
+        } else {
+          const used = openOthers.reduce((s, f) => s + (payMethod[f]||0), 0);
+          setPayMethod(pm => ({...pm, [k]: Math.max(0, total - used)}));
+        }
+      } else {
+        // Closing: zero out and redistribute to primary
+        const pri = primaryPay[prefix];
+        setPayMethod(pm => {
+          const n = {...pm, [k]: 0};
+          if (pri && pri !== k && next[pri]) {
+            const others = fields.filter(f => f !== pri && next[f]).reduce((s, f) => s + (n[f]||0), 0);
+            n[pri] = Math.max(0, total - others);
+          }
+          return n;
+        });
+        if (primaryPay[prefix] === k) {
+          const remaining = fields.find(f => f !== k && next[f]);
+          setPrimaryPay(p => ({...p, [prefix]: remaining || null}));
+        }
+      }
+      return next;
+    });
+  };
+  const editPay = (k, v, total, prefix) => {
+    const val = Number(v) || 0;
+    const fields = prefix === "svc" ? ["svcCard","svcCash","svcTransfer"] : ["prodCard","prodCash","prodTransfer"];
+    const pri = primaryPay[prefix];
     setPayMethod(prev => {
-      const others = fields.filter(f => f !== k).reduce((s, f) => s + (prev[f]||0), 0);
-      return {...prev, [k]: Math.max(0, total - others)};
+      const next = {...prev, [k]: val};
+      if (pri && pri !== k && openPay[pri]) {
+        const others = fields.filter(f => f !== pri).reduce((s, f) => s + (f === k ? val : (prev[f]||0)), 0);
+        next[pri] = Math.max(0, total - others);
+      }
+      return next;
     });
   };
 
@@ -2147,19 +2187,28 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
   // Auto-calc remaining for default payment
   const svcRemain = Math.max(0, svcTotal - payMethod.svcCard - payMethod.svcTransfer - payMethod.svcCash - payMethod.svcPoint);
   const prodRemain = Math.max(0, prodTotal - payMethod.prodCard - payMethod.prodTransfer - payMethod.prodCash - payMethod.prodPoint);
-  // Auto-fill default field when total changes
+  // Reset payment when total changes
   const prevSvcTotal = useRef(0);
   const prevProdTotal = useRef(0);
   useEffect(() => {
     if (svcTotal !== prevSvcTotal.current) {
       prevSvcTotal.current = svcTotal;
-      if (svcTotal > 0) setPayMethod(p => { const n = {...p}; ["svcCard","svcCash","svcTransfer"].forEach(f => n[f] = f==="svcCash" ? svcTotal : 0); return n; });
+      // Recalculate primary field if any open
+      const pri = primaryPay.svc;
+      if (pri && openPay[pri]) {
+        const fields = ["svcCard","svcCash","svcTransfer"];
+        setPayMethod(p => { const n={...p}; const others=fields.filter(f=>f!==pri&&openPay[f]).reduce((s,f)=>s+(n[f]||0),0); n[pri]=Math.max(0,svcTotal-others); return n; });
+      }
     }
   }, [svcTotal]);
   useEffect(() => {
     if (prodTotal !== prevProdTotal.current) {
       prevProdTotal.current = prodTotal;
-      if (prodTotal > 0) setPayMethod(p => { const n = {...p}; ["prodCard","prodCash","prodTransfer"].forEach(f => n[f] = f==="prodCash" ? prodTotal : 0); return n; });
+      const pri = primaryPay.prod;
+      if (pri && openPay[pri]) {
+        const fields = ["prodCard","prodCash","prodTransfer"];
+        setPayMethod(p => { const n={...p}; const others=fields.filter(f=>f!==pri&&openPay[f]).reduce((s,f)=>s+(n[f]||0),0); n[pri]=Math.max(0,prodTotal-others); return n; });
+      }
     }
   }, [prodTotal]);
 
@@ -2398,41 +2447,47 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
           {/* 결제수단 분배 */}
           {grandTotal > 0 && <div className="sale-pay-row" style={{display:"flex",gap:16,flexWrap:"wrap"}}>
             {svcTotal > 0 && <div style={{flex:1,minWidth:0,padding:"8px 12px",background:"#fff",borderRadius:8,border:"1px solid #e0e0e0"}}>
-              <div style={{fontSize:10,fontWeight:700,color:"#7c7cc8",marginBottom:6}}><I name="scissors" size={12}/> 시술 결제</div>
-              <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+              <div style={{fontSize:10,fontWeight:700,color:"#7c7cc8",marginBottom:6}}><I name="scissors" size={12}/> 시술 결제 <span style={{color:"#ef5350",fontWeight:800}}>{fmt(svcTotal)}원</span></div>
+              <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
                 {[
-                  {k:"svcCard",label:"카드",clr:"#1565c0",bdr:"#90caf9"},
-                  {k:"svcCash",label:"현금",clr:"#e65100",bdr:"#ffcc80"},
-                  {k:"svcTransfer",label:"입금",clr:"#2e7d32",bdr:"#a5d6a7"},
-                ].map(({k,label,clr,bdr})=><div key={k} style={{display:"flex",alignItems:"center",gap:3}}>
-                  <span style={{fontSize:10,color:clr,fontWeight:600}}>{label}</span>
-                  <input className="inp" type="number" value={payMethod[k]||""} placeholder="0"
-                    onFocus={()=>{ if(!payMethod[k]) fillField(k, svcTotal, "svc"); }}
-                    onChange={e=>setPay(k, e.target.value)}
-                    style={{width:80,padding:"4px 6px",fontSize:12,textAlign:"right",border:`1px solid ${bdr}`,color:clr,fontWeight:600,
-                      background:"#fff"}} />
+                  {k:"svcCard",label:"카드",clr:"#1565c0",bg:"#e3f2fd"},
+                  {k:"svcCash",label:"현금",clr:"#e65100",bg:"#fff3e0"},
+                  {k:"svcTransfer",label:"입금",clr:"#2e7d32",bg:"#e8f5e9"},
+                ].map(({k,label,clr,bg})=><div key={k} style={{display:"flex",alignItems:"center",gap:3}}>
+                  <button onClick={()=>togglePayField(k,svcTotal,"svc")}
+                    style={{padding:"5px 10px",fontSize:11,fontWeight:700,borderRadius:6,cursor:"pointer",fontFamily:"inherit",transition:"all .15s",
+                      border:openPay[k]?`2px solid ${clr}`:"1px solid #d0d0d0",
+                      background:openPay[k]?bg:"#f8f8f8",color:openPay[k]?clr:"#999"}}>{label}</button>
+                  {openPay[k] && <input className="inp" type="number" value={payMethod[k]||""} placeholder="0"
+                    onChange={e=>editPay(k,e.target.value,svcTotal,"svc")}
+                    readOnly={primaryPay.svc===k}
+                    style={{width:75,padding:"4px 6px",fontSize:12,textAlign:"right",border:`1.5px solid ${clr}`,color:clr,fontWeight:700,borderRadius:6,
+                      background:primaryPay.svc===k?"#f5f5f5":"#fff"}}/>}
                 </div>)}
               </div>
             </div>}
             {prodTotal > 0 && <div style={{flex:1,minWidth:0,padding:"8px 12px",background:"#fff",borderRadius:8,border:"1px solid #e0e0e0"}}>
-              <div style={{fontSize:10,fontWeight:700,color:"#6bab9e",marginBottom:6}}><I name="pkg" size={12}/> 제품 결제</div>
-              <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+              <div style={{fontSize:10,fontWeight:700,color:"#6bab9e",marginBottom:6}}><I name="pkg" size={12}/> 제품 결제 <span style={{color:"#ef5350",fontWeight:800}}>{fmt(prodTotal)}원</span></div>
+              <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
                 {[
-                  {k:"prodCard",label:"카드",clr:"#1565c0",bdr:"#90caf9"},
-                  {k:"prodCash",label:"현금",clr:"#e65100",bdr:"#ffcc80"},
-                  {k:"prodTransfer",label:"입금",clr:"#2e7d32",bdr:"#a5d6a7"},
-                ].map(({k,label,clr,bdr})=><div key={k} style={{display:"flex",alignItems:"center",gap:3}}>
-                  <span style={{fontSize:10,color:clr,fontWeight:600}}>{label}</span>
-                  <input className="inp" type="number" value={payMethod[k]||""} placeholder="0"
-                    onFocus={()=>{ if(!payMethod[k]) fillField(k, prodTotal, "prod"); }}
-                    onChange={e=>setPay(k, e.target.value)}
-                    style={{width:80,padding:"4px 6px",fontSize:12,textAlign:"right",border:`1px solid ${bdr}`,color:clr,fontWeight:600,
-                      background:"#fff"}} />
+                  {k:"prodCard",label:"카드",clr:"#1565c0",bg:"#e3f2fd"},
+                  {k:"prodCash",label:"현금",clr:"#e65100",bg:"#fff3e0"},
+                  {k:"prodTransfer",label:"입금",clr:"#2e7d32",bg:"#e8f5e9"},
+                ].map(({k,label,clr,bg})=><div key={k} style={{display:"flex",alignItems:"center",gap:3}}>
+                  <button onClick={()=>togglePayField(k,prodTotal,"prod")}
+                    style={{padding:"5px 10px",fontSize:11,fontWeight:700,borderRadius:6,cursor:"pointer",fontFamily:"inherit",transition:"all .15s",
+                      border:openPay[k]?`2px solid ${clr}`:"1px solid #d0d0d0",
+                      background:openPay[k]?bg:"#f8f8f8",color:openPay[k]?clr:"#999"}}>{label}</button>
+                  {openPay[k] && <input className="inp" type="number" value={payMethod[k]||""} placeholder="0"
+                    onChange={e=>editPay(k,e.target.value,prodTotal,"prod")}
+                    readOnly={primaryPay.prod===k}
+                    style={{width:75,padding:"4px 6px",fontSize:12,textAlign:"right",border:`1.5px solid ${clr}`,color:clr,fontWeight:700,borderRadius:6,
+                      background:primaryPay.prod===k?"#f5f5f5":"#fff"}}/>}
                 </div>)}
               </div>
             </div>}
           </div>}
-          {grandTotal > 0 && <div style={{fontSize:9,color:"#bbb",marginTop:6}}>필드 클릭 → 전액 자동입력 / 다른 필드 입력 시 자동 분배</div>}
+          {grandTotal > 0 && <div style={{fontSize:9,color:"#bbb",marginTop:6}}>결제수단 버튼 클릭 → 전액 입력 / 추가 수단 클릭 → 금액 입력 시 첫 수단에서 차감</div>}
         </div>
 
         {/* 매출 메모 */}
