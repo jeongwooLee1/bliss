@@ -1309,17 +1309,14 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                     const isDrag = dragBlock?.id === block.id;
                     const isSch = block.isSchedule;
                     const isEditable = canEdit(block.bid);
-                    const opHex = (ratio) => Math.round(blockOp / 100 * ratio).toString(16).padStart(2,"0");
-                    const isDark = blockOp > 60;
-                    const txtMain = isDark ? "#fff" : "#333";
-                    const txtSub = isDark ? "rgba(255,255,255,.85)" : "#666";
-                    const txtShadow = isDark ? "0 1px 2px rgba(0,0,0,.4)" : "none";
+                    const opHex = (pct) => Math.round(pct * 2.55).toString(16).padStart(2,"0"); // blockOp 0~100 → 00~FF but capped
+                    const bgAlpha = isSch ? opHex(Math.min(blockOp, 50)) : opHex(Math.min(blockOp * 0.4, 40)); // schedule max 50%, reservation max 40%
                     return (
                       <div key={block.id}
                         onClick={e=>handleBlockClick(block,e)}
                         onMouseDown={e=>{if(isEditable && !isResizing.current)handleDragStart(block,e)}}
                         style={{position:"absolute",top:y,left:2,right:2,height:Math.max(h,rowH*2),
-                          background:isNaverCancelled?"#FFF8E1":isNaverPending?`${color}10`:(isSch?`${color}${opHex(240)}`:`${color}${opHex(160)}`),
+                          background:isNaverCancelled?"#FFF8E1":isNaverPending?`${color}10`:`${color}${bgAlpha}`,
                           border:isNaverCancelled?"1.5px dashed #E6A700":isNaverPending?`1.5px dashed ${color}`:`1px solid ${isSch?color:color+"60"}`,
                           borderLeft:`3px solid ${isNaverCancelled?"#E6A700":color}`,
                           borderRadius:4,padding:"2px 4px",overflow:"hidden",fontSize:blockFs,lineHeight:1.2,
@@ -1330,31 +1327,31 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                             {isNaverCancelled && <span style={{fontSize:Math.max(6,blockFs-2),padding:"1px 3px",borderRadius:2,background:"#E6A700",color:"#fff",fontWeight:700,lineHeight:1,flexShrink:0}}>네이버취소</span>}
                             {isNaverPending && <span style={{fontSize:Math.max(6,blockFs-2),padding:"1px 3px",borderRadius:2,background:"#FF9800",color:"#fff",fontWeight:700,lineHeight:1,flexShrink:0,animation:"pendingBlink 1.5s infinite"}}>확정대기</span>}
                             {block.isNewCust && <span style={{fontSize:Math.max(6,blockFs-2),padding:"1px 3px",borderRadius:2,background:"#e57373",color:"#fff",fontWeight:700,lineHeight:1,flexShrink:0}}>신규</span>}
-                            <span style={{fontWeight:600,color:isNaverCancelled?"#999":txtMain,textShadow:txtShadow,overflow:"hidden",textOverflow:"ellipsis",textDecoration:isNaverCancelled?"line-through":"none"}}>{block.custGender && <span style={{color:isDark?(block.custGender==="M"?"#90caf9":"#ef9a9a"):(block.custGender==="M"?"#4a7cc8":"#e57373")}}>{block.custGender==="M"?"남":"여"}</span>} {block.custName}</span>
+                            <span style={{fontWeight:600,color:isNaverCancelled?"#999":"#333",overflow:"hidden",textOverflow:"ellipsis",textDecoration:isNaverCancelled?"line-through":"none"}}>{block.custGender && <span style={{color:block.custGender==="M"?"#4a7cc8":"#e57373"}}>{block.custGender==="M"?"남":"여"}</span>} {block.custName}</span>
                           </div>
                           {block.selectedTags?.length>0 && <div style={{display:"flex",flexWrap:"wrap",gap:2,marginTop:1}}>
-                            {block.selectedTags.slice(0,3).map(tid=>{const tg=tags.find(t=>t.id===tid);return tg?<span key={tid} style={{fontSize:Math.max(6,blockFs-2),padding:"0 3px",borderRadius:2,background:isDark?"rgba(255,255,255,.25)":(tg.color?tg.color+"25":"#7c7cc815"),color:isDark?"#fff":(tg.color||"#7c7cc8"),fontWeight:600,textShadow:txtShadow}}>{tg.name}</span>:null})}
-                            {block.selectedTags.length>3 && <span style={{fontSize:Math.max(6,blockFs-2),color:txtSub}}>+{block.selectedTags.length-3}</span>}
+                            {block.selectedTags.slice(0,3).map(tid=>{const tg=tags.find(t=>t.id===tid);return tg?<span key={tid} style={{fontSize:Math.max(6,blockFs-2),padding:"0 3px",borderRadius:2,background:tg.color?tg.color+"25":"#7c7cc815",color:tg.color||"#7c7cc8",fontWeight:600}}>{tg.name}</span>:null})}
+                            {block.selectedTags.length>3 && <span style={{fontSize:Math.max(6,blockFs-2),color:"#999"}}>+{block.selectedTags.length-3}</span>}
                           </div>}
-                          {block.selectedServices?.length>0 && <div style={{fontSize:Math.max(6,blockFs-2),color:isDark?"rgba(255,255,255,.9)":"#6bab9e",fontWeight:600,marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",textShadow:txtShadow}}>
+                          {block.selectedServices?.length>0 && <div style={{fontSize:Math.max(6,blockFs-2),color:"#6bab9e",fontWeight:600,marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
                             {block.selectedServices.map(sid=>SVC_LIST.find(s=>s.id===sid)?.name).filter(Boolean).slice(0,2).join(", ")}
                             {block.selectedServices.length>2 && ` +${block.selectedServices.length-2}`}
                           </div>}
                         </>}
-                        {block.type==="reservation" && block.isSchedule && <div style={{fontWeight:700,color:"#fff",textShadow:"0 1px 2px rgba(0,0,0,.3)",fontSize:blockFs+1}}>
+                        {block.type==="reservation" && block.isSchedule && <div style={{fontWeight:700,color:"#333",fontSize:blockFs+1}}>
                           {block.selectedTags?.map(tid=>{const tg=tags.find(t=>t.id===tid);return tg?.name}).filter(Boolean).join(", ")||"기타일정"}
                         </div>}
-                        {block.type==="memo" && <div style={{color:isDark?"#fff":"#ef5350",fontWeight:600,textShadow:txtShadow}}><I name="fileText" size={10} color={isDark?"#fff":"#ef5350"}/> 메모</div>}
-                        {block.type==="clockin" && <div style={{color:isDark?"#fff":"#d0d0d0",fontWeight:600,textShadow:txtShadow}}><I name="clock" size={10} color={isDark?"#fff":"#d0d0d0"}/> {staff?.dn||"출근"}</div>}
-                        {block.type==="cleaning" && <div style={{color:isDark?"#fff":"#5cb5c5",fontWeight:600,textShadow:txtShadow}}><I name="sparkles" size={10} color={isDark?"#fff":"#5cb5c5"}/> 청소</div>}
-                        {block.memo && (() => { const clean = block.memo.split("\n").filter(l => !/^\[등록:|^\[수정:/.test(l.trim())).join(" ").trim(); return clean ? <div style={{color:txtSub,marginTop:1,textShadow:txtShadow}}><I name="msgSq" size={10} color={isDark?"rgba(255,255,255,.7)":"#7c7cc8"}/> {clean}</div> : null; })()}
+                        {block.type==="memo" && <div style={{color:"#ef5350",fontWeight:600}}><I name="fileText" size={10} color="#ef5350"/> 메모</div>}
+                        {block.type==="clockin" && <div style={{color:"#666",fontWeight:600}}><I name="clock" size={10} color="#666"/> {staff?.dn||"출근"}</div>}
+                        {block.type==="cleaning" && <div style={{color:"#5cb5c5",fontWeight:600}}><I name="sparkles" size={10} color="#5cb5c5"/> 청소</div>}
+                        {block.memo && (() => { const clean = block.memo.split("\n").filter(l => !/^\[등록:|^\[수정:/.test(l.trim())).join(" ").trim(); return clean ? <div style={{color:"#7c7cc8",marginTop:1}}><I name="msgSq" size={10} color="#7c7cc8"/> {clean}</div> : null; })()}
                         {/* Resize handle */}
                         {isEditable && <div className="resize-handle" onMouseDown={e=>handleResizeStart(block,e)}
                           style={{position:"absolute",bottom:0,left:0,right:0,height:8,cursor:"ns-resize",
                             display:"flex",alignItems:"center",justifyContent:"center",opacity:0,transition:"opacity .15s"}}>
                           <div style={{width:20,height:3,borderRadius:2,background:color}}/>
                         </div>}
-                        {isBeingResized && <div style={{position:"absolute",bottom:2,right:4,fontSize:Math.max(6,blockFs-2),fontWeight:700,color:isDark?"#fff":color,background:isDark?"rgba(0,0,0,.4)":"#fff",padding:"0 3px",borderRadius:2}}>
+                        {isBeingResized && <div style={{position:"absolute",bottom:2,right:4,fontSize:Math.max(6,blockFs-2),fontWeight:700,color,background:"#fff",padding:"0 3px",borderRadius:2}}>
                           {blockDur}분
                         </div>}
                       </div>
