@@ -1791,16 +1791,16 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
             </FLD>
 
             {/* 고객 정보 */}
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 80px",gap:8}}>
+            <div className="cust-row" style={{display:"grid",gridTemplateColumns:"1fr 1fr 60px",gap:8}}>
               <FLD label="고객명"><input className="inp" value={f.custName} onChange={e=>set("custName",e.target.value)} placeholder="고객명"
                 style={f.isNewCust?{borderColor:"#e57373",background:"#d0d0d008"}:{}}/></FLD>
               <FLD label="연락처"><input className="inp" value={f.custPhone} onChange={e=>set("custPhone",e.target.value)} placeholder="010"
                 style={f.isNewCust?{borderColor:"#e57373",background:"#d0d0d008"}:{}}/></FLD>
               <FLD label="성별">
-                <div style={{display:"flex",gap:2,height:34}}>
-                  <button onClick={()=>set("custGender",f.custGender==="F"?"":"F")} style={{flex:1,fontSize:11,fontWeight:700,border:"1px solid #e57373",borderRadius:"4px 0 0 4px",cursor:"pointer",fontFamily:"inherit",
+                <div style={{display:"flex",gap:1,height:34}}>
+                  <button onClick={()=>set("custGender",f.custGender==="F"?"":"F")} style={{flex:1,fontSize:11,fontWeight:700,border:"1px solid #e57373",borderRadius:"4px 0 0 4px",cursor:"pointer",fontFamily:"inherit",padding:0,
                     background:f.custGender==="F"?"#e57373":"transparent",color:f.custGender==="F"?"#fff":"#e57373"}}>여</button>
-                  <button onClick={()=>set("custGender",f.custGender==="M"?"":"M")} style={{flex:1,fontSize:11,fontWeight:700,border:"1px solid #7c7cc8",borderRadius:"0 4px 4px 0",cursor:"pointer",fontFamily:"inherit",
+                  <button onClick={()=>set("custGender",f.custGender==="M"?"":"M")} style={{flex:1,fontSize:11,fontWeight:700,border:"1px solid #7c7cc8",borderRadius:"0 4px 4px 0",cursor:"pointer",fontFamily:"inherit",padding:0,
                     background:f.custGender==="M"?"#7c7cc8":"transparent",color:f.custGender==="M"?"#fff":"#7c7cc8"}}>남</button>
                 </div>
               </FLD>
@@ -3868,6 +3868,7 @@ const CSS = `
     .res-time-row .inp{font-size:13px!important;padding:5px 8px!important}
     .res-room-sep{display:none!important}
     .res-room-sel{flex:1 1 100%!important;margin-top:4px!important}
+    .cust-row{grid-template-columns:5.5em 1fr 44px!important;gap:6px!important}
     .tl-topbar{flex-direction:column!important;gap:4px!important;padding:6px 8px!important}
     .tl-days{width:100%;justify-content:space-between}
     .page-filter{flex-wrap:wrap!important;gap:4px!important}
