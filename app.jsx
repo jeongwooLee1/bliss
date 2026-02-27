@@ -136,7 +136,10 @@ function App() {
   const [role, setRole] = useState("staff");
   const [userBranches, setUserBranches] = useState([]);
   const [viewBranches, setViewBranches] = useState([]);
-  const [page, setPage] = useState("timeline");
+  const [page, setPage] = useState(() => {
+    try { const s=JSON.parse(sessionStorage.getItem("bliss_session")||"{}"); if(s.page&&["timeline","reservations","sales","stats","customers","users","admin"].includes(s.page)) return s.page; } catch{}
+    return "timeline";
+  });
   const [sideOpen, setSideOpen] = useState(false);
   const [loadMsg, setLoadMsg] = useState("연결 중...");
 
@@ -616,7 +619,7 @@ function Login({ users, onLogin }) {
           <div style={{fontSize:10,color:"#bbb",textAlign:"center",marginTop:4}}>
             슈퍼관리자: admin / 1234 · 업체대표: master / 1234
           </div>
-          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.39.4</div>
+          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.39.5</div>
         </div>
       </div>
     </div>
@@ -2852,7 +2855,13 @@ function UserEditRow({ init, regBranches, allBranches, onSave, onCancel, isNew }
 // ADMIN
 // ═══════════════════════════════════════════
 function AdminPage({ data, setData, bizId }) {
-  const [tab, setTab] = useState("places");
+  const [tab, setTab] = useState(() => {
+    try { const s=JSON.parse(sessionStorage.getItem("bliss_session")||"{}"); if(s.adminTab) return s.adminTab; } catch{}
+    return "places";
+  });
+  useEffect(() => {
+    try{const s=JSON.parse(sessionStorage.getItem("bliss_session")||"{}");s.adminTab=tab;sessionStorage.setItem("bliss_session",JSON.stringify(s));}catch{}
+  }, [tab]);
   return <div>
     <h2 className="page-title">관리 설정</h2>
     <div style={{display:"flex",gap:2,marginBottom:16,background:"#e0e0e0",borderRadius:8,padding:3,width:"fit-content",flexWrap:"wrap"}}>
