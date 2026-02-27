@@ -106,7 +106,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.39.14";
+const BLISS_V = "2.39.15";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -2033,11 +2033,10 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
     onSubmit(sale);
   };
 
-  // Split services into 2 columns by categories
-  const allCats = CATS;
-  const midIdx = Math.ceil(allCats.length / 2);
-  const leftCats = allCats.slice(0, midIdx);
-  const rightCats = allCats.slice(midIdx);
+  // Split services into 2 columns by flat sort order
+  const halfSvc = Math.ceil(SVC_LIST.length / 2);
+  const leftSvcs = SVC_LIST.slice(0, halfSvc);
+  const rightSvcs = SVC_LIST.slice(halfSvc);
   const halfProd = Math.ceil(PROD_LIST.length / 2);
 
   return (
@@ -2143,29 +2142,16 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
         {/* Main Body - 4 columns: svc left, svc right, prod left, prod right */}
         <div style={{ flex: 1, overflow: "auto", padding: "10px 14px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 14, alignContent: "start" }}>
 
-          {/* Col 1: Service categories (left half) */}
+          {/* Col 1: Services (left half) */}
           <div>
-            {leftCats.map(cat => {
-              const svcs = SVC_LIST.filter(s => s.cat === cat.id).sort((a,b)=>a.sort-b.sort);
-              if (!svcs.length) return null;
-              return <div key={cat.id} style={{ marginBottom: 8 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: "#7c7cc8", padding: "4px 0 3px", borderBottom: "2px solid #7c7cc830", marginBottom: 1 }}>{cat.name} ({svcs.length})</div>
-                {svcs.map(svc => { const it=items[svc.id]||{}; const dp=gender==="F"?svc.priceF:svc.priceM; return <SaleSvcRow key={svc.id} id={svc.id} name={svc.name} dur={svc.dur} checked={!!it.checked} amount={it.amount||0} defPrice={dp} toggle={toggle} setAmt={setAmt} />; })}
-              </div>;
-            })}
+            <div style={{ fontSize: 10, fontWeight: 700, color: "#7c7cc8", padding: "4px 0 3px", borderBottom: "2px solid #7c7cc830", marginBottom: 1 }}>시술 ({SVC_LIST.length})</div>
+            {leftSvcs.map(svc => { const it=items[svc.id]||{}; const dp=gender==="F"?svc.priceF:svc.priceM; return <SaleSvcRow key={svc.id} id={svc.id} name={svc.name} dur={svc.dur} checked={!!it.checked} amount={it.amount||0} defPrice={dp} toggle={toggle} setAmt={setAmt} />; })}
             <SaleExtraRow id="extra_svc" color="#7c7cc8" placeholder="추가 시술명 입력" checked={!!(items.extra_svc||{}).checked} amount={(items.extra_svc||{}).amount||0} label={(items.extra_svc||{}).label||""} toggle={toggle} setAmt={setAmt} setLabel={setLabel} />
           </div>
 
-          {/* Col 2: Service categories (right half) */}
+          {/* Col 2: Services (right half) */}
           <div>
-            {rightCats.map(cat => {
-              const svcs = SVC_LIST.filter(s => s.cat === cat.id).sort((a,b)=>a.sort-b.sort);
-              if (!svcs.length) return null;
-              return <div key={cat.id} style={{ marginBottom: 8 }}>
-                <div style={{ fontSize: 10, fontWeight: 700, color: "#7c7cc8", padding: "4px 0 3px", borderBottom: "2px solid #7c7cc830", marginBottom: 1 }}>{cat.name} ({svcs.length})</div>
-                {svcs.map(svc => { const it=items[svc.id]||{}; const dp=gender==="F"?svc.priceF:svc.priceM; return <SaleSvcRow key={svc.id} id={svc.id} name={svc.name} dur={svc.dur} checked={!!it.checked} amount={it.amount||0} defPrice={dp} toggle={toggle} setAmt={setAmt} />; })}
-              </div>;
-            })}
+            {rightSvcs.map(svc => { const it=items[svc.id]||{}; const dp=gender==="F"?svc.priceF:svc.priceM; return <SaleSvcRow key={svc.id} id={svc.id} name={svc.name} dur={svc.dur} checked={!!it.checked} amount={it.amount||0} defPrice={dp} toggle={toggle} setAmt={setAmt} />; })}
             {/* Discount */}
             <div style={{ marginTop: 6, padding: "4px 0", borderTop: "1px solid #d0d0d0" }}>
               <SaleDiscountRow id="discount" checked={items.discount?.checked} amount={items.discount?.amount||0} toggle={toggle} setAmt={setAmt} />
