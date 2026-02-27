@@ -3,7 +3,7 @@
 <title>Bliss 관리시스템</title>
 <script>
 (function(){
-  var LOCAL_V="2.39.5";
+  var LOCAL_V="2.39.6";
   localStorage.setItem("bliss_v",LOCAL_V);
   fetch("version.txt?t="+Date.now()).then(function(r){return r.text()}).then(function(remote){
     remote=remote.trim();
@@ -158,18 +158,17 @@ function App() {
   const [role, setRole] = useState("staff");
   const [userBranches, setUserBranches] = useState([]);
   const [viewBranches, setViewBranches] = useState([]);
-  const [page, setPage] = useState(() => {
-    try { const s=JSON.parse(sessionStorage.getItem("bliss_session")||"{}"); if(s.page&&["timeline","reservations","sales","stats","customers","users","admin"].includes(s.page)) return s.page; } catch{}
-    return "timeline";
+  const [page, setPageRaw] = useState(() => {
+    try { return sessionStorage.getItem("bliss_page") || "timeline"; } catch{ return "timeline"; }
   });
+  const setPage = useCallback((p) => {
+    setPageRaw(p);
+    try { sessionStorage.setItem("bliss_page", p); } catch{}
+  }, []);
   const [sideOpen, setSideOpen] = useState(false);
   const [loadMsg, setLoadMsg] = useState("연결 중...");
 
-  // Save current page to session whenever it changes (only after app loaded)
-  useEffect(() => {
-    if (phase !== "app") return;
-    try{const s=JSON.parse(sessionStorage.getItem("bliss_session")||"{}");s.page=page;sessionStorage.setItem("bliss_session",JSON.stringify(s));}catch{}
-  }, [page, phase]);
+  // Page is persisted directly via setPage → sessionStorage.setItem("bliss_page")
 
   // Phase 1: Load all users on mount + auto-login from saved session
   useEffect(() => {
@@ -189,7 +188,6 @@ function App() {
               const u = users.find(u => u.id === saved.userId);
               if (u) {
                 if (saved.bizId) window._pendingBizId = saved.bizId;
-                if (saved.page) window._pendingPage = saved.page;
                 console.log("Auto-login:", u.role, "bizId:", saved.bizId, "page:", saved.page);
                 handleLogin(u, true); return;
               }
@@ -252,9 +250,7 @@ function App() {
         });
         setUserBranches(user.role === "owner" ? db.branches.map(b=>b.id) : (user.branches || []));
         setViewBranches(user.viewBranches || []);
-        // Restore saved page
-        const pp = window._pendingPage; delete window._pendingPage; console.log("Restoring page:", pp);
-        if (pp && ["timeline","reservations","sales","stats","customers","users","admin"].includes(pp)) setPage(pp);
+        // page is already restored from sessionStorage("bliss_page") via useState initializer
         setPhase("app");
       } catch(e) {
         console.error("Data load error:", e);
@@ -285,14 +281,13 @@ function App() {
       setRole("owner"); // super acts as owner inside a business
       setUserBranches(db.branches.map(b => b.id));
       setViewBranches([]);
-      const pp = window._pendingPage; delete window._pendingPage; console.log("Restoring page:", pp);
-      if (pp && ["timeline","reservations","sales","stats","customers","users","admin"].includes(pp)) setPage(pp);
+      // page is already restored from sessionStorage("bliss_page") via useState initializer
       setPhase("app");
     } catch(e) { console.error(e); setPhase("super"); }
   };
 
   const handleLogout = () => {
-    try{sessionStorage.removeItem("bliss_session");}catch{}
+    try{sessionStorage.removeItem("bliss_session");sessionStorage.removeItem("bliss_page");sessionStorage.removeItem("bliss_adminTab");}catch{}
     setCurrentUser(null); setCurrentBizId(null); setCurrentBiz(null);
     setData(null); setSuperData(null); setRole("staff");
     setUserBranches([]); setViewBranches([]); setPage("timeline");
@@ -641,7 +636,7 @@ function Login({ users, onLogin }) {
           <div style={{fontSize:10,color:"#bbb",textAlign:"center",marginTop:4}}>
             슈퍼관리자: admin / 1234 · 업체대표: master / 1234
           </div>
-          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.39.5</div>
+          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.39.6</div>
         </div>
       </div>
     </div>
@@ -2877,13 +2872,13 @@ function UserEditRow({ init, regBranches, allBranches, onSave, onCancel, isNew }
 // ADMIN
 // ═══════════════════════════════════════════
 function AdminPage({ data, setData, bizId }) {
-  const [tab, setTab] = useState(() => {
-    try { const s=JSON.parse(sessionStorage.getItem("bliss_session")||"{}"); if(s.adminTab) return s.adminTab; } catch{}
-    return "places";
+  const [tab, setTabRaw] = useState(() => {
+    try { return sessionStorage.getItem("bliss_adminTab") || "places"; } catch{ return "places"; }
   });
-  useEffect(() => {
-    try{const s=JSON.parse(sessionStorage.getItem("bliss_session")||"{}");s.adminTab=tab;sessionStorage.setItem("bliss_session",JSON.stringify(s));}catch{}
-  }, [tab]);
+  const setTab = useCallback((t) => {
+    setTabRaw(t);
+    try { sessionStorage.setItem("bliss_adminTab", t); } catch{}
+  }, []);
   return <div>
     <h2 className="page-title">관리 설정</h2>
     <div style={{display:"flex",gap:2,marginBottom:16,background:"#e0e0e0",borderRadius:8,padding:3,width:"fit-content",flexWrap:"wrap"}}>
