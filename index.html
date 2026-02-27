@@ -118,7 +118,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.39.12";
+const BLISS_V = "2.39.13";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -3288,8 +3288,10 @@ function AdminSaleItems({ data, setData }) {
     const newSvcs = rows.map((r,i)=>{
       const catName = String(r["카테고리"]||r["category"]||"").trim();
       const cat = localCats.find(c=>c.name.trim()===catName);
-      return {id:uid(), cat:cat?.id||localCats[0]?.id||"sc1", name:String(r["시술명"]||r["name"]||"").trim(), priceF:Number(r["여성가"]||r["priceF"])||0, priceM:Number(r["남성가"]||r["priceM"])||0, dur:Number(r["소요분"]||r["dur"])||20, note:String(r["비고"]||"").trim(), sort:services.length+i};
+      return {id:uid(), cat:cat?.id||localCats[0]?.id||"sc1", name:String(r["시술명"]||r["name"]||"").trim(), priceF:Number(r["여성가"]||r["priceF"])||0, priceM:Number(r["남성가"]||r["priceM"])||0, dur:Number(r["소요분"]||r["dur"])||20, note:String(r["비고"]||"").trim(), sort:i};
     }).filter(r=>r.name);
+    // Re-assign sort after filter
+    newSvcs.forEach((s,i) => s.sort = i);
     if(newSvcs.length) {
       const mode = window.confirm(newSvcs.length+"개 시술 업로드\n\n[확인] 기존 전체 삭제 후 교체\n[취소] 기존에 추가");
       if (mode) {
@@ -3298,12 +3300,21 @@ function AdminSaleItems({ data, setData }) {
         setServices(newSvcs);
         for (const s of newSvcs) { await sb.insert("services",{id:s.id, business_id:_activeBizId, cat:s.cat, name:s.name, dur:s.dur, price_f:s.priceF, price_m:s.priceM, note:s.note||"", sort:s.sort}).catch(console.error); }
       } else {
+        const maxSort = services.reduce((m,s)=>Math.max(m,s.sort||0),0);
+        newSvcs.forEach((s,i) => s.sort = maxSort + 1 + i);
         setServices(p=>[...p,...newSvcs]);
         newSvcs.forEach(s=>sb.insert("services",{id:s.id, business_id:_activeBizId, cat:s.cat, name:s.name, dur:s.dur, price_f:s.priceF, price_m:s.priceM, note:s.note||"", sort:s.sort}).catch(console.error));
       }
       if (setData) setData(prev => ({...prev, services: mode ? newSvcs : [...prev.services, ...newSvcs]}));
     }
     e.target.value="";
+  };
+
+  const resetSort = () => {
+    if(!window.confirm("현재 화면 순서대로 sort 값을 0부터 재설정합니다.")) return;
+    const reordered = services.map((s,i) => ({...s, sort:i}));
+    setServices(reordered);
+    reordered.forEach(s => sb.update("services", s.id, {sort:s.sort}).catch(console.error));
   };
 
   return <div>
