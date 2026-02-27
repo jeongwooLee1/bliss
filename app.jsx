@@ -106,7 +106,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.39.19";
+const BLISS_V = "2.39.20";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -432,45 +432,64 @@ function SuperDashboard({ superData, setSuperData, currentUser, onLogout, onEnte
     setNewGrp("");
   };
 
+  const [sideOpen, setSideOpen] = useState(false);
   const tabs = [{id:"businesses",label:"🏢 업체 관리"},{id:"users",label:"👤 사용자"}];
+
+  const SideContent = () => <>
+    <div style={{padding:"20px 16px 16px",borderBottom:"1px solid #e0e0e0"}}>
+      <div style={{fontSize:20,fontWeight:800,color:"#7c7cc8",letterSpacing:-1}}>Bliss</div>
+      <div style={{fontSize:11,color:"#888",marginTop:4}}>슈퍼관리자 · {currentUser?.name}</div>
+    </div>
+    <div style={{flex:1,padding:"12px 0"}}>
+      {tabs.map(t=>(
+        <button key={t.id} onClick={()=>{setTab(t.id);setSideOpen(false)}} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 16px",border:"none",cursor:"pointer",fontSize:13,fontWeight:tab===t.id?700:400,
+          background:tab===t.id?"#f0f0ff":"transparent",color:tab===t.id?"#5a5ac8":"#555",
+          borderLeft:tab===t.id?"3px solid #7c7cc8":"3px solid transparent",
+          fontFamily:"inherit",width:"100%",textAlign:"left"}}>{t.label}</button>
+      ))}
+    </div>
+    <div style={{padding:12,borderTop:"1px solid #e0e0e0"}}>
+      <button onClick={onLogout} style={{width:"100%",padding:"8px 14px",borderRadius:4,border:"1px solid #d0d0d0",background:"#fff",color:"#888",cursor:"pointer",fontSize:12,fontWeight:600,fontFamily:"inherit"}}>로그아웃</button>
+    </div>
+  </>;
 
   return (
     <div style={{display:"flex",height:"100vh",fontFamily:"'Pretendard',sans-serif",background:"#f8f8f8"}}>
       <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet"/>
       <style>{CSS}</style>
-      <aside style={{width:220,background:"#fff",borderRight:"1px solid #e0e0e0",display:"flex",flexDirection:"column"}}>
-        <div style={{padding:"20px 16px 16px",borderBottom:"1px solid #e0e0e0"}}>
-          <div style={{fontSize:20,fontWeight:800,color:"#7c7cc8",letterSpacing:-1}}>Bliss</div>
-          <div style={{fontSize:11,color:"#888",marginTop:4}}>슈퍼관리자 · {currentUser?.name}</div>
-        </div>
-        <div style={{flex:1,padding:"12px 0"}}>
-          {tabs.map(t=>(
-            <button key={t.id} onClick={()=>setTab(t.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 16px",border:"none",cursor:"pointer",fontSize:13,fontWeight:tab===t.id?700:400,
-              background:tab===t.id?"#f0f0ff":"transparent",color:tab===t.id?"#5a5ac8":"#555",
-              borderLeft:tab===t.id?"3px solid #7c7cc8":"3px solid transparent",
-              fontFamily:"inherit",width:"100%",textAlign:"left"}}>{t.label}</button>
-          ))}
-        </div>
-        <div style={{padding:12,borderTop:"1px solid #e0e0e0"}}>
-          <button onClick={onLogout} style={{width:"100%",padding:"8px 14px",borderRadius:4,border:"1px solid #d0d0d0",background:"#fff",color:"#888",cursor:"pointer",fontSize:12,fontWeight:600,fontFamily:"inherit"}}>로그아웃</button>
-        </div>
+      {/* Desktop sidebar */}
+      <aside className="sidebar-d" style={{width:220,background:"#fff",borderRight:"1px solid #e0e0e0",display:"flex",flexDirection:"column"}}>
+        <SideContent/>
       </aside>
-      <main style={{flex:1,padding:24,overflow:"auto"}}>
+      {/* Mobile sidebar overlay */}
+      {sideOpen && <div className="sidebar-m" style={{position:"fixed",inset:0,zIndex:300}}>
+        <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,.5)"}} onClick={()=>setSideOpen(false)}/>
+        <div style={{position:"relative",width:260,height:"100%",background:"#fff",display:"flex",flexDirection:"column",animation:"slideIn .2s ease"}}>
+          <SideContent/>
+        </div>
+      </div>}
+      <main className="main-c" style={{flex:1,display:"flex",flexDirection:"column",height:"100vh",overflow:"hidden"}}>
+        {/* Mobile header */}
+        <div className="mob-hdr" style={{padding:"10px 16px",background:"#fff",borderBottom:"1px solid #e0e0e0",display:"flex",alignItems:"center",gap:12}}>
+          <button onClick={()=>setSideOpen(true)} style={{background:"none",border:"none",color:"#333",cursor:"pointer",fontSize:20,fontFamily:"inherit"}}>☰</button>
+          <span style={{fontSize:14,fontWeight:700,color:"#7c7cc8"}}>Bliss 슈퍼관리자</span>
+        </div>
+        <div className="page-pad" style={{flex:1,padding:24,overflow:"auto",WebkitOverflowScrolling:"touch"}}>
         {/* ── 업체 관리 ── */}
         {tab==="businesses" && <div>
-          <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}>
-            <h2 style={{fontSize:20,fontWeight:800,color:"#333"}}>🏢 업체 관리</h2>
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16,flexWrap:"wrap"}}>
+            <h2 style={{fontSize:18,fontWeight:800,color:"#333"}}>🏢 업체 관리</h2>
             <span style={{fontSize:12,color:"#888"}}>{businesses.length}개 업체</span>
             <button className="btn-p" style={{marginLeft:"auto"}} onClick={()=>setBizForm({name:"",code:"",phone:"",memo:"",groupId:""})}>＋ 업체 추가</button>
           </div>
           {bizForm && <div className="card" style={{padding:16,marginBottom:16}}>
             <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"end"}}>
-              <FLD label="업체명"><input className="inp" style={{width:160}} value={bizForm.name} onChange={e=>setBizForm({...bizForm,name:e.target.value})} placeholder="업체명 입력"/></FLD>
-              <FLD label="대표 아이디"><input className="inp" style={{width:140}} value={bizForm.code} onChange={e=>setBizForm({...bizForm,code:e.target.value.toLowerCase().replace(/[^a-z0-9]/g,"")})} placeholder="영문소문자+숫자"/></FLD>
-              <FLD label="전화"><input className="inp" style={{width:140}} value={bizForm.phone||""} onChange={e=>setBizForm({...bizForm,phone:e.target.value})} placeholder="02-0000-0000"/></FLD>
+              <FLD label="업체명"><input className="inp" style={{width:"100%",maxWidth:160}} value={bizForm.name} onChange={e=>setBizForm({...bizForm,name:e.target.value})} placeholder="업체명 입력"/></FLD>
+              <FLD label="대표 아이디"><input className="inp" style={{width:"100%",maxWidth:140}} value={bizForm.code} onChange={e=>setBizForm({...bizForm,code:e.target.value.toLowerCase().replace(/[^a-z0-9]/g,"")})} placeholder="영문소문자+숫자"/></FLD>
+              <FLD label="전화"><input className="inp" style={{width:"100%",maxWidth:140}} value={bizForm.phone||""} onChange={e=>setBizForm({...bizForm,phone:e.target.value})} placeholder="02-0000-0000"/></FLD>
               <FLD label="그룹">
                 <div style={{display:"flex",gap:4}}>
-                  <select className="inp" style={{width:130}} value={bizForm.groupId||""} onChange={e=>setBizForm({...bizForm,groupId:e.target.value})}>
+                  <select className="inp" style={{width:"100%",maxWidth:130}} value={bizForm.groupId||""} onChange={e=>setBizForm({...bizForm,groupId:e.target.value})}>
                     <option value="">없음</option>
                     {groups.map(g=><option key={g.id} value={g.id}>{g.name}</option>)}
                   </select>
@@ -480,7 +499,7 @@ function SuperDashboard({ superData, setSuperData, currentUser, onLogout, onEnte
                   </div>
                 </div>
               </FLD>
-              <FLD label="메모"><input className="inp" style={{width:160}} value={bizForm.memo||""} onChange={e=>setBizForm({...bizForm,memo:e.target.value})} placeholder="메모"/></FLD>
+              <FLD label="메모"><input className="inp" style={{width:"100%",maxWidth:160}} value={bizForm.memo||""} onChange={e=>setBizForm({...bizForm,memo:e.target.value})} placeholder="메모"/></FLD>
               <button className="btn-p" onClick={saveBiz}>{bizForm.id?"저장":"추가"}</button>
               <button className="btn-s" onClick={()=>setBizForm(null)}>취소</button>
             </div>
@@ -515,6 +534,7 @@ function SuperDashboard({ superData, setSuperData, currentUser, onLogout, onEnte
 
         {/* ── 사용자 ── */}
         {tab==="users" && <SuperUsers users={users} businesses={businesses} superData={superData} setSuperData={setSuperData}/>}
+        </div>
       </main>
     </div>
   );
@@ -552,21 +572,21 @@ function SuperUsers({ users, businesses, superData, setSuperData }) {
   const roleClr = (r) => r==="super"?"#e57373":r==="owner"?"#7c7cc8":"#888";
 
   return <div>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-      <h2 style={{fontSize:20,fontWeight:800,color:"#333"}}>👤 전체 사용자 <span style={{fontSize:13,fontWeight:400,color:"#999"}}>{users.length}명</span></h2>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:8}}>
+      <h2 style={{fontSize:18,fontWeight:800,color:"#333"}}>👤 전체 사용자 <span style={{fontSize:13,fontWeight:400,color:"#999"}}>{users.length}명</span></h2>
       <button className="btn-p" onClick={startAdd}>＋ 사용자 추가</button>
     </div>
 
     {form && <div className="card" style={{padding:20,marginBottom:16}}>
       <h3 style={{fontSize:14,fontWeight:700,marginBottom:12}}>{editId==="new"?"사용자 추가":"사용자 수정"}</h3>
       <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"flex-end"}}>
-        <FLD label="이름"><input className="inp" style={{width:120}} value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))}/></FLD>
-        <FLD label="아이디"><input className="inp" style={{width:120}} value={form.loginId} onChange={e=>setForm(p=>({...p,loginId:e.target.value}))}/></FLD>
-        <FLD label="비밀번호"><input className="inp" style={{width:100}} value={form.pw} onChange={e=>setForm(p=>({...p,pw:e.target.value}))}/></FLD>
-        <FLD label="유형"><select className="inp" style={{width:90}} value={form.role} onChange={e=>setForm(p=>({...p,role:e.target.value}))}>
+        <FLD label="이름"><input className="inp" style={{width:"100%",maxWidth:120}} value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))}/></FLD>
+        <FLD label="아이디"><input className="inp" style={{width:"100%",maxWidth:120}} value={form.loginId} onChange={e=>setForm(p=>({...p,loginId:e.target.value}))}/></FLD>
+        <FLD label="비밀번호"><input className="inp" style={{width:"100%",maxWidth:100}} value={form.pw} onChange={e=>setForm(p=>({...p,pw:e.target.value}))}/></FLD>
+        <FLD label="유형"><select className="inp" style={{width:"100%",maxWidth:90}} value={form.role} onChange={e=>setForm(p=>({...p,role:e.target.value}))}>
           <option value="super">슈퍼</option><option value="owner">대표</option><option value="staff">직원</option>
         </select></FLD>
-        <FLD label="업체"><select className="inp" style={{width:150}} value={form.businessId||""} onChange={e=>setForm(p=>({...p,businessId:e.target.value}))}>
+        <FLD label="업체"><select className="inp" style={{width:"100%",maxWidth:150}} value={form.businessId||""} onChange={e=>setForm(p=>({...p,businessId:e.target.value}))}>
           <option value="">없음</option>{businesses.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
         </select></FLD>
         <div style={{display:"flex",gap:6}}>
@@ -612,10 +632,10 @@ function Login({ users, onLogin }) {
     onLogin(u);
   };
   return (
-    <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"linear-gradient(135deg,#e8e8f0 0%,#d8d8e8 50%,#c8c8d8 100%)",fontFamily:"'Pretendard',sans-serif",padding:20}}>
+    <div style={{minHeight:"100vh",width:"100%",display:"flex",alignItems:"center",justifyContent:"center",background:"linear-gradient(135deg,#e8e8f0 0%,#d8d8e8 50%,#c8c8d8 100%)",fontFamily:"'Pretendard',sans-serif",padding:16}}>
       <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet"/>
       <style>{CSS}</style>
-      <div style={{background:"#fff",borderRadius:12,border:"1px solid #e0e0e0",padding:40,width:"100%",maxWidth:420,animation:"fadeIn .5s ease",boxShadow:"0 8px 30px rgba(0,0,0,.1)"}}>
+      <div style={{background:"#fff",borderRadius:12,border:"1px solid #e0e0e0",padding:"32px 28px",width:"100%",maxWidth:420,animation:"fadeIn .5s ease",boxShadow:"0 8px 30px rgba(0,0,0,.1)"}}>
         <div style={{textAlign:"center",marginBottom:32}}>
           <div style={{fontSize:28,fontWeight:800,color:"#7c7cc8",letterSpacing:-1}}>Bliss</div>
           <div style={{fontSize:12,color:"#999",marginTop:8}}>통합 예약 & 매출 관리 시스템</div>
@@ -3640,6 +3660,7 @@ const S = {
 };
 
 const CSS = `
+  html,body,#root{height:100%;margin:0;padding:0}
   *{box-sizing:border-box;margin:0;padding:0}
   input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
   input[type=number]{-moz-appearance:textfield}
