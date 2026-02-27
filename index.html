@@ -118,7 +118,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.39.16";
+const BLISS_V = "2.39.17";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -1913,14 +1913,19 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
   const [payMethod, setPayMethod] = useState({ svcCash:0, svcCard:0, svcTransfer:0, svcPoint:0, prodCash:0, prodCard:0, prodTransfer:0, prodPoint:0 });
   const setPay = useCallback((k,v) => setPayMethod(prev => ({...prev, [k]: Number(v)||0})), []);
 
-  // 네이버 예약 감지
-  const isNaver = !!(reservation?.selectedTags||[]).some(tid => {
-    const tag = (data?.serviceTags||[]).find(t=>t.id===tid);
-    return tag && tag.name.includes("네이버");
-  });
+  // 네이버 예약 감지 (태그, 예약번호, 메모 중 하나라도 해당)
+  const isNaver = !!(
+    (reservation?.selectedTags||[]).some(tid => {
+      const tag = (data?.serviceTags||[]).find(t=>t.id===tid);
+      return tag && tag.name.includes("네이버");
+    }) ||
+    reservation?.reservationId ||
+    (reservation?.memo && /네이버/.test(reservation.memo))
+  );
   const [naverPrepaid, setNaverPrepaid] = useState(() => {
     if (!reservation?.memo) return 0;
-    const m = reservation.memo.match(/예약금\s*([0-9,]+)\s*원?/);
+    // 패턴: "예약금 33,000원", "예약금33000", "예약금 33000원"
+    const m = reservation.memo.match(/예약금\s*:?\s*([0-9,]+)\s*원?/);
     return m ? Number(m[1].replace(/,/g, "")) || 0 : 0;
   });
 
