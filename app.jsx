@@ -1687,7 +1687,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
           {/* ═══ 기타일정 모드 ═══ */}
           {isSchedule && <>
             <div>
-              <label style={{fontSize:11,fontWeight:600,color:"#888",marginBottom:5,display:"block"}}>기간</label>
+              <label style={{fontSize:11,fontWeight:600,color:"#888",marginBottom:5,display:"block"}}>기간 / 장소·담당자</label>
               <div className="res-time-row" style={{display:"flex",gap:3,alignItems:"center",flexWrap:"nowrap",overflowX:"auto"}}>
                 <DatePick value={f.date} onChange={v=>set("date",v)} style={{flex:"1 1 0",minWidth:0}}/>
                 <select className="inp" style={{flex:"0 0 78px",fontSize:12,padding:"5px 8px"}} value={f.time} onChange={e=>{const nt=e.target.value;set("time",nt);set("endTime",addMin(nt,f.dur))}}>
@@ -1697,15 +1697,14 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
                 <select className="inp" style={{flex:"0 0 78px",fontSize:12,padding:"5px 8px"}} value={f.endTime} onChange={e=>{set("endTime",e.target.value);set("dur",calcDur(f.time,e.target.value))}}>
                   {TIMES.filter(t=>{const h=parseInt(t);return h>=8&&h<=22}).map(t=><option key={t} value={t}>{t}</option>)}
                 </select>
+                <span className="res-room-sep" style={{width:1,height:18,background:"#e0e0e0",flexShrink:0}}/>
+                <select className="inp res-room-sel" style={{flex:"1 1 0",minWidth:0,fontSize:12,padding:"5px 8px"}} value={`${f.roomId}|${f.staffId}`} onChange={e=>{const [r,s]=e.target.value.split("|");set("roomId",r);set("staffId",s)}}>
+                  {branchRooms.map(rm => branchStaff.map(st =>
+                    <option key={rm.id+st.id} value={`${rm.id}|${st.id}`}>[{(data.branches||[]).find(b=>b.id===branchId)?.short}] {rm.name}-{st.dn}</option>
+                  ))}
+                </select>
               </div>
             </div>
-            <FLD label="장소·담당자">
-              <select className="inp" style={{width:"100%",fontSize:12,padding:"5px 8px"}} value={`${f.roomId}|${f.staffId}`} onChange={e=>{const [r,s]=e.target.value.split("|");set("roomId",r);set("staffId",s)}}>
-                {branchRooms.map(rm => branchStaff.map(st =>
-                  <option key={rm.id+st.id} value={`${rm.id}|${st.id}`}>[{(data.branches||[]).find(b=>b.id===branchId)?.short}] {rm.name}-{st.dn}</option>
-                ))}
-              </select>
-            </FLD>
             {/* 반복 설정 */}
             <div style={{marginTop:8}}>
               <label style={{fontSize:11,fontWeight:600,color:"#888",marginBottom:5,display:"block"}}>반복 설정</label>
@@ -1795,9 +1794,9 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
               </FLD>
             </div>
 
-            {/* 예약기간 + 장소/담당자 한 줄 */}
+            {/* 예약기간 + 장소/담당자 */}
             <div>
-              <label style={{fontSize:11,fontWeight:600,color:"#888",marginBottom:5,display:"block"}}>예약기간</label>
+              <label style={{fontSize:11,fontWeight:600,color:"#888",marginBottom:5,display:"block"}}>예약기간 / 장소·담당자</label>
               <div className="res-time-row" style={{display:"flex",gap:3,alignItems:"center",flexWrap:"nowrap",overflowX:"auto"}}>
                 <DatePick value={f.date} onChange={v=>set("date",v)} style={{flex:"1 1 0",minWidth:0}}/>
                 <select className="inp" style={{flex:"0 0 78px",fontSize:12,padding:"5px 8px"}} value={f.time} onChange={e=>{const nt=e.target.value;set("time",nt);set("endTime",addMin(nt,f.dur))}}>
@@ -1807,15 +1806,14 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
                 <select className="inp" style={{flex:"0 0 78px",fontSize:12,padding:"5px 8px"}} value={f.endTime} onChange={e=>{set("endTime",e.target.value);set("dur",calcDur(f.time,e.target.value))}}>
                   {TIMES.filter(t=>{const h=parseInt(t);return h>=8&&h<=22}).map(t=><option key={t} value={t}>{t}</option>)}
                 </select>
+                <span className="res-room-sep" style={{width:1,height:18,background:"#e0e0e0",flexShrink:0}}/>
+                <select className="inp res-room-sel" style={{flex:"1 1 0",minWidth:0,fontSize:12,padding:"5px 8px"}} value={`${f.roomId}|${f.staffId}`} onChange={e=>{const [r,s]=e.target.value.split("|");set("roomId",r);set("staffId",s)}}>
+                  {branchRooms.map(rm => branchStaff.map(st =>
+                    <option key={rm.id+st.id} value={`${rm.id}|${st.id}`}>[{(data.branches||[]).find(b=>b.id===branchId)?.short}] {rm.name}-{st.dn}</option>
+                  ))}
+                </select>
               </div>
             </div>
-            <FLD label="장소·담당자">
-              <select className="inp" style={{width:"100%",fontSize:12,padding:"5px 8px"}} value={`${f.roomId}|${f.staffId}`} onChange={e=>{const [r,s]=e.target.value.split("|");set("roomId",r);set("staffId",s)}}>
-                {branchRooms.map(rm => branchStaff.map(st =>
-                  <option key={rm.id+st.id} value={`${rm.id}|${st.id}`}>[{(data.branches||[]).find(b=>b.id===branchId)?.short}] {rm.name}-{st.dn}</option>
-                ))}
-              </select>
-            </FLD>
 
             {/* 상품/서비스 태그 */}
             <FLD label={`상품/서비스${(tagDurTotal+svcDurTotal) > 0 ? ` — 합산 소요시간: ${tagDurTotal+svcDurTotal}분` : ""}`}>
@@ -3854,8 +3852,10 @@ const CSS = `
     .form-col{gap:8px}
     .sale-grid{grid-template-columns:1fr 1fr!important;gap:8px!important}
     .sale-pay-row{flex-direction:column!important;gap:8px!important}
-    .res-time-row{flex-wrap:nowrap!important;overflow-x:auto!important}
+    .res-time-row{flex-wrap:wrap!important;overflow-x:auto!important}
     .res-time-row .inp{font-size:13px!important;padding:5px 8px!important}
+    .res-room-sep{display:none!important}
+    .res-room-sel{flex:1 1 100%!important;margin-top:4px!important}
     .tl-topbar{flex-direction:column!important;gap:4px!important;padding:6px 8px!important}
     .tl-days{width:100%;justify-content:space-between}
     .page-filter{flex-wrap:wrap!important;gap:4px!important}
