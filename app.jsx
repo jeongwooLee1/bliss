@@ -203,7 +203,13 @@ function App() {
     const check = () => {
       fetch("/bliss/version.txt?t=" + Date.now()).then(r => r.text()).then(remote => {
         remote = remote.trim();
-        if (remote && remote !== BLISS_V) { console.log("New version:", remote); location.reload(); }
+        if (remote && remote !== BLISS_V) {
+          const lastReload = sessionStorage.getItem("bliss_reload_v");
+          if (lastReload === remote) return; // already reloaded for this version
+          console.log("New version:", remote);
+          sessionStorage.setItem("bliss_reload_v", remote);
+          location.reload();
+        }
       }).catch(() => {});
       timer = setTimeout(check, 60000);
     };
@@ -1291,17 +1297,18 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                     const isDrag = dragBlock?.id === block.id;
                     const isSch = block.isSchedule;
                     const isEditable = canEdit(block.bid);
+                    const opHex = (ratio) => Math.round(blockOp / 100 * ratio).toString(16).padStart(2,"0");
                     return (
                       <div key={block.id}
                         onClick={e=>handleBlockClick(block,e)}
                         onMouseDown={e=>{if(isEditable && !isResizing.current)handleDragStart(block,e)}}
                         style={{position:"absolute",top:y,left:2,right:2,height:Math.max(h,rowH*2),
-                          background:isNaverCancelled?"#FFF8E1":isNaverPending?`${color}10`:(isSch?`${color}BB`:`${color}18`),
+                          background:isNaverCancelled?"#FFF8E1":isNaverPending?`${color}10`:(isSch?`${color}${opHex(240)}`:`${color}${opHex(160)}`),
                           border:isNaverCancelled?"1.5px dashed #E6A700":isNaverPending?`1.5px dashed ${color}`:`1px solid ${isSch?color:color+"60"}`,
                           borderLeft:`3px solid ${isNaverCancelled?"#E6A700":color}`,
                           borderRadius:4,padding:"2px 4px",overflow:"hidden",fontSize:blockFs,lineHeight:1.2,
                           cursor:isEditable?"grab":"pointer",zIndex:isDrag?0:3,transition:(isDrag||isBeingResized)?"none":"all .15s",
-                          opacity:isDrag?0.3:(blockOp/100),userSelect:"none"}}>
+                          opacity:isDrag?0.3:1,userSelect:"none"}}>
                         {block.type==="reservation" && !block.isSchedule && <>
                           <div style={{display:"flex",alignItems:"center",gap:3,overflow:"hidden",whiteSpace:"nowrap"}}>
                             {isNaverCancelled && <span style={{fontSize:Math.max(6,blockFs-2),padding:"1px 3px",borderRadius:2,background:"#E6A700",color:"#fff",fontWeight:700,lineHeight:1,flexShrink:0}}>네이버취소</span>}
@@ -1383,7 +1390,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
             {label:"줄간격",val:rowH,dec:()=>setRowH(h=>Math.max(6,h-2)),inc:()=>setRowH(h=>Math.min(30,h+2))},
             {label:"열너비",val:colW,dec:()=>setColW(w=>Math.max(80,w-20)),inc:()=>setColW(w=>Math.min(300,w+20))},
             {label:"글자크기",val:blockFs,dec:()=>setBlockFs(f=>Math.max(6,f-1)),inc:()=>setBlockFs(f=>Math.min(16,f+1))},
-            {label:"투명도",val:blockOp,suffix:"%",dec:()=>setBlockOp(o=>Math.max(10,o-10)),inc:()=>setBlockOp(o=>Math.min(100,o+10))},
+            {label:"불투명도",val:blockOp,suffix:"%",dec:()=>setBlockOp(o=>Math.max(10,o-10)),inc:()=>setBlockOp(o=>Math.min(100,o+10))},
             {label:"시작시간",val:startHour,suffix:"시",dec:()=>setStartHour(h=>Math.max(0,h-1)),inc:()=>setStartHour(h=>Math.min(endHour-1,h+1))},
             {label:"종료시간",val:endHour,suffix:"시",dec:()=>setEndHour(h=>Math.max(startHour+1,h-1)),inc:()=>setEndHour(h=>Math.min(24,h+1))},
           ].map(r=><div key={r.label} style={{background:"#f8f8fc",borderRadius:10,padding:"10px 12px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
@@ -1481,12 +1488,15 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
   const visibleTags = tags.filter(tag => tag.useYn !== false && (isSchedule ? tag.scheduleYn === "Y" : tag.scheduleYn !== "Y"));
 
   const BASE_DUR = 5; // 기본 예약시간 5분
-  const defaultEnd = () => { const t = item?.time||"10:00"; const [h,m] = t.split(":").map(Number); const em = m + (item?.dur||BASE_DUR); return `${String(h+Math.floor(em/60)).padStart(2,"0")}:${String(em%60).padStart(2,"0")}`; };
+  const isNaverItem = !!(item?.reservationId);
+  const itemDur = item?.dur || (isNaverItem ? 60 : BASE_DUR);
+  const defaultEnd = () => { const t = item?.time||"10:00"; const [h,m] = t.split(":").map(Number); const em = m + itemDur; return `${String(h+Math.floor(em/60)).padStart(2,"0")}:${String(em%60).padStart(2,"0")}`; };
+  const addMin = (t, mins) => { const [h,m] = t.split(":").map(Number); const em = m + mins; return `${String(h+Math.floor(em/60)).padStart(2,"0")}:${String(em%60).padStart(2,"0")}`; };
   const [f, setF] = useState(isNew && !item?.id ? {
     id: uid(), bid: branchId, roomId: item?.roomId||branchRooms[0]?.id, custId:null, custName:"", custPhone:"", custGender:"",
     staffId: branchStaff[0]?.id, serviceId: (data.services||[])[0]?.id, date: item?.date||todayStr(), time: item?.time||"10:00",
     endDate: item?.date||todayStr(), endTime: defaultEnd(),
-    dur: BASE_DUR, status:"confirmed", memo:"", type:"reservation",
+    dur: itemDur, status:"confirmed", memo:"", type:"reservation",
     selectedTags: [], isNewCust: true, tsLog: [],
     selectedServices: [], repeat: "none", repeatUntil: ""
   } : (() => {
@@ -1529,7 +1539,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
         return sum + (tag?.dur || 0);
       }, 0);
       const svcSum = (p.selectedServices||[]).reduce((sum, sid) => sum + (SVC_LIST.find(s=>s.id===sid)?.dur||0), 0);
-      const dur = (tagSum + svcSum) || BASE_DUR;
+      const dur = (tagSum + svcSum) || itemDur;
       const [sh, sm] = p.time.split(":").map(Number);
       const endMin = sh * 60 + sm + dur;
       const endTime = `${String(Math.min(22, Math.floor(endMin/60))).padStart(2,"0")}:${String(endMin%60).padStart(2,"0")}`;
@@ -1555,7 +1565,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
       const newSvcs = p.selectedServices?.includes(svcId) ? p.selectedServices.filter(s=>s!==svcId) : [...(p.selectedServices||[]), svcId];
       const svcSum = newSvcs.reduce((sum, sid) => sum + (SVC_LIST.find(s=>s.id===sid)?.dur||0), 0);
       const tagSum = (p.selectedTags||[]).reduce((sum, tid) => sum + (tags.find(t=>t.id===tid)?.dur||0), 0);
-      const dur = (svcSum + tagSum) || BASE_DUR;
+      const dur = (svcSum + tagSum) || itemDur;
       const [sh, sm] = p.time.split(":").map(Number);
       const endMin = sh * 60 + sm + dur;
       const endTime = `${String(Math.min(22, Math.floor(endMin/60))).padStart(2,"0")}:${String(endMin%60).padStart(2,"0")}`;
@@ -1656,24 +1666,25 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
           {/* ═══ 기타일정 모드 ═══ */}
           {isSchedule && <>
             <div>
-              <label style={{fontSize:11,fontWeight:600,color:"#888",marginBottom:5,display:"block"}}>기간 / 장소·담당자</label>
+              <label style={{fontSize:11,fontWeight:600,color:"#888",marginBottom:5,display:"block"}}>기간</label>
               <div className="res-time-row" style={{display:"flex",gap:3,alignItems:"center",flexWrap:"nowrap",overflowX:"auto"}}>
                 <DatePick value={f.date} onChange={v=>set("date",v)} style={{flex:"1 1 0",minWidth:0}}/>
-                <select className="inp" style={{flex:"0 0 78px",fontSize:12,padding:"5px 8px"}} value={f.time} onChange={e=>{set("time",e.target.value);set("dur",calcDur(e.target.value,f.endTime))}}>
+                <select className="inp" style={{flex:"0 0 78px",fontSize:12,padding:"5px 8px"}} value={f.time} onChange={e=>{const nt=e.target.value;set("time",nt);set("endTime",addMin(nt,f.dur))}}>
                   {TIMES.filter(t=>{const h=parseInt(t);return h>=8&&h<=21}).map(t=><option key={t} value={t}>{t}</option>)}
                 </select>
                 <span style={{color:"#999",fontSize:10,flexShrink:0}}>~</span>
                 <select className="inp" style={{flex:"0 0 78px",fontSize:12,padding:"5px 8px"}} value={f.endTime} onChange={e=>{set("endTime",e.target.value);set("dur",calcDur(f.time,e.target.value))}}>
                   {TIMES.filter(t=>{const h=parseInt(t);return h>=8&&h<=22}).map(t=><option key={t} value={t}>{t}</option>)}
                 </select>
-                <span style={{width:1,height:18,background:"#e0e0e0",flexShrink:0}}/>
-                <select className="inp" style={{flex:"1 1 0",minWidth:0,fontSize:12,padding:"5px 8px"}} value={`${f.roomId}|${f.staffId}`} onChange={e=>{const [r,s]=e.target.value.split("|");set("roomId",r);set("staffId",s)}}>
-                  {branchRooms.map(rm => branchStaff.map(st =>
-                    <option key={rm.id+st.id} value={`${rm.id}|${st.id}`}>[{(data.branches||[]).find(b=>b.id===branchId)?.short}] {rm.name}-{st.dn}</option>
-                  ))}
-                </select>
               </div>
             </div>
+            <FLD label="장소·담당자">
+              <select className="inp" style={{width:"100%",fontSize:12,padding:"5px 8px"}} value={`${f.roomId}|${f.staffId}`} onChange={e=>{const [r,s]=e.target.value.split("|");set("roomId",r);set("staffId",s)}}>
+                {branchRooms.map(rm => branchStaff.map(st =>
+                  <option key={rm.id+st.id} value={`${rm.id}|${st.id}`}>[{(data.branches||[]).find(b=>b.id===branchId)?.short}] {rm.name}-{st.dn}</option>
+                ))}
+              </select>
+            </FLD>
             {/* 반복 설정 */}
             <div style={{marginTop:8}}>
               <label style={{fontSize:11,fontWeight:600,color:"#888",marginBottom:5,display:"block"}}>반복 설정</label>
@@ -1765,24 +1776,25 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
 
             {/* 예약기간 + 장소/담당자 한 줄 */}
             <div>
-              <label style={{fontSize:11,fontWeight:600,color:"#888",marginBottom:5,display:"block"}}>예약기간 / 장소·담당자</label>
+              <label style={{fontSize:11,fontWeight:600,color:"#888",marginBottom:5,display:"block"}}>예약기간</label>
               <div className="res-time-row" style={{display:"flex",gap:3,alignItems:"center",flexWrap:"nowrap",overflowX:"auto"}}>
                 <DatePick value={f.date} onChange={v=>set("date",v)} style={{flex:"1 1 0",minWidth:0}}/>
-                <select className="inp" style={{flex:"0 0 78px",fontSize:12,padding:"5px 8px"}} value={f.time} onChange={e=>{set("time",e.target.value);set("dur",calcDur(e.target.value,f.endTime))}}>
+                <select className="inp" style={{flex:"0 0 78px",fontSize:12,padding:"5px 8px"}} value={f.time} onChange={e=>{const nt=e.target.value;set("time",nt);set("endTime",addMin(nt,f.dur))}}>
                   {TIMES.filter(t=>{const h=parseInt(t);return h>=8&&h<=21}).map(t=><option key={t} value={t}>{t}</option>)}
                 </select>
                 <span style={{color:"#999",fontSize:10,flexShrink:0}}>~</span>
                 <select className="inp" style={{flex:"0 0 78px",fontSize:12,padding:"5px 8px"}} value={f.endTime} onChange={e=>{set("endTime",e.target.value);set("dur",calcDur(f.time,e.target.value))}}>
                   {TIMES.filter(t=>{const h=parseInt(t);return h>=8&&h<=22}).map(t=><option key={t} value={t}>{t}</option>)}
                 </select>
-                <span style={{width:1,height:18,background:"#e0e0e0",flexShrink:0}}/>
-                <select className="inp" style={{flex:"1 1 0",minWidth:0,fontSize:12,padding:"5px 8px"}} value={`${f.roomId}|${f.staffId}`} onChange={e=>{const [r,s]=e.target.value.split("|");set("roomId",r);set("staffId",s)}}>
-                  {branchRooms.map(rm => branchStaff.map(st =>
-                    <option key={rm.id+st.id} value={`${rm.id}|${st.id}`}>[{(data.branches||[]).find(b=>b.id===branchId)?.short}] {rm.name}-{st.dn}</option>
-                  ))}
-                </select>
               </div>
             </div>
+            <FLD label="장소·담당자">
+              <select className="inp" style={{width:"100%",fontSize:12,padding:"5px 8px"}} value={`${f.roomId}|${f.staffId}`} onChange={e=>{const [r,s]=e.target.value.split("|");set("roomId",r);set("staffId",s)}}>
+                {branchRooms.map(rm => branchStaff.map(st =>
+                  <option key={rm.id+st.id} value={`${rm.id}|${st.id}`}>[{(data.branches||[]).find(b=>b.id===branchId)?.short}] {rm.name}-{st.dn}</option>
+                ))}
+              </select>
+            </FLD>
 
             {/* 상품/서비스 태그 */}
             <FLD label={`상품/서비스${(tagDurTotal+svcDurTotal) > 0 ? ` — 합산 소요시간: ${tagDurTotal+svcDurTotal}분` : ""}`}>
