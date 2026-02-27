@@ -106,7 +106,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.39.27";
+const BLISS_V = "2.39.28";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -1089,53 +1089,53 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   const DAYS_KR = ["일","월","화","수","목","금","토"];
   const sd = new Date(selDate);
   const dateLabel = `${sd.getFullYear()}년 ${String(sd.getMonth()+1).padStart(2,"0")}월 ${String(sd.getDate()).padStart(2,"0")}일 (${DAYS_KR[sd.getDay()]})`;
-  const daysInMonth = new Date(sd.getFullYear(), sd.getMonth()+1, 0).getDate();
 
   return (
     <div style={{display:"flex",flexDirection:"column",flex:1,minHeight:0}}>
-      {/* Top Bar - single compact row */}
-      <div style={{borderBottom:"1px solid #e0e0e0",background:"#fff",flexShrink:0,padding:"6px 12px",display:"flex",alignItems:"center",gap:6,flexWrap:"nowrap",overflowX:"auto",overflowY:"hidden"}}>
-        {/* Date nav */}
-        <button onClick={()=>changeDate(-1)} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#666",padding:"2px 4px",flexShrink:0}}>◁</button>
-        <span style={{fontSize:13,fontWeight:700,color:"#333",cursor:"pointer",flexShrink:0,whiteSpace:"nowrap"}} onClick={()=>{const el=document.createElement("input");el.type="date";el.value=selDate;el.onchange=e=>setSelDate(e.target.value);el.showPicker?.();el.click()}}>{dateLabel}</span>
-        <button onClick={()=>changeDate(1)} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#666",padding:"2px 4px",flexShrink:0}}>▷</button>
-        <button onClick={()=>setSelDate(todayStr())} style={{padding:"2px 8px",fontSize:10,border:"1px solid #d0d0d0",borderRadius:3,background:"#fff",color:"#666",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>오늘</button>
-        {/* Settings button */}
-        <div style={{position:"relative",flexShrink:0}} ref={el => { if(el) el._settingsBtn = el; }}>
-          <button onClick={(e)=>{setShowSettings(!showSettings);}} id="settings-btn"
-            style={{width:24,height:24,border:"1px solid #d0d0d0",borderRadius:4,background:showSettings?"#f0f0ff":"#fff",
-              cursor:"pointer",fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",padding:0,color:"#888"}}>⚙</button>
+      {/* Top Bar */}
+      <div className="tl-topbar" style={{borderBottom:"1px solid #e0e0e0",background:"#fff",flexShrink:0,padding:"6px 12px",display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+        {/* Row 1: Date nav + settings + branch */}
+        <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
+          <button onClick={()=>changeDate(-1)} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#666",padding:"2px 4px",flexShrink:0}}>◁</button>
+          <span style={{fontSize:13,fontWeight:700,color:"#333",cursor:"pointer",flexShrink:0,whiteSpace:"nowrap"}} onClick={()=>{const el=document.createElement("input");el.type="date";el.value=selDate;el.onchange=e=>setSelDate(e.target.value);el.showPicker?.();el.click()}}>{dateLabel}</span>
+          <button onClick={()=>changeDate(1)} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#666",padding:"2px 4px",flexShrink:0}}>▷</button>
+          <button onClick={()=>setSelDate(todayStr())} style={{padding:"2px 8px",fontSize:10,border:"1px solid #d0d0d0",borderRadius:3,background:"#fff",color:"#666",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>오늘</button>
+          <div style={{position:"relative",flexShrink:0}} ref={el => { if(el) el._settingsBtn = el; }}>
+            <button onClick={(e)=>{setShowSettings(!showSettings);}} id="settings-btn"
+              style={{width:24,height:24,border:"1px solid #d0d0d0",borderRadius:4,background:showSettings?"#f0f0ff":"#fff",
+                cursor:"pointer",fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",padding:0,color:"#888"}}>⚙</button>
+          </div>
+          <select value={viewBids.length===(isMaster?allBranchList.length:accessibleBids.length)?"all":viewBids.length===1?viewBids[0]:"custom"}
+            onChange={e=>{
+              const v=e.target.value;
+              if(v==="all") setViewBids(isMaster?allBranchList.map(b=>b.id):accessibleBids);
+              else setViewBids([v]);
+            }}
+            style={{flexShrink:0,padding:"2px 6px",fontSize:10,border:"1px solid #d0d0d0",borderRadius:4,background:"#fff",color:"#555",cursor:"pointer",fontFamily:"inherit",fontWeight:600,maxWidth:120}}>
+            <option value="all">전체지점</option>
+            {(isMaster?allBranchList:allBranchList.filter(b=>accessibleBids.includes(b.id))).map(b=>
+              <option key={b.id} value={b.id}>{b.short||b.name}{!canEdit(b.id)?" 👁":""}</option>
+            )}
+          </select>
         </div>
-        <span style={{color:"#e0e0e0",fontSize:12,flexShrink:0}}>│</span>
-        {/* Day numbers inline */}
-        <div style={{display:"flex",gap:0,overflow:"hidden",flex:1,minWidth:0}}>
-          {Array.from({length:daysInMonth},(_,i)=>{
-            const d = i+1;
-            const dt = new Date(sd.getFullYear(), sd.getMonth(), d);
-            const isSun = dt.getDay()===0;
-            const isSat = dt.getDay()===6;
-            const isToday = d === new Date().getDate() && sd.getMonth() === new Date().getMonth() && sd.getFullYear() === new Date().getFullYear();
-            const isSel = d === sd.getDate();
-            return <button key={d} onClick={()=>{const ns=new Date(sd.getFullYear(),sd.getMonth(),d);setSelDate(fmtLocal(ns))}}
-              style={{width:22,height:22,borderRadius:isSel?11:3,border:isToday&&!isSel?"2px solid #7c7cc8":"none",
-                background:isSel?"#7c7cc8":"transparent",color:isSel?"#fff":isSun?"#e57373":isSat?"#7c7cc8":"#555",
-                fontSize:11,fontWeight:isSel||isToday?700:400,cursor:"pointer",fontFamily:"inherit",padding:0,flexShrink:0}}>
-              {d}
+        {/* Row 2 (mobile) / inline (desktop): 7-day buttons */}
+        <div className="tl-days" style={{display:"flex",gap:2,alignItems:"center"}}>
+          {Array.from({length:7},(_,i)=>{
+            const dt = new Date(); dt.setDate(dt.getDate()+i);
+            const ds = fmtLocal(dt);
+            const dow = dt.getDay();
+            const isSel = ds === selDate;
+            const dayColor = dow===0?"#e57373":dow===6?"#4a7cc8":"#555";
+            return <button key={i} onClick={()=>setSelDate(ds)}
+              style={{minWidth:38,height:28,borderRadius:6,border:isSel?"none":"1px solid #e8e8e8",
+                background:isSel?"#7c7cc8":"#fff",color:isSel?"#fff":dayColor,
+                fontSize:11,fontWeight:isSel?700:500,cursor:"pointer",fontFamily:"inherit",padding:"2px 4px",flexShrink:0,
+                display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",lineHeight:1.1}}>
+              <span style={{fontSize:10}}>{DAYS_KR[dow]}</span>
+              <span>{dt.getDate()}</span>
             </button>;
           })}
         </div>
-        <select value={viewBids.length===(isMaster?allBranchList.length:accessibleBids.length)?"all":viewBids.length===1?viewBids[0]:"custom"}
-          onChange={e=>{
-            const v=e.target.value;
-            if(v==="all") setViewBids(isMaster?allBranchList.map(b=>b.id):accessibleBids);
-            else setViewBids([v]);
-          }}
-          style={{flexShrink:0,padding:"2px 6px",fontSize:10,border:"1px solid #d0d0d0",borderRadius:4,background:"#fff",color:"#555",cursor:"pointer",fontFamily:"inherit",fontWeight:600,maxWidth:120}}>
-          <option value="all">전체지점</option>
-          {(isMaster?allBranchList:allBranchList.filter(b=>accessibleBids.includes(b.id))).map(b=>
-            <option key={b.id} value={b.id}>{b.short||b.name}{!canEdit(b.id)?" 👁":""}</option>
-          )}
-        </select>
       </div>
 
       {/* Pending Reservations Alert */}
@@ -3766,6 +3766,8 @@ const CSS = `
     .sale-pay-row{flex-direction:column!important;gap:8px!important}
     .res-time-row{flex-wrap:nowrap!important;overflow-x:auto!important}
     .res-time-row .inp{font-size:13px!important;padding:5px 8px!important}
+    .tl-topbar{flex-direction:column!important;gap:4px!important;padding:6px 8px!important}
+    .tl-days{width:100%;justify-content:space-between}
     .page-filter{flex-wrap:wrap!important;gap:4px!important}
     .page-filter .inp{max-width:130px!important}
     table{font-size:11px}
