@@ -106,7 +106,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.40.0";
+const BLISS_V = "2.40.9";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -2027,29 +2027,12 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
 
   // 결제수단 분배
   const [payMethod, setPayMethod] = useState({ svcCash:0, svcCard:0, svcTransfer:0, svcPoint:0, prodCash:0, prodCard:0, prodTransfer:0, prodPoint:0 });
-  const [svcAutoField, setSvcAutoField] = useState("svcCash");
-  const [prodAutoField, setProdAutoField] = useState("prodCash");
-  const setPay = useCallback((k, v, total) => {
-    const val = Number(v) || 0;
-    const prefix = k.startsWith("svc") ? "svc" : "prod";
-    const fields = prefix === "svc" ? ["svcCard","svcCash","svcTransfer"] : ["prodCard","prodCash","prodTransfer"];
-    const autoField = prefix === "svc" ? svcAutoField : prodAutoField;
-    setPayMethod(prev => {
-      const next = {...prev, [k]: val};
-      // Auto-adjust: remainder goes to autoField (unless it's the field being edited)
-      const adjustField = k === autoField ? fields.find(f => f !== k && prev[f] > 0) || fields.find(f => f !== k) : autoField;
-      const others = fields.filter(f => f !== adjustField).reduce((s, f) => s + (f === k ? val : next[f]), 0);
-      next[adjustField] = Math.max(0, total - others);
-      return next;
-    });
-  }, [svcAutoField, prodAutoField]);
+  const setPay = useCallback((k, v) => setPayMethod(prev => ({...prev, [k]: Number(v)||0})), []);
   const fillField = (k, total, prefix) => {
     const fields = prefix === "svc" ? ["svcCard","svcCash","svcTransfer"] : ["prodCard","prodCash","prodTransfer"];
-    if (prefix === "svc") setSvcAutoField(k); else setProdAutoField(k);
     setPayMethod(prev => {
-      const next = {...prev};
-      fields.forEach(f => { next[f] = f === k ? total : 0; });
-      return next;
+      const others = fields.filter(f => f !== k).reduce((s, f) => s + (prev[f]||0), 0);
+      return {...prev, [k]: Math.max(0, total - others)};
     });
   };
 
@@ -2158,13 +2141,13 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
   useEffect(() => {
     if (svcTotal !== prevSvcTotal.current) {
       prevSvcTotal.current = svcTotal;
-      if (svcTotal > 0) setPayMethod(p => { const n = {...p}; ["svcCard","svcCash","svcTransfer"].forEach(f => n[f] = f===svcAutoField ? svcTotal : 0); return n; });
+      if (svcTotal > 0) setPayMethod(p => { const n = {...p}; ["svcCard","svcCash","svcTransfer"].forEach(f => n[f] = f==="svcCash" ? svcTotal : 0); return n; });
     }
   }, [svcTotal]);
   useEffect(() => {
     if (prodTotal !== prevProdTotal.current) {
       prevProdTotal.current = prodTotal;
-      if (prodTotal > 0) setPayMethod(p => { const n = {...p}; ["prodCard","prodCash","prodTransfer"].forEach(f => n[f] = f===prodAutoField ? prodTotal : 0); return n; });
+      if (prodTotal > 0) setPayMethod(p => { const n = {...p}; ["prodCard","prodCash","prodTransfer"].forEach(f => n[f] = f==="prodCash" ? prodTotal : 0); return n; });
     }
   }, [prodTotal]);
 
@@ -2413,9 +2396,9 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
                   <span style={{fontSize:10,color:clr,fontWeight:600}}>{label}</span>
                   <input className="inp" type="number" value={payMethod[k]||""} placeholder="0"
                     onFocus={()=>{ if(!payMethod[k]) fillField(k, svcTotal, "svc"); }}
-                    onChange={e=>setPay(k, e.target.value, svcTotal)}
+                    onChange={e=>setPay(k, e.target.value)}
                     style={{width:80,padding:"4px 6px",fontSize:12,textAlign:"right",border:`1px solid ${bdr}`,color:clr,fontWeight:600,
-                      background:svcAutoField===k?"#f5f5ff":"#fff"}} />
+                      background:"#fff"}} />
                 </div>)}
               </div>
             </div>}
@@ -2430,9 +2413,9 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
                   <span style={{fontSize:10,color:clr,fontWeight:600}}>{label}</span>
                   <input className="inp" type="number" value={payMethod[k]||""} placeholder="0"
                     onFocus={()=>{ if(!payMethod[k]) fillField(k, prodTotal, "prod"); }}
-                    onChange={e=>setPay(k, e.target.value, prodTotal)}
+                    onChange={e=>setPay(k, e.target.value)}
                     style={{width:80,padding:"4px 6px",fontSize:12,textAlign:"right",border:`1px solid ${bdr}`,color:clr,fontWeight:600,
-                      background:prodAutoField===k?"#f5f5ff":"#fff"}} />
+                      background:"#fff"}} />
                 </div>)}
               </div>
             </div>}
