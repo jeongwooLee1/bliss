@@ -106,7 +106,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.39.24";
+const BLISS_V = "2.39.25";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -3685,13 +3685,11 @@ function AdminServiceTags({ data, setData }) {
 
 // ─── Shared ───
 function DatePick({ value, onChange, style, min }) {
-  const ref = useRef(null);
   const fmt = (v) => { if (!v) return "--"; const p = v.split("-"); return `${p[1]}.${p[2]}`; };
   return <div style={{position:"relative",display:"inline-flex",...style}}>
-    <div className="inp" onClick={()=>ref.current?.showPicker?.()||ref.current?.click()}
-      style={{width:"100%",fontSize:12,padding:"5px 8px",cursor:"pointer",textAlign:"center",whiteSpace:"nowrap"}}>{fmt(value)}</div>
-    <input ref={ref} type="date" value={value} onChange={e=>onChange(e.target.value)} min={min}
-      style={{position:"absolute",opacity:0,width:0,height:0,overflow:"hidden"}}/>
+    <div className="inp" style={{width:"100%",fontSize:12,padding:"5px 8px",textAlign:"center",whiteSpace:"nowrap",pointerEvents:"none"}}>{fmt(value)}</div>
+    <input type="date" value={value} onChange={e=>onChange(e.target.value)} min={min}
+      style={{position:"absolute",inset:0,opacity:0,width:"100%",height:"100%",cursor:"pointer",fontSize:16}}/>
   </div>;
 }
 function FLD({ label, children }) {
@@ -3764,8 +3762,8 @@ const CSS = `
     .form-col{gap:8px}
     .sale-grid{grid-template-columns:1fr 1fr!important;gap:8px!important}
     .sale-pay-row{flex-direction:column!important;gap:8px!important}
-    .res-time-row{flex-wrap:wrap!important}
-    .res-time-row>*{flex-shrink:1!important}
+    .res-time-row{flex-wrap:nowrap!important;overflow-x:auto!important}
+    .res-time-row .inp{font-size:13px!important;padding:5px 8px!important}
     .page-filter{flex-wrap:wrap!important;gap:4px!important}
     .page-filter .inp{max-width:130px!important}
     table{font-size:11px}
