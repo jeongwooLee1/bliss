@@ -106,7 +106,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.39.20";
+const BLISS_V = "2.39.21";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -1600,17 +1600,17 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
           {isSchedule && <>
             <div>
               <label style={{fontSize:11,fontWeight:600,color:"#888",marginBottom:5,display:"block"}}>기간 / 장소·담당자</label>
-              <div className="res-time-row" style={{display:"flex",gap:4,alignItems:"center",flexWrap:"wrap"}}>
-                <input type="date" className="inp" style={{flex:"1 1 130px",minWidth:120,fontSize:12}} value={f.date} onChange={e=>set("date",e.target.value)}/>
-                <select className="inp" style={{width:95,fontSize:12,flexShrink:0}} value={f.time} onChange={e=>{set("time",e.target.value);set("dur",calcDur(e.target.value,f.endTime))}}>
+              <div className="res-time-row" style={{display:"flex",gap:3,alignItems:"center",flexWrap:"nowrap",overflowX:"auto"}}>
+                <input type="date" className="inp" style={{flex:"1 1 0",minWidth:0,fontSize:12,padding:"5px 4px"}} value={f.date} onChange={e=>set("date",e.target.value)}/>
+                <select className="inp" style={{flex:"0 0 78px",fontSize:12,padding:"5px 4px"}} value={f.time} onChange={e=>{set("time",e.target.value);set("dur",calcDur(e.target.value,f.endTime))}}>
                   {TIMES.filter(t=>{const h=parseInt(t);return h>=8&&h<=21}).map(t=><option key={t} value={t}>{t}</option>)}
                 </select>
-                <span style={{color:"#999",fontSize:11,flexShrink:0}}>~</span>
-                <select className="inp" style={{width:95,fontSize:12,flexShrink:0}} value={f.endTime} onChange={e=>{set("endTime",e.target.value);set("dur",calcDur(f.time,e.target.value))}}>
+                <span style={{color:"#999",fontSize:10,flexShrink:0}}>~</span>
+                <select className="inp" style={{flex:"0 0 78px",fontSize:12,padding:"5px 4px"}} value={f.endTime} onChange={e=>{set("endTime",e.target.value);set("dur",calcDur(f.time,e.target.value))}}>
                   {TIMES.filter(t=>{const h=parseInt(t);return h>=8&&h<=22}).map(t=><option key={t} value={t}>{t}</option>)}
                 </select>
-                <span style={{color:"#d0d0d0",fontSize:11,flexShrink:0}}>│</span>
-                <select className="inp" style={{flex:"0 1 auto",fontSize:11,maxWidth:140,minWidth:80}} value={`${f.roomId}|${f.staffId}`} onChange={e=>{const [r,s]=e.target.value.split("|");set("roomId",r);set("staffId",s)}}>
+                <span style={{color:"#d0d0d0",fontSize:10,flexShrink:0}}>│</span>
+                <select className="inp" style={{flex:"1 1 0",minWidth:0,fontSize:12,padding:"5px 4px"}} value={`${f.roomId}|${f.staffId}`} onChange={e=>{const [r,s]=e.target.value.split("|");set("roomId",r);set("staffId",s)}}>
                   {branchRooms.map(rm => branchStaff.map(st =>
                     <option key={rm.id+st.id} value={`${rm.id}|${st.id}`}>[{(data.branches||[]).find(b=>b.id===branchId)?.short}] {rm.name}-{st.dn}</option>
                   ))}
@@ -1710,17 +1710,17 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
             {/* 예약기간 + 장소/담당자 한 줄 */}
             <div>
               <label style={{fontSize:11,fontWeight:600,color:"#888",marginBottom:5,display:"block"}}>예약기간 / 장소·담당자</label>
-              <div className="res-time-row" style={{display:"flex",gap:4,alignItems:"center",flexWrap:"wrap"}}>
-                <input type="date" className="inp" style={{flex:"1 1 130px",minWidth:120,fontSize:12}} value={f.date} onChange={e=>set("date",e.target.value)}/>
-                <select className="inp" style={{width:95,fontSize:12,flexShrink:0}} value={f.time} onChange={e=>{set("time",e.target.value);set("dur",calcDur(e.target.value,f.endTime))}}>
+              <div className="res-time-row" style={{display:"flex",gap:3,alignItems:"center",flexWrap:"nowrap",overflowX:"auto"}}>
+                <input type="date" className="inp" style={{flex:"1 1 0",minWidth:0,fontSize:12,padding:"5px 4px"}} value={f.date} onChange={e=>set("date",e.target.value)}/>
+                <select className="inp" style={{flex:"0 0 78px",fontSize:12,padding:"5px 4px"}} value={f.time} onChange={e=>{set("time",e.target.value);set("dur",calcDur(e.target.value,f.endTime))}}>
                   {TIMES.filter(t=>{const h=parseInt(t);return h>=8&&h<=21}).map(t=><option key={t} value={t}>{t}</option>)}
                 </select>
-                <span style={{color:"#999",fontSize:11,flexShrink:0}}>~</span>
-                <select className="inp" style={{width:95,fontSize:12,flexShrink:0}} value={f.endTime} onChange={e=>{set("endTime",e.target.value);set("dur",calcDur(f.time,e.target.value))}}>
+                <span style={{color:"#999",fontSize:10,flexShrink:0}}>~</span>
+                <select className="inp" style={{flex:"0 0 78px",fontSize:12,padding:"5px 4px"}} value={f.endTime} onChange={e=>{set("endTime",e.target.value);set("dur",calcDur(f.time,e.target.value))}}>
                   {TIMES.filter(t=>{const h=parseInt(t);return h>=8&&h<=22}).map(t=><option key={t} value={t}>{t}</option>)}
                 </select>
-                <span style={{color:"#d0d0d0",fontSize:11,flexShrink:0}}>│</span>
-                <select className="inp" style={{flex:"0 1 auto",fontSize:11,maxWidth:140,minWidth:80}} value={`${f.roomId}|${f.staffId}`} onChange={e=>{const [r,s]=e.target.value.split("|");set("roomId",r);set("staffId",s)}}>
+                <span style={{color:"#d0d0d0",fontSize:10,flexShrink:0}}>│</span>
+                <select className="inp" style={{flex:"1 1 0",minWidth:0,fontSize:12,padding:"5px 4px"}} value={`${f.roomId}|${f.staffId}`} onChange={e=>{const [r,s]=e.target.value.split("|");set("roomId",r);set("staffId",s)}}>
                   {branchRooms.map(rm => branchStaff.map(st =>
                     <option key={rm.id+st.id} value={`${rm.id}|${st.id}`}>[{(data.branches||[]).find(b=>b.id===branchId)?.short}] {rm.name}-{st.dn}</option>
                   ))}
@@ -1793,6 +1793,17 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
           {/* 예약메모 */}
           <FLD label="예약메모">
             <textarea className="inp" rows={3} value={f.memo} onChange={e=>set("memo",e.target.value)} style={{resize:"vertical"}} placeholder="예약 관련 메모를 입력하세요"/>
+            {(() => {
+              const isNaverRes = !!(f.reservationId || (f.memo && /네이버/.test(f.memo)));
+              if (!isNaverRes) return null;
+              const br = (data.branchSettings||data.branches||[]).find(b=>b.id===branchId);
+              const bizId = br?.naverBizId;
+              if (!bizId) return null;
+              return <a href={`https://partner.booking.naver.com/bizes/${bizId}/booking-list-view?bookingBusinessId=${bizId}`} target="_blank" rel="noopener noreferrer"
+                style={{display:"inline-flex",alignItems:"center",gap:4,marginTop:4,fontSize:11,color:"#03C75A",fontWeight:600,textDecoration:"none",padding:"4px 8px",background:"#03C75A10",borderRadius:4,border:"1px solid #03C75A30"}}>
+                💚 네이버 예약 관리 바로가기 →
+              </a>;
+            })()}
             {(f.tsLog?.length > 0) && <div style={{marginTop:4,fontSize:10,color:"#999",lineHeight:1.6}}>
               {f.tsLog.map((ts,i)=><div key={i}>{ts}</div>)}
             </div>}
@@ -1914,7 +1925,7 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
   const branchStaff = (data.staff||[]).filter(s => s.bid === branchId);
   const [manager, setManager] = useState(reservation?.staffId || branchStaff[0]?.id || "");
   const [selBranch, setSelBranch] = useState(branchId);
-  const [gender, setGender] = useState(reservation?.custGender || "F");
+  const [gender, setGender] = useState(reservation?.custGender || "");
   const [saleMemo, setSaleMemo] = useState(reservation?.saleMemo || "");
 
   // 결제수단 분배
@@ -1942,7 +1953,7 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
     id: reservation?.custId || null,
     name: reservation?.custName || "",
     phone: reservation?.custPhone || "",
-    gender: reservation?.custGender || "F"
+    gender: reservation?.custGender || ""
   });
   const hasReservationCust = !!(reservation?.custName);
 
@@ -1962,8 +1973,8 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
     return () => clearTimeout(timer);
   }, [custSearch]);
   const selectCust = (c) => {
-    setCust({ id: c.id, name: c.name, phone: c.phone, gender: c.gender });
-    setGender(c.gender || "F");
+    setCust({ id: c.id, name: c.name, phone: c.phone, gender: c.gender || "" });
+    setGender(c.gender || "");
     setCustSearch(""); setShowCustDrop(false);
   };
 
@@ -1997,7 +2008,7 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
   const [newCustMode, setNewCustMode] = useState(false);
   const [newCustName, setNewCustName] = useState("");
   const [newCustPhone, setNewCustPhone] = useState("");
-  const [newCustGender, setNewCustGender] = useState("F");
+  const [newCustGender, setNewCustGender] = useState("");
   const registerNewCust = () => {
     if (!newCustName.trim()) return;
     setCust({ id: "new_" + uid(), name: newCustName.trim(), phone: newCustPhone.trim(), gender: newCustGender });
@@ -2026,28 +2037,49 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
       alert("매출 금액이 0원입니다. 시술 또는 제품을 선택해주세요.");
       return;
     }
+    // 고객 이름/연락처 필수 + 마스킹 체크
+    const custName = (cust.name||"").trim();
+    const custPhone = (cust.phone||"").trim();
+    if (!custName || !custPhone) {
+      alert("고객 이름과 연락처를 모두 입력해주세요.");
+      return;
+    }
+    if (/\*/.test(custName) || /\*/.test(custPhone)) {
+      alert("고객 이름이나 연락처에 '*'가 포함되어 있습니다.\n네이버 마스킹 데이터가 아닌 실제 정보를 입력해주세요.");
+      return;
+    }
+    if (!gender) {
+      alert("고객 성별을 선택해주세요.");
+      return;
+    }
     const staff = (data.staff||[]).find(s => s.id === manager);
-    // 신규고객이면 data.customers에 추가
-    const isNewCust = cust.id?.startsWith("new_") || (!cust.id && cust.name);
-    if (isNewCust && setData) {
-      const custId = cust.id || ("cust_" + uid());
-      const newCustObj = {
-        id: custId, bid: selBranch, name: cust.name, phone: cust.phone,
-        gender: cust.gender, visits: 1, lastVisit: todayStr(), memo: "",
-        custNum: String(50000 + Math.floor(Math.random() * 10000))
-      };
-      // 이미 등록된 고객이면 스킵
-      const alreadyExists = (data?.customers||[]).some(c => c.id === custId);
-      if (!alreadyExists) {
-        setData(prev => ({ ...prev, customers: [...prev.customers, newCustObj] }));
-        sb.insert("customers", toDb("customers", newCustObj)).catch(console.error);
+    // 고객 정보 저장 (신규 등록 또는 기존 업데이트)
+    const isNewCust = cust.id?.startsWith("new_") || (!cust.id && custName);
+    if (setData) {
+      if (isNewCust) {
+        const custId = cust.id || ("cust_" + uid());
+        const newCustObj = {
+          id: custId, bid: selBranch, name: custName, phone: custPhone,
+          gender: gender, visits: 1, lastVisit: todayStr(), memo: "",
+          custNum: String(50000 + Math.floor(Math.random() * 10000))
+        };
+        const alreadyExists = (data?.customers||[]).some(c => c.id === custId);
+        if (!alreadyExists) {
+          setData(prev => ({ ...prev, customers: [...prev.customers, newCustObj] }));
+          sb.insert("customers", toDb("customers", newCustObj)).catch(console.error);
+        }
+        cust.id = custId;
+      } else if (cust.id) {
+        // 기존 고객 정보 업데이트 (이름, 연락처, 성별, 최근방문)
+        const updates = { name: custName, phone: custPhone, gender: gender, lastVisit: todayStr() };
+        setData(prev => ({ ...prev, customers: prev.customers.map(c => c.id === cust.id ? {...c, ...updates, visits: (c.visits||0)+1} : c) }));
+        sb.update("customers", cust.id, toDb("customers", updates)).catch(console.error);
       }
-      cust.id = custId;
     }
     const sale = {
       id: uid(), bid: selBranch,
-      custId: cust.id || null, custName: cust.name || "",
-      custPhone: cust.phone || "", custGender: cust.gender || "F",
+      custId: cust.id || null, custName: custName,
+      custPhone: custPhone, custGender: gender,
       custNum: String(50000 + Math.floor(Math.random() * 10000)),
       staffId: manager, staffName: staff?.dn || "",
       date: reservation?.date || todayStr(),
@@ -2081,17 +2113,17 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
             <h3 style={{ fontSize: 16, fontWeight: 800, color: "#ef5350", flexShrink: 0 }}>◆ 매출 입력</h3>
             {cust.name ? (
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <span className="badge" style={{ background: cust.gender === "M" ? "#e0edf5" : "#fce8e8", color: cust.gender === "M" ? "#7c7cc8" : "#e57373", fontSize: 10 }}>{cust.gender === "M" ? "남" : "여"}</span>
+                <span className="badge" style={{ background: cust.gender === "M" ? "#e0edf5" : cust.gender === "F" ? "#fce8e8" : "#f0f0f0", color: cust.gender === "M" ? "#7c7cc8" : cust.gender === "F" ? "#e57373" : "#999", fontSize: 10 }}>{cust.gender === "M" ? "남" : cust.gender === "F" ? "여" : "-"}</span>
                 <strong style={{ color: "#444", fontSize: 13 }}>{cust.name}</strong>
                 <span style={{ fontSize: 11, color: "#888" }}>{cust.phone}</span>
                 {cust.id?.startsWith("new_") && <span style={{ fontSize: 8, padding: "1px 4px", borderRadius: 3, background: "#e57373", color: "#fff", fontWeight: 700 }}>신규</span>}
-                {!hasReservationCust && <button onClick={() => { setCust({ id: null, name: "", phone: "", gender: "F" }); setCustSearch(""); setNewCustMode(false); }}
+                {!hasReservationCust && <button onClick={() => { setCust({ id: null, name: "", phone: "", gender: "" }); setGender(""); setCustSearch(""); setNewCustMode(false); }}
                   style={{ fontSize: 10, color: "#e57373", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", textDecoration: "underline" }}>변경</button>}
               </div>
             ) : newCustMode ? (
               <div style={{ display: "flex", gap: 6, alignItems: "center", flex: 1 }}>
                 <div style={{ display: "flex", gap: 2 }}>
-                  {["F","M"].map(g => <button key={g} onClick={() => setNewCustGender(g)}
+                  {["F","M"].map(g => <button key={g} onClick={() => setNewCustGender(prev => prev===g ? "" : g)}
                     style={{ padding: "3px 8px", fontSize: 10, fontWeight: 700, borderRadius: 4, cursor: "pointer", fontFamily: "inherit", border: "1px solid " + (newCustGender === g ? (g === "F" ? "#e57373" : "#7c7cc8") : "#d0d0d0"),
                       background: newCustGender === g ? (g === "F" ? "#e5737320" : "#7c7cc820") : "transparent",
                       color: newCustGender === g ? (g === "F" ? "#e57373" : "#7c7cc8") : "#999"
@@ -2148,15 +2180,13 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
               {(data.branches||[]).map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
             </select>
           </div>
-          {/* Gender - FIXED from customer data, not changeable */}
+          {/* Gender - changeable buttons */}
           <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
-            <div style={{ padding: "4px 14px", fontSize: 11, fontWeight: 700, borderRadius: 6, cursor: "default",
-              background: gender === "F" ? "#e5737340" : "#7c7cc840",
-              color: gender === "F" ? "#e57373" : "#5cb5c5",
-              border: `1px solid ${gender === "F" ? "#e57373" : "#7c7cc8"}` }}>
-              {gender === "F" ? "여성" : "남성"} 가격 적용
-            </div>
-            <span style={{ fontSize: 9, color: "#d0d0d0" }}>고객정보 기준</span>
+            {["F","M"].map(g => <button key={g} onClick={() => { setGender(g); setCust(p=>({...p,gender:g})); }}
+              style={{ padding: "4px 10px", fontSize: 11, fontWeight: 700, borderRadius: g==="F"?"6px 0 0 6px":"0 6px 6px 0", cursor: "pointer", fontFamily: "inherit", border: "none",
+                background: gender === g ? (g==="F" ? "#e5737340" : "#7c7cc840") : "#f0f0f0",
+                color: gender === g ? (g==="F" ? "#e57373" : "#5cb5c5") : "#ccc" }}>{g === "F" ? "여" : "남"}</button>)}
+            <span style={{ fontSize: 9, color: "#d0d0d0", marginLeft: 2 }}>{gender ? (gender==="F"?"여성":"남성")+" 가격" : "성별 미선택"}</span>
           </div>
           {/* Totals */}
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
@@ -2174,13 +2204,13 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
           {/* Col 1: Services (left half) */}
           <div>
             <div style={{ fontSize: 10, fontWeight: 700, color: "#7c7cc8", padding: "4px 0 3px", borderBottom: "2px solid #7c7cc830", marginBottom: 1 }}>시술 ({SVC_LIST.length})</div>
-            {leftSvcs.map(svc => { const it=items[svc.id]||{}; const dp=gender==="F"?svc.priceF:svc.priceM; return <SaleSvcRow key={svc.id} id={svc.id} name={svc.name} dur={svc.dur} checked={!!it.checked} amount={it.amount||0} defPrice={dp} toggle={toggle} setAmt={setAmt} />; })}
+            {leftSvcs.map(svc => { const it=items[svc.id]||{}; const dp=(gender||"F")==="M"?svc.priceM:svc.priceF; return <SaleSvcRow key={svc.id} id={svc.id} name={svc.name} dur={svc.dur} checked={!!it.checked} amount={it.amount||0} defPrice={dp} toggle={toggle} setAmt={setAmt} />; })}
             <SaleExtraRow id="extra_svc" color="#7c7cc8" placeholder="추가 시술명 입력" checked={!!(items.extra_svc||{}).checked} amount={(items.extra_svc||{}).amount||0} label={(items.extra_svc||{}).label||""} toggle={toggle} setAmt={setAmt} setLabel={setLabel} />
           </div>
 
           {/* Col 2: Services (right half) */}
           <div>
-            {rightSvcs.map(svc => { const it=items[svc.id]||{}; const dp=gender==="F"?svc.priceF:svc.priceM; return <SaleSvcRow key={svc.id} id={svc.id} name={svc.name} dur={svc.dur} checked={!!it.checked} amount={it.amount||0} defPrice={dp} toggle={toggle} setAmt={setAmt} />; })}
+            {rightSvcs.map(svc => { const it=items[svc.id]||{}; const dp=(gender||"F")==="M"?svc.priceM:svc.priceF; return <SaleSvcRow key={svc.id} id={svc.id} name={svc.name} dur={svc.dur} checked={!!it.checked} amount={it.amount||0} defPrice={dp} toggle={toggle} setAmt={setAmt} />; })}
             {/* Discount */}
             <div style={{ marginTop: 6, padding: "4px 0", borderTop: "1px solid #d0d0d0" }}>
               <SaleDiscountRow id="discount" checked={items.discount?.checked} amount={items.discount?.amount||0} toggle={toggle} setAmt={setAmt} />
@@ -2291,7 +2321,7 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
         {/* Footer */}
         <div style={{ padding: "10px 16px", borderTop: "1px solid #e0e0e0", display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", background: "#f8f8f8", flexWrap: "wrap" }}>
           <div style={{ fontSize: 10, color: "#d0d0d0", flex: "1 1 200px" }}>
-            {gender === "F" ? "여성" : "남성"} 가격 적용 · 체크한 항목만 매출 반영
+            {gender ? (gender === "F" ? "여성" : "남성") + " 가격 적용" : "성별 미선택"} · 체크한 항목만 매출 반영
           </div>
           <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
             <button className="btn-s" onClick={onClose}>취소</button>
@@ -2474,7 +2504,7 @@ function SalesPage({ data, setData, userBranches, isMaster }) {
       </tbody></table>
     </div>
     {showModal && <DetailedSaleForm
-      reservation={{id:uid(),bid:userBranches[0],custId:null,custName:"",custPhone:"",custGender:"F",
+      reservation={{id:uid(),bid:userBranches[0],custId:null,custName:"",custPhone:"",custGender:"",
         staffId:(data.staff||[]).find(s=>s.bid===(userBranches[0]))?.id||"",serviceId:null,date:selDate}}
       branchId={userBranches[0]}
       onSubmit={(sale)=>{handleSave(sale);}}
@@ -2740,7 +2770,7 @@ function CustomersPage({ data, setData, userBranches, isMaster }) {
 }
 
 function CustModal({ item, onSave, onClose, defBranch, userBranches, branches }) {
-  const [f, setF] = useState(item || { id:uid(), bid:defBranch, name:"", phone:"", gender:"F", visits:0, lastVisit:null, memo:"", custNum:String(50000+Math.floor(Math.random()*10000)) });
+  const [f, setF] = useState(item || { id:uid(), bid:defBranch, name:"", phone:"", gender:"", visits:0, lastVisit:null, memo:"", custNum:String(50000+Math.floor(Math.random()*10000)) });
   const set = (k,v) => setF(p=>({...p,[k]:v}));
   return <div className="ov" onClick={onClose}>
     <div className="modal" onClick={e=>e.stopPropagation()}>
@@ -2754,7 +2784,7 @@ function CustModal({ item, onSave, onClose, defBranch, userBranches, branches })
           <FLD label="이름"><input className="inp" value={f.name} onChange={e=>set("name",e.target.value)}/></FLD>
           <FLD label="연락처"><input className="inp" value={f.phone} onChange={e=>set("phone",e.target.value)} placeholder="010-0000-0000"/></FLD>
         </div>
-        <FLD label="성별"><select className="inp" value={f.gender} onChange={e=>set("gender",e.target.value)}><option value="F">여성</option><option value="M">남성</option></select></FLD>
+        <FLD label="성별"><select className="inp" value={f.gender} onChange={e=>set("gender",e.target.value)}><option value="">선택</option><option value="F">여성</option><option value="M">남성</option></select></FLD>
         <FLD label="메모"><textarea className="inp" rows={2} value={f.memo} onChange={e=>set("memo",e.target.value)}/></FLD>
         <button className="btn-p" style={{width:"100%",justifyContent:"center",padding:12}} onClick={()=>onSave(f)}>{item?"수정":"등록"}</button>
       </div>
