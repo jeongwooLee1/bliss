@@ -1330,10 +1330,10 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                             <span style={{fontWeight:600,color:isNaverCancelled?"#999":"#333",overflow:"hidden",textOverflow:"ellipsis",textDecoration:isNaverCancelled?"line-through":"none"}}>{block.custGender && <span style={{color:block.custGender==="M"?"#4a7cc8":"#e57373"}}>{block.custGender==="M"?"남":"여"}</span>} {block.custName}</span>
                           </div>
                           {block.selectedTags?.length>0 && <div style={{display:"flex",flexWrap:"wrap",gap:2,marginTop:1}}>
-                            {block.selectedTags.slice(0,3).map(tid=>{const tg=tags.find(t=>t.id===tid);return tg?<span key={tid} style={{fontSize:Math.max(6,blockFs-2),padding:"0 3px",borderRadius:2,background:tg.color?tg.color+"25":"#7c7cc815",color:tg.color||"#7c7cc8",fontWeight:600}}>{tg.name}</span>:null})}
+                            {block.selectedTags.slice(0,3).map(tid=>{const tg=tags.find(t=>t.id===tid);return tg?<span key={tid} style={{fontSize:Math.max(6,blockFs-2),padding:"0 3px",borderRadius:2,background:tg.color?tg.color+"25":"#7c7cc815",color:"#333",fontWeight:600}}>{tg.name}</span>:null})}
                             {block.selectedTags.length>3 && <span style={{fontSize:Math.max(6,blockFs-2),color:"#999"}}>+{block.selectedTags.length-3}</span>}
                           </div>}
-                          {block.selectedServices?.length>0 && <div style={{fontSize:Math.max(6,blockFs-2),color:"#6bab9e",fontWeight:600,marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                          {block.selectedServices?.length>0 && <div style={{fontSize:Math.max(6,blockFs-2),color:"#333",fontWeight:600,marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
                             {block.selectedServices.map(sid=>SVC_LIST.find(s=>s.id===sid)?.name).filter(Boolean).slice(0,2).join(", ")}
                             {block.selectedServices.length>2 && ` +${block.selectedServices.length-2}`}
                           </div>}
@@ -1344,7 +1344,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                         {block.type==="memo" && <div style={{color:"#ef5350",fontWeight:600}}><I name="fileText" size={10} color="#ef5350"/> 메모</div>}
                         {block.type==="clockin" && <div style={{color:"#666",fontWeight:600}}><I name="clock" size={10} color="#666"/> {staff?.dn||"출근"}</div>}
                         {block.type==="cleaning" && <div style={{color:"#5cb5c5",fontWeight:600}}><I name="sparkles" size={10} color="#5cb5c5"/> 청소</div>}
-                        {block.memo && (() => { const clean = block.memo.split("\n").filter(l => !/^\[등록:|^\[수정:/.test(l.trim())).join(" ").trim(); return clean ? <div style={{color:"#7c7cc8",marginTop:1}}><I name="msgSq" size={10} color="#7c7cc8"/> {clean}</div> : null; })()}
+                        {block.memo && (() => { const clean = block.memo.split("\n").filter(l => !/^\[등록:|^\[수정:/.test(l.trim())).join(" ").trim(); return clean ? <div style={{color:"#555",marginTop:1}}><I name="msgSq" size={10} color="#888"/> {clean}</div> : null; })()}
                         {/* Resize handle */}
                         {isEditable && <div className="resize-handle" onMouseDown={e=>handleResizeStart(block,e)}
                           style={{position:"absolute",bottom:0,left:0,right:0,height:8,cursor:"ns-resize",
