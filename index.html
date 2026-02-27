@@ -20,6 +20,9 @@
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 // React hooks provided by HTML wrapper
 
+const { useState, useEffect, useRef, useCallback, useMemo } = React;
+// React hooks provided by HTML wrapper
+
 // ─── Supabase Config ───
 const SB_URL = "https://dpftlrsuqxqqeouwbfjd.supabase.co";
 const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwZnRscnN1cXhxcWVvdXdiZmpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5MDU4MjQsImV4cCI6MjA4NzQ4MTgyNH0.iydEkjtPjZ0jXpUUPJben4IWWneDqLomv-HDlcFayE4";
@@ -48,7 +51,7 @@ const DBMAP = {
   service_tags:{business_id:"businessId",schedule_yn:"scheduleYn",use_yn:"useYn"},
   services:{business_id:"businessId",price_f:"priceF",price_m:"priceM"},
   app_users:{business_id:"businessId",login_id:"loginId",branch_ids:"branches",password:"pw",view_branch_ids:"viewBranches"},
-  branches:{business_id:"businessId",use_yn:"useYn",naver_email:"naverEmail",naver_biz_id:"naverBizId"},
+  branches:{business_id:"businessId",use_yn:"useYn",naver_email:"naverEmail",naver_biz_id:"naverBizId",naver_col_count:"naverColCount"},
 };
 function fromDb(table,rows){const m=DBMAP[table];if(!m)return rows;return rows.map(row=>{const r={};for(const[k,v]of Object.entries(row)){if(k==="created_at"){r.createdAt=v;continue;}const mk=m[k]||k;r[mk]=v;} 
   // Parse JSON string arrays for app_users
@@ -754,9 +757,18 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   const isResizing = useRef(false);
   const resizeDurRef = useRef(0);
 
-  const allRooms = branchesToShow.flatMap(br => (data.rooms||[]).filter(r=>r.branch_id===br.id).map(r=>({...r, branchName:br.short||br.name||""})));
+  const allRooms = branchesToShow.flatMap(br => {
+    const regularRooms = (data.rooms||[]).filter(r=>r.branch_id===br.id).map(r=>({...r, branchName:br.short||br.name||""}));
+    const naverCount = br.naverEmail ? (br.naverColCount || 1) : 0;
+    const naverRooms = Array.from({length: naverCount}, (_, i) => ({
+      id: `nv_${br.id}_${i}`, name: naverCount > 1 ? `네이버${i+1}` : "네이버",
+      branch_id: br.id, branchName: br.short||br.name||"", isNaver: true
+    }));
+    return [...naverRooms, ...regularRooms];
+  });
+  const isNaverRes = (r) => !!r.reservationId;
   
-  const blocks = data.reservations.filter(r => r.date === selDate && branchesToShow.some(b=>b.id===r.bid));
+  const blocks = data.reservations.filter(r => r.date === selDate && r.status !== "naver_cancelled" && branchesToShow.some(b=>b.id===r.bid));
 
   // Time config - 5min intervals
   const [startHour, setStartHour] = useState(8);
@@ -811,7 +823,8 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
 
   const handleCellClick = (room, y) => {
     if (isDragging.current || isResizing.current) return;
-    if (!canEdit(room.branch_id)) return; // read-only
+    if (!canEdit(room.branch_id)) return;
+    if (room.isNaver) return; // 네이버 칼럼은 자동연동 전용
     const time = yToTime(y);
     setModalData({ roomId: room.id, bid: room.branch_id, time, date: selDate });
     setShowModal(true);
@@ -1162,18 +1175,29 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
 
           {/* Room Columns */}
           {allRooms.map((room, ci) => {
-            const roomBlocks = blocks.filter(b => b.roomId === room.id);
+            const roomBlocks = blocks.filter(b => {
+              if (room.isNaver) {
+                if (!isNaverRes(b) || b.bid !== room.branch_id) return false;
+                if (b.roomId === room.id) return true;
+                if (!b.roomId?.startsWith("nv_")) {
+                  const firstNv = allRooms.find(r => r.isNaver && r.branch_id === room.branch_id);
+                  return firstNv?.id === room.id;
+                }
+                return false;
+              }
+              return !isNaverRes(b) && b.roomId === room.id;
+            });
             const isNewBranch = ci === 0 || room.branch_id !== allRooms[ci-1]?.branch_id;
             const branchColor = (data.branchSettings || []).find(bs => bs.id === room.branch_id)?.color || "";
             return (
-              <div key={room.id} style={{width:colW,flexShrink:0,borderLeft:"1px solid #eee",background:branchColor||"#fff"}}>
+              <div key={room.id} style={{width:colW,flexShrink:0,borderLeft:room.isNaver?"2px solid #A5D6A7":"1px solid #eee",background:room.isNaver?"#F1F8E9":(branchColor||"#fff")}}>
                 {/* Header */}
-                <div style={{height:headerH,borderBottom:"1px solid #eee",position:"sticky",top:0,zIndex:10,background:branchColor||"#fff",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",lineHeight:1.2}}>
-                  <span style={{fontSize:12,fontWeight:700,color:"#333"}}>{room.branchName}</span>
-                  <span style={{fontSize:9,color:"#999"}}>{room.name}</span>
+                <div style={{height:headerH,borderBottom:"1px solid #eee",position:"sticky",top:0,zIndex:10,background:room.isNaver?"#E8F5E9":(branchColor||"#fff"),display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",lineHeight:1.2}}>
+                  <span style={{fontSize:12,fontWeight:700,color:room.isNaver?"#2E7D32":"#333"}}>{room.branchName}</span>
+                  <span style={{fontSize:9,color:room.isNaver?"#43A047":"#999"}}>{room.isNaver?"💚 ":"" }{room.name}</span>
                 </div>
                 {/* Grid Area */}
-                <div style={{position:"relative",height:totalRows*rowH,cursor:canEdit(room.branch_id)?"pointer":"default",...gridBg}} onClick={e=>{const rect=e.currentTarget.getBoundingClientRect();handleCellClick(room,e.clientY-rect.top)}}>
+                <div style={{position:"relative",height:totalRows*rowH,cursor:room.isNaver?"default":(canEdit(room.branch_id)?"pointer":"default"),...gridBg}} onClick={e=>{const rect=e.currentTarget.getBoundingClientRect();handleCellClick(room,e.clientY-rect.top)}}>
                   {/* Current time */}
                   {nowY > 0 && <div style={{position:"absolute",top:nowY,left:0,right:0,borderTop:"2px solid #e57373",zIndex:5}}>
                     <div style={{position:"absolute",top:-4,left:-1,width:8,height:8,borderRadius:4,background:"#e57373"}}/>
@@ -1546,13 +1570,17 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
           {f.status === "pending" && <div style={{background:"#FFF3E0",border:"1.5px solid #FF9800",borderRadius:6,padding:"8px 12px",marginBottom:12,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",animation:"naverBlink 1.5s infinite"}}>
             <span style={{fontSize:16}}>🔔</span>
             <span style={{fontSize:13,fontWeight:700,color:"#E65100"}}>네이버 확정대기</span>
-            {(() => {
+            <div style={{marginLeft:"auto",display:"flex",gap:6}}>
+              <button onClick={()=>{if(!window.confirm("이 예약을 취소 처리하시겠습니까?")) return; const updated={...f,status:"naver_cancelled"}; onSave(updated); onClose();}}
+                style={{fontSize:11,color:"#fff",fontWeight:700,background:"#E65100",padding:"5px 12px",borderRadius:6,border:"none",cursor:"pointer",fontFamily:"inherit"}}>취소처리</button>
+              {(() => {
               const br = (data.branchSettings||data.branches||[]).find(b=>b.id===branchId);
               const bizId = br?.naverBizId;
               return bizId ? <a href={`https://partner.booking.naver.com/bizes/${bizId}/booking-list-view`} target="_blank" rel="noopener noreferrer"
                 onClick={e=>e.stopPropagation()}
-                style={{fontSize:12,color:"#fff",fontWeight:700,background:"#03C75A",padding:"5px 14px",borderRadius:6,textDecoration:"none",marginLeft:"auto"}}>네이버 예약 확정하기 →</a> : <span style={{fontSize:11,color:"#E65100",marginLeft:"auto"}}>네이버에서 확정 처리 필요</span>;
-            })()}
+                style={{fontSize:11,color:"#fff",fontWeight:700,background:"#03C75A",padding:"5px 12px",borderRadius:6,textDecoration:"none"}}>네이버 확정 →</a> : null;
+              })()}
+            </div>
           </div>}
 
           {/* ═══ 기타일정 모드 ═══ */}
@@ -2893,7 +2921,7 @@ function AdminPlaces({ data, setData, bizId }) {
   };
   const applyRow = (id) => {
     const b = branches.find(x=>x.id===id);
-    if(b) sb.update("branches", id, {name:b.name, short:b.short||b.name, phone:b.phone||"", address:b.address||"", color:b.color||"#FFFFFF", use_yn:b.useYn!==false, naver_email:b.naverEmail||"", naver_biz_id:b.naverBizId||""}).catch(console.error);
+    if(b) sb.update("branches", id, {name:b.name, short:b.short||b.name, phone:b.phone||"", address:b.address||"", color:b.color||"#FFFFFF", use_yn:b.useYn!==false, naver_email:b.naverEmail||"", naver_biz_id:b.naverBizId||"", naver_col_count:b.naverColCount||0}).catch(console.error);
     setEdited(prev => { const n={...prev}; delete n[id]; return n; });
   };
   const addBranch = () => {
@@ -2972,6 +3000,7 @@ function AdminPlaces({ data, setData, bizId }) {
           <th style={{width:140}}>전화번호</th>
           <th style={{width:180}}>네이버연동 Gmail</th>
           <th style={{width:100}}>네이버 Biz ID</th>
+          <th style={{width:60}}>네이버칼럼</th>
           <th style={{width:80}}>사용구분</th>
           <th style={{width:140}}>표시색상</th>
           <th style={{width:55}}>적용</th>
@@ -2994,6 +3023,7 @@ function AdminPlaces({ data, setData, bizId }) {
               <td><input className="inp" value={b.phone||""} onChange={e=>updateField(b.id,"phone",e.target.value)} style={{background:"transparent",border:"1px solid #d0d0d0",fontSize:11}}/></td>
               <td><input className="inp" value={b.naverEmail||""} onChange={e=>updateField(b.id,"naverEmail",e.target.value)} style={{background:"transparent",border:"1px solid #d0d0d0",fontSize:11}} placeholder="example@gmail.com"/></td>
               <td><input className="inp" value={b.naverBizId||""} onChange={e=>updateField(b.id,"naverBizId",e.target.value)} style={{background:"transparent",border:"1px solid #d0d0d0",fontSize:11}} placeholder="449920"/></td>
+              <td>{b.naverEmail ? <input type="number" className="inp" value={b.naverColCount||1} min={1} max={5} onChange={e=>updateField(b.id,"naverColCount",Math.max(1,Math.min(5,parseInt(e.target.value)||1)))} style={{background:"transparent",border:"1px solid #d0d0d0",fontSize:11,width:40,textAlign:"center"}}/> : <span style={{color:"#ccc",fontSize:10}}>—</span>}</td>
               <td>
                 <select className="inp" value={b.useYn!==false?"사용":"미사용"} onChange={e=>updateField(b.id,"useYn",e.target.value==="사용")} style={{background:"transparent",border:"1px solid #d0d0d0",fontSize:11}}>
                   <option>사용</option><option>미사용</option>
@@ -3628,6 +3658,10 @@ const CSS = `
     .sidebar-m{display:none!important}
   }
 `;
+
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+
+
 
 ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
 
