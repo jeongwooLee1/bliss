@@ -118,7 +118,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.39.18";
+const BLISS_V = "2.39.19";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -354,8 +354,8 @@ function App() {
           <button onClick={()=>setSideOpen(true)} style={S.menuBtn}>☰</button>
           {bizName && <span style={{fontSize:14,fontWeight:700,color:"#7c7cc8"}}>{bizName}</span>}
         </div>
-        <div style={{flex:1,padding:page==="timeline"?"0":"20px 24px 24px",display:"flex",flexDirection:"column",minHeight:0,...(page!=="timeline"?{overflow:"hidden"}:{})}}>
-          <div className={page==="timeline"?"":"fade-in"} key={page} style={page==="timeline"?{flex:1,display:"flex",flexDirection:"column",minHeight:0}:{overflow:"auto",flex:1}}>
+        <div className="page-pad" style={{flex:1,padding:page==="timeline"?"0":"16px 20px 16px",display:"flex",flexDirection:"column",minHeight:0,overflow:"hidden"}}>
+          <div className={page==="timeline"?"":"fade-in"} key={page} style={page==="timeline"?{flex:1,display:"flex",flexDirection:"column",minHeight:0}:{overflow:"auto",flex:1,WebkitOverflowScrolling:"touch"}}>
             {page==="timeline" && <Timeline data={data} setData={setData} userBranches={userBranches} viewBranches={viewBranches} isMaster={isMaster} currentUser={currentUser} setPage={setPage} bizId={currentBizId}/>}
             {page==="reservations" && <ReservationList data={data} setData={setData} userBranches={userBranches} isMaster={isMaster}/>}
             {page==="sales" && <SalesPage data={data} setData={setData} userBranches={userBranches} isMaster={isMaster}/>}
@@ -1538,7 +1538,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
   return (
     <div className="ov" onClick={onClose} style={{alignItems:"flex-start",paddingTop:20,overflow:"auto"}}>
       <div ref={modalRef} onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:"8px",border:"1px solid #e0e0e0",
-        width:"95%",maxWidth:960,minHeight:600,maxHeight:"95vh",overflow:"hidden",animation:"fadeIn .2s ease",marginBottom:20,flexShrink:0,
+        width:"95%",maxWidth:960,maxHeight:"95vh",overflow:"hidden",animation:"fadeIn .2s ease",marginBottom:20,flexShrink:0,
         boxShadow:"0 8px 30px rgba(0,0,0,.15)",display:"flex",flexDirection:"column"}}>
         {/* ═══ Chrome-style Tabs ═══ */}
         <div style={{display:"flex",alignItems:"flex-end",gap:0,padding:"0",background:"#f5f5f5",borderRadius:"8px 8px 0 0",position:"sticky",top:0,zIndex:10,borderBottom:"1px solid #e0e0e0"}}>
@@ -1592,8 +1592,8 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
           {isSchedule && <>
             <div>
               <label style={{fontSize:11,fontWeight:600,color:"#888",marginBottom:5,display:"block"}}>기간 / 장소·담당자</label>
-              <div style={{display:"flex",gap:4,alignItems:"center",flexWrap:"nowrap"}}>
-                <input type="date" className="inp" style={{width:170,fontSize:12,flexShrink:0}} value={f.date} onChange={e=>set("date",e.target.value)}/>
+              <div className="res-time-row" style={{display:"flex",gap:4,alignItems:"center",flexWrap:"wrap"}}>
+                <input type="date" className="inp" style={{flex:"1 1 130px",minWidth:120,fontSize:12}} value={f.date} onChange={e=>set("date",e.target.value)}/>
                 <select className="inp" style={{width:95,fontSize:12,flexShrink:0}} value={f.time} onChange={e=>{set("time",e.target.value);set("dur",calcDur(e.target.value,f.endTime))}}>
                   {TIMES.filter(t=>{const h=parseInt(t);return h>=8&&h<=21}).map(t=><option key={t} value={t}>{t}</option>)}
                 </select>
@@ -1623,7 +1623,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
               </div>
               {f.repeat !== "none" && <div style={{display:"flex",gap:6,alignItems:"center",marginTop:6}}>
                 <span style={{fontSize:11,color:"#888"}}>반복 종료일:</span>
-                <input type="date" className="inp" style={{width:170,fontSize:12}} value={f.repeatUntil} onChange={e=>set("repeatUntil",e.target.value)}
+                <input type="date" className="inp" style={{flex:"1 1 130px",minWidth:120,fontSize:12}} value={f.repeatUntil} onChange={e=>set("repeatUntil",e.target.value)}
                   min={f.date}/>
                 {f.repeat === "daily" && <span style={{fontSize:10,color:"#e17055"}}>매일 {f.time}에 반복</span>}
                 {f.repeat === "weekly" && <span style={{fontSize:10,color:"#e17055"}}>매주 {["일","월","화","수","목","금","토"][new Date(f.date+"T00:00").getDay()]}요일 {f.time}에 반복</span>}
@@ -1702,8 +1702,8 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
             {/* 예약기간 + 장소/담당자 한 줄 */}
             <div>
               <label style={{fontSize:11,fontWeight:600,color:"#888",marginBottom:5,display:"block"}}>예약기간 / 장소·담당자</label>
-              <div style={{display:"flex",gap:4,alignItems:"center",flexWrap:"nowrap"}}>
-                <input type="date" className="inp" style={{width:170,fontSize:12,flexShrink:0}} value={f.date} onChange={e=>set("date",e.target.value)}/>
+              <div className="res-time-row" style={{display:"flex",gap:4,alignItems:"center",flexWrap:"wrap"}}>
+                <input type="date" className="inp" style={{flex:"1 1 130px",minWidth:120,fontSize:12}} value={f.date} onChange={e=>set("date",e.target.value)}/>
                 <select className="inp" style={{width:95,fontSize:12,flexShrink:0}} value={f.time} onChange={e=>{set("time",e.target.value);set("dur",calcDur(e.target.value,f.endTime))}}>
                   {TIMES.filter(t=>{const h=parseInt(t);return h>=8&&h<=21}).map(t=><option key={t} value={t}>{t}</option>)}
                 </select>
@@ -1792,7 +1792,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
 
           {/* Action Buttons - 한 줄 (pinned bottom) */}
         </div>
-        <div style={{display:"flex",gap:6,padding:"12px 20px",borderTop:"1px solid #e0e0e0",background:"#fafafa",borderRadius:"0 0 8px 8px",flexShrink:0}}>
+        <div style={{display:"flex",gap:6,padding:"12px 16px",borderTop:"1px solid #e0e0e0",background:"#fafafa",borderRadius:"0 0 8px 8px",flexShrink:0,flexWrap:"wrap"}}>
             <button className="btn-s" style={{padding:"10px 16px"}} onClick={onClose}>닫기</button>
             {!isReadOnly && <><button className="btn-p" style={{flex:1,justifyContent:"center",padding:10,
               background:isSchedule?"#e17055":"#7c7cc8"}} onClick={()=>{
@@ -2161,7 +2161,7 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
         </div>
 
         {/* Main Body - 4 columns: svc left, svc right, prod left, prod right */}
-        <div style={{ flex: 1, overflow: "auto", padding: "10px 14px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 14, alignContent: "start" }}>
+        <div className="sale-grid" style={{ flex: 1, overflow: "auto", padding: "10px 14px", display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 14, alignContent: "start" }}>
 
           {/* Col 1: Services (left half) */}
           <div>
@@ -2227,8 +2227,8 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
           </div>
 
           {/* 결제수단 분배 */}
-          {grandTotal > 0 && <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
-            {svcTotal > 0 && <div style={{flex:1,minWidth:200,padding:"8px 12px",background:"#fff",borderRadius:8,border:"1px solid #e0e0e0"}}>
+          {grandTotal > 0 && <div className="sale-pay-row" style={{display:"flex",gap:16,flexWrap:"wrap"}}>
+            {svcTotal > 0 && <div style={{flex:1,minWidth:0,padding:"8px 12px",background:"#fff",borderRadius:8,border:"1px solid #e0e0e0"}}>
               <div style={{fontSize:10,fontWeight:700,color:"#7c7cc8",marginBottom:6}}>💆 시술 결제</div>
               <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
                 <div style={{display:"flex",alignItems:"center",gap:3}}>
@@ -2249,7 +2249,7 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
                 </div>
               </div>
             </div>}
-            {prodTotal > 0 && <div style={{flex:1,minWidth:200,padding:"8px 12px",background:"#fff",borderRadius:8,border:"1px solid #e0e0e0"}}>
+            {prodTotal > 0 && <div style={{flex:1,minWidth:0,padding:"8px 12px",background:"#fff",borderRadius:8,border:"1px solid #e0e0e0"}}>
               <div style={{fontSize:10,fontWeight:700,color:"#6bab9e",marginBottom:6}}>🧴 제품 결제</div>
               <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
                 <div style={{display:"flex",alignItems:"center",gap:3}}>
@@ -2281,13 +2281,13 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
         </div>
 
         {/* Footer */}
-        <div style={{ padding: "10px 16px", borderTop: "1px solid #e0e0e0", display: "flex", gap: 10, alignItems: "center", justifyContent: "space-between", background: "#f8f8f8" }}>
-          <div style={{ fontSize: 11, color: "#d0d0d0" }}>
-            {gender === "F" ? "여성" : "남성"} 가격 적용 · 체크한 항목만 매출 반영 · 관리설정에서 시술/제품 편집 가능
+        <div style={{ padding: "10px 16px", borderTop: "1px solid #e0e0e0", display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", background: "#f8f8f8", flexWrap: "wrap" }}>
+          <div style={{ fontSize: 10, color: "#d0d0d0", flex: "1 1 200px" }}>
+            {gender === "F" ? "여성" : "남성"} 가격 적용 · 체크한 항목만 매출 반영
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
             <button className="btn-s" onClick={onClose}>취소</button>
-            <button className="btn-p" style={{ padding: "10px 28px", fontSize: 14, fontWeight: 800 }} onClick={handleSubmit}>
+            <button className="btn-p" style={{ padding: "10px 20px", fontSize: 13, fontWeight: 800 }} onClick={handleSubmit}>
               💰 매출 등록 ({fmt(grandTotal)}원)
             </button>
           </div>
@@ -2313,11 +2313,11 @@ function ReservationList({ data, setData, userBranches, isMaster }) {
     <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap",alignItems:"center"}}>
       <div style={{display:"flex",alignItems:"center",gap:4}}>
         <button className="btn-s btn-sm" onClick={()=>changeDate(-1)}>◀</button>
-        <input type="date" className="inp" style={{width:150}} value={selDate} onChange={e=>setSelDate(e.target.value)}/>
+        <input type="date" className="inp" style={{maxWidth:150,width:"auto"}} value={selDate} onChange={e=>setSelDate(e.target.value)}/>
         <button className="btn-s btn-sm" onClick={()=>changeDate(1)}>▶</button>
       </div>
       <button className="btn-s btn-sm" onClick={()=>setSelDate(todayStr())}>오늘</button>
-      {<select className="inp" style={{width:130}} value={vb} onChange={e=>setVb(e.target.value)}>
+      {<select className="inp" style={{maxWidth:140,width:"auto"}} value={vb} onChange={e=>setVb(e.target.value)}>
         <option value="all">전체 매장</option>
         {(data.branches||[]).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
       </select>}
@@ -2404,11 +2404,11 @@ function SalesPage({ data, setData, userBranches, isMaster }) {
     <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap",alignItems:"center"}}>
       {tab!=="all"&&<div style={{display:"flex",alignItems:"center",gap:4}}>
         <button className="btn-s btn-sm" onClick={()=>changeDate(-1)}>◀</button>
-        <input type="date" className="inp" style={{width:150}} value={selDate} onChange={e=>setSelDate(e.target.value)}/>
+        <input type="date" className="inp" style={{maxWidth:150,width:"auto"}} value={selDate} onChange={e=>setSelDate(e.target.value)}/>
         <button className="btn-s btn-sm" onClick={()=>changeDate(1)}>▶</button>
         <button className="btn-s btn-sm" onClick={()=>setSelDate(todayStr())}>오늘</button>
       </div>}
-      {<select className="inp" style={{width:130}} value={vb} onChange={e=>setVb(e.target.value)}>
+      {<select className="inp" style={{maxWidth:140,width:"auto"}} value={vb} onChange={e=>setVb(e.target.value)}>
         <option value="all">전체 매장</option>
         {(data.branches||[]).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
       </select>}
@@ -2544,17 +2544,17 @@ function StatsPage({ data, userBranches, isMaster, role }) {
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:10}}>
       <h2 className="page-title" style={{marginBottom:0}}>매출 통계</h2>
       <div style={{display:"flex",gap:8}}>
-        {<select className="inp" style={{width:120}} value={vb} onChange={e=>setVb(e.target.value)}>
+        {<select className="inp" style={{maxWidth:130,width:"auto"}} value={vb} onChange={e=>setVb(e.target.value)}>
           <option value="all">전체 매장</option>
           {(data.branches||[]).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
         </select>}
-        <select className="inp" style={{width:100}} value={period} onChange={e=>setPeriod(e.target.value)}>
+        <select className="inp" style={{maxWidth:110,width:"auto"}} value={period} onChange={e=>setPeriod(e.target.value)}>
           <option value="7">7일</option><option value="14">14일</option><option value="30">30일</option>
         </select>
       </div>
     </div>
     {/* Summary Cards */}
-    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:12,marginBottom:20}}>
+    <div className="stat-cards" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:12,marginBottom:20}}>
       <SC label="총 매출" val={`${fmt(t.total)}원`} sub={`${t.count}건`} clr="#5cb5c5"/>
       <SC label="시술 매출" val={`${fmt(t.svcTotal)}원`} sub="시술 합계" clr="#7c7cc8"/>
       <SC label="제품 매출" val={`${fmt(t.prodTotal)}원`} sub="제품 합계" clr="#6bab9e"/>
@@ -2582,7 +2582,7 @@ function StatsPage({ data, userBranches, isMaster, role }) {
         <span style={{fontSize:10,display:"flex",alignItems:"center",gap:4}}><span style={{width:8,height:8,borderRadius:2,background:"#6bab9e"}}/>제품</span>
       </div>
     </div>
-    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:16}}>
+    <div className="stat-charts" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:16}}>
       {/* Payment Breakdown */}
       <div className="card" style={{padding:20}}>
         <div style={{fontSize:13,fontWeight:700,color:"#888",marginBottom:14}}>결제수단별 시술 매출</div>
@@ -2672,7 +2672,7 @@ function CustomersPage({ data, setData, userBranches, isMaster }) {
         <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:"#999",fontSize:14}}>🔍</span>
         <input className="inp" style={{paddingLeft:32}} placeholder="이름 또는 전화번호 검색..." value={q} onChange={e=>setQ(e.target.value)}/>
       </div>
-      {<select className="inp" style={{width:130}} value={vb} onChange={e=>setVb(e.target.value)}>
+      {<select className="inp" style={{maxWidth:140,width:"auto"}} value={vb} onChange={e=>setVb(e.target.value)}>
         <option value="all">전체 매장</option>{(data.branches||[]).filter(b=>userBranches.includes(b.id)).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
       </select>}
       <span style={{fontSize:12,color:"#888"}}>{custs.length}명</span>
@@ -3157,7 +3157,7 @@ function AdminWorkers({ data, setData }) {
       </div>
     </div>}
     {selected.size > 0 && <div style={{marginBottom:8}}><button className="btn-d btn-sm" onClick={bulkDelete} style={{fontSize:10,padding:"4px 12px"}}>🗑️ 선택 삭제 ({selected.size})</button></div>}
-    <div className="card tw" style={{maxHeight:"calc(100vh - 300px)",overflow:"auto"}}>
+    <div className="card tw admin-tw" style={{maxHeight:"calc(100vh - 300px)",overflow:"auto"}}>
       <table><thead><tr>
         <th style={{width:30}}><input type="checkbox" checked={allChecked} onChange={toggleAll}/></th>
         <th style={{width:35}}>No</th><th>담당자명</th><th>지점</th><th style={{width:80}}>색상</th><th style={{width:100}}>관리</th>
@@ -3339,7 +3339,7 @@ function AdminSaleItems({ data, setData }) {
       {selected.size > 0 && <button className="btn-d btn-sm" onClick={bulkDelete} style={{fontSize:10,marginLeft:"auto",padding:"4px 12px"}}>🗑️ 선택 삭제 ({selected.size})</button>}
       <button onClick={resetSort} style={{fontSize:9,marginLeft:selected.size>0?"4px":"auto",padding:"3px 8px",border:"1px solid #ccc",borderRadius:4,background:"#f8f8f8",color:"#888",cursor:"pointer"}}>순서 리셋</button>
     </div>
-    <div className="tw" style={{maxHeight:"calc(100vh - 340px)",overflow:"auto"}}>
+    <div className="tw admin-tw" style={{maxHeight:"calc(100vh - 340px)",overflow:"auto"}}>
       <table><thead><tr>
         <th style={{width:30}}><input type="checkbox" checked={allChecked} onChange={toggleAll}/></th><th style={{width:25}}></th><th style={{width:30}}>No</th><th style={{width:85}}>카테고리</th><th>시술명</th>
         <th style={{width:85,textAlign:"right"}}>여성가</th><th style={{width:85,textAlign:"right"}}>남성가</th>
@@ -3450,7 +3450,7 @@ function AdminProductItems({ data, setData }) {
       </div>
     </div>}
     {selected.size > 0 && <div style={{marginBottom:8}}><button className="btn-d btn-sm" onClick={bulkDelete} style={{fontSize:10,padding:"4px 12px"}}>🗑️ 선택 삭제 ({selected.size})</button></div>}
-    <div className="tw" style={{maxHeight:"calc(100vh - 300px)",overflow:"auto"}}>
+    <div className="tw admin-tw" style={{maxHeight:"calc(100vh - 300px)",overflow:"auto"}}>
       <table><thead><tr>
         <th style={{width:30}}><input type="checkbox" checked={allChecked} onChange={toggleAll}/></th><th style={{width:25}}></th><th style={{width:35}}>No</th><th>제품명</th><th style={{width:100,textAlign:"right"}}>가격</th><th style={{width:80,textAlign:"center"}}>관리</th>
       </tr></thead>
@@ -3580,7 +3580,7 @@ function AdminServiceTags({ data, setData }) {
 
     {selected.size > 0 && <div style={{marginBottom:8}}><button className="btn-d btn-sm" onClick={bulkDelete} style={{fontSize:10,padding:"4px 12px"}}>🗑️ 선택 삭제 ({selected.size})</button></div>}
 
-    <div className="tw" style={{maxHeight:"calc(100vh - 400px)",overflow:"auto"}}>
+    <div className="tw admin-tw" style={{maxHeight:"calc(100vh - 400px)",overflow:"auto"}}>
       <table><thead><tr>
         <th style={{width:30}}><input type="checkbox" checked={allChecked} onChange={toggleAll}/></th>
         <th style={{width:22}}></th><th style={{width:25}}>No</th><th>태그명</th>
@@ -3700,6 +3700,32 @@ const CSS = `
   @media(max-width:768px){
     .sidebar-d{display:none!important}
     .main-c{margin-left:0!important}
+    .page-title{font-size:15px;margin-bottom:10px}
+    .page-pad{padding:8px 6px 8px!important}
+    .grid2{grid-template-columns:1fr!important}
+    .form-col{gap:8px}
+    .sale-grid{grid-template-columns:1fr 1fr!important;gap:8px!important}
+    .sale-pay-row{flex-direction:column!important;gap:8px!important}
+    .res-time-row{flex-wrap:wrap!important}
+    .res-time-row>*{flex-shrink:1!important}
+    .page-filter{flex-wrap:wrap!important;gap:4px!important}
+    .page-filter .inp{max-width:130px!important}
+    table{font-size:11px}
+    th,td{padding:5px 6px}
+    .btn-p,.btn-s,.btn-d{padding:6px 10px;font-size:11px}
+    .btn-sm{padding:4px 8px!important;font-size:10px!important}
+    .stat-cards{grid-template-columns:repeat(auto-fit,minmax(100px,1fr))!important;gap:8px!important}
+    .stat-charts{grid-template-columns:1fr!important}
+    .admin-tw{max-height:calc(100vh - 260px)!important}
+    .ov{padding:6px!important}
+    .inp,.inp:focus{font-size:16px!important}
+    select.inp{font-size:14px!important}
+    .modal{padding:16px!important;max-height:90vh!important}
+  }
+  @media(max-width:480px){
+    .sale-grid{grid-template-columns:1fr!important}
+    .page-filter .inp{max-width:110px!important;font-size:14px!important}
+    .stat-cards{grid-template-columns:1fr 1fr!important}
   }
   @media(min-width:769px){
     .mob-hdr{display:none!important}
