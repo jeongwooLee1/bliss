@@ -118,7 +118,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.39.21";
+const BLISS_V = "2.39.22";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -795,14 +795,24 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   
   const blocks = data.reservations.filter(r => r.date === selDate && branchesToShow.some(b=>b.id===r.bid));
 
-  // Time config - 5min intervals
-  const [startHour, setStartHour] = useState(8);
-  const [endHour, setEndHour] = useState(22);
-  const [rowH, setRowH] = useState(14);
-  const [colW, setColW] = useState(160);
-  const [timeUnit, setTimeUnit] = useState(5); // 분 단위: 5,10,15,30,60
-  const [blockFs, setBlockFs] = useState(10); // 블록 텍스트 크기
-  const [blockOp, setBlockOp] = useState(100); // 블록 투명도 %
+  // Time config - 5min intervals (persist to localStorage)
+  const tlKey = "bliss_tl_";
+  const tlLoad = (k, def) => { try { const v = localStorage.getItem(tlKey+k); return v !== null ? Number(v) : def; } catch(e) { return def; } };
+  const tlSave = (k, v) => { try { localStorage.setItem(tlKey+k, v); } catch(e) {} };
+  const [startHour, setStartHourRaw] = useState(() => tlLoad("sh", 8));
+  const [endHour, setEndHourRaw] = useState(() => tlLoad("eh", 22));
+  const [rowH, setRowHRaw] = useState(() => tlLoad("rh", 14));
+  const [colW, setColWRaw] = useState(() => tlLoad("cw", 160));
+  const [timeUnit, setTimeUnitRaw] = useState(() => tlLoad("tu", 5));
+  const [blockFs, setBlockFsRaw] = useState(() => tlLoad("fs", 10));
+  const [blockOp, setBlockOpRaw] = useState(() => tlLoad("op", 100));
+  const setStartHour = v => { const nv = typeof v === "function" ? v(startHour) : v; setStartHourRaw(nv); tlSave("sh", nv); };
+  const setEndHour = v => { const nv = typeof v === "function" ? v(endHour) : v; setEndHourRaw(nv); tlSave("eh", nv); };
+  const setRowH = v => { const nv = typeof v === "function" ? v(rowH) : v; setRowHRaw(nv); tlSave("rh", nv); };
+  const setColW = v => { const nv = typeof v === "function" ? v(colW) : v; setColWRaw(nv); tlSave("cw", nv); };
+  const setTimeUnit = v => { const nv = typeof v === "function" ? v(timeUnit) : v; setTimeUnitRaw(nv); tlSave("tu", nv); };
+  const setBlockFs = v => { const nv = typeof v === "function" ? v(blockFs) : v; setBlockFsRaw(nv); tlSave("fs", nv); };
+  const setBlockOp = v => { const nv = typeof v === "function" ? v(blockOp) : v; setBlockOpRaw(nv); tlSave("op", nv); };
   const slotsPerHour = 60 / timeUnit;
   const totalRows = (endHour - startHour) * slotsPerHour;
   const headerH = 40;
