@@ -106,7 +106,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.39.17";
+const BLISS_V = "2.39.18";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -2181,77 +2181,85 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
           </div>
         </div>
 
-        {/* 네이버 예약 알림 */}
-        {isNaver && <div style={{
-          padding:"10px 16px", background:"#fff3e0", borderTop:"2px solid #ff9800",
-          display:"flex", alignItems:"center", gap:10, animation:"naverBlink 1s infinite"
-        }}>
-          <span style={{fontSize:20}}>⚠️</span>
-          <div style={{flex:1}}>
-            <strong style={{color:"#e65100",fontSize:13}}>네이버 예약 고객 — 예약금을 확인하세요!</strong>
-            <div style={{fontSize:11,color:"#bf360c",marginTop:2}}>선불 입금된 예약금이 있는지 반드시 확인 후 결제 처리해주세요.</div>
+        {/* 결제 정리 */}
+        <div style={{padding:"14px 16px",borderTop:"2px solid #e0e0e0",background:"#fafafa"}}>
+          {/* 금액 브레이크다운 */}
+          <div style={{marginBottom:12,padding:"10px 14px",background:"#fff",borderRadius:8,border:"1px solid #e8e8e8"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 0"}}>
+              <span style={{fontSize:12,color:"#555"}}>💆 시술 합계</span>
+              <span style={{fontSize:13,fontWeight:700,color:"#7c7cc8"}}>{fmt(svcTotal)}원</span>
+            </div>
+            {prodTotal > 0 && <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 0"}}>
+              <span style={{fontSize:12,color:"#555"}}>🧴 제품 합계</span>
+              <span style={{fontSize:13,fontWeight:700,color:"#6bab9e"}}>{fmt(prodTotal)}원</span>
+            </div>}
+            {discount > 0 && <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 0"}}>
+              <span style={{fontSize:12,color:"#e8a0a0"}}>🏷️ 할인</span>
+              <span style={{fontSize:13,fontWeight:700,color:"#e8a0a0"}}>-{fmt(discount)}원</span>
+            </div>}
+            {isNaver && <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",marginTop:2}}>
+              <span style={{fontSize:12,color:"#e65100"}}>💚 네이버 예약금</span>
+              <div style={{display:"flex",alignItems:"center",gap:4}}>
+                <span style={{fontSize:13,fontWeight:700,color:"#e65100"}}>-</span>
+                <input className="inp" type="number" value={naverPrepaid||""} placeholder="0"
+                  onChange={e=>setNaverPrepaid(Number(e.target.value)||0)}
+                  style={{width:85,padding:"4px 8px",fontSize:13,textAlign:"right",fontWeight:700,color:"#e65100",
+                    border:"2px solid #ff9800",borderRadius:6,background:"#fff8e1"}} />
+                <span style={{fontSize:12,color:"#e65100",fontWeight:600}}>원</span>
+              </div>
+            </div>}
+            <div style={{borderTop:"2px solid #333",marginTop:6,paddingTop:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <span style={{fontSize:13,fontWeight:800,color:"#333"}}>{isNaver ? "현장 결제금액" : "총 결제금액"}</span>
+              <span style={{fontSize:18,fontWeight:900,color:"#ef5350"}}>{fmt(grandTotal)}원</span>
+            </div>
           </div>
-          <div style={{display:"flex",alignItems:"center",gap:5}}>
-            <span style={{fontSize:11,color:"#e65100",fontWeight:700}}>예약금</span>
-            <input className="inp" type="number" value={naverPrepaid||""} placeholder="0"
-              onChange={e=>setNaverPrepaid(Number(e.target.value)||0)}
-              style={{width:90,padding:"5px 8px",fontSize:13,textAlign:"right",fontWeight:700,color:"#e65100",
-                border:"2px solid #ff9800",borderRadius:6,background:"#fff8e1"}} />
-            <span style={{fontSize:11,color:"#e65100"}}>원</span>
-          </div>
-        </div>}
 
-        {/* 결제수단 */}
-        <div style={{padding:"10px 16px",borderTop:"1px solid #e0e0e0",background:"#fafafa"}}>
-          <div style={{display:"flex",gap:20,flexWrap:"wrap"}}>
-            {/* 시술 결제 */}
-            {svcTotal > 0 && <div style={{flex:1,minWidth:200}}>
-              <div style={{fontSize:11,fontWeight:700,color:"#7c7cc8",marginBottom:6}}>💆 시술 결제 ({fmt(svcTotal)}원)</div>
-              <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+          {/* 결제수단 분배 */}
+          {grandTotal > 0 && <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
+            {svcTotal > 0 && <div style={{flex:1,minWidth:200,padding:"8px 12px",background:"#fff",borderRadius:8,border:"1px solid #e0e0e0"}}>
+              <div style={{fontSize:10,fontWeight:700,color:"#7c7cc8",marginBottom:6}}>💆 시술 결제</div>
+              <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
                 <div style={{display:"flex",alignItems:"center",gap:3}}>
-                  <span style={{fontSize:10,color:"#666",width:28}}>현금</span>
-                  <input className="inp" type="number" value={svcRemain||""} disabled
-                    style={{width:80,padding:"4px 6px",fontSize:12,textAlign:"right",background:"#f0f0f0",color:"#333",fontWeight:600}} />
-                </div>
-                <div style={{display:"flex",alignItems:"center",gap:3}}>
-                  <span style={{fontSize:10,color:"#1565c0",width:28}}>카드</span>
+                  <span style={{fontSize:10,color:"#1565c0",fontWeight:600}}>카드</span>
                   <input className="inp" type="number" value={payMethod.svcCard||""} placeholder="0"
                     onChange={e=>setPay("svcCard",e.target.value)}
                     style={{width:80,padding:"4px 6px",fontSize:12,textAlign:"right",border:"1px solid #90caf9",color:"#1565c0",fontWeight:600}} />
                 </div>
                 <div style={{display:"flex",alignItems:"center",gap:3}}>
-                  <span style={{fontSize:10,color:"#2e7d32",width:28}}>입금</span>
+                  <span style={{fontSize:10,color:"#2e7d32",fontWeight:600}}>입금</span>
                   <input className="inp" type="number" value={payMethod.svcTransfer||""} placeholder="0"
                     onChange={e=>setPay("svcTransfer",e.target.value)}
                     style={{width:80,padding:"4px 6px",fontSize:12,textAlign:"right",border:"1px solid #a5d6a7",color:"#2e7d32",fontWeight:600}} />
                 </div>
+                <div style={{display:"flex",alignItems:"center",gap:3}}>
+                  <span style={{fontSize:10,color:"#666",fontWeight:600}}>현금</span>
+                  <span style={{fontSize:12,fontWeight:700,color:"#333",minWidth:60,textAlign:"right"}}>{fmt(svcRemain)}</span>
+                </div>
               </div>
             </div>}
-            {/* 제품 결제 */}
-            {prodTotal > 0 && <div style={{flex:1,minWidth:200}}>
-              <div style={{fontSize:11,fontWeight:700,color:"#6bab9e",marginBottom:6}}>🧴 제품 결제 ({fmt(prodTotal)}원)</div>
-              <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+            {prodTotal > 0 && <div style={{flex:1,minWidth:200,padding:"8px 12px",background:"#fff",borderRadius:8,border:"1px solid #e0e0e0"}}>
+              <div style={{fontSize:10,fontWeight:700,color:"#6bab9e",marginBottom:6}}>🧴 제품 결제</div>
+              <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
                 <div style={{display:"flex",alignItems:"center",gap:3}}>
-                  <span style={{fontSize:10,color:"#666",width:28}}>현금</span>
-                  <input className="inp" type="number" value={prodRemain||""} disabled
-                    style={{width:80,padding:"4px 6px",fontSize:12,textAlign:"right",background:"#f0f0f0",color:"#333",fontWeight:600}} />
-                </div>
-                <div style={{display:"flex",alignItems:"center",gap:3}}>
-                  <span style={{fontSize:10,color:"#1565c0",width:28}}>카드</span>
+                  <span style={{fontSize:10,color:"#1565c0",fontWeight:600}}>카드</span>
                   <input className="inp" type="number" value={payMethod.prodCard||""} placeholder="0"
                     onChange={e=>setPay("prodCard",e.target.value)}
                     style={{width:80,padding:"4px 6px",fontSize:12,textAlign:"right",border:"1px solid #90caf9",color:"#1565c0",fontWeight:600}} />
                 </div>
                 <div style={{display:"flex",alignItems:"center",gap:3}}>
-                  <span style={{fontSize:10,color:"#2e7d32",width:28}}>입금</span>
+                  <span style={{fontSize:10,color:"#2e7d32",fontWeight:600}}>입금</span>
                   <input className="inp" type="number" value={payMethod.prodTransfer||""} placeholder="0"
                     onChange={e=>setPay("prodTransfer",e.target.value)}
                     style={{width:80,padding:"4px 6px",fontSize:12,textAlign:"right",border:"1px solid #a5d6a7",color:"#2e7d32",fontWeight:600}} />
                 </div>
+                <div style={{display:"flex",alignItems:"center",gap:3}}>
+                  <span style={{fontSize:10,color:"#666",fontWeight:600}}>현금</span>
+                  <span style={{fontSize:12,fontWeight:700,color:"#333",minWidth:60,textAlign:"right"}}>{fmt(prodRemain)}</span>
+                </div>
               </div>
             </div>}
-          </div>
-          {(svcTotal>0||prodTotal>0) && <div style={{fontSize:9,color:"#bbb",marginTop:4}}>현금 = 총액 - 카드 - 입금 (자동계산)</div>}
+          </div>}
+          {grandTotal > 0 && <div style={{fontSize:9,color:"#bbb",marginTop:6}}>카드·입금 입력 → 나머지는 현금 자동계산</div>}
         </div>
 
         {/* 매출 메모 */}
