@@ -122,7 +122,7 @@ const PAY_LABEL = { cash:"현금", transfer:"입금", card:"카드", point:"포�
 const PAY_CLR = { cash:"#6bab9e", transfer:"#ef5350", card:"#7c7cc8", point:"#d0d0d0", gift:"#ef5350" };
 const STATUS_LABEL = { confirmed:"진행", completed:"완료", cancelled:"취소", no_show:"노쇼", pending:"확정대기", naver_cancelled:"네이버취소" };
 const STATUS_KEYS = ["confirmed","completed","cancelled","no_show"];
-const STATUS_CLR_DEFAULT = { confirmed:"#F5A623", completed:"#7CB798", cancelled:"#D46B6B", no_show:"#8B8B8B" };
+const STATUS_CLR_DEFAULT = { confirmed:"#E8B830", completed:"#4CAF50", cancelled:"#E05252", no_show:"#424242" };
 const getStatusClr = () => { try { const v = localStorage.getItem("tl_sc"); return v ? {...STATUS_CLR_DEFAULT,...JSON.parse(v)} : {...STATUS_CLR_DEFAULT}; } catch(e) { return {...STATUS_CLR_DEFAULT}; } };
 const BLOCK_COLORS = { reservation:"#7c7cc8", memo:"#ef5350", clockin:"#d0d0d0", cleaning:"#5cb5c5", break:"#9e9ec8" };
 
@@ -1932,6 +1932,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
             )}</>}
             {isReadOnly && <span style={{fontSize:12,color:"#999",display:"flex",alignItems:"center",gap:4}}><I name="eye" size={12}/> 열람 전용 (타 지점)</span>}
           </div>
+        </div>
       </div>
     </div>
   );
