@@ -106,7 +106,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.39.29";
+const BLISS_V = "2.40.0";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -123,6 +123,52 @@ const PAY_CLR = { cash:"#6bab9e", transfer:"#ef5350", card:"#7c7cc8", point:"#d0
 const STATUS_LABEL = { confirmed:"예약확정", completed:"완료", cancelled:"취소", no_show:"노쇼" };
 const STATUS_CLR = { confirmed:"#7c7cc8", completed:"#6bab9e", cancelled:"#e57373", no_show:"#ef5350" };
 const BLOCK_COLORS = { reservation:"#7c7cc8", memo:"#ef5350", clockin:"#d0d0d0", cleaning:"#5cb5c5", break:"#9e9ec8" };
+
+// Lucide-style SVG icons
+const I = ({name,size=16,color="currentColor",style={},...p}) => {
+  const s = {width:size,height:size,display:"inline-block",verticalAlign:"middle",flexShrink:0,...style};
+  const a = {xmlns:"http://www.w3.org/2000/svg",width:size,height:size,viewBox:"0 0 24 24",fill:"none",stroke:color,strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round",style:s,...p};
+  const icons = {
+    calendar:<svg {...a}><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
+    clipboard:<svg {...a}><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>,
+    wallet:<svg {...a}><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>,
+    chart:<svg {...a}><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>,
+    users:<svg {...a}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+    user:<svg {...a}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
+    settings:<svg {...a}><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z"/></svg>,
+    menu:<svg {...a}><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>,
+    chevL:<svg {...a}><polyline points="15 18 9 12 15 6"/></svg>,
+    chevR:<svg {...a}><polyline points="9 18 15 12 9 6"/></svg>,
+    chevU:<svg {...a}><polyline points="18 15 12 9 6 15"/></svg>,
+    chevD:<svg {...a}><polyline points="6 9 12 15 18 9"/></svg>,
+    bell:<svg {...a}><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>,
+    trash:<svg {...a}><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>,
+    edit:<svg {...a}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>,
+    search:<svg {...a}><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>,
+    plus:<svg {...a}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+    x:<svg {...a}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+    scissors:<svg {...a}><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>,
+    pkg:<svg {...a}><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>,
+    tag:<svg {...a}><path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"/><path d="M7 7h.01"/></svg>,
+    loader:<svg {...a}><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg>,
+    arrowL:<svg {...a}><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>,
+    fileText:<svg {...a}><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>,
+    clock:<svg {...a}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+    sparkles:<svg {...a}><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>,
+    msgSq:<svg {...a}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>,
+    alert:<svg {...a}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
+    building:<svg {...a}><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M12 14h.01"/><path d="M16 10h.01"/><path d="M16 14h.01"/><path d="M8 10h.01"/><path d="M8 14h.01"/></svg>,
+    eye:<svg {...a}><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>,
+    check:<svg {...a}><polyline points="20 6 9 17 4 12"/></svg>,
+    download:<svg {...a}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
+    upload:<svg {...a}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>,
+    diamond:<svg {...a}><path d="M2.7 10.3a2.41 2.41 0 0 0 0 3.41l7.59 7.59a2.41 2.41 0 0 0 3.41 0l7.59-7.59a2.41 2.41 0 0 0 0-3.41l-7.59-7.59a2.41 2.41 0 0 0-3.41 0Z"/></svg>,
+    naver:<svg {...a} fill="#03C75A" stroke="none"><circle cx="12" cy="12" r="10"/><text x="12" y="16" textAnchor="middle" fill="#fff" fontSize="12" fontWeight="700" fontFamily="sans-serif">N</text></svg>,
+    calPick:<svg {...a}><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/></svg>,
+    grip:<svg {...a}><circle cx="9" cy="6" r="1" fill={color}/><circle cx="15" cy="6" r="1" fill={color}/><circle cx="9" cy="12" r="1" fill={color}/><circle cx="15" cy="12" r="1" fill={color}/><circle cx="9" cy="18" r="1" fill={color}/><circle cx="15" cy="18" r="1" fill={color}/></svg>,
+  };
+  return icons[name] || null;
+};
 const BLOCK_LABELS = { reservation:"예약", memo:"메모", clockin:"출근", cleaning:"청소", break:"휴식" };
 
 // ─── App ───
@@ -312,13 +358,13 @@ function App() {
   const isMaster = role === "owner" || role === "super";
   const isSuper = currentUser?.role === "super";
   const nav = [
-    { id:"timeline", label:"타임라인", icon:"📅" },
-    { id:"reservations", label:"예약목록", icon:"📋" },
-    { id:"sales", label:"매출관리", icon:"💰" },
-    { id:"stats", label:"매출통계", icon:"📊" },
-    { id:"customers", label:"고객관리", icon:"👥" },
-    ...(isMaster?[{ id:"users", label:"사용자관리", icon:"👤" }]:[]),
-    { id:"admin", label:"관리설정", icon:"⚙️" },
+    { id:"timeline", label:"타임라인", icon:<I name="calendar" size={16}/> },
+    { id:"reservations", label:"예약목록", icon:<I name="clipboard" size={16}/> },
+    { id:"sales", label:"매출관리", icon:<I name="wallet" size={16}/> },
+    { id:"stats", label:"매출통계", icon:<I name="chart" size={16}/> },
+    { id:"customers", label:"고객관리", icon:<I name="users" size={16}/> },
+    ...(isMaster?[{ id:"users", label:"사용자관리", icon:<I name="user" size={16}/> }]:[]),
+    { id:"admin", label:"관리설정", icon:<I name="settings" size={16}/> },
   ];
 
   const branchNames = userBranches.map(bid => (data.branches||[]).find(b=>b.id===bid)?.short||bid).filter(Boolean).join(", ");
@@ -339,7 +385,7 @@ function App() {
       </div>}
       <main className="main-c" style={S.main}>
         <div className="mob-hdr" style={S.mobHdr}>
-          <button onClick={()=>setSideOpen(true)} style={S.menuBtn}>☰</button>
+          <button onClick={()=>setSideOpen(true)} style={S.menuBtn}><I name="menu" size={20}/></button>
           {bizName && <span style={{fontSize:14,fontWeight:700,color:"#7c7cc8"}}>{bizName}</span>}
         </div>
         <div className="page-pad" style={{flex:1,padding:page==="timeline"?"0":"16px 20px 16px",display:"flex",flexDirection:"column",minHeight:0,overflow:"hidden"}}>
@@ -358,7 +404,7 @@ function App() {
   );
 }
 
-function Loading({msg}) { return <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"100vh",background:"#f8f8f8",color:"#888",fontFamily:"'Pretendard',sans-serif",gap:12}}><div style={{fontSize:24}}>⏳</div><div>{msg||"로딩 중..."}</div></div>; }
+function Loading({msg}) { return <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"100vh",background:"#f8f8f8",color:"#888",fontFamily:"'Pretendard',sans-serif",gap:12}}><div style={{fontSize:24}}><I name="loader" size={24} color="#7c7cc8"/></div><div>{msg||"로딩 중..."}</div></div>; }
 
 // ═══════════════════════════════════════════
 // SUPER ADMIN DASHBOARD
@@ -433,7 +479,7 @@ function SuperDashboard({ superData, setSuperData, currentUser, onLogout, onEnte
   };
 
   const [sideOpen, setSideOpen] = useState(false);
-  const tabs = [{id:"businesses",label:"🏢 업체 관리"},{id:"users",label:"👤 사용자"}];
+  const tabs = [{id:"businesses",label:<><I name="building" size={15}/> 업체 관리</>},{id:"users",label:<><I name="user" size={15}/> 사용자</>}];
 
   const SideContent = () => <>
     <div style={{padding:"20px 16px 16px",borderBottom:"1px solid #e0e0e0"}}>
@@ -471,16 +517,16 @@ function SuperDashboard({ superData, setSuperData, currentUser, onLogout, onEnte
       <main className="main-c" style={{flex:1,display:"flex",flexDirection:"column",height:"100vh",overflow:"hidden"}}>
         {/* Mobile header */}
         <div className="mob-hdr" style={{padding:"10px 16px",background:"#fff",borderBottom:"1px solid #e0e0e0",display:"flex",alignItems:"center",gap:12}}>
-          <button onClick={()=>setSideOpen(true)} style={{background:"none",border:"none",color:"#333",cursor:"pointer",fontSize:20,fontFamily:"inherit"}}>☰</button>
+          <button onClick={()=>setSideOpen(true)} style={{background:"none",border:"none",color:"#333",cursor:"pointer",fontSize:20,fontFamily:"inherit"}}><I name="menu" size={20}/></button>
           <span style={{fontSize:14,fontWeight:700,color:"#7c7cc8"}}>Bliss 슈퍼관리자</span>
         </div>
         <div className="page-pad" style={{flex:1,padding:24,overflow:"auto",WebkitOverflowScrolling:"touch"}}>
         {/* ── 업체 관리 ── */}
         {tab==="businesses" && <div>
           <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16,flexWrap:"wrap"}}>
-            <h2 style={{fontSize:18,fontWeight:800,color:"#333"}}>🏢 업체 관리</h2>
+            <h2 style={{fontSize:18,fontWeight:800,color:"#333"}}><I name="building" size={18}/> 업체 관리</h2>
             <span style={{fontSize:12,color:"#888"}}>{businesses.length}개 업체</span>
-            <button className="btn-p" style={{marginLeft:"auto"}} onClick={()=>setBizForm({name:"",code:"",phone:"",memo:"",groupId:""})}>＋ 업체 추가</button>
+            <button className="btn-p" style={{marginLeft:"auto"}} onClick={()=>setBizForm({name:"",code:"",phone:"",memo:"",groupId:""})}><I name="plus" size={12}/> 업체 추가</button>
           </div>
           {bizForm && <div className="card" style={{padding:16,marginBottom:16}}>
             <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"end"}}>
@@ -573,8 +619,8 @@ function SuperUsers({ users, businesses, superData, setSuperData }) {
 
   return <div>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:8}}>
-      <h2 style={{fontSize:18,fontWeight:800,color:"#333"}}>👤 전체 사용자 <span style={{fontSize:13,fontWeight:400,color:"#999"}}>{users.length}명</span></h2>
-      <button className="btn-p" onClick={startAdd}>＋ 사용자 추가</button>
+      <h2 style={{fontSize:18,fontWeight:800,color:"#333"}}><I name="user" size={18}/> 전체 사용자 <span style={{fontSize:13,fontWeight:400,color:"#999"}}>{users.length}명</span></h2>
+      <button className="btn-p" onClick={startAdd}><I name="plus" size={12}/> 사용자 추가</button>
     </div>
 
     {form && <div className="card" style={{padding:20,marginBottom:16}}>
@@ -683,14 +729,14 @@ function Sidebar({ nav, page, setPage, role, branchNames, onLogout, bizName="", 
               background:page===n.id?"#f0f0ff":"transparent",color:page===n.id?"#5a5ac8":"#555",
               borderLeft:page===n.id?"3px solid #7c7cc8":"3px solid transparent",
               fontFamily:"inherit",width:"100%",textAlign:"left",transition:"all .1s"}}>
-              <span style={{fontSize:15,width:20,textAlign:"center"}}>{n.icon}</span>{n.label}
+              <span style={{width:20,display:"inline-flex",alignItems:"center",justifyContent:"center"}}>{n.icon}</span>{n.label}
             </button>
           ))}
         </div>
       ))}
     </div>
     <div style={{padding:12,borderTop:"1px solid #e0e0e0",display:"flex",flexDirection:"column",gap:6}}>
-      {isSuper && <button onClick={onBackToSuper} style={{width:"100%",padding:"8px 14px",borderRadius:4,border:"1px solid #7c7cc8",background:"#7c7cc810",color:"#7c7cc8",cursor:"pointer",fontSize:12,fontWeight:600,fontFamily:"inherit",textAlign:"center"}}>⬅ 관리자 대시보드</button>}
+      {isSuper && <button onClick={onBackToSuper} style={{width:"100%",padding:"8px 14px",borderRadius:4,border:"1px solid #7c7cc8",background:"#7c7cc810",color:"#7c7cc8",cursor:"pointer",fontSize:12,fontWeight:600,fontFamily:"inherit",textAlign:"center"}}><I name="arrowL" size={14}/> 관리자 대시보드</button>}
       <button onClick={onLogout} style={{width:"100%",padding:"8px 14px",borderRadius:4,border:"1px solid #d0d0d0",background:"#fff",color:"#888",cursor:"pointer",fontSize:12,fontWeight:600,fontFamily:"inherit",textAlign:"center"}}>로그아웃</button>
       <div style={{fontSize:9,color:"#ccc",textAlign:"center",marginTop:2}}>v{BLISS_V}</div>
     </div>
@@ -1096,14 +1142,14 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       <div className="tl-topbar" style={{borderBottom:"1px solid #e0e0e0",background:"#fff",flexShrink:0,padding:"6px 12px",display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
         {/* Row 1: Date nav + settings + branch */}
         <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
-          <button onClick={()=>changeDate(-1)} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#666",padding:"2px 4px",flexShrink:0}}>◁</button>
+          <button onClick={()=>changeDate(-1)} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#666",padding:"2px 4px",flexShrink:0}}><I name="chevL" size={14}/></button>
           <span style={{fontSize:13,fontWeight:700,color:"#333",cursor:"pointer",flexShrink:0,whiteSpace:"nowrap"}} onClick={()=>{const el=document.createElement("input");el.type="date";el.value=selDate;el.onchange=e=>setSelDate(e.target.value);el.showPicker?.();el.click()}}>{dateLabel}</span>
-          <button onClick={()=>changeDate(1)} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#666",padding:"2px 4px",flexShrink:0}}>▷</button>
+          <button onClick={()=>changeDate(1)} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#666",padding:"2px 4px",flexShrink:0}}><I name="chevR" size={14}/></button>
           <button onClick={()=>setSelDate(todayStr())} style={{padding:"2px 8px",fontSize:10,border:"1px solid #d0d0d0",borderRadius:3,background:"#fff",color:"#666",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>오늘</button>
           <div style={{position:"relative",flexShrink:0}} ref={el => { if(el) el._settingsBtn = el; }}>
             <button onClick={(e)=>{setShowSettings(!showSettings);}} id="settings-btn"
               style={{width:24,height:24,border:"1px solid #d0d0d0",borderRadius:4,background:showSettings?"#f0f0ff":"#fff",
-                cursor:"pointer",fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",padding:0,color:"#888"}}>⚙</button>
+                cursor:"pointer",fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",padding:0,color:"#888"}}><I name="settings" size={14}/></button>
           </div>
           <select value={viewBids.length===(isMaster?allBranchList.length:accessibleBids.length)?"all":viewBids.length===1?viewBids[0]:"custom"}
             onChange={e=>{
@@ -1114,7 +1160,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
             style={{flexShrink:0,padding:"2px 6px",fontSize:10,border:"1px solid #d0d0d0",borderRadius:4,background:"#fff",color:"#555",cursor:"pointer",fontFamily:"inherit",fontWeight:600,maxWidth:120}}>
             <option value="all">전체지점</option>
             {(isMaster?allBranchList:allBranchList.filter(b=>accessibleBids.includes(b.id))).map(b=>
-              <option key={b.id} value={b.id}>{b.short||b.name}{!canEdit(b.id)?" 👁":""}</option>
+              <option key={b.id} value={b.id}>{b.short||b.name}{!canEdit(b.id)?" (읽기)":""}</option>
             )}
           </select>
         </div>
@@ -1153,7 +1199,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
               scrollRef.current.scrollTo({top: Math.max(0, y), behavior:"smooth"});
             }, 100);
           }}>
-          <span style={{fontSize:18}}>🔔</span>
+          <span style={{fontSize:18}}><I name="bell" size={18} color="#FF9800"/></span>
           <div style={{flex:1,minWidth:0}}>
             <span style={{fontSize:12,fontWeight:700,color:"#E65100"}}>확정대기 {pendingList.length}건</span>
             <span style={{fontSize:11,color:"#F57C00",marginLeft:8}}>
@@ -1217,7 +1263,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                 {/* Header */}
                 <div style={{height:headerH,borderBottom:"1px solid #eee",position:"sticky",top:0,zIndex:10,background:room.isNaver?"#E8F5E9":(branchColor||"#fff"),display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",lineHeight:1.2}}>
                   <span style={{fontSize:12,fontWeight:700,color:room.isNaver?"#2E7D32":"#333"}}>{room.branchName}</span>
-                  <span style={{fontSize:9,color:room.isNaver?"#43A047":"#999"}}>{room.isNaver?"💚 ":"" }{room.name}</span>
+                  <span style={{fontSize:9,color:room.isNaver?"#43A047":"#999"}}>{room.isNaver?<I name="naver" size={11}/> :"" }{room.name}</span>
                 </div>
                 {/* Grid Area */}
                 <div style={{position:"relative",height:totalRows*rowH,cursor:room.isNaver?"default":(canEdit(room.branch_id)?"pointer":"default"),...gridBg}} onClick={e=>{const rect=e.currentTarget.getBoundingClientRect();handleCellClick(room,e.clientY-rect.top)}}>
@@ -1274,10 +1320,10 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                         {block.type==="reservation" && block.isSchedule && <div style={{fontWeight:700,color:"#fff",textShadow:"0 1px 2px rgba(0,0,0,.3)",fontSize:blockFs+1}}>
                           {block.selectedTags?.map(tid=>{const tg=tags.find(t=>t.id===tid);return tg?.name}).filter(Boolean).join(", ")||"기타일정"}
                         </div>}
-                        {block.type==="memo" && <div style={{color:"#ef5350",fontWeight:600}}>📝 메모</div>}
-                        {block.type==="clockin" && <div style={{color:"#d0d0d0",fontWeight:600}}>🕐 {staff?.dn||"출근"}</div>}
-                        {block.type==="cleaning" && <div style={{color:"#5cb5c5",fontWeight:600}}>🧹 청소</div>}
-                        {block.memo && (() => { const clean = block.memo.split("\n").filter(l => !/^\[등록:|^\[수정:/.test(l.trim())).join(" ").trim(); return clean ? <div style={{color:"#7c7cc8",marginTop:1}}>💬 {clean}</div> : null; })()}
+                        {block.type==="memo" && <div style={{color:"#ef5350",fontWeight:600}}><I name="fileText" size={10} color="#ef5350"/> 메모</div>}
+                        {block.type==="clockin" && <div style={{color:"#d0d0d0",fontWeight:600}}><I name="clock" size={10} color="#d0d0d0"/> {staff?.dn||"출근"}</div>}
+                        {block.type==="cleaning" && <div style={{color:"#5cb5c5",fontWeight:600}}><I name="sparkles" size={10} color="#5cb5c5"/> 청소</div>}
+                        {block.memo && (() => { const clean = block.memo.split("\n").filter(l => !/^\[등록:|^\[수정:/.test(l.trim())).join(" ").trim(); return clean ? <div style={{color:"#7c7cc8",marginTop:1}}><I name="msgSq" size={10} color="#7c7cc8"/> {clean}</div> : null; })()}
                         {/* Resize handle */}
                         {isEditable && <div className="resize-handle" onMouseDown={e=>handleResizeStart(block,e)}
                           style={{position:"absolute",bottom:0,left:0,right:0,height:8,cursor:"ns-resize",
@@ -1330,7 +1376,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
           maxHeight:"80vh",overflowY:"auto",
           "@media(minWidth:600px)":{bottom:"auto",left:"auto",right:"auto"}}}>
           <div style={{width:36,height:4,borderRadius:2,background:"#ddd",margin:"0 auto 16px"}}/>
-          <div style={{fontSize:14,fontWeight:700,color:"#333",marginBottom:12}}>⚙️ 타임라인 설정</div>
+          <div style={{fontSize:14,fontWeight:700,color:"#333",marginBottom:12}}><I name="settings" size={14}/> 타임라인 설정</div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
           {[
             {label:"줄간격",val:rowH,dec:()=>setRowH(h=>Math.max(6,h-2)),inc:()=>setRowH(h=>Math.min(30,h+2))},
@@ -1364,7 +1410,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
         <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:12,padding:0,width:"90%",maxWidth:400,
           boxShadow:"0 16px 48px rgba(0,0,0,.25)",animation:"fadeIn .3s ease",overflow:"hidden"}}>
           <div style={{background:"linear-gradient(135deg,#FF6B00,#FF9800)",padding:"20px 24px",color:"#fff",textAlign:"center"}}>
-            <div style={{fontSize:40,marginBottom:8}}>🔔</div>
+            <div style={{fontSize:40,marginBottom:8}}><I name="bell" size={16} color="#FF9800"/></div>
             <div style={{fontSize:18,fontWeight:800}}>알람</div>
             <div style={{fontSize:14,marginTop:4,opacity:.9}}>{alarmPopup.time}</div>
           </div>
@@ -1566,7 +1612,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
               border:"none",borderBottom:isSchedule?"none":"2px solid #7c7cc8",
               background:isSchedule?"transparent":"#fff",color:isSchedule?"#999":"#7c7cc8",
               transition:"all .15s"}}>
-            📅 신규예약
+            <I name="calendar" size={12}/> 신규예약
           </button>
           {/* 기타일정 탭 */}
           <button onClick={()=>{setIsSchedule(true);setF(p=>({...p,isSchedule:true,selectedTags:[],type:"reservation"}));if(modalRef.current)modalRef.current.scrollTop=0}}
@@ -1574,24 +1620,24 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
               border:"none",borderBottom:isSchedule?"2px solid #e17055":"none",
               background:isSchedule?"#fff":"transparent",color:isSchedule?"#e17055":"#999",
               transition:"all .15s"}}>
-            📋 기타일정
+            <I name="clipboard" size={12}/> 기타일정
           </button>
           {/* 닫기 */}
           <button onClick={onClose} style={{padding:"8px 14px",background:"transparent",border:"none",color:"#999",cursor:"pointer",
             fontSize:16,fontFamily:"inherit",borderRadius:4}}
-            onMouseOver={e=>e.currentTarget.style.color="#e57373"} onMouseOut={e=>e.currentTarget.style.color="#999"}>✕</button>
+            onMouseOver={e=>e.currentTarget.style.color="#e57373"} onMouseOut={e=>e.currentTarget.style.color="#999"}><I name="x" size={16}/></button>
         </div>
 
         <div style={{padding:"16px 20px",borderTop:"1px solid #e0e0e0",flex:1,overflowY:"auto"}} className="form-col">
 
           {/* ═══ 네이버 예약 상태 배너 ═══ */}
           {f.status === "naver_cancelled" && <div style={{background:"#FFF8E1",border:"1.5px solid #E6A700",borderRadius:6,padding:"8px 12px",marginBottom:12,display:"flex",alignItems:"center",gap:8}}>
-            <span style={{fontSize:16}}>⚠️</span>
+            <span style={{fontSize:16}}><I name="alert" size={16} color="#E65100"/></span>
             <span style={{fontSize:13,fontWeight:700,color:"#E6A700"}}>네이버 취소 예약</span>
             {f.reservationId && <span style={{fontSize:11,color:"#999",marginLeft:"auto"}}>#{f.reservationId}</span>}
           </div>}
           {f.status === "pending" && <div style={{background:"#FFF3E0",border:"1.5px solid #FF9800",borderRadius:6,padding:"8px 12px",marginBottom:12,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",animation:"naverBlink 1.5s infinite"}}>
-            <span style={{fontSize:16}}>🔔</span>
+            <span style={{fontSize:16}}><I name="bell" size={16} color="#E65100"/></span>
             <span style={{fontSize:13,fontWeight:700,color:"#E65100"}}>네이버 확정대기</span>
             <div style={{marginLeft:"auto",display:"flex",gap:6}}>
               <button onClick={()=>{if(!window.confirm("이 예약을 취소 처리하시겠습니까?")) return; const updated={...f,status:"naver_cancelled"}; onSave(updated); onClose();}}
@@ -1679,7 +1725,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
                 <div style={{display:"flex",gap:6}}>
                   <input className="inp" style={{flex:1}} value={custSearch} onChange={e=>{setCustSearch(e.target.value);setShowCustDropdown(true)}}
                     placeholder="고객명, 전화번호, 차량번호 (2글자 이상)" onFocus={()=>setShowCustDropdown(true)}/>
-                  <button className="btn-s btn-sm" onClick={()=>setShowCustDropdown(!showCustDropdown)}>🔍</button>
+                  <button className="btn-s btn-sm" onClick={()=>setShowCustDropdown(!showCustDropdown)}><I name="search" size={14}/></button>
                 </div>
                 {showCustDropdown && custSearch.length >= 2 && <div style={{position:"absolute",top:"100%",left:0,right:0,background:"#fff",border:"1px solid #d0d0d0",borderRadius:8,maxHeight:220,overflow:"auto",zIndex:10,marginTop:4,boxShadow:"0 8px 24px rgba(0,0,0,.12)"}}>
                   {custResults.map(c=><div key={c.id} onClick={()=>{selectCust(c);setF(p=>({...p,isNewCust:false}))}}
@@ -1775,7 +1821,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
                 <span>{(f.selectedServices||[]).length > 0 ?
                   (f.selectedServices||[]).map(sid=>SVC_LIST.find(s=>s.id===sid)?.name).filter(Boolean).join(", ")
                   : "시술 상품을 선택하세요"}</span>
-                <span style={{fontSize:13}}>{showSvcPicker?"▲":"▼"}</span>
+                <span style={{fontSize:13}}>{showSvcPicker?<I name="chevU" size={12}/>:<I name="chevD" size={12}/>}</span>
               </button>
               {showSvcPicker && <div style={{marginTop:6,border:"1px solid #e0e0e0",borderRadius:8,background:"#fff",maxHeight:280,overflow:"auto"}}>
                 {SVC_LIST.length===0 && <div style={{padding:12,fontSize:11,color:"#999",textAlign:"center"}}>시술 상품이 없습니다 (관리설정 → 시술상품관리에서 등록)</div>}
@@ -1811,7 +1857,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
               if (!bizId) return null;
               return <a href={`https://partner.booking.naver.com/bizes/${bizId}/booking-list-view?bookingBusinessId=${bizId}`} target="_blank" rel="noopener noreferrer"
                 style={{display:"inline-flex",alignItems:"center",gap:4,marginTop:4,fontSize:11,color:"#03C75A",fontWeight:600,textDecoration:"none",padding:"4px 8px",background:"#03C75A10",borderRadius:4,border:"1px solid #03C75A30"}}>
-                💚 네이버 예약 관리 바로가기 →
+                <I name="naver" size={13}/> 네이버 예약 관리 바로가기 →
               </a>;
             })()}
             {(f.tsLog?.length > 0) && <div style={{marginTop:4,fontSize:10,color:"#999",lineHeight:1.6}}>
@@ -1839,10 +1885,10 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
             {!isSchedule && f.type === "reservation" && (
               <button onClick={()=>setShowSaleForm(true)}
                 style={{padding:"10px 18px",borderRadius:8,border:"none",background:existingSale?"linear-gradient(135deg,#5cb5c5,#6bab9e)":"linear-gradient(135deg,#7c7cc8,#5cb5c5)",color:"#fff",fontWeight:800,fontSize:12,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>
-                {existingSale ? "💰 매출확인" : "💰 매출등록"}
+                {existingSale ? <><I name="wallet" size={12}/> 매출확인</> : <><I name="wallet" size={12}/> 매출등록</>}
               </button>
             )}</>}
-            {isReadOnly && <span style={{fontSize:12,color:"#999",display:"flex",alignItems:"center",gap:4}}>👁 열람 전용 (타 지점)</span>}
+            {isReadOnly && <span style={{fontSize:12,color:"#999",display:"flex",alignItems:"center",gap:4}}><I name="eye" size={12}/> 열람 전용 (타 지점)</span>}
           </div>
       </div>
     </div>
@@ -2120,7 +2166,7 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
         {/* Header */}
         <div style={{ padding: "10px 20px", borderBottom: "1px solid #e0e0e0", display: "flex", alignItems: "center", justifyContent: "space-between", background: "#f8f8f8", gap: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", flex: 1 }}>
-            <h3 style={{ fontSize: 16, fontWeight: 800, color: "#ef5350", flexShrink: 0 }}>◆ 매출 입력</h3>
+            <h3 style={{ fontSize: 16, fontWeight: 800, color: "#ef5350", flexShrink: 0 }}><I name="diamond" size={14}/> 매출 입력</h3>
             {cust.name ? (
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span className="badge" style={{ background: cust.gender === "M" ? "#e0edf5" : cust.gender === "F" ? "#fce8e8" : "#f0f0f0", color: cust.gender === "M" ? "#7c7cc8" : cust.gender === "F" ? "#e57373" : "#999", fontSize: 10 }}>{cust.gender === "M" ? "남" : cust.gender === "F" ? "여" : "-"}</span>
@@ -2173,7 +2219,7 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
               </div>
             )}
           </div>
-          <button onClick={onClose} className="close-btn" style={{ fontSize: 18 }}>✕</button>
+          <button onClick={onClose} className="close-btn" style={{ fontSize: 18 }}><I name="x" size={16}/></button>
         </div>
 
         {/* Controls: Manager, Branch, Gender, Live Totals */}
@@ -2246,19 +2292,19 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
           {/* 금액 브레이크다운 */}
           <div style={{marginBottom:12,padding:"10px 14px",background:"#fff",borderRadius:8,border:"1px solid #e8e8e8"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 0"}}>
-              <span style={{fontSize:12,color:"#555"}}>💆 시술 합계</span>
+              <span style={{fontSize:12,color:"#555"}}><I name="scissors" size={12}/> 시술 합계</span>
               <span style={{fontSize:13,fontWeight:700,color:"#7c7cc8"}}>{fmt(svcTotal)}원</span>
             </div>
             {prodTotal > 0 && <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 0"}}>
-              <span style={{fontSize:12,color:"#555"}}>🧴 제품 합계</span>
+              <span style={{fontSize:12,color:"#555"}}><I name="pkg" size={12}/> 제품 합계</span>
               <span style={{fontSize:13,fontWeight:700,color:"#6bab9e"}}>{fmt(prodTotal)}원</span>
             </div>}
             {discount > 0 && <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 0"}}>
-              <span style={{fontSize:12,color:"#e8a0a0"}}>🏷️ 할인</span>
+              <span style={{fontSize:12,color:"#e8a0a0"}}><I name="tag" size={11}/> 할인</span>
               <span style={{fontSize:13,fontWeight:700,color:"#e8a0a0"}}>-{fmt(discount)}원</span>
             </div>}
             {isNaver && <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0",marginTop:2}}>
-              <span style={{fontSize:12,color:"#e65100"}}>💚 네이버 예약금</span>
+              <span style={{fontSize:12,color:"#e65100"}}><I name="naver" size={11}/> 네이버 예약금</span>
               <div style={{display:"flex",alignItems:"center",gap:4}}>
                 <span style={{fontSize:13,fontWeight:700,color:"#e65100"}}>-</span>
                 <input className="inp" type="number" value={naverPrepaid||""} placeholder="0"
@@ -2277,7 +2323,7 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
           {/* 결제수단 분배 */}
           {grandTotal > 0 && <div className="sale-pay-row" style={{display:"flex",gap:16,flexWrap:"wrap"}}>
             {svcTotal > 0 && <div style={{flex:1,minWidth:0,padding:"8px 12px",background:"#fff",borderRadius:8,border:"1px solid #e0e0e0"}}>
-              <div style={{fontSize:10,fontWeight:700,color:"#7c7cc8",marginBottom:6}}>💆 시술 결제</div>
+              <div style={{fontSize:10,fontWeight:700,color:"#7c7cc8",marginBottom:6}}><I name="scissors" size={12}/> 시술 결제</div>
               <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
                 <div style={{display:"flex",alignItems:"center",gap:3}}>
                   <span style={{fontSize:10,color:"#1565c0",fontWeight:600}}>카드</span>
@@ -2298,7 +2344,7 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
               </div>
             </div>}
             {prodTotal > 0 && <div style={{flex:1,minWidth:0,padding:"8px 12px",background:"#fff",borderRadius:8,border:"1px solid #e0e0e0"}}>
-              <div style={{fontSize:10,fontWeight:700,color:"#6bab9e",marginBottom:6}}>🧴 제품 결제</div>
+              <div style={{fontSize:10,fontWeight:700,color:"#6bab9e",marginBottom:6}}><I name="pkg" size={12}/> 제품 결제</div>
               <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
                 <div style={{display:"flex",alignItems:"center",gap:3}}>
                   <span style={{fontSize:10,color:"#1565c0",fontWeight:600}}>카드</span>
@@ -2336,7 +2382,7 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
           <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
             <button className="btn-s" onClick={onClose}>취소</button>
             <button className="btn-p" style={{ padding: "10px 20px", fontSize: 13, fontWeight: 800 }} onClick={handleSubmit}>
-              💰 매출 등록 ({fmt(grandTotal)}원)
+              <I name="wallet" size={12}/> 매출 등록 ({fmt(grandTotal)}원)
             </button>
           </div>
         </div>
@@ -2360,9 +2406,9 @@ function ReservationList({ data, setData, userBranches, isMaster }) {
     <h2 className="page-title">예약 목록</h2>
     <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap",alignItems:"center"}}>
       <div style={{display:"flex",alignItems:"center",gap:4}}>
-        <button className="btn-s btn-sm" onClick={()=>changeDate(-1)}>◀</button>
+        <button className="btn-s btn-sm" onClick={()=>changeDate(-1)}><I name="chevL" size={14}/></button>
         <input type="date" className="inp" style={{maxWidth:150,width:"auto"}} value={selDate} onChange={e=>setSelDate(e.target.value)}/>
-        <button className="btn-s btn-sm" onClick={()=>changeDate(1)}>▶</button>
+        <button className="btn-s btn-sm" onClick={()=>changeDate(1)}><I name="chevR" size={14}/></button>
       </div>
       <button className="btn-s btn-sm" onClick={()=>setSelDate(todayStr())}>오늘</button>
       {<select className="inp" style={{maxWidth:140,width:"auto"}} value={vb} onChange={e=>setVb(e.target.value)}>
@@ -2393,8 +2439,8 @@ function ReservationList({ data, setData, userBranches, isMaster }) {
               <td>{staff?.dn||"-"}</td>
               <td><span className="badge" style={{background:`${STATUS_CLR[r.status]}20`,color:STATUS_CLR[r.status]}}>{STATUS_LABEL[r.status]}</span></td>
               <td><div style={{display:"flex",gap:3}}>
-                {r.status==="confirmed"&&<button className="btn-sm" style={{background:"#e8f5f0",color:"#6bab9e",border:"none",borderRadius:6,padding:"4px 8px",cursor:"pointer",fontSize:11}} onClick={()=>updateStatus(r.id,"completed")}>✓완료</button>}
-                <button className="btn-sm btn-s" onClick={()=>deleteRes(r.id)} style={{padding:"4px 8px"}}>🗑</button>
+                {r.status==="confirmed"&&<button className="btn-sm" style={{background:"#e8f5f0",color:"#6bab9e",border:"none",borderRadius:6,padding:"4px 8px",cursor:"pointer",fontSize:11}} onClick={()=>updateStatus(r.id,"completed")}><I name="check" size={11}/> 완료</button>}
+                <button className="btn-sm btn-s" onClick={()=>deleteRes(r.id)} style={{padding:"4px 8px"}}><I name="trash" size={13}/></button>
               </div></td>
             </tr>
           })}
@@ -2440,7 +2486,7 @@ function SalesPage({ data, setData, userBranches, isMaster }) {
   return <div>
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:10}}>
       <h2 className="page-title" style={{marginBottom:0}}>매출 관리</h2>
-      <button className="btn-p" onClick={()=>setShowModal(true)}>＋ 매출등록</button>
+      <button className="btn-p" onClick={()=>setShowModal(true)}><I name="plus" size={12}/> 매출등록</button>
     </div>
     {/* Tabs */}
     <div style={{display:"flex",gap:2,marginBottom:16,background:"#e0e0e0",borderRadius:8,padding:3,width:"fit-content"}}>
@@ -2451,9 +2497,9 @@ function SalesPage({ data, setData, userBranches, isMaster }) {
     {/* Filters */}
     <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap",alignItems:"center"}}>
       {tab!=="all"&&<div style={{display:"flex",alignItems:"center",gap:4}}>
-        <button className="btn-s btn-sm" onClick={()=>changeDate(-1)}>◀</button>
+        <button className="btn-s btn-sm" onClick={()=>changeDate(-1)}><I name="chevL" size={14}/></button>
         <input type="date" className="inp" style={{maxWidth:150,width:"auto"}} value={selDate} onChange={e=>setSelDate(e.target.value)}/>
-        <button className="btn-s btn-sm" onClick={()=>changeDate(1)}>▶</button>
+        <button className="btn-s btn-sm" onClick={()=>changeDate(1)}><I name="chevR" size={14}/></button>
         <button className="btn-s btn-sm" onClick={()=>setSelDate(todayStr())}>오늘</button>
       </div>}
       {<select className="inp" style={{maxWidth:140,width:"auto"}} value={vb} onChange={e=>setVb(e.target.value)}>
@@ -2495,8 +2541,8 @@ function SalesPage({ data, setData, userBranches, isMaster }) {
               <td style={{fontSize:10,color:"#888",maxWidth:80,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{s.memo||""}</td>
               <td style={{fontSize:9,color:"#aaa",whiteSpace:"nowrap"}}>{s.createdAt ? new Date(s.createdAt).toLocaleString("ko-KR",{month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"}) : "-"}</td>
               <td style={{whiteSpace:"nowrap"}}>
-                <button className="btn-sm btn-s" style={{padding:"3px 5px",fontSize:10,marginRight:2}} onClick={()=>setEditSale(s)}>✏</button>
-                <button className="btn-sm btn-s" style={{padding:"3px 5px",fontSize:10}} onClick={()=>handleDelete(s.id)}>🗑</button>
+                <button className="btn-sm btn-s" style={{padding:"3px 5px",fontSize:10,marginRight:2}} onClick={()=>setEditSale(s)}><I name="edit" size={13}/></button>
+                <button className="btn-sm btn-s" style={{padding:"3px 5px",fontSize:10}} onClick={()=>handleDelete(s.id)}><I name="trash" size={13}/></button>
               </td>
             </tr>
           })}
@@ -2713,11 +2759,11 @@ function CustomersPage({ data, setData, userBranches, isMaster }) {
   return <div>
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,flexWrap:"wrap",gap:10}}>
       <h2 className="page-title" style={{marginBottom:0}}>고객 관리</h2>
-      <button className="btn-p" onClick={()=>{setEditItem(null);setShowModal(true)}}>＋ 고객 등록</button>
+      <button className="btn-p" onClick={()=>{setEditItem(null);setShowModal(true)}}><I name="plus" size={12}/> 고객 등록</button>
     </div>
     <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap",alignItems:"center"}}>
       <div style={{position:"relative",flex:1,minWidth:180}}>
-        <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:"#999",fontSize:14}}>🔍</span>
+        <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:"#999",fontSize:14}}><I name="search" size={14} color="#999"/></span>
         <input className="inp" style={{paddingLeft:32}} placeholder="이름 또는 전화번호 검색..." value={q} onChange={e=>setQ(e.target.value)}/>
       </div>
       {<select className="inp" style={{maxWidth:140,width:"auto"}} value={vb} onChange={e=>setVb(e.target.value)}>
@@ -2745,12 +2791,12 @@ function CustomersPage({ data, setData, userBranches, isMaster }) {
                 <td style={{color:"#888",fontSize:11}}>{c.lastVisit||"-"}</td>
                 <td style={{color:"#888",fontSize:12,whiteSpace:"pre-wrap",wordBreak:"break-word",maxWidth:200}}>{c.memo||"-"}</td>
                 <td onClick={e=>e.stopPropagation()}>
-                  <button className="btn-sm btn-s" onClick={()=>{setEditItem(c);setShowModal(true)}}>✏️</button>
+                  <button className="btn-sm btn-s" onClick={()=>{setEditItem(c);setShowModal(true)}}><I name="edit" size={13}/></button>
                 </td>
               </tr>
               {isDetail && <tr><td colSpan={10} style={{padding:0,background:"#f8f8ff"}}>
                 <div style={{padding:"12px 16px"}}>
-                  <div style={{fontSize:12,fontWeight:700,color:"#7c7cc8",marginBottom:8}}>📋 매출 내역 ({custSales.length}건)</div>
+                  <div style={{fontSize:12,fontWeight:700,color:"#7c7cc8",marginBottom:8}}><I name="clipboard" size={12}/> 매출 내역 ({custSales.length}건)</div>
                   {custSales.length===0 ? <div style={{fontSize:11,color:"#999",padding:8}}>매출 기록 없음</div> :
                     <table style={{width:"100%",fontSize:11}}><thead><tr style={{background:"#e8e8f8"}}>
                       <th>날짜</th><th>매장</th><th>담당자</th><th>시술합계</th><th>제품합계</th><th>총합계</th><th>메모</th>
@@ -2786,7 +2832,7 @@ function CustModal({ item, onSave, onClose, defBranch, userBranches, branches })
     <div className="modal" onClick={e=>e.stopPropagation()}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
         <h3 style={{fontSize:16,fontWeight:700}}>{item?"고객 수정":"새 고객"}</h3>
-        <button onClick={onClose} className="close-btn">✕</button>
+        <button onClick={onClose} className="close-btn"><I name="x" size={16}/></button>
       </div>
       <div className="form-col">
         <FLD label="매장"><select className="inp" value={f.bid} onChange={e=>set("bid",e.target.value)}>{(branches||[]).filter(b=>userBranches.includes(b.id)).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select></FLD>
@@ -2840,7 +2886,7 @@ function UsersPage({ data, setData, bizId }) {
   return <div>
     <h2 className="page-title">사용자 관리</h2>
     <div style={{display:"flex",gap:8,marginBottom:12}}>
-      <button className="btn-p" onClick={startAdd}>＋ 사용자 추가</button>
+      <button className="btn-p" onClick={startAdd}><I name="plus" size={12}/> 사용자 추가</button>
       <span style={{fontSize:12,color:"#888",display:"flex",alignItems:"center"}}>{users.length}개 계정</span>
     </div>
     <div className="card tw">
@@ -2888,14 +2934,14 @@ function UserEditRow({ init, regBranches, allBranches, onSave, onCancel, isNew }
     return <div style={{position:"relative"}}>
       <div onClick={()=>setOpen(!open)} className="inp" style={{width:140,cursor:"pointer",fontSize:11,display:"flex",justifyContent:"space-between",alignItems:"center",minHeight:30}}>
         <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:selected.length?"#333":"#aaa"}}>{label}</span>
-        <span style={{fontSize:8,color:"#999"}}>{open?"▲":"▼"}</span>
+        <span style={{fontSize:8,color:"#999"}}>{open?<I name="chevU" size={12}/>:<I name="chevD" size={12}/>}</span>
       </div>
       {open && <div style={{position:"absolute",top:"100%",left:0,right:0,background:"#fff",border:"1px solid #d0d0d0",borderRadius:4,zIndex:50,maxHeight:160,overflowY:"auto",boxShadow:"0 4px 12px rgba(0,0,0,.1)"}}>
         {regBranches.map(b => {
           const on = selected.includes(b.id);
           return <div key={b.id} onClick={()=>toggle(b.id)} style={{padding:"6px 10px",fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",gap:6,background:on?color+"10":"transparent"}}>
             <div style={{width:14,height:14,borderRadius:3,border:`1.5px solid ${on?color:"#ccc"}`,background:on?color:"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>
-              {on && <span style={{color:"#fff",fontSize:9,fontWeight:700}}>✓</span>}
+              {on && <span style={{color:"#fff",fontSize:9,fontWeight:700}}><I name="check" size={10}/></span>}
             </div>
             <span style={{color:on?color:"#555"}}>{b.short||b.name}</span>
           </div>;
@@ -3047,7 +3093,7 @@ function AdminPlaces({ data, setData, bizId }) {
   return <div>
     <div className="card" style={{padding:20}}>
       <AdminHeader title="예약장소 관리" count={branches.length} onAdd={addBranch} addLabel="＋ 지점 추가" onDownload={downloadExcel} onUpload={uploadExcel}/>
-      {selected.size > 0 && <div style={{marginBottom:8}}><button className="btn-d btn-sm" onClick={bulkDelete} style={{fontSize:10,padding:"4px 12px"}}>🗑️ 선택 삭제 ({selected.size})</button></div>}
+      {selected.size > 0 && <div style={{marginBottom:8}}><button className="btn-d btn-sm" onClick={bulkDelete} style={{fontSize:10,padding:"4px 12px"}}><I name="trash" size={12}/> 선택 삭제 ({selected.size})</button></div>}
       <div className="tw">
         <table><thead><tr>
           <th style={{width:30}}><input type="checkbox" checked={allChecked} onChange={toggleAll}/></th>
@@ -3074,7 +3120,7 @@ function AdminPlaces({ data, setData, bizId }) {
                 opacity: dragIdx===i ? 0.4 : 1, cursor:"grab", touchAction:"none"
               }}>
               <td><input type="checkbox" checked={selected.has(b.id)} onChange={()=>toggleOne(b.id)}/></td>
-              <td style={{textAlign:"center",fontSize:14,color:"#999"}}>☰</td>
+              <td style={{textAlign:"center",fontSize:14,color:"#999"}}><I name="grip" size={14} color="#999"/></td>
               <td style={{color:"#888",textAlign:"center"}}>{i+1}</td>
               <td><input className="inp" value={b.name} onChange={e=>updateField(b.id,"name",e.target.value)} style={{background:"transparent",border:"1px solid #d0d0d0",fontWeight:600}}/></td>
               <td><input className="inp" value={b.address||""} onChange={e=>updateField(b.id,"address",e.target.value)} style={{background:"transparent",border:"1px solid #d0d0d0",width:"100%"}} placeholder="고객 안내용 주소를 정확히 입력하세요"/></td>
@@ -3107,7 +3153,7 @@ function AdminPlaces({ data, setData, bizId }) {
                   </div>
                 ) : (
                   <button onClick={()=>setDeleteId(b.id)}
-                    style={{background:"none",border:"none",cursor:"pointer",fontSize:13,color:"#e57373"}}>🗑️</button>
+                    style={{background:"none",border:"none",cursor:"pointer",fontSize:13,color:"#e57373"}}><I name="trash" size={13}/></button>
                 )}
               </td>
             </tr>
@@ -3128,9 +3174,9 @@ function AdminHeader({title, count, color="#7c7cc8", desc="", onAdd, addLabel="�
       <p style={{fontSize:11,color:"#999",marginTop:2}}>{desc || `총 ${count}개`}</p>
     </div>
     <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-      {onDownload && <button className="btn-s btn-sm" onClick={onDownload}>📥 내려받기</button>}
+      {onDownload && <button className="btn-s btn-sm" onClick={onDownload}><I name="download" size={12}/> 내려받기</button>}
       {onUpload && <>
-        <button className="btn-s btn-sm" onClick={()=>fileRef.current?.click()}>📤 올리기</button>
+        <button className="btn-s btn-sm" onClick={()=>fileRef.current?.click()}><I name="upload" size={12}/> 올리기</button>
         <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" onChange={e=>{onUpload(e);e.target.value=""}} style={{display:"none"}}/>
       </>}
       {onAdd && <button className="btn-p btn-sm" onClick={onAdd}>{addLabel}</button>}
@@ -3204,7 +3250,7 @@ function AdminWorkers({ data, setData }) {
         <button className="btn-p btn-sm" onClick={addRoom}>등록</button>
       </div>
     </div>}
-    {selected.size > 0 && <div style={{marginBottom:8}}><button className="btn-d btn-sm" onClick={bulkDelete} style={{fontSize:10,padding:"4px 12px"}}>🗑️ 선택 삭제 ({selected.size})</button></div>}
+    {selected.size > 0 && <div style={{marginBottom:8}}><button className="btn-d btn-sm" onClick={bulkDelete} style={{fontSize:10,padding:"4px 12px"}}><I name="trash" size={12}/> 선택 삭제 ({selected.size})</button></div>}
     <div className="card tw admin-tw" style={{maxHeight:"calc(100vh - 300px)",overflow:"auto"}}>
       <table><thead><tr>
         <th style={{width:30}}><input type="checkbox" checked={allChecked} onChange={toggleAll}/></th>
@@ -3228,10 +3274,10 @@ function AdminWorkers({ data, setData }) {
             <td>{branchName(r.branch_id)}</td>
             <td>{r.color ? <div style={{width:24,height:16,borderRadius:3,background:r.color,border:"1px solid #d0d0d080"}}/> : <span style={{color:"#ccc"}}>-</span>}</td>
             <td><div style={{display:"flex",gap:4}}>
-              <button onClick={()=>startEdit(r)} style={{background:"none",border:"none",cursor:"pointer",color:"#7c7cc8",fontSize:13}}>✏️</button>
+              <button onClick={()=>startEdit(r)} style={{background:"none",border:"none",cursor:"pointer",color:"#7c7cc8",fontSize:13}}><I name="edit" size={13}/></button>
               {delId===r.id
                 ? <><button className="btn-d btn-sm" onClick={()=>deleteRoom(r.id)} style={{padding:"1px 6px",fontSize:9}}>확인</button><button className="btn-s btn-sm" onClick={()=>setDelId(null)} style={{padding:"1px 5px",fontSize:9}}>취소</button></>
-                : <button onClick={()=>setDelId(r.id)} style={{background:"none",border:"none",cursor:"pointer",color:"#e57373",fontSize:13}}>🗑️</button>}
+                : <button onClick={()=>setDelId(r.id)} style={{background:"none",border:"none",cursor:"pointer",color:"#e57373",fontSize:13}}><I name="trash" size={13}/></button>}
             </div></td>
           </tr>;
         })}
@@ -3384,7 +3430,7 @@ function AdminSaleItems({ data, setData }) {
     <div style={{display:"flex",gap:3,marginBottom:10,flexWrap:"wrap",alignItems:"center"}}>
       <button className={filterCat==="all"?"btn-p btn-sm":"btn-s btn-sm"} onClick={()=>setFilterCat("all")} style={{fontSize:10}}>전체 ({services.length})</button>
       {cats.map(c=><button key={c.id} className={filterCat===c.id?"btn-p btn-sm":"btn-s btn-sm"} onClick={()=>setFilterCat(c.id)} style={{fontSize:10}}>{c.name} ({services.filter(s=>s.cat===c.id).length})</button>)}
-      {selected.size > 0 && <button className="btn-d btn-sm" onClick={bulkDelete} style={{fontSize:10,marginLeft:"auto",padding:"4px 12px"}}>🗑️ 선택 삭제 ({selected.size})</button>}
+      {selected.size > 0 && <button className="btn-d btn-sm" onClick={bulkDelete} style={{fontSize:10,marginLeft:"auto",padding:"4px 12px"}}><I name="trash" size={12}/> 선택 삭제 ({selected.size})</button>}
       <button onClick={resetSort} style={{fontSize:9,marginLeft:selected.size>0?"4px":"auto",padding:"3px 8px",border:"1px solid #ccc",borderRadius:4,background:"#f8f8f8",color:"#888",cursor:"pointer"}}>순서 리셋</button>
     </div>
     <div className="tw admin-tw" style={{maxHeight:"calc(100vh - 340px)",overflow:"auto"}}>
@@ -3420,10 +3466,10 @@ function AdminSaleItems({ data, setData }) {
             <td style={{textAlign:"center",color:"#888",fontSize:11}}>{svc.dur}분</td>
             <td style={{fontSize:11,color:"#888"}}>{svc.note||""}</td>
             <td style={{textAlign:"center"}}><div style={{display:"flex",gap:4,justifyContent:"center"}}>
-              <button onClick={()=>startEdit(svc)} style={{background:"none",border:"none",cursor:"pointer",color:"#7c7cc8",fontSize:13}}>✏️</button>
+              <button onClick={()=>startEdit(svc)} style={{background:"none",border:"none",cursor:"pointer",color:"#7c7cc8",fontSize:13}}><I name="edit" size={13}/></button>
               {delConfirm===svc.id
                 ? <><button className="btn-d btn-sm" onClick={()=>deleteSvc(svc.id)} style={{padding:"1px 6px",fontSize:9}}>확인</button><button className="btn-s btn-sm" onClick={()=>setDelConfirm(null)} style={{padding:"1px 5px",fontSize:9}}>취소</button></>
-                : <button onClick={()=>setDelConfirm(svc.id)} style={{background:"none",border:"none",cursor:"pointer",color:"#e57373",fontSize:13}}>🗑️</button>}
+                : <button onClick={()=>setDelConfirm(svc.id)} style={{background:"none",border:"none",cursor:"pointer",color:"#e57373",fontSize:13}}><I name="trash" size={13}/></button>}
             </div></td>
           </tr>;
         })}
@@ -3497,7 +3543,7 @@ function AdminProductItems({ data, setData }) {
         <button className="btn-p btn-sm" onClick={addItem} style={{padding:"6px 16px"}}>등록</button>
       </div>
     </div>}
-    {selected.size > 0 && <div style={{marginBottom:8}}><button className="btn-d btn-sm" onClick={bulkDelete} style={{fontSize:10,padding:"4px 12px"}}>🗑️ 선택 삭제 ({selected.size})</button></div>}
+    {selected.size > 0 && <div style={{marginBottom:8}}><button className="btn-d btn-sm" onClick={bulkDelete} style={{fontSize:10,padding:"4px 12px"}}><I name="trash" size={12}/> 선택 삭제 ({selected.size})</button></div>}
     <div className="tw admin-tw" style={{maxHeight:"calc(100vh - 300px)",overflow:"auto"}}>
       <table><thead><tr>
         <th style={{width:30}}><input type="checkbox" checked={allChecked} onChange={toggleAll}/></th><th style={{width:25}}></th><th style={{width:35}}>No</th><th>제품명</th><th style={{width:100,textAlign:"right"}}>가격</th><th style={{width:80,textAlign:"center"}}>관리</th>
@@ -3519,10 +3565,10 @@ function AdminProductItems({ data, setData }) {
             <td style={{fontWeight:500,fontSize:12}}>{it.name}</td>
             <td style={{textAlign:"right",color:"#6bab9e",fontWeight:600,fontSize:12}}>{it.price>0?fmt(it.price)+"원":"-"}</td>
             <td style={{textAlign:"center"}}><div style={{display:"flex",gap:4,justifyContent:"center"}}>
-              <button onClick={()=>startEdit(it)} style={{background:"none",border:"none",cursor:"pointer",color:"#7c7cc8",fontSize:13}}>✏️</button>
+              <button onClick={()=>startEdit(it)} style={{background:"none",border:"none",cursor:"pointer",color:"#7c7cc8",fontSize:13}}><I name="edit" size={13}/></button>
               {delConfirm===it.id
                 ? <><button className="btn-d btn-sm" onClick={()=>deleteItem(it.id)} style={{padding:"1px 6px",fontSize:9}}>확인</button><button className="btn-s btn-sm" onClick={()=>setDelConfirm(null)} style={{padding:"1px 5px",fontSize:9}}>취소</button></>
-                : <button onClick={()=>setDelConfirm(it.id)} style={{background:"none",border:"none",cursor:"pointer",color:"#e57373",fontSize:13}}>🗑️</button>}
+                : <button onClick={()=>setDelConfirm(it.id)} style={{background:"none",border:"none",cursor:"pointer",color:"#e57373",fontSize:13}}><I name="trash" size={13}/></button>}
             </div></td>
           </tr>;
         })}</tbody>
@@ -3626,7 +3672,7 @@ function AdminServiceTags({ data, setData }) {
       </div>
     </div>
 
-    {selected.size > 0 && <div style={{marginBottom:8}}><button className="btn-d btn-sm" onClick={bulkDelete} style={{fontSize:10,padding:"4px 12px"}}>🗑️ 선택 삭제 ({selected.size})</button></div>}
+    {selected.size > 0 && <div style={{marginBottom:8}}><button className="btn-d btn-sm" onClick={bulkDelete} style={{fontSize:10,padding:"4px 12px"}}><I name="trash" size={12}/> 선택 삭제 ({selected.size})</button></div>}
 
     <div className="tw admin-tw" style={{maxHeight:"calc(100vh - 400px)",overflow:"auto"}}>
       <table><thead><tr>
@@ -3673,10 +3719,10 @@ function AdminServiceTags({ data, setData }) {
               background:tag.useYn===false?"#e5737320":"transparent",color:tag.useYn===false?"#e8a0a0":"#888"}}>{tag.useYn===false?"미사용":"사용"}</button></td>
           <td style={{textAlign:"center",color:"#bbb",fontSize:10}}>{i+1}</td>
           <td style={{textAlign:"center"}}><div style={{display:"flex",gap:3,justifyContent:"center"}}>
-            <button onClick={()=>startEdit(tag)} style={{background:"none",border:"none",cursor:"pointer",color:"#7c7cc8",fontSize:12}}>✏️</button>
+            <button onClick={()=>startEdit(tag)} style={{background:"none",border:"none",cursor:"pointer",color:"#7c7cc8",fontSize:12}}><I name="edit" size={13}/></button>
             {delConfirm===tag.id
               ? <><button className="btn-d btn-sm" onClick={()=>deleteTag(tag.id)} style={{padding:"1px 5px",fontSize:9}}>확인</button><button className="btn-s btn-sm" onClick={()=>setDelConfirm(null)} style={{padding:"1px 4px",fontSize:9}}>취소</button></>
-              : <button onClick={()=>setDelConfirm(tag.id)} style={{background:"none",border:"none",cursor:"pointer",color:"#e57373",fontSize:12}}>🗑️</button>}
+              : <button onClick={()=>setDelConfirm(tag.id)} style={{background:"none",border:"none",cursor:"pointer",color:"#e57373",fontSize:12}}><I name="trash" size={13}/></button>}
           </div></td>
         </tr>;
       })}</tbody></table>
@@ -3689,7 +3735,7 @@ function DatePick({ value, onChange, style, min }) {
   const fmt = (v) => { if (!v) return "--"; const p = v.split("-"); return `${p[1]}.${p[2]}`; };
   return <div style={{position:"relative",display:"inline-flex",...style}}>
     <div className="inp" style={{width:"100%",fontSize:12,padding:"5px 8px",textAlign:"center",whiteSpace:"nowrap",pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>
-      <span style={{fontSize:11,opacity:.5}}>📅</span>{fmt(value)}</div>
+      <I name="calPick" size={13} color="#aaa"/>{fmt(value)}</div>
     <input type="date" value={value} onChange={e=>onChange(e.target.value)} min={min}
       style={{position:"absolute",inset:0,opacity:0,width:"100%",height:"100%",cursor:"pointer",fontSize:16}}/>
   </div>;
