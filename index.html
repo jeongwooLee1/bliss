@@ -118,7 +118,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.39.23";
+const BLISS_V = "2.39.24";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -1624,15 +1624,15 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
               <label style={{fontSize:11,fontWeight:600,color:"#888",marginBottom:5,display:"block"}}>기간 / 장소·담당자</label>
               <div className="res-time-row" style={{display:"flex",gap:3,alignItems:"center",flexWrap:"nowrap",overflowX:"auto"}}>
                 <DatePick value={f.date} onChange={v=>set("date",v)} style={{flex:"1 1 0",minWidth:0}}/>
-                <select className="inp" style={{flex:"0 0 78px",fontSize:12,padding:"5px 6px"}} value={f.time} onChange={e=>{set("time",e.target.value);set("dur",calcDur(e.target.value,f.endTime))}}>
+                <select className="inp" style={{flex:"0 0 78px",fontSize:12,padding:"5px 8px"}} value={f.time} onChange={e=>{set("time",e.target.value);set("dur",calcDur(e.target.value,f.endTime))}}>
                   {TIMES.filter(t=>{const h=parseInt(t);return h>=8&&h<=21}).map(t=><option key={t} value={t}>{t}</option>)}
                 </select>
                 <span style={{color:"#999",fontSize:10,flexShrink:0}}>~</span>
-                <select className="inp" style={{flex:"0 0 78px",fontSize:12,padding:"5px 6px"}} value={f.endTime} onChange={e=>{set("endTime",e.target.value);set("dur",calcDur(f.time,e.target.value))}}>
+                <select className="inp" style={{flex:"0 0 78px",fontSize:12,padding:"5px 8px"}} value={f.endTime} onChange={e=>{set("endTime",e.target.value);set("dur",calcDur(f.time,e.target.value))}}>
                   {TIMES.filter(t=>{const h=parseInt(t);return h>=8&&h<=22}).map(t=><option key={t} value={t}>{t}</option>)}
                 </select>
                 <span style={{color:"#d0d0d0",fontSize:10,flexShrink:0}}>│</span>
-                <select className="inp" style={{flex:"1 1 0",minWidth:0,fontSize:12,padding:"5px 6px"}} value={`${f.roomId}|${f.staffId}`} onChange={e=>{const [r,s]=e.target.value.split("|");set("roomId",r);set("staffId",s)}}>
+                <select className="inp" style={{flex:"1 1 0",minWidth:0,fontSize:12,padding:"5px 8px"}} value={`${f.roomId}|${f.staffId}`} onChange={e=>{const [r,s]=e.target.value.split("|");set("roomId",r);set("staffId",s)}}>
                   {branchRooms.map(rm => branchStaff.map(st =>
                     <option key={rm.id+st.id} value={`${rm.id}|${st.id}`}>[{(data.branches||[]).find(b=>b.id===branchId)?.short}] {rm.name}-{st.dn}</option>
                   ))}
@@ -1733,15 +1733,15 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
               <label style={{fontSize:11,fontWeight:600,color:"#888",marginBottom:5,display:"block"}}>예약기간 / 장소·담당자</label>
               <div className="res-time-row" style={{display:"flex",gap:3,alignItems:"center",flexWrap:"nowrap",overflowX:"auto"}}>
                 <DatePick value={f.date} onChange={v=>set("date",v)} style={{flex:"1 1 0",minWidth:0}}/>
-                <select className="inp" style={{flex:"0 0 78px",fontSize:12,padding:"5px 6px"}} value={f.time} onChange={e=>{set("time",e.target.value);set("dur",calcDur(e.target.value,f.endTime))}}>
+                <select className="inp" style={{flex:"0 0 78px",fontSize:12,padding:"5px 8px"}} value={f.time} onChange={e=>{set("time",e.target.value);set("dur",calcDur(e.target.value,f.endTime))}}>
                   {TIMES.filter(t=>{const h=parseInt(t);return h>=8&&h<=21}).map(t=><option key={t} value={t}>{t}</option>)}
                 </select>
                 <span style={{color:"#999",fontSize:10,flexShrink:0}}>~</span>
-                <select className="inp" style={{flex:"0 0 78px",fontSize:12,padding:"5px 6px"}} value={f.endTime} onChange={e=>{set("endTime",e.target.value);set("dur",calcDur(f.time,e.target.value))}}>
+                <select className="inp" style={{flex:"0 0 78px",fontSize:12,padding:"5px 8px"}} value={f.endTime} onChange={e=>{set("endTime",e.target.value);set("dur",calcDur(f.time,e.target.value))}}>
                   {TIMES.filter(t=>{const h=parseInt(t);return h>=8&&h<=22}).map(t=><option key={t} value={t}>{t}</option>)}
                 </select>
                 <span style={{color:"#d0d0d0",fontSize:10,flexShrink:0}}>│</span>
-                <select className="inp" style={{flex:"1 1 0",minWidth:0,fontSize:12,padding:"5px 6px"}} value={`${f.roomId}|${f.staffId}`} onChange={e=>{const [r,s]=e.target.value.split("|");set("roomId",r);set("staffId",s)}}>
+                <select className="inp" style={{flex:"1 1 0",minWidth:0,fontSize:12,padding:"5px 8px"}} value={`${f.roomId}|${f.staffId}`} onChange={e=>{const [r,s]=e.target.value.split("|");set("roomId",r);set("staffId",s)}}>
                   {branchRooms.map(rm => branchStaff.map(st =>
                     <option key={rm.id+st.id} value={`${rm.id}|${st.id}`}>[{(data.branches||[]).find(b=>b.id===branchId)?.short}] {rm.name}-{st.dn}</option>
                   ))}
@@ -3698,10 +3698,10 @@ function AdminServiceTags({ data, setData }) {
 // ─── Shared ───
 function DatePick({ value, onChange, style, min }) {
   const ref = useRef(null);
-  const fmt = (v) => { if (!v) return "--"; const p = v.split("-"); return `${p[0].slice(2)}.${p[1]}.${p[2]}`; };
+  const fmt = (v) => { if (!v) return "--"; const p = v.split("-"); return `${p[1]}.${p[2]}`; };
   return <div style={{position:"relative",display:"inline-flex",...style}}>
     <div className="inp" onClick={()=>ref.current?.showPicker?.()||ref.current?.click()}
-      style={{width:"100%",fontSize:12,padding:"5px 6px",cursor:"pointer",textAlign:"center",whiteSpace:"nowrap"}}>{fmt(value)}</div>
+      style={{width:"100%",fontSize:12,padding:"5px 8px",cursor:"pointer",textAlign:"center",whiteSpace:"nowrap"}}>{fmt(value)}</div>
     <input ref={ref} type="date" value={value} onChange={e=>onChange(e.target.value)} min={min}
       style={{position:"absolute",opacity:0,width:0,height:0,overflow:"hidden"}}/>
   </div>;
