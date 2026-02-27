@@ -106,7 +106,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.39.13";
+const BLISS_V = "2.39.14";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -3322,6 +3322,7 @@ function AdminSaleItems({ data, setData }) {
       <button className={filterCat==="all"?"btn-p btn-sm":"btn-s btn-sm"} onClick={()=>setFilterCat("all")} style={{fontSize:10}}>전체 ({services.length})</button>
       {cats.map(c=><button key={c.id} className={filterCat===c.id?"btn-p btn-sm":"btn-s btn-sm"} onClick={()=>setFilterCat(c.id)} style={{fontSize:10}}>{c.name} ({services.filter(s=>s.cat===c.id).length})</button>)}
       {selected.size > 0 && <button className="btn-d btn-sm" onClick={bulkDelete} style={{fontSize:10,marginLeft:"auto",padding:"4px 12px"}}>🗑️ 선택 삭제 ({selected.size})</button>}
+      <button onClick={resetSort} style={{fontSize:9,marginLeft:selected.size>0?"4px":"auto",padding:"3px 8px",border:"1px solid #ccc",borderRadius:4,background:"#f8f8f8",color:"#888",cursor:"pointer"}}>순서 리셋</button>
     </div>
     <div className="tw" style={{maxHeight:"calc(100vh - 340px)",overflow:"auto"}}>
       <table><thead><tr>
