@@ -3,7 +3,7 @@
 <title>Bliss 관리시스템</title>
 <script>
 (function(){
-  var LOCAL_V="2.39.2";
+  var LOCAL_V="2.39.3";
   localStorage.setItem("bliss_v",LOCAL_V);
   fetch("version.txt?t="+Date.now()).then(function(r){return r.text()}).then(function(remote){
     remote=remote.trim();
@@ -638,7 +638,7 @@ function Login({ users, onLogin }) {
           <div style={{fontSize:10,color:"#bbb",textAlign:"center",marginTop:4}}>
             슈퍼관리자: admin / 1234 · 업체대표: master / 1234
           </div>
-          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.39</div>
+          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.39.2</div>
         </div>
       </div>
     </div>
@@ -1753,11 +1753,9 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
                 <span style={{fontSize:13}}>{showSvcPicker?"▲":"▼"}</span>
               </button>
               {showSvcPicker && <div style={{marginTop:6,border:"1px solid #e0e0e0",borderRadius:8,background:"#fff",maxHeight:280,overflow:"auto"}}>
-                {CATS.length===0 && SVC_LIST.length===0 && <div style={{padding:12,fontSize:11,color:"#999",textAlign:"center"}}>카테고리·시술 데이터 로딩중... (관리설정 → 시술상품관리에서 등록 필요)</div>}
-                {CATS.length===0 && SVC_LIST.length>0 && <div style={{padding:12,fontSize:11,color:"#e57373",textAlign:"center"}}>카테고리 없음 (시술 {SVC_LIST.length}건 있음) — 관리설정에서 카테고리를 추가하세요</div>}
-                {CATS.length>0 && SVC_LIST.length===0 && <div style={{padding:12,fontSize:11,color:"#e57373",textAlign:"center"}}>시술 상품 없음 (카테고리 {CATS.length}개) — 관리설정에서 시술을 등록하세요</div>}
-                {CATS.map(cat=>{
-                  const catSvcs = SVC_LIST.filter(s=>s.cat===cat.id).sort((a,b)=>a.sort-b.sort);
+                {SVC_LIST.length===0 && <div style={{padding:12,fontSize:11,color:"#999",textAlign:"center"}}>시술 상품이 없습니다 (관리설정 → 시술상품관리에서 등록)</div>}
+                {SVC_LIST.length>0 && (CATS.length>0 ? CATS : [{id:"__all__",name:"전체 시술"}]).map(cat=>{
+                  const catSvcs = cat.id==="__all__" ? [...SVC_LIST].sort((a,b)=>a.sort-b.sort) : SVC_LIST.filter(s=>s.cat===cat.id).sort((a,b)=>a.sort-b.sort);
                   if(catSvcs.length===0) return null;
                   const genderFilter = f.custGender==="M" ? s=>s.priceM>0||s.priceM===0&&s.priceF===0 : s=>s.priceF>0||s.priceF===0&&s.priceM===0;
                   return <div key={cat.id}>
