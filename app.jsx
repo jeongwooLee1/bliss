@@ -106,7 +106,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.39.11";
+const BLISS_V = "2.39.12";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -1749,27 +1749,21 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
               </button>
               {showSvcPicker && <div style={{marginTop:6,border:"1px solid #e0e0e0",borderRadius:8,background:"#fff",maxHeight:280,overflow:"auto"}}>
                 {SVC_LIST.length===0 && <div style={{padding:12,fontSize:11,color:"#999",textAlign:"center"}}>시술 상품이 없습니다 (관리설정 → 시술상품관리에서 등록)</div>}
-                {SVC_LIST.length>0 && (CATS.length>0 ? CATS : [{id:"__all__",name:"전체 시술"}]).map(cat=>{
-                  const catSvcs = cat.id==="__all__" ? [...SVC_LIST].sort((a,b)=>a.sort-b.sort) : SVC_LIST.filter(s=>s.cat===cat.id).sort((a,b)=>a.sort-b.sort);
-                  if(catSvcs.length===0) return null;
-                  const genderFilter = f.custGender==="M" ? s=>s.priceM>0||s.priceM===0&&s.priceF===0 : s=>s.priceF>0||s.priceF===0&&s.priceM===0;
-                  return <div key={cat.id}>
-                    <div style={{padding:"6px 10px",background:"#f0f0f0",fontSize:10,fontWeight:700,color:"#666",borderBottom:"1px solid #e0e0e0"}}>{cat.name}</div>
-                    {catSvcs.map(svc=>{
+                {SVC_LIST.length>0 && SVC_LIST.map(svc=>{
                       const sel = (f.selectedServices||[]).includes(svc.id);
                       const price = f.custGender==="M"?svc.priceM:svc.priceF;
                       const disabled = price===0;
+                      const catName = CATS.find(c=>c.id===svc.cat)?.name||"";
                       return <div key={svc.id} onClick={()=>!disabled&&toggleService(svc.id)}
                         style={{padding:"5px 10px",cursor:disabled?"default":"pointer",display:"flex",alignItems:"center",gap:6,
                           borderBottom:"1px solid #f0f0f0",opacity:disabled?0.3:1,background:sel?"#7c7cc810":"transparent"}}>
                         <input type="checkbox" checked={sel} readOnly style={{accentColor:"#7c7cc8",width:14,height:14,pointerEvents:"none"}}/>
+                        {catName && <span style={{fontSize:8,color:"#7c7cc8",background:"#f0f0ff",borderRadius:3,padding:"1px 4px",flexShrink:0}}>{catName}</span>}
                         <span style={{flex:1,fontSize:11,fontWeight:sel?600:400,color:sel?"#333":"#666"}}>{svc.name}</span>
                         <span style={{fontSize:9,color:"#999"}}>{svc.dur}분</span>
                         <span style={{fontSize:10,color:"#ef5350",fontWeight:600,width:55,textAlign:"right"}}>{price>0?fmt(price):"-"}</span>
                       </div>;
                     })}
-                  </div>;
-                })}
               </div>}
             </FLD>;
             })()}
