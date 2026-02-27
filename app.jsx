@@ -106,7 +106,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.39.26";
+const BLISS_V = "2.39.27";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -1746,8 +1746,9 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
                   return <button key={tag.id} onClick={()=>toggleTag(tag.id)}
                     style={{padding:"4px 8px",fontSize:10,fontWeight:sel?700:500,borderRadius:4,cursor:"pointer",fontFamily:"inherit",transition:"all .1s",
                       border:`1px solid ${sel?(hasColor?tag.color:"#7c7cc8"):"#d0d0d0"}`,
-                      background:sel?(hasColor?tag.color+"40":"#7c7cc820"):"transparent",
-                      color:sel?(hasColor?tag.color:"#7c7cc8"):"#999",display:"flex",alignItems:"center",gap:3}}>
+                      background:sel?(hasColor?tag.color+"70":"#7c7cc820"):"transparent",
+                      color:sel?(hasColor?"#fff":"#7c7cc8"):"#999",display:"flex",alignItems:"center",gap:3}}>
+                    {hasColor && <span style={{width:7,height:7,borderRadius:2,background:sel?"#fff":tag.color,flexShrink:0}}/>}
                     {tag.name}
                     {tag.dur > 0 && <span style={{fontSize:8,opacity:0.7}}>({tag.dur}분)</span>}
                   </button>;
