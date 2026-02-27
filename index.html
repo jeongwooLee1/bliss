@@ -132,8 +132,8 @@ for (let h = 10; h <= 21; h++) { HOUR_TIMES.push(`${String(h).padStart(2,"0")}:0
 const PAY_KEYS = ["cash","transfer","card","point"];
 const PAY_LABEL = { cash:"현금", transfer:"입금", card:"카드", point:"포인트", gift:"상품권" };
 const PAY_CLR = { cash:"#6bab9e", transfer:"#ef5350", card:"#7c7cc8", point:"#d0d0d0", gift:"#ef5350" };
-const STATUS_LABEL = { confirmed:"예약확정", completed:"완료", cancelled:"취소", no_show:"노쇼" };
-const STATUS_CLR = { confirmed:"#7c7cc8", completed:"#6bab9e", cancelled:"#e57373", no_show:"#ef5350" };
+const STATUS_LABEL = { confirmed:"진행중", completed:"완료", cancelled:"취소", no_show:"노쇼", pending:"확정대기", naver_cancelled:"네이버취소" };
+const STATUS_CLR = { confirmed:"#FF9800", completed:"#6bab9e", cancelled:"#e57373", no_show:"#ef5350", pending:"#FF9800", naver_cancelled:"#E6A700" };
 const BLOCK_COLORS = { reservation:"#7c7cc8", memo:"#ef5350", clockin:"#d0d0d0", cleaning:"#5cb5c5", break:"#9e9ec8" };
 
 // Lucide-style SVG icons
@@ -1609,6 +1609,11 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
       if (setData) setData(prev => ({ ...prev, sales: [...prev.sales, newSale] }));
       sb.insert("sales", toDb("sales", newSale)).catch(console.error);
     }
+    // 매출 등록 시 예약 상태를 "완료"로 변경
+    if (f.id) {
+      setData(prev => ({ ...prev, reservations: prev.reservations.map(r => r.id === f.id ? {...r, status:"completed"} : r) }));
+      sb.update("reservations", f.id, {status:"completed"}).catch(console.error);
+    }
     setShowSaleForm(false);
     if (setPage) { onClose(); setPage("sales"); }
   };
@@ -1893,7 +1898,9 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
 
           {/* Action Buttons - 한 줄 (pinned bottom) */}
         </div>
-        <div style={{display:"flex",gap:6,padding:"12px 16px",borderTop:"1px solid #e0e0e0",background:"#fafafa",borderRadius:"0 0 8px 8px",flexShrink:0,flexWrap:"wrap"}}>
+        <div style={{display:"flex",gap:6,padding:"12px 16px",borderTop:"1px solid #e0e0e0",background:"#fafafa",borderRadius:"0 0 8px 8px",flexShrink:0,flexWrap:"wrap",alignItems:"center"}}>
+            {/* 상태 뱃지 */}
+            {item?.id && !isSchedule && f.status && <span className="badge" style={{background:`${STATUS_CLR[f.status]||"#999"}20`,color:STATUS_CLR[f.status]||"#999",fontSize:11,padding:"4px 10px",fontWeight:700}}>{STATUS_LABEL[f.status]||f.status}</span>}
             <button className="btn-s" style={{padding:"10px 16px"}} onClick={onClose}>닫기</button>
             {!isReadOnly && <><button className="btn-p" style={{flex:1,justifyContent:"center",padding:10,
               background:isSchedule?"#e17055":"#7c7cc8"}} onClick={()=>{
@@ -1907,6 +1914,11 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
                     : prevLog;
                 onSave({...f, tsLog: newLog});
               }}>{item?.id?"수정 완료":"등록"}</button>
+            {item?.id && !isSchedule && f.status !== "cancelled" && <button style={{padding:"10px 16px",borderRadius:8,border:"1px solid #e57373",background:"#fff",color:"#e57373",fontWeight:700,fontSize:12,cursor:"pointer",fontFamily:"inherit"}} onClick={()=>{
+              if(!window.confirm("이 예약을 취소 처리하시겠습니까?")) return;
+              const updated = {...f, status:"cancelled"};
+              onSave(updated); onClose();
+            }}><I name="x" size={12}/> 취소</button>}
             {item?.id && <button className="btn-d" style={{padding:"10px 16px"}} onClick={()=>onDeleteRequest?.(item)}>삭제</button>}
             {!isSchedule && f.type === "reservation" && (
               <button onClick={()=>setShowSaleForm(true)}
