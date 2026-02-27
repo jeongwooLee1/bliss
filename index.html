@@ -1,25 +1,33 @@
-<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/><meta http-equiv="Pragma" content="no-cache"/><meta http-equiv="Expires" content="0"/>
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
 <title>Bliss 관리시스템</title>
-<script>
-(function(){
-  var LOCAL_V="2.39";
-  localStorage.setItem("bliss_v",LOCAL_V);
-  fetch("version.txt?t="+Date.now()).then(function(r){return r.text()}).then(function(remote){
-    remote=remote.trim();
-    if(remote && remote!==LOCAL_V){localStorage.setItem("bliss_v",remote);location.reload(true);}
-  }).catch(function(){});
-})();
-</script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<style>*{margin:0;padding:0;box-sizing:border-box}</style>
-</head><body><div id="root"></div><script type="text/babel">
-const { useState, useEffect, useRef, useCallback, useMemo } = React;
-// React hooks provided by HTML wrapper
-
+<script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"><\/script>
+<script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"><\/script>
+<script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"><\/script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"><\/script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans KR',sans-serif;background:#f5f5f5;overflow:hidden}
+.inp{padding:7px 10px;border:1px solid #d0d0d0;border-radius:6px;font-size:13px;font-family:inherit;outline:none;transition:border .15s}
+.inp:focus{border-color:#7c7cc8}
+.btn-s{padding:6px 14px;border:none;border-radius:6px;cursor:pointer;font-family:inherit;font-weight:600;font-size:12px;transition:all .15s}
+.btn-s:active{transform:scale(.97)}
+.btn-pri{background:#7c7cc8;color:#fff}.btn-pri:hover{background:#6b6bb5}
+.btn-dan{background:#e57373;color:#fff}.btn-dan:hover{background:#d32f2f}
+.btn-sm{padding:5px 10px;font-size:11px}
+.ov{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:100;backdrop-filter:blur(2px)}
+.form-col{display:flex;flex-direction:column;gap:12px}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes naverBlink{0%,100%{opacity:1}50%{opacity:.7}}
+@media(max-width:768px){.hide-m{display:none!important}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" data-type="module">
 // ─── Supabase Config ───
 const SB_URL = "https://dpftlrsuqxqqeouwbfjd.supabase.co";
 const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwZnRscnN1cXhxcWVvdXdiZmpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5MDU4MjQsImV4cCI6MjA4NzQ4MTgyNH0.iydEkjtPjZ0jXpUUPJben4IWWneDqLomv-HDlcFayE4";
@@ -3658,17 +3666,19 @@ const CSS = `
 
 ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
 
-
-
-ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
-
-
-
-ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
-
-
-
-ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
-
-
-</script></body></html>
+// ── AUTO-RELOAD: version check ──
+const LOCAL_V = "2.39";
+(async function versionCheck(){
+  try {
+    const r = await fetch("/bliss/version.txt?t=" + Date.now());
+    const remote = (await r.text()).trim();
+    if (remote && remote !== LOCAL_V) {
+      console.log("New version detected:", remote, "vs local:", LOCAL_V);
+      location.replace("/bliss/?v=" + remote + "&t=" + Date.now());
+    }
+  } catch(e) { console.log("Version check skipped"); }
+  setTimeout(versionCheck, 60000);
+})();
+<\/script>
+</body>
+</html>
