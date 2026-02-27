@@ -102,6 +102,7 @@ async function loadAllFromDb(bizId) {
     reservations:fromDb("reservations",reservations), sales:fromDb("sales",sales),
     serviceTags:fromDb("service_tags",serviceTags), services:fromDb("services",services),
     products, cats };
+  console.log("Data loaded:", {branches:branches.length, rooms:rooms.length, services:services.length, cats:cats.length, serviceTags:serviceTags.length, reservations:reservations.length});
 }
 
 // ─── Constants ───
@@ -615,7 +616,7 @@ function Login({ users, onLogin }) {
           <div style={{fontSize:10,color:"#bbb",textAlign:"center",marginTop:4}}>
             슈퍼관리자: admin / 1234 · 업체대표: master / 1234
           </div>
-          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.39</div>
+          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.39.2</div>
         </div>
       </div>
     </div>
@@ -1730,6 +1731,9 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
                 <span style={{fontSize:13}}>{showSvcPicker?"▲":"▼"}</span>
               </button>
               {showSvcPicker && <div style={{marginTop:6,border:"1px solid #e0e0e0",borderRadius:8,background:"#fff",maxHeight:280,overflow:"auto"}}>
+                {CATS.length===0 && SVC_LIST.length===0 && <div style={{padding:12,fontSize:11,color:"#999",textAlign:"center"}}>카테고리·시술 데이터 로딩중... (관리설정 → 시술상품관리에서 등록 필요)</div>}
+                {CATS.length===0 && SVC_LIST.length>0 && <div style={{padding:12,fontSize:11,color:"#e57373",textAlign:"center"}}>카테고리 없음 (시술 {SVC_LIST.length}건 있음) — 관리설정에서 카테고리를 추가하세요</div>}
+                {CATS.length>0 && SVC_LIST.length===0 && <div style={{padding:12,fontSize:11,color:"#e57373",textAlign:"center"}}>시술 상품 없음 (카테고리 {CATS.length}개) — 관리설정에서 시술을 등록하세요</div>}
                 {CATS.map(cat=>{
                   const catSvcs = SVC_LIST.filter(s=>s.cat===cat.id).sort((a,b)=>a.sort-b.sort);
                   if(catSvcs.length===0) return null;
