@@ -616,7 +616,7 @@ function Login({ users, onLogin }) {
           <div style={{fontSize:10,color:"#bbb",textAlign:"center",marginTop:4}}>
             슈퍼관리자: admin / 1234 · 업체대표: master / 1234
           </div>
-          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.39.3</div>
+          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.39.4</div>
         </div>
       </div>
     </div>
@@ -3238,14 +3238,40 @@ function AdminSaleItems({ data, setData }) {
   const uploadXl = async (e) => {
     const file = e.target.files[0]; if(!file) return;
     const rows = await XL.readFile(file);
+    // Auto-create missing categories from Excel
+    const catNames = [...new Set(rows.map(r=>String(r["카테고리"]||r["category"]||"").trim()).filter(Boolean))];
+    let localCats = [...cats];
+    const newCats = [];
+    for (const cn of catNames) {
+      if (!localCats.find(c=>c.name.trim()===cn)) {
+        const nc = {id:uid(), name:cn, sort:localCats.length+newCats.length};
+        newCats.push(nc);
+        localCats.push(nc);
+      }
+    }
+    if (newCats.length > 0) {
+      for (const nc of newCats) {
+        await sb.insert("service_categories", {id:nc.id, business_id:_activeBizId, name:nc.name, sort:nc.sort}).catch(console.error);
+      }
+      if (setData) setData(prev => ({...prev, categories: localCats}));
+    }
     const newSvcs = rows.map((r,i)=>{
       const catName = String(r["카테고리"]||r["category"]||"").trim();
-      const cat = cats.find(c=>c.name.trim()===catName);
-      return {id:uid(), cat:cat?.id||cats[0]?.id||"sc1", name:String(r["시술명"]||r["name"]||"").trim(), priceF:Number(r["여성가"]||r["priceF"])||0, priceM:Number(r["남성가"]||r["priceM"])||0, dur:Number(r["소요분"]||r["dur"])||20, note:String(r["비고"]||"").trim(), sort:services.length+i};
+      const cat = localCats.find(c=>c.name.trim()===catName);
+      return {id:uid(), cat:cat?.id||localCats[0]?.id||"sc1", name:String(r["시술명"]||r["name"]||"").trim(), priceF:Number(r["여성가"]||r["priceF"])||0, priceM:Number(r["남성가"]||r["priceM"])||0, dur:Number(r["소요분"]||r["dur"])||20, note:String(r["비고"]||"").trim(), sort:services.length+i};
     }).filter(r=>r.name);
-    if(newSvcs.length && window.confirm(newSvcs.length+"개 시술을 추가하시겠습니까?")) {
-      setServices(p=>[...p,...newSvcs]);
-      newSvcs.forEach(s=>sb.insert("services",{id:s.id, business_id:_activeBizId, cat:s.cat, name:s.name, dur:s.dur, price_f:s.priceF, price_m:s.priceM, note:s.note||"", sort:s.sort}).catch(console.error));
+    if(newSvcs.length) {
+      const mode = window.confirm(newSvcs.length+"개 시술 업로드\n\n[확인] 기존 전체 삭제 후 교체\n[취소] 기존에 추가");
+      if (mode) {
+        // Replace all: delete existing services first
+        for (const s of services) { await sb.del("services", s.id).catch(console.error); }
+        setServices(newSvcs);
+        for (const s of newSvcs) { await sb.insert("services",{id:s.id, business_id:_activeBizId, cat:s.cat, name:s.name, dur:s.dur, price_f:s.priceF, price_m:s.priceM, note:s.note||"", sort:s.sort}).catch(console.error); }
+      } else {
+        setServices(p=>[...p,...newSvcs]);
+        newSvcs.forEach(s=>sb.insert("services",{id:s.id, business_id:_activeBizId, cat:s.cat, name:s.name, dur:s.dur, price_f:s.priceF, price_m:s.priceM, note:s.note||"", sort:s.sort}).catch(console.error));
+      }
+      if (setData) setData(prev => ({...prev, services: mode ? newSvcs : [...prev.services, ...newSvcs]}));
     }
     e.target.value="";
   };
