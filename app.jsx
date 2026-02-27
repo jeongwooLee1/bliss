@@ -106,6 +106,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
+const BLISS_V = "2.39.8";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -148,6 +149,20 @@ function App() {
   const [loadMsg, setLoadMsg] = useState("연결 중...");
 
   // Page is persisted directly via setPage → sessionStorage.setItem("bliss_page")
+
+  // Safe version check (runs after React mount, no DOM conflict)
+  useEffect(() => {
+    let timer;
+    const check = () => {
+      fetch("/bliss/version.txt?t=" + Date.now()).then(r => r.text()).then(remote => {
+        remote = remote.trim();
+        if (remote && remote !== BLISS_V) { console.log("New version:", remote); location.reload(); }
+      }).catch(() => {});
+      timer = setTimeout(check, 60000);
+    };
+    timer = setTimeout(check, 3000); // first check 3s after mount
+    return () => clearTimeout(timer);
+  }, []);
 
   // Phase 1: Load all users on mount + auto-login from saved session
   useEffect(() => {
@@ -615,7 +630,7 @@ function Login({ users, onLogin }) {
           <div style={{fontSize:10,color:"#bbb",textAlign:"center",marginTop:4}}>
             슈퍼관리자: admin / 1234 · 업체대표: master / 1234
           </div>
-          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v2.39.7</div>
+          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v{BLISS_V}</div>
         </div>
       </div>
     </div>
