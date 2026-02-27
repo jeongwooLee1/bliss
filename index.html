@@ -2039,7 +2039,31 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
 
   // 결제수단 분배
   const [payMethod, setPayMethod] = useState({ svcCash:0, svcCard:0, svcTransfer:0, svcPoint:0, prodCash:0, prodCard:0, prodTransfer:0, prodPoint:0 });
-  const setPay = useCallback((k,v) => setPayMethod(prev => ({...prev, [k]: Number(v)||0})), []);
+  const [svcAutoField, setSvcAutoField] = useState("svcCash");
+  const [prodAutoField, setProdAutoField] = useState("prodCash");
+  const setPay = useCallback((k, v, total) => {
+    const val = Number(v) || 0;
+    const prefix = k.startsWith("svc") ? "svc" : "prod";
+    const fields = prefix === "svc" ? ["svcCard","svcCash","svcTransfer"] : ["prodCard","prodCash","prodTransfer"];
+    const autoField = prefix === "svc" ? svcAutoField : prodAutoField;
+    setPayMethod(prev => {
+      const next = {...prev, [k]: val};
+      // Auto-adjust: remainder goes to autoField (unless it's the field being edited)
+      const adjustField = k === autoField ? fields.find(f => f !== k && prev[f] > 0) || fields.find(f => f !== k) : autoField;
+      const others = fields.filter(f => f !== adjustField).reduce((s, f) => s + (f === k ? val : next[f]), 0);
+      next[adjustField] = Math.max(0, total - others);
+      return next;
+    });
+  }, [svcAutoField, prodAutoField]);
+  const fillField = (k, total, prefix) => {
+    const fields = prefix === "svc" ? ["svcCard","svcCash","svcTransfer"] : ["prodCard","prodCash","prodTransfer"];
+    if (prefix === "svc") setSvcAutoField(k); else setProdAutoField(k);
+    setPayMethod(prev => {
+      const next = {...prev};
+      fields.forEach(f => { next[f] = f === k ? total : 0; });
+      return next;
+    });
+  };
 
   // 네이버 예약 감지 (태그, 예약번호, 메모 중 하나라도 해당)
   const isNaver = !!(
@@ -2137,9 +2161,24 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
   const checkedSvc = SVC_LIST.filter(s => items[s.id]?.checked).length + (items.extra_svc?.checked ? 1 : 0);
   const checkedProd = PROD_LIST.filter(p => items[p.id]?.checked).length + (items.extra_prod?.checked ? 1 : 0);
 
-  // Auto-calc remaining for default payment (현금 = 총액 - 카드 - 입금 - 포인트)
-  const svcRemain = Math.max(0, svcTotal - payMethod.svcCard - payMethod.svcTransfer - payMethod.svcPoint);
-  const prodRemain = Math.max(0, prodTotal - payMethod.prodCard - payMethod.prodTransfer - payMethod.prodPoint);
+  // Auto-calc remaining for default payment
+  const svcRemain = Math.max(0, svcTotal - payMethod.svcCard - payMethod.svcTransfer - payMethod.svcCash - payMethod.svcPoint);
+  const prodRemain = Math.max(0, prodTotal - payMethod.prodCard - payMethod.prodTransfer - payMethod.prodCash - payMethod.prodPoint);
+  // Auto-fill default field when total changes
+  const prevSvcTotal = useRef(0);
+  const prevProdTotal = useRef(0);
+  useEffect(() => {
+    if (svcTotal !== prevSvcTotal.current) {
+      prevSvcTotal.current = svcTotal;
+      if (svcTotal > 0) setPayMethod(p => { const n = {...p}; ["svcCard","svcCash","svcTransfer"].forEach(f => n[f] = f===svcAutoField ? svcTotal : 0); return n; });
+    }
+  }, [svcTotal]);
+  useEffect(() => {
+    if (prodTotal !== prevProdTotal.current) {
+      prevProdTotal.current = prodTotal;
+      if (prodTotal > 0) setPayMethod(p => { const n = {...p}; ["prodCard","prodCash","prodTransfer"].forEach(f => n[f] = f===prodAutoField ? prodTotal : 0); return n; });
+    }
+  }, [prodTotal]);
 
   const handleSubmit = () => {
     if (grandTotal <= 0) {
@@ -2194,8 +2233,8 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
       date: reservation?.date || todayStr(),
       serviceId: reservation?.serviceId || null, serviceName: SVC_LIST.find(s => s.id === reservation?.serviceId)?.name || "",
       productId: null, productName: null,
-      svcCash: svcRemain, svcTransfer: payMethod.svcTransfer, svcCard: payMethod.svcCard, svcPoint: payMethod.svcPoint,
-      prodCash: prodRemain, prodTransfer: payMethod.prodTransfer, prodCard: payMethod.prodCard, prodPoint: payMethod.prodPoint,
+      svcCash: payMethod.svcCash, svcTransfer: payMethod.svcTransfer, svcCard: payMethod.svcCard, svcPoint: payMethod.svcPoint,
+      prodCash: payMethod.prodCash, prodTransfer: payMethod.prodTransfer, prodCard: payMethod.prodCard, prodPoint: payMethod.prodPoint,
       gift: 0, orderNum: String(252000 + Math.floor(Math.random() * 200)),
       memo: (isNaver && naverPrepaid > 0 ? `[네이버예약금 ${naverPrepaid.toLocaleString()}원] ` : "") + (saleMemo || ""),
       createdAt: new Date().toISOString(),
@@ -2377,48 +2416,40 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
           {grandTotal > 0 && <div className="sale-pay-row" style={{display:"flex",gap:16,flexWrap:"wrap"}}>
             {svcTotal > 0 && <div style={{flex:1,minWidth:0,padding:"8px 12px",background:"#fff",borderRadius:8,border:"1px solid #e0e0e0"}}>
               <div style={{fontSize:10,fontWeight:700,color:"#7c7cc8",marginBottom:6}}><I name="scissors" size={12}/> 시술 결제</div>
-              <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-                <div style={{display:"flex",alignItems:"center",gap:3}}>
-                  <span style={{fontSize:10,color:"#1565c0",fontWeight:600}}>카드</span>
-                  <input className="inp" type="number" value={payMethod.svcCard||""} placeholder="0"
-                    onChange={e=>setPay("svcCard",e.target.value)}
-                    style={{width:80,padding:"4px 6px",fontSize:12,textAlign:"right",border:"1px solid #90caf9",color:"#1565c0",fontWeight:600}} />
-                </div>
-                <div style={{display:"flex",alignItems:"center",gap:3}}>
-                  <span style={{fontSize:10,color:"#2e7d32",fontWeight:600}}>입금</span>
-                  <input className="inp" type="number" value={payMethod.svcTransfer||""} placeholder="0"
-                    onChange={e=>setPay("svcTransfer",e.target.value)}
-                    style={{width:80,padding:"4px 6px",fontSize:12,textAlign:"right",border:"1px solid #a5d6a7",color:"#2e7d32",fontWeight:600}} />
-                </div>
-                <div style={{display:"flex",alignItems:"center",gap:3}}>
-                  <span style={{fontSize:10,color:"#666",fontWeight:600}}>현금</span>
-                  <span style={{fontSize:12,fontWeight:700,color:"#333",minWidth:60,textAlign:"right"}}>{fmt(svcRemain)}</span>
-                </div>
+              <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+                {[
+                  {k:"svcCard",label:"카드",clr:"#1565c0",bdr:"#90caf9"},
+                  {k:"svcCash",label:"현금",clr:"#e65100",bdr:"#ffcc80"},
+                  {k:"svcTransfer",label:"입금",clr:"#2e7d32",bdr:"#a5d6a7"},
+                ].map(({k,label,clr,bdr})=><div key={k} style={{display:"flex",alignItems:"center",gap:3}}>
+                  <span style={{fontSize:10,color:clr,fontWeight:600}}>{label}</span>
+                  <input className="inp" type="number" value={payMethod[k]||""} placeholder="0"
+                    onFocus={()=>{ if(!payMethod[k]) fillField(k, svcTotal, "svc"); }}
+                    onChange={e=>setPay(k, e.target.value, svcTotal)}
+                    style={{width:80,padding:"4px 6px",fontSize:12,textAlign:"right",border:`1px solid ${bdr}`,color:clr,fontWeight:600,
+                      background:svcAutoField===k?"#f5f5ff":"#fff"}} />
+                </div>)}
               </div>
             </div>}
             {prodTotal > 0 && <div style={{flex:1,minWidth:0,padding:"8px 12px",background:"#fff",borderRadius:8,border:"1px solid #e0e0e0"}}>
               <div style={{fontSize:10,fontWeight:700,color:"#6bab9e",marginBottom:6}}><I name="pkg" size={12}/> 제품 결제</div>
-              <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-                <div style={{display:"flex",alignItems:"center",gap:3}}>
-                  <span style={{fontSize:10,color:"#1565c0",fontWeight:600}}>카드</span>
-                  <input className="inp" type="number" value={payMethod.prodCard||""} placeholder="0"
-                    onChange={e=>setPay("prodCard",e.target.value)}
-                    style={{width:80,padding:"4px 6px",fontSize:12,textAlign:"right",border:"1px solid #90caf9",color:"#1565c0",fontWeight:600}} />
-                </div>
-                <div style={{display:"flex",alignItems:"center",gap:3}}>
-                  <span style={{fontSize:10,color:"#2e7d32",fontWeight:600}}>입금</span>
-                  <input className="inp" type="number" value={payMethod.prodTransfer||""} placeholder="0"
-                    onChange={e=>setPay("prodTransfer",e.target.value)}
-                    style={{width:80,padding:"4px 6px",fontSize:12,textAlign:"right",border:"1px solid #a5d6a7",color:"#2e7d32",fontWeight:600}} />
-                </div>
-                <div style={{display:"flex",alignItems:"center",gap:3}}>
-                  <span style={{fontSize:10,color:"#666",fontWeight:600}}>현금</span>
-                  <span style={{fontSize:12,fontWeight:700,color:"#333",minWidth:60,textAlign:"right"}}>{fmt(prodRemain)}</span>
-                </div>
+              <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+                {[
+                  {k:"prodCard",label:"카드",clr:"#1565c0",bdr:"#90caf9"},
+                  {k:"prodCash",label:"현금",clr:"#e65100",bdr:"#ffcc80"},
+                  {k:"prodTransfer",label:"입금",clr:"#2e7d32",bdr:"#a5d6a7"},
+                ].map(({k,label,clr,bdr})=><div key={k} style={{display:"flex",alignItems:"center",gap:3}}>
+                  <span style={{fontSize:10,color:clr,fontWeight:600}}>{label}</span>
+                  <input className="inp" type="number" value={payMethod[k]||""} placeholder="0"
+                    onFocus={()=>{ if(!payMethod[k]) fillField(k, prodTotal, "prod"); }}
+                    onChange={e=>setPay(k, e.target.value, prodTotal)}
+                    style={{width:80,padding:"4px 6px",fontSize:12,textAlign:"right",border:`1px solid ${bdr}`,color:clr,fontWeight:600,
+                      background:prodAutoField===k?"#f5f5ff":"#fff"}} />
+                </div>)}
               </div>
             </div>}
           </div>}
-          {grandTotal > 0 && <div style={{fontSize:9,color:"#bbb",marginTop:6}}>카드·입금 입력 → 나머지는 현금 자동계산</div>}
+          {grandTotal > 0 && <div style={{fontSize:9,color:"#bbb",marginTop:6}}>필드 클릭 → 전액 자동입력 / 다른 필드 입력 시 자동 분배</div>}
         </div>
 
         {/* 매출 메모 */}
