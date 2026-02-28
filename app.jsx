@@ -107,7 +107,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.52.2";
+const BLISS_V = "2.53.0";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -925,6 +925,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   const [showCal, setShowCal] = useState(false);
   const [showBranchPicker, setShowBranchPicker] = useState(false);
   const scrollRef = useRef(null);
+  const hdrSyncRef = useRef(null);
 
   // Branch view: 편집가능(userBranches) + 열람가능(viewBranches)
   const allBranchList = (data.branchSettings || data.branches || []).filter(b => b.useYn !== false);
@@ -1225,7 +1226,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
     let clickOffsetY = 0;
     if (sr) {
       const rect = sr.getBoundingClientRect();
-      const cursorGridY = (startPt.clientY - rect.top + sr.scrollTop) - headerH;
+      const cursorGridY = (startPt.clientY - rect.top + sr.scrollTop);
       clickOffsetY = cursorGridY - blockTopY;
     }
 
@@ -1243,7 +1244,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       const colX = x - timeLabelsW;
       const roomIdx = Math.max(0, Math.min(allRooms.length - 1, Math.floor(colX / colW)));
       const targetRoom = allRooms[roomIdx];
-      const gridY = y - headerH - clickOffsetY;
+      const gridY = y - clickOffsetY;
       const snappedTime = yToTime(Math.max(0, gridY));
       setDragSnap({ roomId: targetRoom?.id, bid: targetRoom?.branch_id, time: snappedTime });
       dragSnapRef.current = { roomId: targetRoom?.id, bid: targetRoom?.branch_id, time: snappedTime };
@@ -1559,7 +1560,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
             setTimeout(()=>{
               if(!scrollRef.current) return;
               const [h,m] = (first.time||"10:00").split(":").map(Number);
-              const y = ((h - startHour) * 60 + m) / timeUnit * rowH + headerH - 60;
+              const y = ((h - startHour) * 60 + m) / timeUnit * rowH - 60;
               scrollRef.current.scrollTo({top: Math.max(0, y), behavior:"smooth"});
             }, 100);
           }}>
@@ -1586,12 +1587,32 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
         </div>;
       })()}
 
+      {/* Synced Header Row (outside scroll container) */}
+      <div ref={hdrSyncRef} style={{display:"flex",overflowX:"hidden",flexShrink:0,borderBottom:"1px solid #eee",background:"#fff",zIndex:5}}>
+        <div style={{width:timeLabelsW,flexShrink:0,height:headerH,background:"#fff",borderRight:"1px solid #eee"}}/>
+        {allRooms.map((room,ci)=>{
+          const isNewBranch=ci===0||room.branch_id!==allRooms[ci-1]?.branch_id;
+          const branchColor=(data.branchSettings||[]).find(bs=>bs.id===room.branch_id)?.color||"";
+          return <div key={room.id} style={{width:colW,flexShrink:0,height:headerH,
+            borderLeft:room.isNaver?"2px solid #A5D6A7":(isNewBranch&&ci>0?"none":"1px solid #f0f0f0"),
+            background:room.isNaver?"#E8F5E9":(branchColor||"#fff"),marginLeft:isNewBranch&&ci>0?4:0,
+            display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",lineHeight:1.2}}>
+            <span className="tl-room-name" style={{fontSize:12,fontWeight:700,color:room.isNaver?"#2E7D32":"#333"}}>{room.branchName}</span>
+            <span className="tl-room-sub" style={{fontSize:9,color:room.isNaver?"#43A047":"#999"}}>{room.isNaver?<I name="naver" size={11}/>:""}{room.name}</span>
+          </div>;
+        })}
+      </div>
+
       {/* Timeline Grid */}
-      <div ref={scrollRef} className="timeline-scroll" onScroll={e=>{if(window.innerWidth>768)return;const hdr=document.querySelector(".mob-hdr");if(!hdr)return;const t=e.target.scrollTop;if(t>5){hdr.style.maxHeight="0";hdr.style.padding="0 16px";}else{hdr.style.maxHeight="60px";hdr.style.padding="10px 16px";}}} style={{flex:1,overflow:"auto",minHeight:0}}>
+      <div ref={scrollRef} className="timeline-scroll" onScroll={e=>{
+        if(hdrSyncRef.current)hdrSyncRef.current.scrollLeft=e.target.scrollLeft;
+        if(window.innerWidth>768)return;const hdr=document.querySelector(".mob-hdr");if(!hdr)return;
+        if(e.target.scrollTop>5){hdr.style.maxHeight="0";hdr.style.padding="0 16px";}
+        else{hdr.style.maxHeight="60px";hdr.style.padding="10px 16px";}
+      }} style={{flex:1,overflow:"auto",minHeight:0,position:"relative"}}>
         <div style={{display:"flex",minWidth:"fit-content"}}>
           {/* Time Labels */}
           <div className="tl-time-col" style={{width:timeLabelsW,flexShrink:0,position:"sticky",left:0,zIndex:20,background:"#fff",borderRight:"1px solid #eee"}}>
-            <div className="tl-hdr-cell" style={{height:headerH,borderBottom:"1px solid #eee",position:"sticky",top:0,zIndex:25,background:"#fff"}}/>
             <div style={{position:"relative",height:totalRows*rowH,...gridBg}}>
               {hoverCell && hoverCell.rowIdx>=0 && <div style={{position:"absolute",top:hoverCell.rowIdx*rowH,left:0,right:0,height:rowH,background:"rgba(124,124,200,0.08)",zIndex:1,pointerEvents:"none"}}/>}
               {timeLabels.map(({i, isHour, m, text}) => {
@@ -1626,11 +1647,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
             const branchColor = (data.branchSettings || []).find(bs => bs.id === room.branch_id)?.color || "";
             return (
               <div key={room.id} className="tl-room-col" style={{width:colW,flexShrink:0,borderLeft:room.isNaver?"2px solid #A5D6A7":(isNewBranch&&ci>0?"none":"1px solid #f0f0f0"),background:room.isNaver?"#F1F8E9":(branchColor||"#fff"),marginLeft:isNewBranch&&ci>0?4:0,boxShadow:isNewBranch&&ci>0?"-4px 0 8px rgba(0,0,0,.06)":room.isNaver?"inset 2px 0 4px rgba(76,175,80,.08)":"none"}}>
-                {/* Header */}
-                <div className="tl-hdr-cell" style={{height:headerH,borderBottom:"1px solid #eee",position:"sticky",top:0,zIndex:10,background:room.isNaver?"#E8F5E9":(branchColor||"#fff"),display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",lineHeight:1.2}}>
-                  <span className="tl-room-name" style={{fontSize:12,fontWeight:700,color:room.isNaver?"#2E7D32":"#333"}}>{room.branchName}</span>
-                  <span className="tl-room-sub" style={{fontSize:9,color:room.isNaver?"#43A047":"#999"}}>{room.isNaver?<I name="naver" size={11}/> :"" }{room.name}</span>
-                </div>
+
                 {/* Grid Area */}
                 <div style={{position:"relative",height:totalRows*rowH,cursor:room.isNaver?"default":(canEdit(room.branch_id)?"pointer":"default"),...gridBg}}
                   onClick={e=>{const rect=e.currentTarget.getBoundingClientRect();handleCellClick(room,e.clientY-rect.top)}}
@@ -1754,7 +1771,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
           const roomIdx = allRooms.findIndex(r => r.id === dragSnap.roomId);
           if (roomIdx < 0) return null;
           const snapLeft = timeLabelsW + roomIdx * colW + 2;
-          return <div style={{position:"absolute",top:headerH+snapY,left:snapLeft,width:colW-4,height:snapH,
+          return <div style={{position:"absolute",top:snapY,left:snapLeft,width:colW-4,height:snapH,
             background:"#7c7cc815",border:"1.5px solid #7c7cc860",borderRadius:8,pointerEvents:"none",zIndex:50,boxShadow:"0 2px 8px rgba(124,124,200,.2)"}}/>
         })()}
       </div>
@@ -4485,7 +4502,7 @@ function FLD({ label, children }) {
 const S = {
   root: { display:"flex", height:"100dvh", fontFamily:"'Pretendard',-apple-system,BlinkMacSystemFont,'Noto Sans KR',sans-serif", background:"#f8f8f8", color:"#333", overflow:"hidden", position:"fixed", top:0, left:0, right:0, bottom:0 },
   sidebar: { width:200, background:"#fff", borderRight:"1px solid #e0e0e0", display:"flex", flexDirection:"column", position:"fixed", top:0, left:0, bottom:0, zIndex:50 },
-  main: { flex:1, marginLeft:200, display:"flex", flexDirection:"column", height:"100%", minHeight:0 },
+  main: { flex:1, marginLeft:200, display:"flex", flexDirection:"column", height:"100%", minHeight:0, background:"#fff", overflow:"hidden" },
   mobHdr: { padding:"10px 16px", background:"#fff", display:"flex", alignItems:"center", gap:12, overflow:"hidden", transition:"max-height .3s ease, padding .3s ease", maxHeight:60 },
   menuBtn: { background:"none", border:"none", color:"#333", cursor:"pointer", fontSize:20, fontFamily:"inherit" },
 };
