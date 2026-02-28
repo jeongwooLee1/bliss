@@ -120,7 +120,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.53.5";
+const BLISS_V = "2.53.6";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -4614,16 +4614,15 @@ const CSS = `
     .modal-res{width:92%!important;max-width:500px!important;border-radius:12px!important}
     .modal-res .form-col{overflow:visible!important}
     .ov{padding:8px!important;-webkit-overflow-scrolling:touch!important}
-    .tl-topbar{flex-direction:column!important;gap:4px!important;padding:8px 10px!important}
+    .tl-topbar{flex-direction:column!important;gap:4px!important;padding:6px 6px!important;align-items:stretch!important}
     .mob-hdr{padding:10px 16px!important}
     .tl-date-label{font-size:15px!important}
     .tl-room-name{font-size:14px!important}
     .tl-room-sub{font-size:11px!important}
     .tl-time-col{position:-webkit-sticky!important;position:sticky!important}
     .tl-hdr-cell{position:-webkit-sticky!important;position:sticky!important}
-    .tl-topbar{padding:8px 10px!important}
 
-    .tl-days{width:100%;justify-content:space-between}
+    .tl-days{width:100%;justify-content:space-between;padding:0 2px}
     .page-filter{flex-wrap:wrap!important;gap:4px!important}
     .page-filter .inp{max-width:130px!important}
     table{font-size:11px}
