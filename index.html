@@ -120,7 +120,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.44.6";
+const BLISS_V = "2.44.7";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -373,6 +373,7 @@ function App() {
     if (phase !== "app" || !currentBizId) return;
     let channel = null;
     let pollIv = null;
+    let rtConnected = false;
     const supaClient = _supaClient;
 
     const poll = async () => {
@@ -381,48 +382,62 @@ function App() {
         const parsed = fromDb("reservations", rows);
         setData(prev => {
           if (!prev) return prev;
-          const prevIds = new Set(prev.reservations.map(r => r.id + "|" + (r._ua||"")));
-          const newIds = new Set(parsed.map(r => r.id + "|" + (r._ua||"")));
-          let changed = prev.reservations.length !== parsed.length;
-          if (!changed) { for (const id of prevIds) { if (!newIds.has(id)) { changed = true; break; } } }
-          return changed ? {...prev, reservations: parsed} : prev;
+          const prevJson = JSON.stringify(prev.reservations.map(r => r.id + "|" + (r._ua||"")));
+          const newJson = JSON.stringify(parsed.map(r => r.id + "|" + (r._ua||"")));
+          return prevJson !== newJson ? {...prev, reservations: parsed} : prev;
         });
-      } catch(e) {}
+      } catch(e) { console.log("Poll error:", e); }
     };
 
+    // 항상 폴링 시작 (30초)
+    poll();
+    pollIv = setInterval(poll, 30000);
+
+    // Realtime 시도 (성공하면 폴링 간격 늘림)
     if (supaClient) {
-      poll(); // 즉시 1회 동기화
-      channel = supaClient.channel("rt_" + Date.now())
-        .on("postgres_changes", { event: "*", schema: "public", table: "reservations", filter: "business_id=eq." + currentBizId }, (payload) => {
-          const ev = payload.eventType;
-          const row = payload.new || {};
-          const oldRow = payload.old || {};
-          setData(prev => {
-            if (!prev) return prev;
-            const parsed = row.id ? fromDb("reservations", [row])[0] : null;
-            if (ev === "INSERT" && parsed) {
-              if (prev.reservations.some(r => r.id === parsed.id)) return prev;
-              return {...prev, reservations: [...prev.reservations, parsed]};
+      try {
+        channel = supaClient.channel("rt_" + Date.now())
+          .on("postgres_changes", { event: "*", schema: "public", table: "reservations", filter: "business_id=eq." + currentBizId }, (payload) => {
+            const ev = payload.eventType;
+            const row = payload.new || {};
+            const oldRow = payload.old || {};
+            setData(prev => {
+              if (!prev) return prev;
+              try {
+                const parsed = row.id ? fromDb("reservations", [row])[0] : null;
+                if (ev === "INSERT" && parsed) {
+                  if (prev.reservations.some(r => r.id === parsed.id)) return prev;
+                  return {...prev, reservations: [...prev.reservations, parsed]};
+                }
+                if (ev === "UPDATE" && parsed) {
+                  return {...prev, reservations: prev.reservations.map(r => r.id === parsed.id ? {...r, ...parsed} : r)};
+                }
+                if (ev === "DELETE") {
+                  const delId = oldRow.id;
+                  return delId ? {...prev, reservations: prev.reservations.filter(r => r.id !== delId)} : prev;
+                }
+              } catch(e) {}
+              return prev;
+            });
+          })
+          .subscribe((status) => {
+            console.log("RT:", status);
+            if (status === "SUBSCRIBED") {
+              rtConnected = true;
+              clearInterval(pollIv);
+              pollIv = setInterval(poll, 120000); // RT 성공 → 2분 백업 폴링
+              console.log("✅ Realtime ON (백업 폴링 2분)");
             }
-            if (ev === "UPDATE" && parsed) {
-              return {...prev, reservations: prev.reservations.map(r => r.id === parsed.id ? {...r, ...parsed} : r)};
+            if (status === "CLOSED" || status === "TIMED_OUT" || status === "CHANNEL_ERROR") {
+              if (rtConnected) {
+                rtConnected = false;
+                clearInterval(pollIv);
+                pollIv = setInterval(poll, 30000);
+                console.log("⚠️ Realtime 끊김 → Polling 30초");
+              }
             }
-            if (ev === "DELETE") {
-              const delId = oldRow.id;
-              return delId ? {...prev, reservations: prev.reservations.filter(r => r.id !== delId)} : prev;
-            }
-            return prev;
           });
-        })
-        .subscribe((status) => {
-          console.log("RT:", status);
-          if (status === "SUBSCRIBED") { clearInterval(pollIv); pollIv = null; console.log("✅ Realtime ON"); }
-          if (status === "CLOSED" || status === "TIMED_OUT" || status === "CHANNEL_ERROR") {
-            if (!pollIv) { pollIv = setInterval(poll, 30000); console.log("⚠️ Polling 30초 ON"); }
-          }
-        });
-    } else {
-      pollIv = setInterval(poll, 30000);
+      } catch(e) { console.log("RT setup error:", e); }
     }
 
     return () => {
