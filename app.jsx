@@ -2,7 +2,7 @@
 const SB_URL = "https://dpftlrsuqxqqeouwbfjd.supabase.co";
 const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwZnRscnN1cXhxcWVvdXdiZmpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5MDU4MjQsImV4cCI6MjA4NzQ4MTgyNH0.iydEkjtPjZ0jXpUUPJben4IWWneDqLomv-HDlcFayE4";
 const sbHeaders = {"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json","Prefer":"return=representation"};
-const _supaClient = typeof window !== "undefined" && window.supabase ? window.supabase.createClient(SB_URL, SB_KEY, {auth:{persistSession:false}}) : null;
+const _supaClient = typeof window !== "undefined" && window.supabase ? window.supabase.createClient(SB_URL, SB_KEY, {auth:{persistSession:false}, realtime:{params:{eventsPerSecond:10}, heartbeatIntervalMs:15000, timeout:20000, reconnectAfterMs:(tries)=>Math.min(1000*Math.pow(2,tries),30000)}}) : null;
 const sb = {
   async get(table, filter="") { 
     const hasSortCol = ["services","products","service_tags","service_categories"].includes(table);
@@ -107,7 +107,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.44.7";
+const BLISS_V = "2.44.8";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
