@@ -120,7 +120,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.46.1";
+const BLISS_V = "2.47.0";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -993,27 +993,19 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   
   const blocks = data.reservations.filter(r => r.date === selDate && branchesToShow.some(b=>b.id===r.bid));
 
-  // Time config - per-user via DB (app_users.timeline_settings)
+  // Time config - per-browser via localStorage
   const getTlSettings = () => {
     try {
-      const u = currentUser;
-      if (u?.timeline_settings) {
-        const s = typeof u.timeline_settings === "string" ? JSON.parse(u.timeline_settings) : u.timeline_settings;
-        return s || {};
-      }
+      const raw = localStorage.getItem("tl_settings");
+      return raw ? JSON.parse(raw) : {};
     } catch(e) {}
     return {};
   };
   const dbTl = useRef(getTlSettings());
   const tlDef = (k, def) => dbTl.current[k] !== undefined ? Number(dbTl.current[k]) : def;
-  const tlSaveTimer = useRef(null);
-  const tlSaveDb = useCallback((allSettings) => {
-    if (!currentUser?.id) return;
-    clearTimeout(tlSaveTimer.current);
-    tlSaveTimer.current = setTimeout(() => {
-      sb.update("app_users", currentUser.id, {timeline_settings:JSON.stringify(allSettings)}).catch(console.error);
-    }, 500);
-  }, [currentUser]);
+  const tlSaveLocal = useCallback((allSettings) => {
+    try { localStorage.setItem("tl_settings", JSON.stringify(allSettings)); } catch(e) {}
+  }, []);
   const [startHour, setStartHourRaw] = useState(() => tlDef("sh", 8));
   const [endHour, setEndHourRaw] = useState(() => tlDef("eh", 22));
   const [rowH, setRowHRaw] = useState(() => tlDef("rh", 14));
@@ -1028,7 +1020,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   const makeTlSave = (k, rawSetter) => v => {
     rawSetter(v);
     dbTl.current = {...dbTl.current, [k]: v};
-    tlSaveDb(dbTl.current);
+    tlSaveLocal(dbTl.current);
   };
   const setStartHour = makeTlSave("sh", setStartHourRaw);
   const setEndHour = makeTlSave("eh", setEndHourRaw);
@@ -1037,7 +1029,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   const setTimeUnit = makeTlSave("tu", setTimeUnitRaw);
   const setBlockFs = makeTlSave("fs", setBlockFsRaw);
   const setBlockOp = makeTlSave("op", setBlockOpRaw);
-  const setStatusClr = (k,v) => { setStatusClrRaw(p => { const n = {...p,[k]:v}; dbTl.current = {...dbTl.current, sc:n}; tlSaveDb(dbTl.current); try{localStorage.setItem("tl_sc",JSON.stringify(n))}catch(e){} return n; }); };
+  const setStatusClr = (k,v) => { setStatusClrRaw(p => { const n = {...p,[k]:v}; dbTl.current = {...dbTl.current, sc:n}; tlSaveLocal(dbTl.current); try{localStorage.setItem("tl_sc",JSON.stringify(n))}catch(e){} return n; }); };
   // Sync status colors to localStorage for other components using getStatusClr()
   useEffect(() => { try{localStorage.setItem("tl_sc",JSON.stringify(statusClr))}catch(e){} }, [statusClr]);
   const slotsPerHour = 60 / timeUnit;
@@ -1199,7 +1191,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   };
 
   // ── Drag handlers ──
-  const timeLabelsW = 76;
+  const timeLabelsW = 88;
   const handleDragStart = (block, e) => {
     e.stopPropagation();
     const isTouch = e.type === "touchstart";
@@ -1540,10 +1532,10 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       })()}
 
       {/* Timeline Grid */}
-      <div ref={scrollRef} className="timeline-scroll" style={{flex:1,overflow:"scroll",position:"relative",minHeight:0}}>
+      <div ref={scrollRef} className="timeline-scroll" style={{flex:1,overflow:"scroll",position:"relative",minHeight:0,WebkitOverflowScrolling:"touch"}}>
         <div style={{display:"flex",minWidth:"fit-content"}}>
           {/* Time Labels */}
-          <div style={{width:62,flexShrink:0,position:"sticky",left:0,zIndex:20,background:"#fff",borderRight:"1px solid #eee"}}>
+          <div style={{width:timeLabelsW,flexShrink:0,position:"sticky",left:0,zIndex:20,background:"#fff",borderRight:"1px solid #eee"}}>
             <div style={{height:headerH,borderBottom:"1px solid #eee",position:"sticky",top:0,zIndex:25,background:"#fff"}}/>
             <div style={{position:"relative",height:totalRows*rowH,...gridBg}}>
               {hoverCell && hoverCell.rowIdx>=0 && <div style={{position:"absolute",top:hoverCell.rowIdx*rowH,left:0,right:0,height:rowH,background:"rgba(124,124,200,0.08)",zIndex:1,pointerEvents:"none"}}/>}
@@ -1578,7 +1570,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
             const isNewBranch = ci === 0 || room.branch_id !== allRooms[ci-1]?.branch_id;
             const branchColor = (data.branchSettings || []).find(bs => bs.id === room.branch_id)?.color || "";
             return (
-              <div key={room.id} style={{width:colW,flexShrink:0,borderLeft:room.isNaver?"2px solid #A5D6A7":(isNewBranch&&ci>0?"none":"1px solid #f0f0f0"),background:room.isNaver?"#F1F8E9":(branchColor||"#fff"),marginLeft:isNewBranch&&ci>0?4:0,boxShadow:isNewBranch&&ci>0?"-4px 0 8px rgba(0,0,0,.06)":room.isNaver?"inset 2px 0 4px rgba(76,175,80,.08)":"none"}}>
+              <div key={room.id} className="tl-room-col" style={{width:colW,flexShrink:0,borderLeft:room.isNaver?"2px solid #A5D6A7":(isNewBranch&&ci>0?"none":"1px solid #f0f0f0"),background:room.isNaver?"#F1F8E9":(branchColor||"#fff"),marginLeft:isNewBranch&&ci>0?4:0,boxShadow:isNewBranch&&ci>0?"-4px 0 8px rgba(0,0,0,.06)":room.isNaver?"inset 2px 0 4px rgba(76,175,80,.08)":"none"}}>
                 {/* Header */}
                 <div style={{height:headerH,borderBottom:"1px solid #eee",position:"sticky",top:0,zIndex:10,background:room.isNaver?"#E8F5E9":(branchColor||"#fff"),display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",lineHeight:1.2}}>
                   <span style={{fontSize:12,fontWeight:700,color:room.isNaver?"#2E7D32":"#333"}}>{room.branchName}</span>
@@ -1681,7 +1673,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                         {block.type==="memo" && <div style={{color:"#ef5350",fontWeight:600}}><I name="fileText" size={10} color="#ef5350"/> 메모</div>}
                         {block.type==="clockin" && <div style={{color:"#666",fontWeight:600}}><I name="clock" size={10} color="#666"/> {staff?.dn||"출근"}</div>}
                         {block.type==="cleaning" && <div style={{color:"#5cb5c5",fontWeight:600}}><I name="sparkles" size={10} color="#5cb5c5"/> 청소</div>}
-                        {block.memo && (() => { const clean = block.memo.split("\n").filter(l => !/^\[등록:|^\[수정:/.test(l.trim())).join(" ").trim(); return clean ? <div style={{color:"#555",marginTop:1}}><I name="msgSq" size={10} color="#888"/> {clean}</div> : null; })()}
+                        {block.memo && (() => { const clean = block.memo.split("\n").filter(l => !/^\[등록:|^\[수정:/.test(l.trim())).join("\n").trim(); return clean ? <div style={{color:"#555",marginTop:1,whiteSpace:"pre-line",wordBreak:"break-word"}}><I name="msgSq" size={10} color="#888"/> {clean}</div> : null; })()}
                         {/* Resize handle */}
                         {isEditable && <div className="resize-handle" onMouseDown={e=>handleResizeStart(block,e)} onTouchStart={e=>handleResizeStart(block,e)}
                           style={{position:"absolute",bottom:-8,left:0,right:0,height:24,cursor:"ns-resize",
@@ -2001,10 +1993,14 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
   }
 
   return (
-    <div className="ov" onClick={onClose} style={{alignItems:"flex-start",paddingTop:20,overflow:"auto",WebkitOverflowScrolling:"touch"}}>
-      <div ref={modalRef} className="modal-res" onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:"8px",border:"1px solid #e0e0e0",
-        width:"95%",maxWidth:500,maxHeight:"95vh",overflow:"hidden",animation:"fadeIn .2s ease",marginBottom:20,flexShrink:0,
-        boxShadow:"0 8px 30px rgba(0,0,0,.15)",display:"flex",flexDirection:"column"}}>
+    <div className="ov" onClick={onClose} style={{alignItems:"flex-start",paddingTop:window.innerWidth<=768?0:20,overflow:"auto",WebkitOverflowScrolling:"touch",alignItems:window.innerWidth<=768?"flex-end":"flex-start"}}>
+      <div ref={modalRef} className="modal-res" onClick={e=>e.stopPropagation()} style={{background:"#fff",
+        borderRadius:window.innerWidth<=768?"16px 16px 0 0":"8px",border:"1px solid #e0e0e0",
+        width:window.innerWidth<=768?"100%":"95%",maxWidth:window.innerWidth<=768?"100%":500,
+        maxHeight:window.innerWidth<=768?"95vh":"95vh",overflow:"hidden",
+        animation:window.innerWidth<=768?"slideUp .3s ease":"fadeIn .2s ease",
+        marginBottom:window.innerWidth<=768?0:20,flexShrink:0,
+        boxShadow:"0 -4px 30px rgba(0,0,0,.15)",display:"flex",flexDirection:"column"}}>
         {/* ═══ Chrome-style Tabs ═══ */}
         <div style={{display:"flex",alignItems:"flex-end",gap:0,padding:"0",background:"#f5f5f5",borderRadius:"8px 8px 0 0",position:"sticky",top:0,zIndex:10,borderBottom:"1px solid #e0e0e0"}}>
           {/* 예약 탭 */}
@@ -4281,6 +4277,7 @@ const CSS = `
   .tl-block:active{box-shadow:0 2px 6px rgba(0,0,0,.12) !important;transform:translateY(0)}
   input,select,textarea{font-family:inherit}
   @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes slideUp{from{opacity:0;transform:translateY(100%)}to{opacity:1;transform:translateY(0)}}
   @keyframes slideIn{from{transform:translateX(-100%)}to{transform:translateX(0)}}
   @keyframes naverBlink{0%,100%{background:#fff3e0}50%{background:#ffe0b2}}
   @keyframes pendingBlink{0%,100%{opacity:1}50%{opacity:.5}}
@@ -4329,9 +4326,12 @@ const CSS = `
     .form-col textarea.inp{height:auto!important}
     .modal-res{max-height:none!important;overflow:visible!important}
     .modal-res .form-col{overflow:visible!important;flex:none!important}
-    .ov{padding:8px!important;-webkit-overflow-scrolling:touch!important}
+    .ov{padding:0!important;-webkit-overflow-scrolling:touch!important}
+    .modal-res{border-radius:16px 16px 0 0!important;max-width:100%!important;width:100%!important}
     .tl-topbar{flex-direction:column!important;gap:4px!important;padding:6px 8px!important}
     .tl-days{width:100%;justify-content:space-between}
+    .timeline-scroll{scroll-snap-type:x mandatory;-webkit-scroll-snap-type:x mandatory}
+    .tl-room-col{scroll-snap-align:start}
     .page-filter{flex-wrap:wrap!important;gap:4px!important}
     .page-filter .inp{max-width:130px!important}
     table{font-size:11px}
