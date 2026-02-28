@@ -106,7 +106,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.41.1";
+const BLISS_V = "2.41.2";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -3846,7 +3846,15 @@ function AdminServiceTags({ data, setData }) {
 
 // ─── Shared ───
 function DatePick({ value, onChange, style, min }) {
-  const fmt = (v) => { if (!v) return "--"; const p = v.split("-"); return `${p[1]}.${p[2]}`; };
+  const DAYS = ["일","월","화","수","목","금","토"];
+  const fmt = (v) => {
+    if (!v) return "--";
+    const p = v.split("-");
+    const d = new Date(Number(p[0]), Number(p[1])-1, Number(p[2]));
+    const dow = d.getDay();
+    const clr = dow===0?"#e55":dow===6?"#47f":"#888";
+    return <>{p[1]}.{p[2]}<span style={{color:clr,fontWeight:700,marginLeft:2}}>({DAYS[dow]})</span></>;
+  };
   return <div style={{position:"relative",display:"inline-flex",...style}}>
     <div className="inp" style={{width:"100%",fontSize:12,padding:"5px 8px",textAlign:"center",whiteSpace:"nowrap",pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>
       <I name="calPick" size={13} color="#aaa"/>{fmt(value)}</div>
