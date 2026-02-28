@@ -120,7 +120,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.43.6";
+const BLISS_V = "2.43.7";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -360,15 +360,13 @@ function App() {
     setPhase("login");
   };
 
-  // ─── 예약 실시간 동기화 (Realtime + 폴링 fallback) ───
-  const rtStatus = useRef("off");
+  // ─── 예약 실시간 동기화 ───
   useEffect(() => {
     if (phase !== "app" || !currentBizId) return;
     let channel = null;
     let pollIv = null;
     const supaClient = _supaClient;
 
-    // 폴링 함수 (fallback)
     const poll = async () => {
       try {
         const rows = await sb.getByBiz("reservations", currentBizId);
@@ -381,55 +379,41 @@ function App() {
           if (!changed) { for (const id of prevIds) { if (!newIds.has(id)) { changed = true; break; } } }
           return changed ? {...prev, reservations: parsed} : prev;
         });
-      } catch(e) { console.warn("Poll error:", e); }
+      } catch(e) {}
     };
 
-    // 폴링 제어
-    const stopPoll = () => { clearInterval(pollIv); pollIv = null; };
-    const startPoll = (interval) => { clearInterval(pollIv); pollIv = setInterval(poll, interval); };
-
-    // Realtime 시도
     if (supaClient) {
-      // 기존 채널 정리
-      try { supaClient.getChannels().forEach(ch => supaClient.removeChannel(ch)); } catch(e){}
-      try {
-        channel = supaClient.channel("bliss-res-" + currentBizId + "-" + Date.now())
-          .on("postgres_changes", { event: "*", schema: "public", table: "reservations", filter: "business_id=eq." + currentBizId }, (payload) => {
-            const ev = payload.eventType;
-            const row = payload.new || {};
-            const oldRow = payload.old || {};
-            setData(prev => {
-              if (!prev) return prev;
-              const parsed = row.id ? fromDb("reservations", [row])[0] : null;
-              if (ev === "INSERT" && parsed) {
-                if (prev.reservations.some(r => r.id === parsed.id)) return prev;
-                return {...prev, reservations: [...prev.reservations, parsed]};
-              }
-              if (ev === "UPDATE" && parsed) {
-                return {...prev, reservations: prev.reservations.map(r => r.id === parsed.id ? {...r, ...parsed} : r)};
-              }
-              if (ev === "DELETE") {
-                const delId = oldRow.id;
-                return delId ? {...prev, reservations: prev.reservations.filter(r => r.id !== delId)} : prev;
-              }
-              return prev;
-            });
-          })
-          .subscribe((status, err) => {
-            console.log("Realtime:", status, err||"");
-            rtStatus.current = status;
-            if (status === "SUBSCRIBED") {
-              stopPoll();
-              console.log("✅ Realtime 연결 성공 (폴링 OFF)");
+      channel = supaClient.channel("rt_" + Date.now())
+        .on("postgres_changes", { event: "*", schema: "public", table: "reservations", filter: "business_id=eq." + currentBizId }, (payload) => {
+          const ev = payload.eventType;
+          const row = payload.new || {};
+          const oldRow = payload.old || {};
+          setData(prev => {
+            if (!prev) return prev;
+            const parsed = row.id ? fromDb("reservations", [row])[0] : null;
+            if (ev === "INSERT" && parsed) {
+              if (prev.reservations.some(r => r.id === parsed.id)) return prev;
+              return {...prev, reservations: [...prev.reservations, parsed]};
             }
-            if (status === "CLOSED" || status === "TIMED_OUT" || status === "CHANNEL_ERROR") {
-              startPoll(20000);
-              console.log("⚠️ Realtime 실패, 폴링 20초 ON");
+            if (ev === "UPDATE" && parsed) {
+              return {...prev, reservations: prev.reservations.map(r => r.id === parsed.id ? {...r, ...parsed} : r)};
             }
+            if (ev === "DELETE") {
+              const delId = oldRow.id;
+              return delId ? {...prev, reservations: prev.reservations.filter(r => r.id !== delId)} : prev;
+            }
+            return prev;
           });
-      } catch(e) { console.warn("Realtime init error:", e); startPoll(20000); }
+        })
+        .subscribe((status) => {
+          console.log("RT:", status);
+          if (status === "SUBSCRIBED") { clearInterval(pollIv); pollIv = null; console.log("✅ Realtime ON"); }
+          if (status === "CLOSED" || status === "TIMED_OUT" || status === "CHANNEL_ERROR") {
+            if (!pollIv) { pollIv = setInterval(poll, 20000); console.log("⚠️ Polling 20s ON"); }
+          }
+        });
     } else {
-      startPoll(20000); // supabase 라이브러리 없으면 폴링만
+      pollIv = setInterval(poll, 20000);
     }
 
     return () => {
