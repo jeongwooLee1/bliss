@@ -107,7 +107,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.53.1";
+const BLISS_V = "2.53.2";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -1451,6 +1451,14 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
     }
   }, [selDate]);
 
+  // Prevent iOS viewport bounce
+  useEffect(() => {
+    document.body.style.position = 'fixed';
+    document.body.style.inset = '0';
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.position = ''; document.body.style.inset = ''; document.body.style.overflow = ''; };
+  }, []);
+
   // Measure topbar height for sticky offset
   useEffect(() => {
     if (!topbarRef.current) return;
@@ -1473,7 +1481,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   return (
     <div style={{display:"flex",flexDirection:"column",flex:1,minHeight:0}}>
       {/* Single scroll container */}
-      <div ref={scrollRef} className="timeline-scroll" style={{flex:1,overflow:"auto",minHeight:0}}>
+      <div ref={scrollRef} className="timeline-scroll" style={{flex:1,overflow:"auto",minHeight:0,overscrollBehavior:"none"}}>
 
         {/* Mobile header - scrolls away naturally, sticks left on horizontal scroll */}
         {window.innerWidth<=768 && onMenuClick && <div style={{padding:"10px 16px",display:"flex",alignItems:"center",gap:12,background:"#fff",position:"sticky",left:0}}>
@@ -4513,7 +4521,7 @@ const S = {
 };
 
 const CSS = `
-  html,body,#root{height:100%;margin:0;padding:0;overflow:hidden}
+  html,body,#root{height:100%;margin:0;padding:0;overflow:hidden;overscroll-behavior:none}
   @supports(height:100dvh){html,body,#root{height:100dvh}}
   *{box-sizing:border-box;margin:0;padding:0}
   input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
@@ -4523,7 +4531,7 @@ const CSS = `
   ::-webkit-scrollbar-thumb{background:#aaa;border-radius:5px;border:2px solid #eee}
   ::-webkit-scrollbar-thumb:hover{background:#888}
   .ov>div::-webkit-scrollbar{display:none}
-  .timeline-scroll{scrollbar-width:auto;scrollbar-color:#999 #e0e0e0;overflow:scroll !important;scrollbar-gutter:stable}
+  .timeline-scroll{scrollbar-width:auto;scrollbar-color:#999 #e0e0e0;overflow:scroll !important;scrollbar-gutter:stable;overscroll-behavior:none}
   .timeline-scroll::-webkit-scrollbar{width:14px !important;height:14px !important;display:block !important}
   .timeline-scroll::-webkit-scrollbar-track{background:#e0e0e0 !important}
   .timeline-scroll::-webkit-scrollbar-thumb{background:#999 !important;border-radius:7px !important;border:3px solid #e0e0e0 !important}
