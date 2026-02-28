@@ -107,7 +107,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.48.0";
+const BLISS_V = "2.48.1";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -1981,13 +1981,13 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
   }
 
   return (
-    <div className="ov" onClick={onClose} style={{alignItems:"flex-start",paddingTop:16,paddingBottom:20,overflow:"auto",WebkitOverflowScrolling:"touch",justifyContent:"center"}}>
+    <div className="ov" onClick={onClose} style={{alignItems:"center",justifyContent:"center",padding:16,overflow:"hidden"}}>
       <div ref={modalRef} className="modal-res" onClick={e=>e.stopPropagation()} style={{background:"#fff",
         borderRadius:12,border:"1px solid #e0e0e0",
-        width:"92%",maxWidth:500,
+        width:"92%",maxWidth:500,maxHeight:"90vh",
         overflow:"hidden",
         animation:"slideUp 1.5s cubic-bezier(.22,1,.36,1)",
-        margin:"auto 0",flexShrink:0,
+        flexShrink:0,
         boxShadow:"0 8px 40px rgba(0,0,0,.18)",display:"flex",flexDirection:"column"}}>
         {/* ═══ Chrome-style Tabs ═══ */}
         <div style={{display:"flex",alignItems:"flex-end",gap:0,padding:"0",background:"#f5f5f5",borderRadius:"12px 12px 0 0",position:"sticky",top:0,zIndex:10,borderBottom:"1px solid #e0e0e0",overflow:"hidden"}}>
@@ -2245,7 +2245,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
 
           {/* Action Buttons - 한 줄 (pinned bottom) */}
         </div>
-        <div style={{padding:"12px 16px",borderTop:"1px solid #e0e0e0",background:"#fafafa",borderRadius:"0 0 8px 8px",flexShrink:0}}>
+        <div style={{padding:"12px 16px",borderTop:"1px solid #e0e0e0",background:"#fafafa",borderRadius:"0 0 12px 12px",flexShrink:0}}>
             {/* 예약상태 버튼 */}
             {item?.id && !isSchedule && <div style={{display:"flex",gap:4,marginBottom:8}}>
               {STATUS_KEYS.map(k=>{const sc=getStatusClr();const sel=f.status===k;return <button key={k} onClick={()=>set("status",k)}
@@ -4313,8 +4313,8 @@ const CSS = `
     .cust-row button{height:38px!important;box-sizing:border-box!important}
     .form-col .inp,.form-col select.inp{height:38px!important;box-sizing:border-box!important;padding:5px 8px!important}
     .form-col textarea.inp{height:auto!important}
-    .modal-res{max-height:none!important;overflow:visible!important;width:92%!important;max-width:500px!important;border-radius:12px!important}
-    .modal-res .form-col{overflow:visible!important;flex:none!important}
+    .modal-res{max-height:90vh!important;overflow:hidden!important;width:92%!important;max-width:500px!important;border-radius:12px!important}
+    .modal-res .form-col{overflow-y:auto!important;flex:1!important}
     .ov{padding:8px!important;-webkit-overflow-scrolling:touch!important}
     .tl-topbar{flex-direction:column!important;gap:4px!important;padding:6px 8px!important}
     .tl-days{width:100%;justify-content:space-between}
