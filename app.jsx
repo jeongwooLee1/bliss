@@ -106,7 +106,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.42.2";
+const BLISS_V = "2.42.3";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -1335,7 +1335,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                             <span style={{fontWeight:600,color:isNaverCancelled?"#999":"#333",overflow:"hidden",textOverflow:"ellipsis",textDecoration:isNaverCancelled?"line-through":"none"}}>{block.custGender && <span style={{color:block.custGender==="M"?"#4a7cc8":"#e57373"}}>{block.custGender==="M"?"남":"여"}</span>} {block.custName}</span>
                           </div>
                           {block.selectedTags?.length>0 && <div style={{display:"flex",flexWrap:"wrap",gap:2,marginTop:1}}>
-                            {block.selectedTags.slice(0,3).map(tid=>{const tg=tags.find(t=>t.id===tid);return tg?<span key={tid} style={{fontSize:Math.max(6,blockFs-2),padding:"0 3px",borderRadius:2,background:tg.color?tg.color+"25":"#7c7cc815",color:"#333",fontWeight:600}}>{tg.name}</span>:null})}
+                            {block.selectedTags.slice(0,3).map(tid=>{const tg=tags.find(t=>t.id===tid);return tg?<span key={tid} style={{fontSize:Math.max(6,blockFs-2),padding:"0 3px",borderRadius:2,border:"1px solid "+(tg.color||"#7c7cc8"),background:tg.color?tg.color+"25":"#7c7cc815",color:"#333",fontWeight:600}}>{tg.name}</span>:null})}
                             {block.selectedTags.length>3 && <span style={{fontSize:Math.max(6,blockFs-2),color:"#999"}}>+{block.selectedTags.length-3}</span>}
                           </div>}
                           {block.selectedServices?.length>0 && <div style={{fontSize:Math.max(6,blockFs-2),color:"#333",fontWeight:600,marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
