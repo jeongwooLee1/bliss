@@ -120,7 +120,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.47.1";
+const BLISS_V = "2.47.2";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -1994,16 +1994,16 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
   }
 
   return (
-    <div className="ov" onClick={onClose} style={{alignItems:"flex-start",paddingTop:window.innerWidth<=768?0:20,overflow:"auto",WebkitOverflowScrolling:"touch",alignItems:window.innerWidth<=768?"flex-end":"flex-start"}}>
+    <div className="ov" onClick={onClose} style={{alignItems:"flex-start",paddingTop:16,paddingBottom:20,overflow:"auto",WebkitOverflowScrolling:"touch",justifyContent:"center"}}>
       <div ref={modalRef} className="modal-res" onClick={e=>e.stopPropagation()} style={{background:"#fff",
-        borderRadius:window.innerWidth<=768?"16px 16px 0 0":"8px",border:"1px solid #e0e0e0",
-        width:window.innerWidth<=768?"100%":"95%",maxWidth:window.innerWidth<=768?"100%":500,
-        maxHeight:window.innerWidth<=768?"95vh":"95vh",overflow:"hidden",
-        animation:window.innerWidth<=768?"slideUp .3s ease":"fadeIn .2s ease",
-        marginBottom:window.innerWidth<=768?0:20,flexShrink:0,
-        boxShadow:"0 -4px 30px rgba(0,0,0,.15)",display:"flex",flexDirection:"column"}}>
+        borderRadius:12,border:"1px solid #e0e0e0",
+        width:"92%",maxWidth:500,
+        overflow:"hidden",
+        animation:window.innerWidth<=768?"slideUp .5s cubic-bezier(.22,1,.36,1)":"fadeIn .2s ease",
+        margin:"auto 0",flexShrink:0,
+        boxShadow:"0 8px 40px rgba(0,0,0,.18)",display:"flex",flexDirection:"column"}}>
         {/* ═══ Chrome-style Tabs ═══ */}
-        <div style={{display:"flex",alignItems:"flex-end",gap:0,padding:"0",background:"#f5f5f5",borderRadius:"8px 8px 0 0",position:"sticky",top:0,zIndex:10,borderBottom:"1px solid #e0e0e0"}}>
+        <div style={{display:"flex",alignItems:"flex-end",gap:0,padding:"0",background:"#f5f5f5",borderRadius:"12px 12px 0 0",position:"sticky",top:0,zIndex:10,borderBottom:"1px solid #e0e0e0"}}>
           {/* 예약 탭 */}
           <button onClick={()=>{setIsSchedule(false);setF(p=>({...p,isSchedule:false,selectedTags:[],type:"reservation"}));if(modalRef.current)modalRef.current.scrollTop=0}}
             style={{flex:1,padding:"12px 16px",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
@@ -4278,7 +4278,7 @@ const CSS = `
   .tl-block:active{box-shadow:0 2px 6px rgba(0,0,0,.12) !important;transform:translateY(0)}
   input,select,textarea{font-family:inherit}
   @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
-  @keyframes slideUp{from{opacity:0;transform:translateY(100%)}to{opacity:1;transform:translateY(0)}}
+  @keyframes slideUp{from{opacity:0;transform:translateY(60px)}to{opacity:1;transform:translateY(0)}}
   @keyframes slideIn{from{transform:translateX(-100%)}to{transform:translateX(0)}}
   @keyframes naverBlink{0%,100%{background:#fff3e0}50%{background:#ffe0b2}}
   @keyframes pendingBlink{0%,100%{opacity:1}50%{opacity:.5}}
@@ -4325,13 +4325,12 @@ const CSS = `
     .cust-row button{height:38px!important;box-sizing:border-box!important}
     .form-col .inp,.form-col select.inp{height:38px!important;box-sizing:border-box!important;padding:5px 8px!important}
     .form-col textarea.inp{height:auto!important}
-    .modal-res{max-height:none!important;overflow:visible!important}
+    .modal-res{max-height:none!important;overflow:visible!important;width:92%!important;max-width:500px!important;border-radius:12px!important}
     .modal-res .form-col{overflow:visible!important;flex:none!important}
-    .ov{padding:0!important;-webkit-overflow-scrolling:touch!important}
-    .modal-res{border-radius:16px 16px 0 0!important;max-width:100%!important;width:100%!important}
+    .ov{padding:8px!important;-webkit-overflow-scrolling:touch!important}
     .tl-topbar{flex-direction:column!important;gap:4px!important;padding:6px 8px!important}
     .tl-days{width:100%;justify-content:space-between}
-    .timeline-scroll{scroll-snap-type:x mandatory;-webkit-scroll-snap-type:x mandatory}
+    .timeline-scroll{scroll-snap-type:x proximity;-webkit-scroll-snap-type:x proximity}
     .tl-room-col{scroll-snap-align:start}
     .page-filter{flex-wrap:wrap!important;gap:4px!important}
     .page-filter .inp{max-width:130px!important}
