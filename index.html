@@ -118,7 +118,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.42.0";
+const BLISS_V = "2.42.1";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -509,7 +509,7 @@ function SuperDashboard({ superData, setSuperData, currentUser, onLogout, onEnte
     </div>
     <div style={{flex:1,padding:"12px 0"}}>
       {tabs.map(t=>(
-        <button key={t.id} onClick={()=>{setTab(t.id);setSideOpen(false)}} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 16px",border:sel?`1px solid ${bgClr}`:"1px solid #d0d0d0",cursor:"pointer",fontSize:13,fontWeight:tab===t.id?700:400,
+        <button key={t.id} onClick={()=>{setTab(t.id);setSideOpen(false)}} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 16px",border:"none",cursor:"pointer",fontSize:13,fontWeight:tab===t.id?700:400,
           background:tab===t.id?"#f0f0ff":"transparent",color:tab===t.id?"#5a5ac8":"#555",
           borderLeft:tab===t.id?"3px solid #7c7cc8":"3px solid transparent",
           fontFamily:"inherit",width:"100%",textAlign:"left"}}>{t.label}</button>
@@ -538,7 +538,7 @@ function SuperDashboard({ superData, setSuperData, currentUser, onLogout, onEnte
       <main className="main-c" style={{flex:1,display:"flex",flexDirection:"column",height:"100vh",overflow:"hidden"}}>
         {/* Mobile header */}
         <div className="mob-hdr" style={{padding:"10px 16px",background:"#fff",borderBottom:"1px solid #e0e0e0",display:"flex",alignItems:"center",gap:12}}>
-          <button onClick={()=>setSideOpen(true)} style={{background:"none",border:sel?`1px solid ${bgClr}`:"1px solid #d0d0d0",color:"#333",cursor:"pointer",fontSize:20,fontFamily:"inherit"}}><I name="menu" size={20}/></button>
+          <button onClick={()=>setSideOpen(true)} style={{background:"none",border:"none",color:"#333",cursor:"pointer",fontSize:20,fontFamily:"inherit"}}><I name="menu" size={20}/></button>
           <span style={{fontSize:14,fontWeight:700,color:"#7c7cc8"}}>Bliss 슈퍼관리자</span>
         </div>
         <div className="page-pad" style={{flex:1,padding:24,overflow:"auto",WebkitOverflowScrolling:"touch"}}>
@@ -746,7 +746,7 @@ function Sidebar({ nav, page, setPage, role, branchNames, onLogout, bizName="", 
         <div key={ci}>
           <div style={{fontSize:10,fontWeight:700,color:"#999",padding:"12px 16px 4px",letterSpacing:.5}}>{cat.label}</div>
           {cat.items.map(n=>(
-            <button key={n.id} onClick={()=>setPage(n.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 16px",border:sel?`1px solid ${bgClr}`:"1px solid #d0d0d0",cursor:"pointer",fontSize:13,fontWeight:page===n.id?700:400,
+            <button key={n.id} onClick={()=>setPage(n.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 16px",border:"none",cursor:"pointer",fontSize:13,fontWeight:page===n.id?700:400,
               background:page===n.id?"#f0f0ff":"transparent",color:page===n.id?"#5a5ac8":"#555",
               borderLeft:page===n.id?"3px solid #7c7cc8":"3px solid transparent",
               fontFamily:"inherit",width:"100%",textAlign:"left",transition:"all .1s"}}>
@@ -1176,9 +1176,9 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       <div className="tl-topbar" style={{borderBottom:"1px solid #e0e0e0",background:"#fff",flexShrink:0,padding:"6px 12px",display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
         {/* Row 1: Date nav + settings + branch */}
         <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
-          <button onClick={()=>changeDate(-1)} style={{background:"none",border:sel?`1px solid ${bgClr}`:"1px solid #d0d0d0",cursor:"pointer",fontSize:12,color:"#666",padding:"2px 4px",flexShrink:0}}><I name="chevL" size={14}/></button>
+          <button onClick={()=>changeDate(-1)} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#666",padding:"2px 4px",flexShrink:0}}><I name="chevL" size={14}/></button>
           <span style={{fontSize:13,fontWeight:700,color:"#333",cursor:"pointer",flexShrink:0,whiteSpace:"nowrap"}} onClick={()=>{const el=document.createElement("input");el.type="date";el.value=selDate;el.onchange=e=>setSelDate(e.target.value);el.showPicker?.();el.click()}}>{dateLabel}</span>
-          <button onClick={()=>changeDate(1)} style={{background:"none",border:sel?`1px solid ${bgClr}`:"1px solid #d0d0d0",cursor:"pointer",fontSize:12,color:"#666",padding:"2px 4px",flexShrink:0}}><I name="chevR" size={14}/></button>
+          <button onClick={()=>changeDate(1)} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#666",padding:"2px 4px",flexShrink:0}}><I name="chevR" size={14}/></button>
           <button onClick={()=>setSelDate(todayStr())} style={{padding:"2px 8px",fontSize:10,border:"1px solid #d0d0d0",borderRadius:3,background:"#fff",color:"#666",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>오늘</button>
           <div style={{position:"relative",flexShrink:0}} ref={el => { if(el) el._settingsBtn = el; }}>
             <button onClick={(e)=>{setShowSettings(!showSettings);}} id="settings-btn"
@@ -1492,7 +1492,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
               {mode:"all", label:"모든 일정을 삭제", desc:"이 반복 일정을 모두 삭제합니다"},
             ].map(opt => (
               <button key={opt.mode} onClick={()=>handleDeleteConfirm(opt.mode)}
-                style={{width:"100%",padding:"12px 24px",border:sel?`1px solid ${bgClr}`:"1px solid #d0d0d0",background:"transparent",cursor:"pointer",
+                style={{width:"100%",padding:"12px 24px",border:"none",background:"transparent",cursor:"pointer",
                   textAlign:"left",fontFamily:"inherit",transition:"background .1s",display:"block"}}
                 onMouseOver={e=>e.currentTarget.style.background="#f5f5f5"}
                 onMouseOut={e=>e.currentTarget.style.background="transparent"}>
@@ -1665,7 +1665,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
           {/* 예약 탭 */}
           <button onClick={()=>{setIsSchedule(false);setF(p=>({...p,isSchedule:false,selectedTags:[],type:"reservation"}));if(modalRef.current)modalRef.current.scrollTop=0}}
             style={{flex:1,padding:"12px 16px",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
-              border:sel?`1px solid ${bgClr}`:"1px solid #d0d0d0",borderBottom:isSchedule?"none":"2px solid #7c7cc8",
+              border:"none",borderBottom:isSchedule?"none":"2px solid #7c7cc8",
               background:isSchedule?"transparent":"#fff",color:isSchedule?"#999":"#7c7cc8",
               transition:"all .15s"}}>
             <I name="calendar" size={12}/> 예약
@@ -1673,13 +1673,13 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
           {/* 내부일정 탭 */}
           <button onClick={()=>{setIsSchedule(true);setF(p=>({...p,isSchedule:true,selectedTags:[],type:"reservation"}));if(modalRef.current)modalRef.current.scrollTop=0}}
             style={{flex:1,padding:"12px 16px",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
-              border:sel?`1px solid ${bgClr}`:"1px solid #d0d0d0",borderBottom:isSchedule?"2px solid #e17055":"none",
+              border:"none",borderBottom:isSchedule?"2px solid #e17055":"none",
               background:isSchedule?"#fff":"transparent",color:isSchedule?"#e17055":"#999",
               transition:"all .15s"}}>
             <I name="clipboard" size={12}/> 내부일정
           </button>
           {/* 닫기 */}
-          <button onClick={onClose} style={{padding:"8px 14px",background:"transparent",border:sel?`1px solid ${bgClr}`:"1px solid #d0d0d0",color:"#999",cursor:"pointer",
+          <button onClick={onClose} style={{padding:"8px 14px",background:"transparent",border:"none",color:"#999",cursor:"pointer",
             fontSize:16,fontFamily:"inherit",borderRadius:4}}
             onMouseOver={e=>e.currentTarget.style.color="#e57373"} onMouseOut={e=>e.currentTarget.style.color="#999"}><I name="x" size={16}/></button>
         </div>
@@ -1697,7 +1697,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
             <span style={{fontSize:13,fontWeight:700,color:"#E65100"}}>네이버 확정대기</span>
             <div style={{marginLeft:"auto",display:"flex",gap:6}}>
               <button onClick={()=>{if(!window.confirm("이 예약을 취소 처리하시겠습니까?")) return; const updated={...f,status:"naver_cancelled"}; onSave(updated); onClose();}}
-                style={{fontSize:11,color:"#fff",fontWeight:700,background:"#E65100",padding:"5px 12px",borderRadius:6,border:sel?`1px solid ${bgClr}`:"1px solid #d0d0d0",cursor:"pointer",fontFamily:"inherit"}}>취소처리</button>
+                style={{fontSize:11,color:"#fff",fontWeight:700,background:"#E65100",padding:"5px 12px",borderRadius:6,border:"none",cursor:"pointer",fontFamily:"inherit"}}>취소처리</button>
               {(() => {
               const br = (data.branchSettings||data.branches||[]).find(b=>b.id===branchId);
               const bizId = br?.naverBizId;
@@ -1941,7 +1941,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
             {item?.id && <button className="btn-d" style={{padding:"10px 16px"}} onClick={()=>onDeleteRequest?.(item)}>삭제</button>}
             {!isSchedule && f.type === "reservation" && (
               <button onClick={()=>setShowSaleForm(true)}
-                style={{padding:"10px 18px",borderRadius:8,border:sel?`1px solid ${bgClr}`:"1px solid #d0d0d0",background:existingSale?"linear-gradient(135deg,#5cb5c5,#6bab9e)":"linear-gradient(135deg,#7c7cc8,#5cb5c5)",color:"#fff",fontWeight:800,fontSize:12,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>
+                style={{padding:"10px 18px",borderRadius:8,border:"none",background:existingSale?"linear-gradient(135deg,#5cb5c5,#6bab9e)":"linear-gradient(135deg,#7c7cc8,#5cb5c5)",color:"#fff",fontWeight:800,fontSize:12,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>
                 {existingSale ? <><I name="wallet" size={12}/> 매출확인</> : <><I name="wallet" size={12}/> 매출등록</>}
               </button>
             )}</>}
@@ -2569,7 +2569,7 @@ function ReservationList({ data, setData, userBranches, isMaster }) {
               <td>{staff?.dn||"-"}</td>
               <td>{(() => { const sc = getStatusClr(); const c = sc[r.status]||"#999"; return <span style={{fontSize:11,fontWeight:700,color:c}}>{STATUS_LABEL[r.status]||r.status}</span>; })()}</td>
               <td><div style={{display:"flex",gap:3}}>
-                {r.status==="confirmed"&&<button className="btn-sm" style={{background:"#e8f5f0",color:"#6bab9e",border:sel?`1px solid ${bgClr}`:"1px solid #d0d0d0",borderRadius:6,padding:"4px 8px",cursor:"pointer",fontSize:11}} onClick={()=>updateStatus(r.id,"completed")}><I name="check" size={11}/> 완료</button>}
+                {r.status==="confirmed"&&<button className="btn-sm" style={{background:"#e8f5f0",color:"#6bab9e",border:"none",borderRadius:6,padding:"4px 8px",cursor:"pointer",fontSize:11}} onClick={()=>updateStatus(r.id,"completed")}><I name="check" size={11}/> 완료</button>}
                 <button className="btn-sm btn-s" onClick={()=>deleteRes(r.id)} style={{padding:"4px 8px"}}><I name="trash" size={13}/></button>
               </div></td>
             </tr>
@@ -3265,7 +3265,7 @@ function AdminPlaces({ data, setData, bizId }) {
               </td>
               <td>
                 <div style={{display:"flex",alignItems:"center",gap:4}}>
-                  <input type="color" value={b.color||"#FFFFFF"} onChange={e=>updateField(b.id,"color",e.target.value)} style={{width:24,height:24,border:sel?`1px solid ${bgClr}`:"1px solid #d0d0d0",background:"none",cursor:"pointer",padding:0}}/>
+                  <input type="color" value={b.color||"#FFFFFF"} onChange={e=>updateField(b.id,"color",e.target.value)} style={{width:24,height:24,border:"none",background:"none",cursor:"pointer",padding:0}}/>
                   <input className="inp" value={b.color||""} onChange={e=>updateField(b.id,"color",e.target.value)}
                     style={{width:72,background:b.color||"transparent",border:"1px solid #d0d0d0",fontSize:10,fontFamily:"monospace",color:"#333"}}/>
                 </div>
@@ -3277,13 +3277,13 @@ function AdminPlaces({ data, setData, bizId }) {
                 {deleteId===b.id ? (
                   <div style={{display:"flex",gap:3,alignItems:"center"}}>
                     <button onClick={()=>deleteBranch(b.id)}
-                      style={{padding:"2px 8px",fontSize:10,fontWeight:700,borderRadius:4,border:sel?`1px solid ${bgClr}`:"1px solid #d0d0d0",background:"#e57373",color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>확인</button>
+                      style={{padding:"2px 8px",fontSize:10,fontWeight:700,borderRadius:4,border:"none",background:"#e57373",color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>확인</button>
                     <button onClick={()=>setDeleteId(null)}
                       style={{padding:"2px 6px",fontSize:10,borderRadius:4,border:"1px solid #d0d0d0",background:"#fff",color:"#888",cursor:"pointer",fontFamily:"inherit"}}>취소</button>
                   </div>
                 ) : (
                   <button onClick={()=>setDeleteId(b.id)}
-                    style={{background:"none",border:sel?`1px solid ${bgClr}`:"1px solid #d0d0d0",cursor:"pointer",fontSize:13,color:"#e57373"}}><I name="trash" size={13}/></button>
+                    style={{background:"none",border:"none",cursor:"pointer",fontSize:13,color:"#e57373"}}><I name="trash" size={13}/></button>
                 )}
               </td>
             </tr>
@@ -3395,7 +3395,7 @@ function AdminWorkers({ data, setData }) {
             <td><select className="inp" value={editData.branch_id} onChange={e=>setEditData(p=>({...p,branch_id:e.target.value}))}>
               {regBranches.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
             </select></td>
-            <td><input type="color" value={editData.color||"#FFFFFF"} onChange={e=>setEditData(p=>({...p,color:e.target.value}))} style={{width:28,height:24,border:sel?`1px solid ${bgClr}`:"1px solid #d0d0d0",cursor:"pointer"}}/></td>
+            <td><input type="color" value={editData.color||"#FFFFFF"} onChange={e=>setEditData(p=>({...p,color:e.target.value}))} style={{width:28,height:24,border:"none",cursor:"pointer"}}/></td>
             <td><div style={{display:"flex",gap:3}}><button className="btn-p btn-sm" onClick={saveEdit}>저장</button><button className="btn-s btn-sm" onClick={()=>setEditId(null)}>취소</button></div></td>
           </tr>;
           return <tr key={r.id}>
@@ -3405,10 +3405,10 @@ function AdminWorkers({ data, setData }) {
             <td>{branchName(r.branch_id)}</td>
             <td>{r.color ? <div style={{width:24,height:16,borderRadius:3,background:r.color,border:"1px solid #d0d0d080"}}/> : <span style={{color:"#ccc"}}>-</span>}</td>
             <td><div style={{display:"flex",gap:4}}>
-              <button onClick={()=>startEdit(r)} style={{background:"none",border:sel?`1px solid ${bgClr}`:"1px solid #d0d0d0",cursor:"pointer",color:"#7c7cc8",fontSize:13}}><I name="edit" size={13}/></button>
+              <button onClick={()=>startEdit(r)} style={{background:"none",border:"none",cursor:"pointer",color:"#7c7cc8",fontSize:13}}><I name="edit" size={13}/></button>
               {delId===r.id
                 ? <><button className="btn-d btn-sm" onClick={()=>deleteRoom(r.id)} style={{padding:"1px 6px",fontSize:9}}>확인</button><button className="btn-s btn-sm" onClick={()=>setDelId(null)} style={{padding:"1px 5px",fontSize:9}}>취소</button></>
-                : <button onClick={()=>setDelId(r.id)} style={{background:"none",border:sel?`1px solid ${bgClr}`:"1px solid #d0d0d0",cursor:"pointer",color:"#e57373",fontSize:13}}><I name="trash" size={13}/></button>}
+                : <button onClick={()=>setDelId(r.id)} style={{background:"none",border:"none",cursor:"pointer",color:"#e57373",fontSize:13}}><I name="trash" size={13}/></button>}
             </div></td>
           </tr>;
         })}
@@ -3597,10 +3597,10 @@ function AdminSaleItems({ data, setData }) {
             <td style={{textAlign:"center",color:"#888",fontSize:11}}>{svc.dur}분</td>
             <td style={{fontSize:11,color:"#888"}}>{svc.note||""}</td>
             <td style={{textAlign:"center"}}><div style={{display:"flex",gap:4,justifyContent:"center"}}>
-              <button onClick={()=>startEdit(svc)} style={{background:"none",border:sel?`1px solid ${bgClr}`:"1px solid #d0d0d0",cursor:"pointer",color:"#7c7cc8",fontSize:13}}><I name="edit" size={13}/></button>
+              <button onClick={()=>startEdit(svc)} style={{background:"none",border:"none",cursor:"pointer",color:"#7c7cc8",fontSize:13}}><I name="edit" size={13}/></button>
               {delConfirm===svc.id
                 ? <><button className="btn-d btn-sm" onClick={()=>deleteSvc(svc.id)} style={{padding:"1px 6px",fontSize:9}}>확인</button><button className="btn-s btn-sm" onClick={()=>setDelConfirm(null)} style={{padding:"1px 5px",fontSize:9}}>취소</button></>
-                : <button onClick={()=>setDelConfirm(svc.id)} style={{background:"none",border:sel?`1px solid ${bgClr}`:"1px solid #d0d0d0",cursor:"pointer",color:"#e57373",fontSize:13}}><I name="trash" size={13}/></button>}
+                : <button onClick={()=>setDelConfirm(svc.id)} style={{background:"none",border:"none",cursor:"pointer",color:"#e57373",fontSize:13}}><I name="trash" size={13}/></button>}
             </div></td>
           </tr>;
         })}
@@ -3696,10 +3696,10 @@ function AdminProductItems({ data, setData }) {
             <td style={{fontWeight:500,fontSize:12}}>{it.name}</td>
             <td style={{textAlign:"right",color:"#6bab9e",fontWeight:600,fontSize:12}}>{it.price>0?fmt(it.price)+"원":"-"}</td>
             <td style={{textAlign:"center"}}><div style={{display:"flex",gap:4,justifyContent:"center"}}>
-              <button onClick={()=>startEdit(it)} style={{background:"none",border:sel?`1px solid ${bgClr}`:"1px solid #d0d0d0",cursor:"pointer",color:"#7c7cc8",fontSize:13}}><I name="edit" size={13}/></button>
+              <button onClick={()=>startEdit(it)} style={{background:"none",border:"none",cursor:"pointer",color:"#7c7cc8",fontSize:13}}><I name="edit" size={13}/></button>
               {delConfirm===it.id
                 ? <><button className="btn-d btn-sm" onClick={()=>deleteItem(it.id)} style={{padding:"1px 6px",fontSize:9}}>확인</button><button className="btn-s btn-sm" onClick={()=>setDelConfirm(null)} style={{padding:"1px 5px",fontSize:9}}>취소</button></>
-                : <button onClick={()=>setDelConfirm(it.id)} style={{background:"none",border:sel?`1px solid ${bgClr}`:"1px solid #d0d0d0",cursor:"pointer",color:"#e57373",fontSize:13}}><I name="trash" size={13}/></button>}
+                : <button onClick={()=>setDelConfirm(it.id)} style={{background:"none",border:"none",cursor:"pointer",color:"#e57373",fontSize:13}}><I name="trash" size={13}/></button>}
             </div></td>
           </tr>;
         })}</tbody>
@@ -3783,7 +3783,7 @@ function AdminServiceTags({ data, setData }) {
         <FLD label="소요(분)"><input className="inp" type="number" style={{width:80,...inpS}} value={newTag.dur} onChange={e=>setNewTag(p=>({...p,dur:e.target.value}))}/></FLD>
         <FLD label="내부일정"><select className="inp" style={{width:55,...inpS}} value={newTag.scheduleYn} onChange={e=>setNewTag(p=>({...p,scheduleYn:e.target.value}))}><option value="N">N</option><option value="Y">Y</option></select></FLD>
         <FLD label="색상"><div style={{display:"flex",alignItems:"center",gap:3}}>
-          <input type="color" value={newTag.color||"#e0e0e0"} onChange={e=>setNewTag(p=>({...p,color:e.target.value}))} style={{width:22,height:22,border:sel?`1px solid ${bgClr}`:"1px solid #d0d0d0",cursor:"pointer"}}/>
+          <input type="color" value={newTag.color||"#e0e0e0"} onChange={e=>setNewTag(p=>({...p,color:e.target.value}))} style={{width:22,height:22,border:"none",cursor:"pointer"}}/>
           <input className="inp" style={{width:75,...inpS,fontFamily:"monospace",fontSize:9}} value={newTag.color} onChange={e=>setNewTag(p=>({...p,color:e.target.value}))} placeholder="#000000"/>
         </div></FLD>
         <button className="btn-p btn-sm" onClick={addTag} style={{padding:"6px 18px"}}>추가</button>
@@ -3822,7 +3822,7 @@ function AdminServiceTags({ data, setData }) {
           <td><input className="inp" type="number" value={editData.dur} onChange={e=>setEditData(p=>({...p,dur:Number(e.target.value)||0}))} style={{width:50,...inpS,textAlign:"center"}}/></td>
           <td><select className="inp" value={editData.scheduleYn} onChange={e=>setEditData(p=>({...p,scheduleYn:e.target.value}))} style={{width:45,...inpS}}><option value="N">N</option><option value="Y">Y</option></select></td>
           <td><div style={{display:"flex",alignItems:"center",gap:2}}>
-            <input type="color" value={editData.color||"#e0e0e0"} onChange={e=>setEditData(p=>({...p,color:e.target.value}))} style={{width:20,height:18,border:sel?`1px solid ${bgClr}`:"1px solid #d0d0d0",cursor:"pointer"}}/>
+            <input type="color" value={editData.color||"#e0e0e0"} onChange={e=>setEditData(p=>({...p,color:e.target.value}))} style={{width:20,height:18,border:"none",cursor:"pointer"}}/>
             <input className="inp" value={editData.color||""} onChange={e=>setEditData(p=>({...p,color:e.target.value}))} style={{width:55,...inpS,fontFamily:"monospace",fontSize:8}}/>
           </div></td>
           <td></td><td></td>
@@ -3850,10 +3850,10 @@ function AdminServiceTags({ data, setData }) {
               background:tag.useYn===false?"#e5737320":"transparent",color:tag.useYn===false?"#e8a0a0":"#888"}}>{tag.useYn===false?"미사용":"사용"}</button></td>
           <td style={{textAlign:"center",color:"#bbb",fontSize:10}}>{i+1}</td>
           <td style={{textAlign:"center"}}><div style={{display:"flex",gap:3,justifyContent:"center"}}>
-            <button onClick={()=>startEdit(tag)} style={{background:"none",border:sel?`1px solid ${bgClr}`:"1px solid #d0d0d0",cursor:"pointer",color:"#7c7cc8",fontSize:12}}><I name="edit" size={13}/></button>
+            <button onClick={()=>startEdit(tag)} style={{background:"none",border:"none",cursor:"pointer",color:"#7c7cc8",fontSize:12}}><I name="edit" size={13}/></button>
             {delConfirm===tag.id
               ? <><button className="btn-d btn-sm" onClick={()=>deleteTag(tag.id)} style={{padding:"1px 5px",fontSize:9}}>확인</button><button className="btn-s btn-sm" onClick={()=>setDelConfirm(null)} style={{padding:"1px 4px",fontSize:9}}>취소</button></>
-              : <button onClick={()=>setDelConfirm(tag.id)} style={{background:"none",border:sel?`1px solid ${bgClr}`:"1px solid #d0d0d0",cursor:"pointer",color:"#e57373",fontSize:12}}><I name="trash" size={13}/></button>}
+              : <button onClick={()=>setDelConfirm(tag.id)} style={{background:"none",border:"none",cursor:"pointer",color:"#e57373",fontSize:12}}><I name="trash" size={13}/></button>}
           </div></td>
         </tr>;
       })}</tbody></table>
@@ -3890,7 +3890,7 @@ const S = {
   sidebar: { width:200, background:"#fff", borderRight:"1px solid #e0e0e0", display:"flex", flexDirection:"column", position:"fixed", top:0, left:0, bottom:0, zIndex:50 },
   main: { flex:1, marginLeft:200, display:"flex", flexDirection:"column", height:"100vh", minHeight:0, overflow:"hidden" },
   mobHdr: { padding:"10px 16px", background:"#fff", borderBottom:"1px solid #e0e0e0", display:"flex", alignItems:"center", gap:12 },
-  menuBtn: { background:"none", border:sel?`1px solid ${bgClr}`:"1px solid #d0d0d0", color:"#333", cursor:"pointer", fontSize:20, fontFamily:"inherit" },
+  menuBtn: { background:"none", border:"none", color:"#333", cursor:"pointer", fontSize:20, fontFamily:"inherit" },
 };
 
 const CSS = `
