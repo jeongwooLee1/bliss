@@ -107,7 +107,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.44.8";
+const BLISS_V = "2.44.9";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -842,6 +842,54 @@ function Sidebar({ nav, page, setPage, role, branchNames, onLogout, bizName="", 
 // ═══════════════════════════════════════════
 // TIMELINE VIEW (myCream-style)
 // ═══════════════════════════════════════════
+function MiniCal({ selDate, onSelect, onClose }) {
+  const [viewDate, setViewDate] = useState(() => {
+    const d = new Date(selDate); return { y: d.getFullYear(), m: d.getMonth() };
+  });
+  const ref = useRef(null);
+  useEffect(() => {
+    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) onClose(); };
+    document.addEventListener("mousedown", h); document.addEventListener("touchstart", h);
+    return () => { document.removeEventListener("mousedown", h); document.removeEventListener("touchstart", h); };
+  }, [onClose]);
+  const { y, m } = viewDate;
+  const firstDay = new Date(y, m, 1).getDay();
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const today = todayStr();
+  const weeks = [];
+  let week = Array(firstDay).fill(null);
+  for (let d = 1; d <= daysInMonth; d++) {
+    week.push(d);
+    if (week.length === 7) { weeks.push(week); week = []; }
+  }
+  if (week.length) { while (week.length < 7) week.push(null); weeks.push(week); }
+  const prevM = () => setViewDate(v => v.m === 0 ? { y: v.y - 1, m: 11 } : { ...v, m: v.m - 1 });
+  const nextM = () => setViewDate(v => v.m === 11 ? { y: v.y + 1, m: 0 } : { ...v, m: v.m + 1 });
+  const dayNames = ["일","월","화","수","목","금","토"];
+  return <div ref={ref} style={{position:"absolute",top:"100%",left:0,zIndex:100,background:"#fff",border:"1px solid #d0d0d0",borderRadius:8,boxShadow:"0 8px 24px rgba(0,0,0,.15)",padding:10,width:250,marginTop:4}}>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+      <button onClick={prevM} style={{background:"none",border:"none",cursor:"pointer",padding:4,color:"#666"}}><I name="chevL" size={14}/></button>
+      <span style={{fontSize:13,fontWeight:700,color:"#333"}}>{y}년 {m+1}월</span>
+      <button onClick={nextM} style={{background:"none",border:"none",cursor:"pointer",padding:4,color:"#666"}}><I name="chevR" size={14}/></button>
+    </div>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:1,textAlign:"center"}}>
+      {dayNames.map((dn,i) => <div key={dn} style={{fontSize:10,fontWeight:600,color:i===0?"#e57373":i===6?"#5c7cc8":"#999",padding:"2px 0"}}>{dn}</div>)}
+      {weeks.flat().map((d, i) => {
+        if (!d) return <div key={"e"+i}/>;
+        const ds = `${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+        const isSel = ds === selDate;
+        const isToday = ds === today;
+        const dow = new Date(y, m, d).getDay();
+        return <button key={i} onClick={() => onSelect(ds)} style={{
+          width:30,height:30,margin:"1px auto",borderRadius:"50%",border:isToday&&!isSel?"1.5px solid #7c7cc8":"none",
+          background:isSel?"#7c7cc8":"transparent",color:isSel?"#fff":dow===0?"#e57373":dow===6?"#5c7cc8":"#333",
+          fontSize:12,fontWeight:isSel||isToday?700:400,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"inherit"
+        }}>{d}</button>;
+      })}
+    </div>
+  </div>;
+}
+
 function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, currentUser, setPage, bizId }) {
   const SVC_LIST = (data?.services || []).slice().sort((a,b)=>(a.sort||0)-(b.sort||0));
   const PROD_LIST = (data?.products || []);
@@ -849,6 +897,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   const [showModal, setShowModal] = useState(false);
   const [modalData, setModalData] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showCal, setShowCal] = useState(false);
   const scrollRef = useRef(null);
 
   // Branch view: 편집가능(userBranches) + 열람가능(viewBranches)
@@ -1397,6 +1446,10 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
           <span style={{fontSize:13,fontWeight:700,color:"#333",cursor:"pointer",flexShrink:0,whiteSpace:"nowrap"}} onClick={()=>{const el=document.createElement("input");el.type="date";el.value=selDate;el.onchange=e=>setSelDate(e.target.value);el.showPicker?.();el.click()}}>{dateLabel}</span>
           <button onClick={()=>changeDate(1)} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#666",padding:"2px 4px",flexShrink:0}}><I name="chevR" size={14}/></button>
           <button onClick={()=>setSelDate(todayStr())} style={{padding:"2px 8px",fontSize:10,border:"1px solid #d0d0d0",borderRadius:3,background:"#fff",color:"#666",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>오늘</button>
+          <div style={{position:"relative",flexShrink:0}}>
+            <button onClick={()=>setShowCal(!showCal)} style={{width:24,height:24,border:"1px solid #d0d0d0",borderRadius:4,background:showCal?"#f0f0ff":"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0,color:"#888"}}><I name="calendar" size={14}/></button>
+            {showCal && <MiniCal selDate={selDate} onSelect={d=>{setSelDate(d);setShowCal(false);}} onClose={()=>setShowCal(false)}/>}
+          </div>
           <div style={{position:"relative",flexShrink:0}} ref={el => { if(el) el._settingsBtn = el; }}>
             <button onClick={(e)=>{setShowSettings(!showSettings);}} id="settings-btn"
               style={{width:24,height:24,border:"1px solid #d0d0d0",borderRadius:4,background:showSettings?"#f0f0ff":"#fff",
