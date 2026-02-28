@@ -120,7 +120,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.43.4";
+const BLISS_V = "2.43.5";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -384,9 +384,9 @@ function App() {
       } catch(e) { console.warn("Poll error:", e); }
     };
 
-    // 폴링 시작 (항상 동작, Realtime 성공 시 간격 늘림)
+    // 폴링 제어
+    const stopPoll = () => { clearInterval(pollIv); pollIv = null; };
     const startPoll = (interval) => { clearInterval(pollIv); pollIv = setInterval(poll, interval); };
-    startPoll(20000); // 기본 20초
 
     // Realtime 시도
     if (supaClient) {
@@ -417,15 +417,17 @@ function App() {
             console.log("Realtime:", status, err||"");
             rtStatus.current = status;
             if (status === "SUBSCRIBED") {
-              startPoll(60000); // Realtime 성공 → 폴링 60초로 완화
-              console.log("✅ Realtime 연결 성공 (폴링 60초로 전환)");
+              stopPoll();
+              console.log("✅ Realtime 연결 성공 (폴링 OFF)");
             }
             if (status === "CLOSED" || status === "TIMED_OUT" || status === "CHANNEL_ERROR") {
-              startPoll(20000); // Realtime 실패 → 폴링 20초 유지
-              console.log("⚠️ Realtime 실패, 폴링 20초 유지");
+              startPoll(20000);
+              console.log("⚠️ Realtime 실패, 폴링 20초 ON");
             }
           });
-      } catch(e) { console.warn("Realtime init error:", e); }
+      } catch(e) { console.warn("Realtime init error:", e); startPoll(20000); }
+    } else {
+      startPoll(20000); // supabase 라이브러리 없으면 폴링만
     }
 
     return () => {
