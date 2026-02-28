@@ -120,7 +120,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.44.5";
+const BLISS_V = "2.44.6";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -391,6 +391,7 @@ function App() {
     };
 
     if (supaClient) {
+      poll(); // 즉시 1회 동기화
       channel = supaClient.channel("rt_" + Date.now())
         .on("postgres_changes", { event: "*", schema: "public", table: "reservations", filter: "business_id=eq." + currentBizId }, (payload) => {
           const ev = payload.eventType;
@@ -417,11 +418,11 @@ function App() {
           console.log("RT:", status);
           if (status === "SUBSCRIBED") { clearInterval(pollIv); pollIv = null; console.log("✅ Realtime ON"); }
           if (status === "CLOSED" || status === "TIMED_OUT" || status === "CHANNEL_ERROR") {
-            if (!pollIv) { pollIv = setInterval(poll, 180000); console.log("⚠️ Polling 3분 ON"); }
+            if (!pollIv) { pollIv = setInterval(poll, 30000); console.log("⚠️ Polling 30초 ON"); }
           }
         });
     } else {
-      pollIv = setInterval(poll, 180000);
+      pollIv = setInterval(poll, 30000);
     }
 
     return () => {
