@@ -107,7 +107,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.44.2";
+const BLISS_V = "2.44.3";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -1122,7 +1122,6 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
 
     origBlockPos.current = { time: block.time, roomId: block.roomId, bid: block.bid };
 
-    // 블록 상단 Y와 클릭 지점 오프셋 계산 (점프 방지)
     const sr = scrollRef.current;
     const blockTopY = timeToY(block.time);
     let clickOffsetY = 0;
@@ -1134,60 +1133,34 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
 
     const getPoint = (ev) => isTouch ? ev.touches[0] : ev;
 
-    const startDrag = () => {
-      longPressActive.current = true;
-      isDragging.current = true;
-      setDragBlock(block);
-    };
-
-    const onMove = (ev) => {
+    const onDragMove = (ev) => {
       const pt = getPoint(ev);
       if (!pt) return;
-      const dx = pt.clientX - dragStartRef.current.x;
-      const dy = pt.clientY - dragStartRef.current.y;
-
-      if (isTouch && !longPressActive.current) {
-        if (Math.abs(dx) + Math.abs(dy) > 8) {
-          clearTimeout(longPressTimer.current);
-          document.removeEventListener("touchmove", onMove);
-          document.removeEventListener("touchend", onUp);
-        }
-        return;
-      }
-      if (!isTouch && !isDragging.current && Math.abs(dx) + Math.abs(dy) < 6) return;
-      if (!isTouch && !isDragging.current) { isDragging.current = true; setDragBlock(block); }
-
-      if (isTouch) ev.preventDefault();
-
+      ev.preventDefault(); // 드래그 중에만 스크롤 차단
       if (!sr) return;
       const rect = sr.getBoundingClientRect();
       const x = pt.clientX - rect.left + sr.scrollLeft;
       const y = pt.clientY - rect.top + sr.scrollTop;
       setDragPos({ x: pt.clientX - rect.left, y: pt.clientY - rect.top });
-
       const colX = x - timeLabelsW;
       const roomIdx = Math.max(0, Math.min(allRooms.length - 1, Math.floor(colX / colW)));
       const targetRoom = allRooms[roomIdx];
-      // 블록 상단 기준으로 스냅 (클릭 오프셋 차감 → 점프 방지)
       const gridY = y - headerH - clickOffsetY;
       const snappedTime = yToTime(Math.max(0, gridY));
       setDragSnap({ roomId: targetRoom?.id, bid: targetRoom?.branch_id, time: snappedTime });
       dragSnapRef.current = { roomId: targetRoom?.id, bid: targetRoom?.branch_id, time: snappedTime };
-
       const edgeZone = 40;
       if (pt.clientY - rect.top < edgeZone) sr.scrollTop -= 8;
       if (rect.bottom - pt.clientY < edgeZone) sr.scrollTop += 8;
     };
 
-    const onUp = () => {
-      clearTimeout(longPressTimer.current);
-      document.removeEventListener(isTouch ? "touchmove" : "mousemove", onMove);
-      document.removeEventListener(isTouch ? "touchend" : "mouseup", onUp);
+    const onDragUp = () => {
+      document.removeEventListener(isTouch ? "touchmove" : "mousemove", onDragMove);
+      document.removeEventListener(isTouch ? "touchend" : "mouseup", onDragUp);
       if (isDragging.current && dragSnapRef.current) {
         const snap = dragSnapRef.current;
         const orig = origBlockPos.current;
         if (snap.time !== orig.time || snap.roomId !== orig.roomId) {
-          // 미리보기: 변경된 위치로 임시 이동
           setData(prev => ({...prev, reservations: prev.reservations.map(r => {
             if (r.id !== block.id) return r;
             const [sh,sm] = snap.time.split(":").map(Number);
@@ -1202,14 +1175,51 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       setTimeout(() => { isDragging.current = false; longPressActive.current = false; }, 300);
     };
 
-    document.addEventListener(isTouch ? "touchmove" : "mousemove", onMove, isTouch ? {passive:false} : undefined);
-    document.addEventListener(isTouch ? "touchend" : "mouseup", onUp);
-
     if (isTouch) {
+      // 터치: 롱프레스 성공 후에만 document 리스너 등록
+      const cancelOnMove = (ev) => {
+        const pt = ev.touches[0]; if (!pt) return;
+        if (Math.abs(pt.clientX - startPt.clientX) + Math.abs(pt.clientY - startPt.clientY) > 8) {
+          clearTimeout(longPressTimer.current);
+          document.removeEventListener("touchmove", cancelOnMove);
+          document.removeEventListener("touchend", cancelOnEnd);
+        }
+      };
+      const cancelOnEnd = () => {
+        clearTimeout(longPressTimer.current);
+        document.removeEventListener("touchmove", cancelOnMove);
+        document.removeEventListener("touchend", cancelOnEnd);
+      };
+      document.addEventListener("touchmove", cancelOnMove); // passive(기본) → 스크롤 안 막음
+      document.addEventListener("touchend", cancelOnEnd);
+
       longPressTimer.current = setTimeout(() => {
-        startDrag();
-        try { navigator.vibrate && navigator.vibrate(30); } catch(e){}
+        document.removeEventListener("touchmove", cancelOnMove);
+        document.removeEventListener("touchend", cancelOnEnd);
+        longPressActive.current = true;
+        isDragging.current = true;
+        setDragBlock(block);
+        try { navigator.vibrate && navigator.vibrate(30); } catch(ex){}
+        // 이제 드래그 리스너 등록 (passive:false → 스크롤 차단)
+        document.addEventListener("touchmove", onDragMove, {passive:false});
+        document.addEventListener("touchend", onDragUp);
       }, 500);
+    } else {
+      // 마우스: 기존 방식
+      const onMouseMove = (ev) => {
+        const dx = ev.clientX - dragStartRef.current.x;
+        const dy = ev.clientY - dragStartRef.current.y;
+        if (!isDragging.current && Math.abs(dx) + Math.abs(dy) < 6) return;
+        if (!isDragging.current) { isDragging.current = true; setDragBlock(block); }
+        onDragMove(ev);
+      };
+      const onMouseUp = () => {
+        document.removeEventListener("mousemove", onMouseMove);
+        document.removeEventListener("mouseup", onMouseUp);
+        onDragUp();
+      };
+      document.addEventListener("mousemove", onMouseMove);
+      document.addEventListener("mouseup", onMouseUp);
     }
   };
 
@@ -1222,30 +1232,9 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
     const startDur = block.dur;
     const origDur = block.dur;
 
-    const beginResize = () => {
-      longPressActive.current = true;
-      isResizing.current = true;
-      setResizeBlock(block);
-      setResizeDur(block.dur);
-      resizeDurRef.current = block.dur;
-      try { navigator.vibrate && navigator.vibrate(30); } catch(e){}
-    };
-
-    const onMove = (ev) => {
+    const onResizeMove = (ev) => {
       const pt = isTouch ? ev.touches[0] : ev;
       if (!pt) return;
-
-      if (isTouch && !longPressActive.current) {
-        const dy = Math.abs(pt.clientY - startY);
-        if (dy > 8) {
-          clearTimeout(longPressTimer.current);
-          document.removeEventListener("touchmove", onMove);
-          document.removeEventListener("touchend", onUp);
-        }
-        return;
-      }
-      if (!isTouch && !isResizing.current) { beginResize(); }
-
       if (isTouch) ev.preventDefault();
       const dy = pt.clientY - startY;
       const durDelta = Math.round(dy / rowH) * timeUnit;
@@ -1254,13 +1243,11 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       resizeDurRef.current = newDur;
     };
 
-    const onUp = () => {
-      clearTimeout(longPressTimer.current);
-      document.removeEventListener(isTouch ? "touchmove" : "mousemove", onMove);
-      document.removeEventListener(isTouch ? "touchend" : "mouseup", onUp);
+    const onResizeUp = () => {
+      document.removeEventListener(isTouch ? "touchmove" : "mousemove", onResizeMove);
+      document.removeEventListener(isTouch ? "touchend" : "mouseup", onResizeUp);
       const finalDur = resizeDurRef.current;
       if (isResizing.current && finalDur !== origDur) {
-        // 미리보기: 변경된 길이로 임시 적용
         setData(prev => ({...prev, reservations: prev.reservations.map(r => {
           if (r.id !== block.id) return r;
           const [sh,sm] = r.time.split(":").map(Number);
@@ -1274,11 +1261,38 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       setTimeout(() => { isResizing.current = false; longPressActive.current = false; }, 300);
     };
 
-    document.addEventListener(isTouch ? "touchmove" : "mousemove", onMove, isTouch ? {passive:false} : undefined);
-    document.addEventListener(isTouch ? "touchend" : "mouseup", onUp);
+    const beginResize = () => {
+      longPressActive.current = true;
+      isResizing.current = true;
+      setResizeBlock(block);
+      setResizeDur(block.dur);
+      resizeDurRef.current = block.dur;
+      try { navigator.vibrate && navigator.vibrate(30); } catch(ex){}
+      document.addEventListener(isTouch ? "touchmove" : "mousemove", onResizeMove, isTouch ? {passive:false} : undefined);
+      document.addEventListener(isTouch ? "touchend" : "mouseup", onResizeUp);
+    };
 
     if (isTouch) {
-      longPressTimer.current = setTimeout(beginResize, 500);
+      const cancelOnMove = (ev) => {
+        const pt = ev.touches[0]; if (!pt) return;
+        if (Math.abs(pt.clientY - startY) > 8) {
+          clearTimeout(longPressTimer.current);
+          document.removeEventListener("touchmove", cancelOnMove);
+          document.removeEventListener("touchend", cancelOnEnd);
+        }
+      };
+      const cancelOnEnd = () => {
+        clearTimeout(longPressTimer.current);
+        document.removeEventListener("touchmove", cancelOnMove);
+        document.removeEventListener("touchend", cancelOnEnd);
+      };
+      document.addEventListener("touchmove", cancelOnMove);
+      document.addEventListener("touchend", cancelOnEnd);
+      longPressTimer.current = setTimeout(() => {
+        document.removeEventListener("touchmove", cancelOnMove);
+        document.removeEventListener("touchend", cancelOnEnd);
+        beginResize();
+      }, 500);
     } else {
       beginResize();
     }
