@@ -15,7 +15,6 @@ const { useState, useEffect, useRef, useCallback, useMemo } = React;
 const SB_URL = "https://dpftlrsuqxqqeouwbfjd.supabase.co";
 const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwZnRscnN1cXhxcWVvdXdiZmpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5MDU4MjQsImV4cCI6MjA4NzQ4MTgyNH0.iydEkjtPjZ0jXpUUPJben4IWWneDqLomv-HDlcFayE4";
 const sbHeaders = {"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json","Prefer":"return=representation"};
-const supaRT = typeof supabase !== "undefined" ? supabase.createClient(SB_URL, SB_KEY) : null;
 const sb = {
   async get(table, filter="") { 
     const hasSortCol = ["services","products","service_tags","service_categories"].includes(table);
@@ -120,7 +119,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.43.2";
+const BLISS_V = "2.43.3";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -360,34 +359,78 @@ function App() {
     setPhase("login");
   };
 
-  // ─── Supabase Realtime: reservations 실시간 동기화 ───
+  // ─── 예약 실시간 동기화 (Realtime + 폴링 fallback) ───
+  const rtStatus = useRef("off");
   useEffect(() => {
-    if (!supaRT || phase !== "app" || !currentBizId) return;
-    const ch = supaRT.channel("rt-res-" + currentBizId)
-      .on("postgres_changes", { event: "*", schema: "public", table: "reservations", filter: "business_id=eq." + currentBizId }, (payload) => {
-        const ev = payload.eventType;
-        const row = payload.new || {};
-        const oldRow = payload.old || {};
+    if (phase !== "app" || !currentBizId) return;
+    let channel = null;
+    let pollIv = null;
+    const supaClient = typeof window !== "undefined" && window.supabase ? window.supabase.createClient(SB_URL, SB_KEY) : null;
+
+    // 폴링 함수 (fallback)
+    const poll = async () => {
+      try {
+        const rows = await sb.getByBiz("reservations", currentBizId);
+        const parsed = fromDb("reservations", rows);
         setData(prev => {
           if (!prev) return prev;
-          const parsed = row.id ? fromDb("reservations", [row])[0] : null;
-          if (ev === "INSERT" && parsed) {
-            if (prev.reservations.some(r => r.id === parsed.id)) return prev;
-            return {...prev, reservations: [...prev.reservations, parsed]};
-          }
-          if (ev === "UPDATE" && parsed) {
-            return {...prev, reservations: prev.reservations.map(r => r.id === parsed.id ? {...r, ...parsed} : r)};
-          }
-          if (ev === "DELETE") {
-            const delId = oldRow.id;
-            if (!delId) return prev;
-            return {...prev, reservations: prev.reservations.filter(r => r.id !== delId)};
-          }
-          return prev;
+          const prevIds = new Set(prev.reservations.map(r => r.id + "|" + (r._ua||"")));
+          const newIds = new Set(parsed.map(r => r.id + "|" + (r._ua||"")));
+          let changed = prev.reservations.length !== parsed.length;
+          if (!changed) { for (const id of prevIds) { if (!newIds.has(id)) { changed = true; break; } } }
+          return changed ? {...prev, reservations: parsed} : prev;
         });
-      })
-      .subscribe((status) => { console.log("Realtime reservations:", status); });
-    return () => { supaRT.removeChannel(ch); };
+      } catch(e) { console.warn("Poll error:", e); }
+    };
+
+    // 폴링 시작 (항상 동작, Realtime 성공 시 간격 늘림)
+    const startPoll = (interval) => { clearInterval(pollIv); pollIv = setInterval(poll, interval); };
+    startPoll(20000); // 기본 20초
+
+    // Realtime 시도
+    if (supaClient) {
+      try {
+        channel = supaClient.channel("bliss-res-" + currentBizId)
+          .on("postgres_changes", { event: "*", schema: "public", table: "reservations", filter: "business_id=eq." + currentBizId }, (payload) => {
+            const ev = payload.eventType;
+            const row = payload.new || {};
+            const oldRow = payload.old || {};
+            setData(prev => {
+              if (!prev) return prev;
+              const parsed = row.id ? fromDb("reservations", [row])[0] : null;
+              if (ev === "INSERT" && parsed) {
+                if (prev.reservations.some(r => r.id === parsed.id)) return prev;
+                return {...prev, reservations: [...prev.reservations, parsed]};
+              }
+              if (ev === "UPDATE" && parsed) {
+                return {...prev, reservations: prev.reservations.map(r => r.id === parsed.id ? {...r, ...parsed} : r)};
+              }
+              if (ev === "DELETE") {
+                const delId = oldRow.id;
+                return delId ? {...prev, reservations: prev.reservations.filter(r => r.id !== delId)} : prev;
+              }
+              return prev;
+            });
+          })
+          .subscribe((status, err) => {
+            console.log("Realtime:", status, err||"");
+            rtStatus.current = status;
+            if (status === "SUBSCRIBED") {
+              startPoll(60000); // Realtime 성공 → 폴링 60초로 완화
+              console.log("✅ Realtime 연결 성공 (폴링 60초로 전환)");
+            }
+            if (status === "CLOSED" || status === "TIMED_OUT" || status === "CHANNEL_ERROR") {
+              startPoll(20000); // Realtime 실패 → 폴링 20초 유지
+              console.log("⚠️ Realtime 실패, 폴링 20초 유지");
+            }
+          });
+      } catch(e) { console.warn("Realtime init error:", e); }
+    }
+
+    return () => {
+      clearInterval(pollIv);
+      if (channel && supaClient) { try { supaClient.removeChannel(channel); } catch(e){} }
+    };
   }, [phase, currentBizId]);
 
   const handleBackToSuper = async () => {
