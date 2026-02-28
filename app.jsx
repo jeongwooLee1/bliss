@@ -107,7 +107,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.48.8";
+const BLISS_V = "2.48.9";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -1014,9 +1014,12 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
     return sc ? {...STATUS_CLR_DEFAULT,...sc} : {...STATUS_CLR_DEFAULT};
   });
   const makeTlSave = (k, rawSetter) => v => {
-    rawSetter(v);
-    dbTl.current = {...dbTl.current, [k]: v};
-    tlSaveLocal(dbTl.current);
+    rawSetter(prev => {
+      const resolved = typeof v === "function" ? v(prev) : v;
+      dbTl.current = {...dbTl.current, [k]: resolved};
+      tlSaveLocal(dbTl.current);
+      return resolved;
+    });
   };
   const setStartHour = makeTlSave("sh", setStartHourRaw);
   const setEndHour = makeTlSave("eh", setEndHourRaw);
