@@ -120,7 +120,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.49.1";
+const BLISS_V = "2.49.2";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -3664,84 +3664,96 @@ function AdminPlaces({ data, setData, bizId }) {
   const handleTouchEnd = () => { handleDragEnd(); touchStartRef.current = null; touchRowRef.current = null; };
 
   return <div>
-    <div className="card" style={{padding:20}}>
+    <div style={{padding:0}}>
       <AdminHeader title="예약장소 관리" count={branches.length} onAdd={addBranch} addLabel={<><I name="plus" size={12}/> 지점 추가</>} onDownload={downloadExcel} onUpload={uploadExcel}/>
       {selected.size > 0 && <div style={{marginBottom:8}}><button className="btn-d btn-sm" onClick={bulkDelete} style={{fontSize:10,padding:"4px 12px"}}><I name="trash" size={12}/> 선택 삭제 ({selected.size})</button></div>}
 
-      {/* Card list */}
-      <div style={{display:"flex",flexDirection:"column",gap:8}}>
+      {/* Apple-style card list */}
+      <div style={{display:"flex",flexDirection:"column",gap:12}}>
         {branches.map((b,i) => (
           <div key={b.id}
             draggable onDragStart={()=>setDragIdx(i)} onDragOver={e=>{e.preventDefault();setDragOverIdx(i)}} onDragEnd={handleDragEnd}
             onTouchStart={e=>handleTouchStart(i,e)}
             style={{
-              border:edited[b.id]?"1.5px solid #7c7cc8":"1px solid #e0e0e0", borderRadius:10, padding:"12px 14px",
-              background:dragOverIdx===i?"#7c7cc808":edited[b.id]?"#fafaff":"#fff",
+              borderRadius:14, padding:0, overflow:"hidden",
+              background:"#fff",
+              boxShadow:dragOverIdx===i?"0 0 0 2px #7c7cc8":"0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04)",
               opacity:dragIdx===i?0.4:1, touchAction:"none",
-              borderLeft:`4px solid ${b.color||"#ddd"}`
+              transition:"box-shadow .2s"
             }}>
-            {/* Row 1: checkbox + name + badges */}
-            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+            {/* Header bar */}
+            <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",
+              background:`linear-gradient(135deg, ${b.color||"#f0f0f0"}18, ${b.color||"#f0f0f0"}08)`,
+              borderBottom:"1px solid #f0f0f0"}}>
               <input type="checkbox" checked={selected.has(b.id)} onChange={()=>toggleOne(b.id)} style={{width:16,height:16,accentColor:"#7c7cc8",flexShrink:0}}/>
-              <I name="grip" size={14} color="#ccc"/>
-              <span style={{fontSize:10,color:"#999",flexShrink:0}}>{i+1}</span>
-              <input className="inp" value={b.name} onChange={e=>updateField(b.id,"name",e.target.value)}
-                style={{flex:1,background:"transparent",border:"none",borderBottom:"1px solid #e8e8e8",fontWeight:700,fontSize:14,padding:"4px 0",borderRadius:0,minWidth:0}}/>
-              <select className="inp" value={b.useYn!==false?"Y":"N"} onChange={e=>updateField(b.id,"useYn",e.target.value==="Y")}
-                style={{width:56,padding:"2px 4px",fontSize:10,border:"1px solid #e0e0e0",borderRadius:4,
-                  background:b.useYn!==false?"#e8f5e920":"#fce8e820",color:b.useYn!==false?"#4caf50":"#e57373",fontWeight:600,flexShrink:0}}>
-                <option value="Y">사용</option><option value="N">미사용</option>
-              </select>
+              <I name="grip" size={12} color="#ccc"/>
+              <div style={{width:8,height:8,borderRadius:"50%",background:b.color||"#ddd",flexShrink:0}}/>
+              <span style={{flex:1,fontSize:14,fontWeight:700,color:"#222"}}>{b.name||"새 지점"}</span>
+              <span style={{fontSize:10,padding:"2px 8px",borderRadius:10,fontWeight:600,
+                background:b.useYn!==false?"#34c75920":"#ff3b3020",
+                color:b.useYn!==false?"#34c759":"#ff3b30"}}>{b.useYn!==false?"사용":"미사용"}</span>
             </div>
-            {/* Row 2: fields grid */}
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"6px 10px",fontSize:12}}>
-              <div>
-                <span style={{fontSize:10,color:"#999",display:"block",marginBottom:2}}>전화번호</span>
-                <input className="inp" value={b.phone||""} onChange={e=>updateField(b.id,"phone",e.target.value)}
-                  placeholder="02-0000-0000" style={{width:"100%",background:"#f8f8f8",border:"1px solid #eee",fontSize:12,padding:"6px 8px",borderRadius:6}}/>
+            {/* Form rows - iOS Settings style */}
+            <div style={{fontSize:13}}>
+              {[
+                {label:"지점명", val:b.name, field:"name", ph:"지점명"},
+                {label:"전화번호", val:b.phone||"", field:"phone", ph:"02-0000-0000"},
+                {label:"주소", val:b.address||"", field:"address", ph:"고객 안내용 주소"},
+              ].map(row => (
+                <div key={row.field} style={{display:"flex",alignItems:"center",padding:"0 14px",
+                  borderBottom:"1px solid #f2f2f7",minHeight:44}}>
+                  <span style={{width:72,fontSize:12,color:"#666",flexShrink:0,fontWeight:500}}>{row.label}</span>
+                  <input className="inp admin-place-inp" value={row.val} onChange={e=>updateField(b.id,row.field,e.target.value)}
+                    placeholder={row.ph}
+                    style={{flex:1,border:"none",background:"transparent",fontSize:13,padding:"10px 0",borderRadius:0,outline:"none"}}/>
+                </div>
+              ))}
+              {/* 사용구분 */}
+              <div style={{display:"flex",alignItems:"center",padding:"0 14px",borderBottom:"1px solid #f2f2f7",minHeight:44}}>
+                <span style={{width:72,fontSize:12,color:"#666",flexShrink:0,fontWeight:500}}>사용구분</span>
+                <select className="inp admin-place-inp" value={b.useYn!==false?"Y":"N"} onChange={e=>updateField(b.id,"useYn",e.target.value==="Y")}
+                  style={{flex:1,border:"none",background:"transparent",fontSize:13,padding:"10px 0",borderRadius:0,appearance:"none",
+                    color:b.useYn!==false?"#34c759":"#ff3b30",fontWeight:600}}>
+                  <option value="Y">사용</option><option value="N">미사용</option>
+                </select>
               </div>
-              <div>
-                <span style={{fontSize:10,color:"#999",display:"block",marginBottom:2}}>표시색상</span>
-                <div style={{display:"flex",alignItems:"center",gap:4}}>
+              {/* 색상 */}
+              <div style={{display:"flex",alignItems:"center",padding:"8px 14px",borderBottom:"1px solid #f2f2f7",minHeight:44}}>
+                <span style={{width:72,fontSize:12,color:"#666",flexShrink:0,fontWeight:500}}>색상</span>
+                <div style={{flex:1,display:"flex",alignItems:"center",gap:8}}>
                   <input type="color" value={b.color||"#FFFFFF"} onChange={e=>updateField(b.id,"color",e.target.value)}
-                    style={{width:28,height:28,border:"none",cursor:"pointer",padding:0,borderRadius:4}}/>
-                  <EyeDrop onPick={c=>updateField(b.id,"color",c)} size={24}/>
-                  <input className="inp" value={b.color||""} onChange={e=>updateField(b.id,"color",e.target.value)}
-                    style={{flex:1,background:b.color||"transparent",border:"1px solid #eee",fontSize:10,fontFamily:"monospace",padding:"4px 6px",borderRadius:4,minWidth:0}}/>
+                    style={{width:32,height:32,border:"2px solid #f0f0f0",cursor:"pointer",padding:0,borderRadius:8}}/>
+                  <EyeDrop onPick={c=>updateField(b.id,"color",c)} size={28}/>
+                  <input className="inp admin-place-inp" value={b.color||""} onChange={e=>updateField(b.id,"color",e.target.value)}
+                    style={{width:80,background:"transparent",border:"1px solid #e8e8e8",fontSize:11,fontFamily:"monospace",
+                      padding:"4px 8px",borderRadius:8,color:"#555"}}/>
                 </div>
               </div>
-              <div style={{gridColumn:"1/-1"}}>
-                <span style={{fontSize:10,color:"#999",display:"block",marginBottom:2}}>주소</span>
-                <input className="inp" value={b.address||""} onChange={e=>updateField(b.id,"address",e.target.value)}
-                  placeholder="고객 안내용 주소" style={{width:"100%",background:"#f8f8f8",border:"1px solid #eee",fontSize:12,padding:"6px 8px",borderRadius:6}}/>
-              </div>
-              {/* 네이버 연동 */}
-              <div style={{gridColumn:"1/-1",borderTop:"1px dashed #e0e0e0",paddingTop:6,marginTop:2}}>
-                <span style={{fontSize:10,color:"#5cb5c5",fontWeight:600,marginBottom:4,display:"block"}}>네이버 연동</span>
-                <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:6}}>
-                  <div>
-                    <input className="inp" value={b.naverEmail||""} onChange={e=>updateField(b.id,"naverEmail",e.target.value)}
-                      placeholder="Gmail" style={{width:"100%",background:"#f8f8f8",border:"1px solid #eee",fontSize:11,padding:"6px 8px",borderRadius:6}}/>
-                  </div>
-                  <div style={{display:"flex",gap:4,alignItems:"center"}}>
-                    <input className="inp" value={b.naverBizId||""} onChange={e=>updateField(b.id,"naverBizId",e.target.value)}
-                      placeholder="BizID" style={{width:72,background:"#f8f8f8",border:"1px solid #eee",fontSize:11,padding:"6px 8px",borderRadius:6}}/>
-                    {b.naverEmail && <input type="number" className="inp" value={b.naverColCount||1} min={1} max={5}
-                      onChange={e=>updateField(b.id,"naverColCount",Math.max(1,Math.min(5,parseInt(e.target.value)||1)))}
-                      style={{width:36,background:"#f8f8f8",border:"1px solid #eee",fontSize:11,padding:"6px 4px",borderRadius:6,textAlign:"center"}}/>}
-                  </div>
+              {/* 네이버 연동 섹션 */}
+              <div style={{padding:"8px 14px 10px",background:"#fafbfc"}}>
+                <div style={{fontSize:10,color:"#03c75a",fontWeight:700,marginBottom:6,display:"flex",alignItems:"center",gap:4}}>
+                  <span style={{width:6,height:6,borderRadius:"50%",background:"#03c75a",display:"inline-block"}}/>네이버 연동
+                </div>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                  <input className="inp admin-place-inp" value={b.naverEmail||""} onChange={e=>updateField(b.id,"naverEmail",e.target.value)}
+                    placeholder="Gmail" style={{flex:"1 1 120px",background:"#fff",border:"1px solid #e8e8e8",fontSize:12,padding:"8px 10px",borderRadius:8}}/>
+                  <input className="inp admin-place-inp" value={b.naverBizId||""} onChange={e=>updateField(b.id,"naverBizId",e.target.value)}
+                    placeholder="Biz ID" style={{width:80,background:"#fff",border:"1px solid #e8e8e8",fontSize:12,padding:"8px 10px",borderRadius:8}}/>
+                  {b.naverEmail && <input type="number" className="inp admin-place-inp" value={b.naverColCount||1} min={1} max={5}
+                    onChange={e=>updateField(b.id,"naverColCount",Math.max(1,Math.min(5,parseInt(e.target.value)||1)))}
+                    style={{width:44,background:"#fff",border:"1px solid #e8e8e8",fontSize:12,padding:"8px 4px",borderRadius:8,textAlign:"center"}}/>}
                 </div>
               </div>
             </div>
-            {/* Row 3: action buttons */}
-            <div style={{display:"flex",gap:6,marginTop:10,justifyContent:"flex-end"}}>
+            {/* Footer */}
+            <div style={{display:"flex",gap:8,padding:"8px 14px",background:"#fafafa",justifyContent:"flex-end",alignItems:"center"}}>
               {deleteId===b.id ? <>
-                <button onClick={()=>deleteBranch(b.id)} style={{padding:"6px 14px",fontSize:11,fontWeight:700,borderRadius:6,border:"none",background:"#e57373",color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>삭제 확인</button>
-                <button onClick={()=>setDeleteId(null)} style={{padding:"6px 12px",fontSize:11,borderRadius:6,border:"1px solid #d0d0d0",background:"#fff",color:"#888",cursor:"pointer",fontFamily:"inherit"}}>취소</button>
+                <button onClick={()=>deleteBranch(b.id)} style={{padding:"7px 16px",fontSize:12,fontWeight:700,borderRadius:8,border:"none",background:"#ff3b30",color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>삭제 확인</button>
+                <button onClick={()=>setDeleteId(null)} style={{padding:"7px 14px",fontSize:12,borderRadius:8,border:"1px solid #d0d0d0",background:"#fff",color:"#888",cursor:"pointer",fontFamily:"inherit"}}>취소</button>
               </> : <>
-                <button onClick={()=>setDeleteId(b.id)} style={{padding:"6px 10px",fontSize:11,borderRadius:6,border:"1px solid #f0c0c0",background:"#fff",color:"#e57373",cursor:"pointer",fontFamily:"inherit"}}><I name="trash" size={11}/></button>
-                <button className={edited[b.id]?"btn-p":"btn-s"} onClick={()=>applyRow(b.id)}
-                  style={{padding:"6px 16px",fontSize:11,borderRadius:6,fontWeight:edited[b.id]?700:500}}>{edited[b.id]?"저장":"적용"}</button>
+                <button onClick={()=>setDeleteId(b.id)} style={{padding:"7px 10px",fontSize:12,borderRadius:8,border:"none",background:"transparent",color:"#ff3b30",cursor:"pointer",fontFamily:"inherit"}}><I name="trash" size={12}/></button>
+                {edited[b.id] && <button className="btn-p" onClick={()=>applyRow(b.id)}
+                  style={{padding:"7px 20px",fontSize:12,fontWeight:700,borderRadius:8,background:"#7c7cc8"}}>저장</button>}
               </>}
             </div>
           </div>
@@ -4406,6 +4418,8 @@ const CSS = `
   tr:hover td{background:#f5f5ff}
   .inp{background:#fff;border:1px solid #d0d0d0;color:#333;padding:7px 10px;border-radius:4px;font-size:13px;width:100%;font-family:inherit;outline:none;transition:border-color .15s}
   .inp:focus{border-color:#7c7cc8;box-shadow:0 0 0 2px rgba(124,124,200,.15)}
+  .admin-place-inp{transition:none!important}
+  .admin-place-inp:focus{box-shadow:none!important;border-color:#7c7cc860!important}
   select.inp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;padding-right:26px}
   .badge{display:inline-flex;align-items:center;padding:2px 7px;border-radius:99px;font-size:10px;font-weight:600}
   .btn-p{background:#7c7cc8;color:#fff;padding:7px 14px;border-radius:4px;border:none;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit;display:inline-flex;align-items:center;gap:5px;transition:all .15s}
