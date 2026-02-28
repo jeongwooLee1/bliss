@@ -107,7 +107,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.44.1";
+const BLISS_V = "2.44.2";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -891,6 +891,8 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   const isResizing = useRef(false);
   const resizeDurRef = useRef(0);
   const [pendingChange, setPendingChange] = useState(null);
+  const [hoverCell, setHoverCell] = useState(null); // {roomId, rowIdx}
+  const cellLongPress = useRef(null);
 
   const allRooms = branchesToShow.flatMap(br => {
     const regularRooms = (data.rooms||[]).filter(r=>r.branch_id===br.id).map(r=>({...r, branchName:br.short||br.name||""}));
@@ -1437,9 +1439,11 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
           <div style={{width:62,flexShrink:0,position:"sticky",left:0,zIndex:20,background:"#fff",borderRight:"1px solid #eee"}}>
             <div style={{height:headerH,borderBottom:"1px solid #eee",position:"sticky",top:0,zIndex:25,background:"#fff"}}/>
             <div style={{position:"relative",height:totalRows*rowH,...gridBg}}>
+              {hoverCell && hoverCell.rowIdx>=0 && <div style={{position:"absolute",top:hoverCell.rowIdx*rowH,left:0,right:0,height:rowH,background:"rgba(124,124,200,0.08)",zIndex:1,pointerEvents:"none"}}/>}
               {timeLabels.map(({i, isHour, m, text}) => {
+                const isHighlighted = hoverCell && hoverCell.rowIdx === i;
                 return <div key={i} style={{position:"absolute",top:i*rowH,left:0,right:0,height:rowH,display:"flex",alignItems:"center",justifyContent:"flex-end",paddingRight:6}}>
-                  <span style={{fontSize:isHour?11:9,fontWeight:isHour?600:400,color:isHour?"#555":"#aaa",whiteSpace:"nowrap",lineHeight:1}}>{text}</span>
+                  <span style={{fontSize:isHour?11:9,fontWeight:isHighlighted?700:(isHour?600:400),color:isHighlighted?"#7c7cc8":(isHour?"#555":"#aaa"),whiteSpace:"nowrap",lineHeight:1,transition:"color 0.1s"}}>{text}</span>
                 </div>;
               })}
               {nowY > 0 && <div style={{position:"absolute",top:nowY-9,left:0,right:0,display:"flex",alignItems:"center",justifyContent:"center",zIndex:6,pointerEvents:"none"}}>
@@ -1474,7 +1478,39 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                   <span style={{fontSize:9,color:room.isNaver?"#43A047":"#999"}}>{room.isNaver?<I name="naver" size={11}/> :"" }{room.name}</span>
                 </div>
                 {/* Grid Area */}
-                <div style={{position:"relative",height:totalRows*rowH,cursor:room.isNaver?"default":(canEdit(room.branch_id)?"pointer":"default"),...gridBg}} onClick={e=>{const rect=e.currentTarget.getBoundingClientRect();handleCellClick(room,e.clientY-rect.top)}}>
+                <div style={{position:"relative",height:totalRows*rowH,cursor:room.isNaver?"default":(canEdit(room.branch_id)?"pointer":"default"),...gridBg}}
+                  onClick={e=>{const rect=e.currentTarget.getBoundingClientRect();handleCellClick(room,e.clientY-rect.top)}}
+                  onMouseMove={e=>{if(room.isNaver)return;const rect=e.currentTarget.getBoundingClientRect();const y=e.clientY-rect.top;const ri=Math.floor(y/rowH);setHoverCell({roomId:room.id,rowIdx:ri})}}
+                  onMouseLeave={()=>setHoverCell(null)}
+                  onTouchStart={e=>{
+                    if(room.isNaver||!canEdit(room.branch_id))return;
+                    const t=e.touches[0];const rect=e.currentTarget.getBoundingClientRect();
+                    const y=t.clientY-rect.top;const ri=Math.floor(y/rowH);
+                    setHoverCell({roomId:room.id,rowIdx:ri});
+                    cellLongPress.current={moved:false};
+                    cellLongPress.current.timer=setTimeout(()=>{
+                      if(!cellLongPress.current?.moved){
+                        try{navigator.vibrate&&navigator.vibrate(30)}catch(ex){}
+                        const time=yToTime(y);
+                        setModalData({roomId:room.id,bid:room.branch_id,time,date:selDate});
+                        setShowModal(true);setHoverCell(null);
+                      }
+                    },500);
+                  }}
+                  onTouchMove={e=>{
+                    if(cellLongPress.current)cellLongPress.current.moved=true;
+                    clearTimeout(cellLongPress.current?.timer);
+                    if(room.isNaver)return;
+                    const t=e.touches[0];const rect=e.currentTarget.getBoundingClientRect();
+                    const y=t.clientY-rect.top;const ri=Math.floor(y/rowH);
+                    setHoverCell({roomId:room.id,rowIdx:ri});
+                  }}
+                  onTouchEnd={()=>{clearTimeout(cellLongPress.current?.timer);cellLongPress.current=null;setTimeout(()=>setHoverCell(null),300)}}
+                >
+                  {/* Hover/touch highlight */}
+                  {hoverCell?.roomId===room.id && hoverCell.rowIdx>=0 && <div style={{position:"absolute",top:hoverCell.rowIdx*rowH,left:0,right:0,height:rowH,background:"rgba(124,124,200,0.12)",borderTop:"1px solid rgba(124,124,200,0.3)",borderBottom:"1px solid rgba(124,124,200,0.3)",zIndex:1,pointerEvents:"none",transition:"top 0.05s ease"}}/>}
+                  {/* Row crosshair highlight (other columns) */}
+                  {hoverCell && hoverCell.roomId!==room.id && hoverCell.rowIdx>=0 && <div style={{position:"absolute",top:hoverCell.rowIdx*rowH,left:0,right:0,height:rowH,background:"rgba(124,124,200,0.04)",zIndex:1,pointerEvents:"none"}}/>}
                   {/* Current time */}
                   {nowY > 0 && <div style={{position:"absolute",top:nowY,left:0,right:0,borderTop:"2px solid #e57373",zIndex:5}}>
                     <div style={{position:"absolute",top:-4,left:-1,width:8,height:8,borderRadius:4,background:"#e57373"}}/>
