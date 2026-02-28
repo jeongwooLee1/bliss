@@ -120,7 +120,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.43.5";
+const BLISS_V = "2.43.6";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -390,8 +390,10 @@ function App() {
 
     // Realtime 시도
     if (supaClient) {
+      // 기존 채널 정리
+      try { supaClient.getChannels().forEach(ch => supaClient.removeChannel(ch)); } catch(e){}
       try {
-        channel = supaClient.channel("bliss-res-" + currentBizId)
+        channel = supaClient.channel("bliss-res-" + currentBizId + "-" + Date.now())
           .on("postgres_changes", { event: "*", schema: "public", table: "reservations", filter: "business_id=eq." + currentBizId }, (payload) => {
             const ev = payload.eventType;
             const row = payload.new || {};
