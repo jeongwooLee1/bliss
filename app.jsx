@@ -106,7 +106,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.41.5";
+const BLISS_V = "2.41.6";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -1017,23 +1017,30 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   const timeLabelsW = 62;
   const handleDragStart = (block, e) => {
     e.stopPropagation();
-    e.preventDefault();
-    dragStartRef.current = { x: e.clientX, y: e.clientY };
+    const isTouch = e.type === "touchstart";
+    if (!isTouch) e.preventDefault();
+    const startPt = isTouch ? e.touches[0] : e;
+    dragStartRef.current = { x: startPt.clientX, y: startPt.clientY };
     isDragging.current = false;
 
+    const getPoint = (ev) => isTouch ? ev.touches[0] : ev;
+
     const onMove = (ev) => {
-      const dx = ev.clientX - dragStartRef.current.x;
-      const dy = ev.clientY - dragStartRef.current.y;
+      const pt = getPoint(ev);
+      if (!pt) return;
+      const dx = pt.clientX - dragStartRef.current.x;
+      const dy = pt.clientY - dragStartRef.current.y;
       if (!isDragging.current && Math.abs(dx) + Math.abs(dy) < 6) return; // threshold
       isDragging.current = true;
+      if (isTouch) ev.preventDefault(); // prevent scroll while dragging
       setDragBlock(block);
 
       const sr = scrollRef.current;
       if (!sr) return;
       const rect = sr.getBoundingClientRect();
-      const x = ev.clientX - rect.left + sr.scrollLeft;
-      const y = ev.clientY - rect.top + sr.scrollTop;
-      setDragPos({ x: ev.clientX - rect.left, y: ev.clientY - rect.top });
+      const x = pt.clientX - rect.left + sr.scrollLeft;
+      const y = pt.clientY - rect.top + sr.scrollTop;
+      setDragPos({ x: pt.clientX - rect.left, y: pt.clientY - rect.top });
 
       // Snap: determine which room column
       const colX = x - timeLabelsW;
@@ -1047,13 +1054,13 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
 
       // Auto-scroll when near edges
       const edgeZone = 40;
-      if (ev.clientY - rect.top < edgeZone) sr.scrollTop -= 8;
-      if (rect.bottom - ev.clientY < edgeZone) sr.scrollTop += 8;
+      if (pt.clientY - rect.top < edgeZone) sr.scrollTop -= 8;
+      if (rect.bottom - pt.clientY < edgeZone) sr.scrollTop += 8;
     };
 
     const onUp = () => {
-      document.removeEventListener("mousemove", onMove);
-      document.removeEventListener("mouseup", onUp);
+      document.removeEventListener(isTouch ? "touchmove" : "mousemove", onMove);
+      document.removeEventListener(isTouch ? "touchend" : "mouseup", onUp);
       if (isDragging.current && dragSnapRef.current) {
         // Apply move
         const snap = dragSnapRef.current;
@@ -1078,23 +1085,27 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       setTimeout(() => { isDragging.current = false; }, 300);
     };
 
-    document.addEventListener("mousemove", onMove);
-    document.addEventListener("mouseup", onUp);
+    document.addEventListener(isTouch ? "touchmove" : "mousemove", onMove, isTouch ? {passive:false} : undefined);
+    document.addEventListener(isTouch ? "touchend" : "mouseup", onUp);
   };
 
   // ── Resize handler ──
   const handleResizeStart = (block, e) => {
     e.stopPropagation();
-    e.preventDefault();
+    const isTouch = e.type === "touchstart";
+    if (!isTouch) e.preventDefault();
     isResizing.current = true;
     setResizeBlock(block);
     setResizeDur(block.dur);
     resizeDurRef.current = block.dur;
-    const startY = e.clientY;
+    const startY = isTouch ? e.touches[0].clientY : e.clientY;
     const startDur = block.dur;
 
     const onMove = (ev) => {
-      const dy = ev.clientY - startY;
+      const pt = isTouch ? ev.touches[0] : ev;
+      if (!pt) return;
+      if (isTouch) ev.preventDefault();
+      const dy = pt.clientY - startY;
       const durDelta = Math.round(dy / rowH) * timeUnit;
       const newDur = Math.max(5, startDur + durDelta);
       setResizeDur(newDur);
@@ -1102,8 +1113,8 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
     };
 
     const onUp = () => {
-      document.removeEventListener("mousemove", onMove);
-      document.removeEventListener("mouseup", onUp);
+      document.removeEventListener(isTouch ? "touchmove" : "mousemove", onMove);
+      document.removeEventListener(isTouch ? "touchend" : "mouseup", onUp);
       const finalDur = resizeDurRef.current;
       setData(prev => ({
         ...prev,
@@ -1121,8 +1132,8 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       setTimeout(() => { isResizing.current = false; }, 300);
     };
 
-    document.addEventListener("mousemove", onMove);
-    document.addEventListener("mouseup", onUp);
+    document.addEventListener(isTouch ? "touchmove" : "mousemove", onMove, isTouch ? {passive:false} : undefined);
+    document.addEventListener(isTouch ? "touchend" : "mouseup", onUp);
   };
 
   const changeDate = (off) => { const d = new Date(selDate); d.setDate(d.getDate()+off); setSelDate(fmtLocal(d)); };
@@ -1308,13 +1319,14 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                       <div key={block.id}
                         onClick={e=>handleBlockClick(block,e)}
                         onMouseDown={e=>{if(isEditable && !isResizing.current)handleDragStart(block,e)}}
+                        onTouchStart={e=>{if(isEditable && !isResizing.current)handleDragStart(block,e)}}
                         style={{position:"absolute",top:y,left:2,right:2,height:Math.max(h,rowH*2),
                           background:isNaverCancelled?"#FFF8E1":isNaverPending?`${color}10`:`${color}${bgAlpha}`,
                           border:isNaverCancelled?"1.5px dashed #E6A700":isNaverPending?`1.5px dashed ${color}`:`1px solid ${isSch?color:color+"60"}`,
                           borderLeft:`3px solid ${isNaverCancelled?"#E6A700":color}`,
                           borderRadius:4,padding:"2px 4px",overflow:"hidden",fontSize:blockFs,lineHeight:1.2,
                           cursor:isEditable?"grab":"pointer",zIndex:isDrag?0:3,transition:(isDrag||isBeingResized)?"none":"all .15s",
-                          opacity:isDrag?0.3:1,userSelect:"none"}}>
+                          opacity:isDrag?0.3:1,userSelect:"none",touchAction:isEditable?"none":"auto"}}>
                         {block.type==="reservation" && !block.isSchedule && <>
                           <div style={{display:"flex",alignItems:"center",gap:3,overflow:"hidden",whiteSpace:"nowrap"}}>
                             {isNaverCancelled && <span style={{fontSize:Math.max(6,blockFs-2),padding:"1px 3px",borderRadius:2,background:"#E6A700",color:"#fff",fontWeight:700,lineHeight:1,flexShrink:0}}>네이버취소</span>}
@@ -1339,7 +1351,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                         {block.type==="cleaning" && <div style={{color:"#5cb5c5",fontWeight:600}}><I name="sparkles" size={10} color="#5cb5c5"/> 청소</div>}
                         {block.memo && (() => { const clean = block.memo.split("\n").filter(l => !/^\[등록:|^\[수정:/.test(l.trim())).join(" ").trim(); return clean ? <div style={{color:"#555",marginTop:1}}><I name="msgSq" size={10} color="#888"/> {clean}</div> : null; })()}
                         {/* Resize handle */}
-                        {isEditable && <div className="resize-handle" onMouseDown={e=>handleResizeStart(block,e)}
+                        {isEditable && <div className="resize-handle" onMouseDown={e=>handleResizeStart(block,e)} onTouchStart={e=>handleResizeStart(block,e)}
                           style={{position:"absolute",bottom:0,left:0,right:0,height:8,cursor:"ns-resize",
                             display:"flex",alignItems:"center",justifyContent:"center",opacity:0,transition:"opacity .15s"}}>
                           <div style={{width:20,height:3,borderRadius:2,background:color}}/>
