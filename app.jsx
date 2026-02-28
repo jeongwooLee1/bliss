@@ -107,7 +107,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.44.3";
+const BLISS_V = "2.44.4";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -346,6 +346,14 @@ function App() {
     setActiveBiz(null);
     setPhase("login");
   };
+
+  // ─── 복사/선택 방지 ───
+  useEffect(() => {
+    const prevent = e => { if (e.target.tagName !== "INPUT" && e.target.tagName !== "TEXTAREA") e.preventDefault(); };
+    document.addEventListener("copy", prevent);
+    document.addEventListener("cut", prevent);
+    return () => { document.removeEventListener("copy", prevent); document.removeEventListener("cut", prevent); };
+  }, []);
 
   // ─── 예약 실시간 동기화 ───
   useEffect(() => {
@@ -997,10 +1005,13 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
     return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
   };
 
+  const lastTouchCell = useRef(0);
   const handleCellClick = (room, y) => {
     if (isDragging.current || isResizing.current) return;
     if (!canEdit(room.branch_id)) return;
-    if (room.isNaver) return; // 네이버 칼럼은 자동연동 전용
+    if (room.isNaver) return;
+    // 모바일: 터치 직후 click 무시 (롱프레스로만 등록)
+    if (Date.now() - lastTouchCell.current < 500) return;
     const time = yToTime(y);
     setModalData({ roomId: room.id, bid: room.branch_id, time, date: selDate });
     setShowModal(true);
@@ -1497,6 +1508,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                   onMouseMove={e=>{if(room.isNaver)return;const rect=e.currentTarget.getBoundingClientRect();const y=e.clientY-rect.top;const ri=Math.floor(y/rowH);setHoverCell({roomId:room.id,rowIdx:ri})}}
                   onMouseLeave={()=>setHoverCell(null)}
                   onTouchStart={e=>{
+                    lastTouchCell.current=Date.now();
                     if(room.isNaver||!canEdit(room.branch_id))return;
                     const t=e.touches[0];const rect=e.currentTarget.getBoundingClientRect();
                     const y=t.clientY-rect.top;const ri=Math.floor(y/rowH);
