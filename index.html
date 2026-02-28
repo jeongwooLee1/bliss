@@ -120,7 +120,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.50.1";
+const BLISS_V = "2.50.2";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -3574,6 +3574,7 @@ function AdminPlaces({ data, setData, bizId }) {
   const [edited, setEdited] = useState({});
   const [deleteId, setDeleteId] = useState(null);
   const [expandedCard, setExpandedCard] = useState(null);
+  const cardRects = useRef({});
   const [dragIdx, setDragIdx] = useState(null);
   const [dragOverIdx, setDragOverIdx] = useState(null);
   const [selected, setSelected] = useState(new Set());
@@ -3729,80 +3730,109 @@ function AdminPlaces({ data, setData, bizId }) {
         const b = branches.find(x=>x.id===expandedCard);
         if(!b) return null;
         const INP = {fontSize:16,border:"none",background:"transparent",padding:"12px 0",borderRadius:0,outline:"none",fontFamily:"inherit",color:"#333",WebkitTapHighlightColor:"transparent",width:"100%"};
+        const closeCard = () => {
+          const modal = document.getElementById("place-modal");
+          const overlay = document.getElementById("place-overlay");
+          const rect = cardRects.current[b.id];
+          if(modal && rect) {
+            const vw = window.innerWidth, vh = window.innerHeight;
+            const modalRect = modal.getBoundingClientRect();
+            const sx = rect.width / modalRect.width, sy = rect.height / modalRect.height;
+            const tx = rect.left + rect.width/2 - (modalRect.left + modalRect.width/2);
+            const ty = rect.top + rect.height/2 - (modalRect.top + modalRect.height/2);
+            modal.style.transition = "transform .3s cubic-bezier(.4,0,.6,1), opacity .25s";
+            modal.style.transform = `translate(${tx}px,${ty}px) scale(${sx},${sy})`;
+            modal.style.opacity = "0";
+            if(overlay) { overlay.style.transition = "opacity .3s"; overlay.style.opacity = "0"; }
+            setTimeout(()=>setExpandedCard(null), 300);
+          } else { setExpandedCard(null); }
+        };
+        const rect = cardRects.current[b.id];
+        const originStyle = rect ? (() => {
+          const vw = window.innerWidth;
+          const modalW = vw - 48, modalH = 420;
+          const modalL = 24, modalT = window.innerHeight * 0.15;
+          const sx = rect.width / modalW, sy = rect.height / modalH;
+          const tx = rect.left + rect.width/2 - (modalL + modalW/2);
+          const ty = rect.top + rect.height/2 - (modalT + modalH/2);
+          return `translate(${tx}px,${ty}px) scale(${sx},${sy})`;
+        })() : "scale(.7)";
         return <>
-          <div style={{position:"fixed",inset:0,zIndex:999,background:"rgba(0,0,0,.4)",backdropFilter:"blur(8px)",WebkitBackdropFilter:"blur(8px)"}}
-            onClick={()=>setExpandedCard(null)}/>
-          <div style={{position:"fixed",left:12,right:12,top:"8vh",zIndex:1000,
+          <div id="place-overlay" style={{position:"fixed",inset:0,zIndex:999,background:"rgba(0,0,0,.35)",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)",
+            animation:"ovFadeIn .3s"}} onClick={closeCard}/>
+          <div id="place-modal" onClick={e=>e.stopPropagation()}
+            ref={el=>{if(el && !el.dataset.init){
+              el.dataset.init="1";
+              el.style.transform=originStyle; el.style.opacity="0";
+              requestAnimationFrame(()=>{
+                el.style.transition="transform .35s cubic-bezier(.2,.9,.3,1), opacity .3s";
+                el.style.transform="translate(0,0) scale(1)"; el.style.opacity="1";
+              });
+            }}}
+            style={{position:"fixed",left:24,right:24,top:"15vh",zIndex:1000,
             background:"#fff",borderRadius:16,overflow:"hidden",
-            boxShadow:"0 24px 80px rgba(0,0,0,.25)",
-            animation:"cardOpen .35s cubic-bezier(.2,.9,.3,1)"}}>
+            boxShadow:"0 20px 60px rgba(0,0,0,.2)"}}>
             {/* Header */}
-            <div style={{padding:"16px 18px",background:"linear-gradient(135deg,#7c7cc815,#7c7cc808)",
-              borderBottom:"1px solid #f0f0f0",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-              <div style={{display:"flex",alignItems:"center",gap:8}}>
-                <div style={{width:10,height:10,borderRadius:"50%",background:b.color||"#7c7cc8"}}/>
-                <span style={{fontSize:17,fontWeight:800,color:"#222"}}>{b.name||"새 지점"}</span>
-              </div>
-              <button onClick={()=>setExpandedCard(null)}
-                style={{width:28,height:28,borderRadius:"50%",background:"#f0f0f0",border:"none",
-                  display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:14,color:"#999"}}>✕</button>
+            <div style={{padding:"14px 16px",background:`linear-gradient(135deg, ${b.color||"#f0f0f0"}18, ${b.color||"#f0f0f0"}08)`,
+              borderBottom:"1px solid #f0f0f0",display:"flex",alignItems:"center",gap:8}}>
+              <div style={{width:10,height:10,borderRadius:"50%",background:b.color||"#7c7cc8"}}/>
+              <span style={{fontSize:16,fontWeight:800,color:"#222"}}>{b.name||"새 지점"}</span>
             </div>
             {/* Form */}
-            <div style={{padding:"0",maxHeight:"70vh",overflowY:"auto"}}>
+            <div style={{maxHeight:"55vh",overflowY:"auto"}}>
               {[
                 {label:"지점명",field:"name",val:b.name,ph:"지점명을 입력하세요"},
                 {label:"주소",field:"address",val:b.address||"",ph:"고객 안내용 주소를 입력하세요"},
                 {label:"전화번호",field:"phone",val:b.phone||"",ph:"02-0000-0000"},
               ].map(row=>(
-                <div key={row.field} style={{display:"flex",alignItems:"center",padding:"0 18px",borderBottom:"1px solid #f2f2f7",minHeight:48}}>
-                  <span style={{width:72,fontSize:13,color:"#888",flexShrink:0,fontWeight:500}}>{row.label}</span>
+                <div key={row.field} style={{display:"flex",alignItems:"center",padding:"0 16px",borderBottom:"1px solid #f2f2f7",minHeight:44}}>
+                  <span style={{width:56,fontSize:12,color:"#888",flexShrink:0,fontWeight:500}}>{row.label}</span>
                   <input value={row.val} onChange={e=>updateField(b.id,row.field,e.target.value)}
                     placeholder={row.ph} style={INP}/>
                 </div>
               ))}
-              {/* 메일주소 - 설명 포함 */}
+              {/* 메일주소 */}
               <div style={{borderBottom:"1px solid #f2f2f7"}}>
-                <div style={{display:"flex",alignItems:"center",padding:"0 18px",minHeight:48}}>
-                  <span style={{width:72,fontSize:13,color:"#888",flexShrink:0,fontWeight:500}}>메일주소</span>
+                <div style={{display:"flex",alignItems:"center",padding:"0 16px",minHeight:44}}>
+                  <span style={{width:56,fontSize:12,color:"#888",flexShrink:0,fontWeight:500}}>메일주소</span>
                   <input value={b.naverEmail||""} onChange={e=>updateField(b.id,"naverEmail",e.target.value)}
                     placeholder="example@gmail.com" style={INP}/>
                 </div>
-                <div style={{padding:"0 18px 8px 90px",fontSize:11,color:"#aaa",lineHeight:1.4}}>
+                <div style={{padding:"0 16px 6px 72px",fontSize:10,color:"#bbb",lineHeight:1.3}}>
                   네이버 예약 알림을 수신할 Gmail 주소를 입력하세요.
                 </div>
               </div>
-              {/* 네이버 Biz ID */}
-              <div style={{display:"flex",alignItems:"center",padding:"0 18px",borderBottom:"1px solid #f2f2f7",minHeight:48}}>
-                <span style={{width:72,fontSize:13,color:"#888",flexShrink:0,fontWeight:500}}>비즈 ID</span>
+              {/* 비즈 ID */}
+              <div style={{display:"flex",alignItems:"center",padding:"0 16px",borderBottom:"1px solid #f2f2f7",minHeight:44}}>
+                <span style={{width:56,fontSize:12,color:"#888",flexShrink:0,fontWeight:500}}>비즈 ID</span>
                 <input value={b.naverBizId||""} onChange={e=>updateField(b.id,"naverBizId",e.target.value)}
                   placeholder="네이버 예약 비즈니스 ID (숫자)" style={INP}/>
               </div>
-              {/* 칼럼 수 */}
-              <div style={{display:"flex",alignItems:"center",padding:"0 18px",borderBottom:"1px solid #f2f2f7",minHeight:48}}>
-                <span style={{width:72,fontSize:13,color:"#888",flexShrink:0,fontWeight:500}}>칼럼 수</span>
-                <div style={{flex:1,display:"flex",alignItems:"center",gap:8,padding:"8px 0"}}>
+              {/* 네이버예약 칼럼수 */}
+              <div style={{display:"flex",alignItems:"center",padding:"0 16px",minHeight:44}}>
+                <span style={{width:80,fontSize:12,color:"#888",flexShrink:0,fontWeight:500,lineHeight:1.2}}>네이버예약<br/>칼럼수</span>
+                <div style={{flex:1,display:"flex",alignItems:"center",gap:6,padding:"8px 0"}}>
                   {[1,2,3,4,5].map(n=>(
                     <button key={n} onClick={()=>updateField(b.id,"naverColCount",n)}
-                      style={{width:36,height:36,borderRadius:10,border:"none",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
+                      style={{width:34,height:34,borderRadius:8,border:"none",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
                         background:(b.naverColCount||1)===n?"#7c7cc8":"#f2f2f7",
                         color:(b.naverColCount||1)===n?"#fff":"#888"}}>{n}</button>
                   ))}
-                  <span style={{fontSize:11,color:"#bbb",marginLeft:4}}>개</span>
                 </div>
               </div>
             </div>
             {/* Footer */}
-            <div style={{display:"flex",gap:8,padding:"12px 18px",background:"#fafafa",borderTop:"1px solid #f0f0f0"}}>
+            <div style={{display:"flex",gap:8,padding:"10px 16px",background:"#fafafa",borderTop:"1px solid #f0f0f0"}}>
               {deleteId===b.id ? <>
-                <button onClick={()=>{deleteBranch(b.id);setExpandedCard(null);}} style={{flex:1,padding:"12px",fontSize:14,fontWeight:700,borderRadius:10,border:"none",background:"#ff3b30",color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>삭제 확인</button>
-                <button onClick={()=>setDeleteId(null)} style={{flex:1,padding:"12px",fontSize:14,borderRadius:10,border:"1px solid #d0d0d0",background:"#fff",color:"#888",cursor:"pointer",fontFamily:"inherit"}}>취소</button>
+                <button onClick={()=>{deleteBranch(b.id);setExpandedCard(null);}} style={{flex:1,padding:"10px",fontSize:13,fontWeight:700,borderRadius:8,border:"none",background:"#ff3b30",color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>삭제 확인</button>
+                <button onClick={()=>setDeleteId(null)} style={{flex:1,padding:"10px",fontSize:13,borderRadius:8,border:"1px solid #d0d0d0",background:"#fff",color:"#888",cursor:"pointer",fontFamily:"inherit"}}>취소</button>
               </> : <>
-                <button onClick={()=>setDeleteId(b.id)} style={{padding:"12px 16px",fontSize:13,borderRadius:10,border:"none",background:"#ff3b3010",color:"#ff3b30",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>
-                  <I name="trash" size={12}/> 삭제
+                <button onClick={()=>setDeleteId(b.id)} style={{padding:"10px 14px",fontSize:12,borderRadius:8,border:"none",background:"#ff3b3010",color:"#ff3b30",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>
+                  <I name="trash" size={11}/> 삭제
                 </button>
                 <div style={{flex:1}}/>
                 {edited[b.id] && <button onClick={()=>applyRow(b.id)}
-                  style={{padding:"12px 28px",fontSize:14,fontWeight:700,borderRadius:10,border:"none",background:"#7c7cc8",color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>저장</button>}
+                  style={{padding:"10px 24px",fontSize:13,fontWeight:700,borderRadius:8,border:"none",background:"#7c7cc8",color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>저장</button>}
               </>}
             </div>
           </div>
@@ -3812,12 +3842,13 @@ function AdminPlaces({ data, setData, bizId }) {
       {/* Collapsed cards grid */}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
         {branches.map((b,i) => (
-          <div key={b.id} onClick={()=>setExpandedCard(b.id)}
+          <div key={b.id} ref={el=>{if(el) cardRects.current[b.id] = el.getBoundingClientRect();}}
+            onClick={()=>{cardRects.current[b.id]=document.querySelector(`[data-bid="${b.id}"]`)?.getBoundingClientRect(); setExpandedCard(b.id);}}
+            data-bid={b.id}
             style={{
               borderRadius:14,padding:"14px",background:"#fff",cursor:"pointer",
               boxShadow:"0 1px 3px rgba(0,0,0,.06), 0 2px 8px rgba(0,0,0,.04)",
               borderLeft:`4px solid ${b.color||"#ddd"}`,
-              transition:"transform .15s",
               WebkitTapHighlightColor:"transparent"
             }}>
             <div style={{fontSize:14,fontWeight:700,color:"#222",marginBottom:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.name||"새 지점"}</div>
@@ -4478,6 +4509,7 @@ const CSS = `
   @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
   @keyframes slideUp{from{opacity:0;transform:translateY(80px)}to{opacity:1;transform:translateY(0)}}
   @keyframes cardOpen{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}
+  @keyframes ovFadeIn{from{opacity:0}to{opacity:1}}
   @keyframes slideIn{from{transform:translateX(-100%)}to{transform:translateX(0)}}
   @keyframes naverBlink{0%,100%{background:#fff3e0}50%{background:#ffe0b2}}
   @keyframes pendingBlink{0%,100%{opacity:1}50%{opacity:.5}}
