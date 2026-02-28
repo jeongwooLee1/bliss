@@ -107,7 +107,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.47.4";
+const BLISS_V = "2.48.0";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -475,7 +475,7 @@ function App() {
       </aside>
       {sideOpen && <div className="sidebar-m" style={{position:"fixed",inset:0,zIndex:300}}>
         <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,.5)"}} onClick={()=>setSideOpen(false)}/>
-        <div style={{position:"relative",width:260,height:"100%",background:"#fff",display:"flex",flexDirection:"column",animation:"slideIn .2s ease"}}>
+        <div style={{position:"relative",width:260,height:"100%",background:"#fff",display:"flex",flexDirection:"column",animation:"slideIn .5s cubic-bezier(.22,1,.36,1)"}}>
           <Sidebar nav={nav} page={page} setPage={p=>{setPage(p);setSideOpen(false)}} role={role} branchNames={branchNames} onLogout={handleLogout} bizName={bizName} isSuper={isSuper} onBackToSuper={handleBackToSuper} />
         </div>
       </div>}
@@ -606,7 +606,7 @@ function SuperDashboard({ superData, setSuperData, currentUser, onLogout, onEnte
       {/* Mobile sidebar overlay */}
       {sideOpen && <div className="sidebar-m" style={{position:"fixed",inset:0,zIndex:300}}>
         <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,.5)"}} onClick={()=>setSideOpen(false)}/>
-        <div style={{position:"relative",width:260,height:"100%",background:"#fff",display:"flex",flexDirection:"column",animation:"slideIn .2s ease"}}>
+        <div style={{position:"relative",width:260,height:"100%",background:"#fff",display:"flex",flexDirection:"column",animation:"slideIn .5s cubic-bezier(.22,1,.36,1)"}}>
           <SideContent/>
         </div>
       </div>}
@@ -777,7 +777,7 @@ function Login({ users, onLogin }) {
     <div style={{minHeight:"100vh",width:"100%",display:"flex",alignItems:"center",justifyContent:"center",background:"linear-gradient(135deg,#e8e8f0 0%,#d8d8e8 50%,#c8c8d8 100%)",fontFamily:"'Pretendard',sans-serif",padding:16}}>
       <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet"/>
       <style>{CSS}</style>
-      <div style={{background:"#fff",borderRadius:12,border:"1px solid #e0e0e0",padding:"32px 28px",width:"100%",maxWidth:420,animation:"fadeIn .5s ease",boxShadow:"0 8px 30px rgba(0,0,0,.1)"}}>
+      <div style={{background:"#fff",borderRadius:12,border:"1px solid #e0e0e0",padding:"32px 28px",width:"92%",maxWidth:420,animation:"slideUp .6s cubic-bezier(.22,1,.36,1)",boxShadow:"0 12px 40px rgba(0,0,0,.15)"}}>
         <div style={{textAlign:"center",marginBottom:32}}>
           <div style={{fontSize:28,fontWeight:800,color:"#7c7cc8",letterSpacing:-1}}>Bliss</div>
           <div style={{fontSize:12,color:"#999",marginTop:8}}>통합 예약 & 매출 관리 시스템</div>
@@ -1714,8 +1714,8 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
           : `${name}: ${orig.dur}분 → ${d.dur}분`;
         return <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,zIndex:9998,background:"rgba(0,0,0,0.3)",
           display:"flex",alignItems:"center",justifyContent:"center"}} onClick={cancelChange}>
-          <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:14,boxShadow:"0 8px 30px rgba(0,0,0,0.25)",padding:"20px 24px",
-            fontFamily:"inherit",minWidth:260,maxWidth:340,textAlign:"center"}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:14,boxShadow:"0 12px 40px rgba(0,0,0,0.2)",padding:"20px 24px",
+            fontFamily:"inherit",minWidth:260,maxWidth:340,textAlign:"center",animation:"slideUp .6s cubic-bezier(.22,1,.36,1)"}}>
             <div style={{fontSize:14,fontWeight:700,marginBottom:6}}>{type==="move"?"예약 이동":"시간 변경"}</div>
             <div style={{fontSize:13,color:"#555",marginBottom:16}}>{desc}</div>
             <div style={{display:"flex",gap:10,justifyContent:"center"}}>
@@ -1733,7 +1733,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
         <div style={{position:"fixed",inset:0,zIndex:99,background:"rgba(0,0,0,.3)"}} onClick={()=>setShowSettings(false)}/>
         <div style={{position:"fixed",bottom:0,left:0,right:0,
           background:"#fff",borderRadius:"16px 16px 0 0",padding:"20px 20px 32px",boxShadow:"0 -8px 32px rgba(0,0,0,.15)",zIndex:100,
-          maxHeight:"80vh",overflowY:"auto",
+          maxHeight:"80vh",overflowY:"auto",animation:"slideUp .6s cubic-bezier(.22,1,.36,1)",
           "@media(minWidth:600px)":{bottom:"auto",left:"auto",right:"auto"}}}>
           <div style={{width:36,height:4,borderRadius:2,background:"#ddd",margin:"0 auto 16px"}}/>
           <div style={{fontSize:14,fontWeight:700,color:"#333",marginBottom:12}}><I name="settings" size={14}/> 타임라인 설정</div>
@@ -1781,7 +1781,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       {/* 알람 팝업 */}
       {alarmPopup && <div className="ov" onClick={()=>setAlarmPopup(null)} style={{zIndex:9999}}>
         <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:12,padding:0,width:"90%",maxWidth:400,
-          boxShadow:"0 16px 48px rgba(0,0,0,.25)",animation:"fadeIn .3s ease",overflow:"hidden"}}>
+          boxShadow:"0 16px 48px rgba(0,0,0,.25)",animation:"slideUp .6s cubic-bezier(.22,1,.36,1)",overflow:"hidden"}}>
           <div style={{background:"linear-gradient(135deg,#FF6B00,#FF9800)",padding:"20px 24px",color:"#fff",textAlign:"center"}}>
             <div style={{fontSize:40,marginBottom:8}}><I name="bell" size={16} color="#FF9800"/></div>
             <div style={{fontSize:18,fontWeight:800}}>알람</div>
@@ -1805,7 +1805,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       {/* 반복일정 삭제 옵션 팝업 */}
       {deletePopup && <div className="ov" onClick={()=>setDeletePopup(null)} style={{zIndex:9998}}>
         <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:12,width:"90%",maxWidth:340,
-          boxShadow:"0 16px 48px rgba(0,0,0,.25)",animation:"fadeIn .2s ease",overflow:"hidden"}}>
+          boxShadow:"0 16px 48px rgba(0,0,0,.25)",animation:"slideUp .6s cubic-bezier(.22,1,.36,1)",overflow:"hidden"}}>
           <div style={{padding:"20px 24px 12px",borderBottom:"1px solid #eee"}}>
             <div style={{fontSize:14,fontWeight:700,color:"#333"}}>반복 일정 삭제</div>
             <div style={{fontSize:12,color:"#888",marginTop:4}}>이 일정은 반복 등록된 일정입니다.</div>
@@ -1986,7 +1986,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
         borderRadius:12,border:"1px solid #e0e0e0",
         width:"92%",maxWidth:500,
         overflow:"hidden",
-        animation:window.innerWidth<=768?"slideUp .5s cubic-bezier(.22,1,.36,1)":"fadeIn .2s ease",
+        animation:"slideUp 1.5s cubic-bezier(.22,1,.36,1)",
         margin:"auto 0",flexShrink:0,
         boxShadow:"0 8px 40px rgba(0,0,0,.18)",display:"flex",flexDirection:"column"}}>
         {/* ═══ Chrome-style Tabs ═══ */}
@@ -2621,8 +2621,8 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
     <div className="ov" onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{
         background: "#fff", borderRadius: 14, border: "1px solid #e0e0e0", padding: 0,
-        width: "95%", maxWidth: 1200, maxHeight: "92vh", overflow: "hidden", display: "flex", flexDirection: "column",
-        animation: "fadeIn .2s ease", boxShadow: "0 25px 60px rgba(0,0,0,.5)"
+        width: "92%", maxWidth: 1200, maxHeight: "92vh", overflow: "hidden", display: "flex", flexDirection: "column",
+        animation: "slideUp .6s cubic-bezier(.22,1,.36,1)", boxShadow: "0 12px 40px rgba(0,0,0,.18)"
       }}>
         {/* Header */}
         <div style={{ padding: "10px 20px", borderBottom: "1px solid #e0e0e0", display: "flex", alignItems: "center", justifyContent: "space-between", background: "#f8f8f8", gap: 10 }}>
@@ -4265,12 +4265,12 @@ const CSS = `
   .tl-block:hover{box-shadow:0 4px 14px rgba(0,0,0,.18) !important;transform:translateY(-1px)}
   .tl-block:active{box-shadow:0 2px 6px rgba(0,0,0,.12) !important;transform:translateY(0)}
   input,select,textarea{font-family:inherit}
-  @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
-  @keyframes slideUp{from{opacity:0;transform:translateY(60px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes slideUp{from{opacity:0;transform:translateY(80px)}to{opacity:1;transform:translateY(0)}}
   @keyframes slideIn{from{transform:translateX(-100%)}to{transform:translateX(0)}}
   @keyframes naverBlink{0%,100%{background:#fff3e0}50%{background:#ffe0b2}}
   @keyframes pendingBlink{0%,100%{opacity:1}50%{opacity:.5}}
-  .fade-in{animation:fadeIn .25s ease}
+  .fade-in{animation:fadeIn .6s ease}
   .card{background:#fff;border-radius:4px;border:1px solid #e0e0e0;box-shadow:none}
   .tw{overflow-x:auto}
   table{width:100%;border-collapse:collapse;font-size:13px}
@@ -4290,7 +4290,7 @@ const CSS = `
   .btn-d:hover{background:#d32f2f}
   .btn-sm{padding:5px 10px;font-size:11px}
   .ov{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.35);backdrop-filter:blur(2px);z-index:200;display:flex;align-items:center;justify-content:center;padding:16px}
-  .modal{background:#fff;border-radius:8px;border:1px solid #ddd;padding:22px;width:100%;max-width:500px;max-height:85vh;overflow-y:auto;animation:fadeIn .2s ease;box-shadow:0 8px 30px rgba(0,0,0,.15)}
+  .modal{background:#fff;border-radius:12px;border:1px solid #e0e0e0;padding:22px;width:92%;max-width:500px;max-height:85vh;overflow-y:auto;animation:slideUp .6s cubic-bezier(.22,1,.36,1);box-shadow:0 12px 40px rgba(0,0,0,.18)}
   .close-btn{background:none;border:none;color:#999;cursor:pointer;font-size:16px;font-family:inherit}
   .form-col{display:flex;flex-direction:column;gap:12px}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -4330,7 +4330,7 @@ const CSS = `
     .ov{padding:8px!important}
     .inp,.inp:focus{font-size:16px!important}
     select.inp{font-size:14px!important}
-    .modal{padding:16px!important;max-height:90vh!important}
+    .modal{padding:16px!important;max-height:90vh!important;width:92%!important;border-radius:12px!important}
   }
   @media(max-width:480px){
     .sale-grid{grid-template-columns:1fr!important}
