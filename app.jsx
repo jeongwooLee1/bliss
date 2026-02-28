@@ -107,7 +107,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.47.0";
+const BLISS_V = "2.47.1";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -1045,7 +1045,8 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       const isHour = m === 0;
       const ampm = h < 12 ? "오전" : "오후";
       const h12 = h <= 12 ? h : h - 12;
-      labels.push({ i, isHour, m, text: isHour ? `${ampm} ${String(h12).padStart(2,"0")}:00` : `${String(m).padStart(2,"0")}` });
+      const isMob = window.innerWidth <= 768;
+      labels.push({ i, isHour, m, text: isHour ? (isMob ? `${h12}:00` : `${ampm} ${String(h12).padStart(2,"0")}:00`) : `${String(m).padStart(2,"0")}` });
     }
     return labels;
   }, [startHour, endHour, timeUnit, totalRows]);
@@ -1178,7 +1179,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   };
 
   // ── Drag handlers ──
-  const timeLabelsW = 88;
+  const timeLabelsW = window.innerWidth <= 768 ? 52 : 88;
   const handleDragStart = (block, e) => {
     e.stopPropagation();
     const isTouch = e.type === "touchstart";
@@ -1519,7 +1520,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       })()}
 
       {/* Timeline Grid */}
-      <div ref={scrollRef} className="timeline-scroll" style={{flex:1,overflow:"scroll",position:"relative",minHeight:0,WebkitOverflowScrolling:"touch"}}>
+      <div ref={scrollRef} className="timeline-scroll" style={{flex:1,overflow:"scroll",position:"relative",minHeight:0,WebkitOverflowScrolling:"touch",overscrollBehavior:"contain"}}>
         <div style={{display:"flex",minWidth:"fit-content"}}>
           {/* Time Labels */}
           <div style={{width:timeLabelsW,flexShrink:0,position:"sticky",left:0,zIndex:20,background:"#fff",borderRight:"1px solid #eee"}}>
@@ -1528,8 +1529,8 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
               {hoverCell && hoverCell.rowIdx>=0 && <div style={{position:"absolute",top:hoverCell.rowIdx*rowH,left:0,right:0,height:rowH,background:"rgba(124,124,200,0.08)",zIndex:1,pointerEvents:"none"}}/>}
               {timeLabels.map(({i, isHour, m, text}) => {
                 const isHighlighted = hoverCell && hoverCell.rowIdx === i;
-                return <div key={i} style={{position:"absolute",top:i*rowH,left:0,right:0,height:rowH,display:"flex",alignItems:"center",justifyContent:"flex-end",paddingRight:6}}>
-                  <span style={{fontSize:isHour?11:9,fontWeight:isHighlighted?700:(isHour?600:400),color:isHighlighted?"#7c7cc8":(isHour?"#555":"#aaa"),whiteSpace:"nowrap",lineHeight:1,transition:"color 0.1s"}}>{text}</span>
+                return <div key={i} style={{position:"absolute",top:i*rowH,left:0,right:0,height:rowH,display:"flex",alignItems:"center",justifyContent:"flex-end",paddingRight:window.innerWidth<=768?3:6}}>
+                  <span style={{fontSize:isHour?(window.innerWidth<=768?10:11):(window.innerWidth<=768?8:9),fontWeight:isHighlighted?700:(isHour?600:400),color:isHighlighted?"#7c7cc8":(isHour?"#555":"#aaa"),whiteSpace:"nowrap",lineHeight:1,transition:"color 0.1s"}}>{text}</span>
                 </div>;
               })}
               {nowY > 0 && <div style={{position:"absolute",top:nowY-9,left:0,right:0,display:"flex",alignItems:"center",justifyContent:"center",zIndex:6,pointerEvents:"none"}}>
