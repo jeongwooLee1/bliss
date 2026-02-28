@@ -120,7 +120,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.49.5";
+const BLISS_V = "2.49.6";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -3758,14 +3758,14 @@ function AdminPlaces({ data, setData, bizId }) {
                   borderBottom:"1px solid #f2f2f7",minHeight:44}}>
                   <span style={{width:72,fontSize:12,color:"#666",flexShrink:0,fontWeight:500}}>{row.label}</span>
                   <input value={row.val} onChange={e=>updateField(b.id,row.field,e.target.value)}
-                    placeholder={row.ph} style={{flex:1,fontSize:13,border:"none",background:"transparent",padding:"10px 0",borderRadius:0,outline:"none",fontFamily:"inherit",color:"#333",WebkitTapHighlightColor:"transparent"}}/>
+                    placeholder={row.ph} style={{flex:1,fontSize:16,border:"none",background:"transparent",padding:"10px 0",borderRadius:0,outline:"none",fontFamily:"inherit",color:"#333",WebkitTapHighlightColor:"transparent"}}/>
                 </div>
               ))}
               {/* 사용구분 */}
               <div className="admin-place-row" style={{display:"flex",alignItems:"center",padding:"0 14px",borderBottom:"1px solid #f2f2f7",minHeight:44}}>
                 <span style={{width:72,fontSize:12,color:"#666",flexShrink:0,fontWeight:500}}>사용구분</span>
                 <select value={b.useYn!==false?"Y":"N"} onChange={e=>updateField(b.id,"useYn",e.target.value==="Y")}
-                  style={{flex:1,fontSize:13,appearance:"none",border:"none",background:"transparent",padding:"10px 0",borderRadius:0,outline:"none",fontFamily:"inherit",WebkitTapHighlightColor:"transparent",
+                  style={{flex:1,fontSize:16,appearance:"none",border:"none",background:"transparent",padding:"10px 0",borderRadius:0,outline:"none",fontFamily:"inherit",WebkitTapHighlightColor:"transparent",
                     color:b.useYn!==false?"#34c759":"#ff3b30",fontWeight:600}}>
                   <option value="Y">사용</option><option value="N">미사용</option>
                 </select>
