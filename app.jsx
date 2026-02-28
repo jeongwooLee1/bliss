@@ -107,7 +107,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.48.6";
+const BLISS_V = "2.48.7";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -866,7 +866,16 @@ function MiniCal({ selDate, onSelect, onClose }) {
   const prevM = () => setViewDate(v => v.m === 0 ? { y: v.y - 1, m: 11 } : { ...v, m: v.m - 1 });
   const nextM = () => setViewDate(v => v.m === 11 ? { y: v.y + 1, m: 0 } : { ...v, m: v.m + 1 });
   const dayNames = ["일","월","화","수","목","금","토"];
-  return <div ref={ref} style={{position:"absolute",top:"100%",left:0,zIndex:100,background:"#fff",border:"1px solid #d0d0d0",borderRadius:8,boxShadow:"0 8px 24px rgba(0,0,0,.15)",padding:10,width:250,marginTop:4}}>
+  useEffect(() => {
+    if (ref.current) {
+      const rect = ref.current.getBoundingClientRect();
+      if (rect.right > window.innerWidth - 8) ref.current.style.left = "auto";
+      if (rect.right > window.innerWidth - 8) ref.current.style.right = "0";
+      if (rect.right > window.innerWidth - 8) ref.current.style.transform = "none";
+      if (rect.left < 8) { ref.current.style.left = "0"; ref.current.style.transform = "none"; }
+    }
+  }, []);
+  return <div ref={ref} style={{position:"absolute",top:"100%",left:"50%",transform:"translateX(-50%)",zIndex:100,background:"#fff",border:"1px solid #d0d0d0",borderRadius:8,boxShadow:"0 8px 24px rgba(0,0,0,.15)",padding:10,width:250,marginTop:4}}>
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
       <button onClick={prevM} style={{background:"none",border:"none",cursor:"pointer",padding:4,color:"#666"}}><I name="chevL" size={14}/></button>
       <span style={{fontSize:13,fontWeight:700,color:"#333"}}>{y}년 {m+1}월</span>
@@ -1442,10 +1451,10 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
             {showCal && <MiniCal selDate={selDate} onSelect={d=>{setSelDate(d);setShowCal(false);}} onClose={()=>setShowCal(false)}/>}
           </div>
           <button onClick={()=>changeDate(1)} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#666",padding:"2px 4px",flexShrink:0}}><I name="chevR" size={14}/></button>
-          <button onClick={()=>setSelDate(todayStr())} style={{padding:"2px 8px",fontSize:10,border:"1px solid #d0d0d0",borderRadius:3,background:"#fff",color:"#666",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>오늘</button>
+          <button onClick={()=>setSelDate(todayStr())} style={{padding:"0 8px",height:28,fontSize:10,border:"1px solid #d0d0d0",borderRadius:4,background:"#fff",color:"#666",cursor:"pointer",fontFamily:"inherit",flexShrink:0,display:"flex",alignItems:"center"}}>오늘</button>
           <div style={{position:"relative",flexShrink:0}} ref={el => { if(el) el._settingsBtn = el; }}>
             <button onClick={(e)=>{setShowSettings(!showSettings);}} id="settings-btn"
-              style={{width:24,height:24,border:"1px solid #d0d0d0",borderRadius:4,background:showSettings?"#f0f0ff":"#fff",
+              style={{width:28,height:28,border:"1px solid #d0d0d0",borderRadius:4,background:showSettings?"#f0f0ff":"#fff",
                 cursor:"pointer",fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",padding:0,color:"#888"}}><I name="settings" size={14}/></button>
           </div>
           <select value={viewBids.length===(isMaster?allBranchList.length:accessibleBids.length)?"all":viewBids.length===1?viewBids[0]:"custom"}
@@ -1454,7 +1463,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
               if(v==="all") setViewBids(isMaster?allBranchList.map(b=>b.id):accessibleBids);
               else setViewBids([v]);
             }}
-            style={{flexShrink:0,padding:"2px 6px",fontSize:10,border:"1px solid #d0d0d0",borderRadius:4,background:"#fff",color:"#555",cursor:"pointer",fontFamily:"inherit",fontWeight:600,maxWidth:120}}>
+            style={{flexShrink:0,padding:"0 6px",height:28,fontSize:10,border:"1px solid #d0d0d0",borderRadius:4,background:"#fff",color:"#555",cursor:"pointer",fontFamily:"inherit",fontWeight:600,maxWidth:120}}>
             <option value="all">전체지점</option>
             {(isMaster?allBranchList:allBranchList.filter(b=>accessibleBids.includes(b.id))).map(b=>
               <option key={b.id} value={b.id}>{b.short||b.name}{!canEdit(b.id)?" (읽기)":""}</option>
@@ -1731,11 +1740,13 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       {/* Settings dropdown (fixed, outside overflow) */}
       {showSettings && <>
         <div style={{position:"fixed",inset:0,zIndex:99,background:"rgba(0,0,0,.3)"}} onClick={()=>setShowSettings(false)}/>
-        <div style={{position:"fixed",bottom:0,left:0,right:0,
+        <div
+          onTouchStart={e => { e.currentTarget.dataset.sy = e.touches[0].clientY; }}
+          onTouchEnd={e => { if (e.changedTouches[0].clientY - Number(e.currentTarget.dataset.sy||0) > 60) setShowSettings(false); }}
+          style={{position:"fixed",bottom:0,left:0,right:0,
           background:"#fff",borderRadius:"16px 16px 0 0",padding:"20px 20px 32px",boxShadow:"0 -8px 32px rgba(0,0,0,.15)",zIndex:100,
-          maxHeight:"80vh",overflowY:"auto",animation:"slideUp .6s cubic-bezier(.22,1,.36,1)",
-          "@media(minWidth:600px)":{bottom:"auto",left:"auto",right:"auto"}}}>
-          <div style={{width:36,height:4,borderRadius:2,background:"#ddd",margin:"0 auto 16px"}}/>
+          maxHeight:"80vh",overflowY:"auto",animation:"slideUp .6s cubic-bezier(.22,1,.36,1)"}}>
+          <div style={{width:36,height:4,borderRadius:2,background:"#ddd",margin:"0 auto 16px",cursor:"grab"}}/>
           <div style={{fontSize:14,fontWeight:700,color:"#333",marginBottom:12}}><I name="settings" size={14}/> 타임라인 설정</div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
           {[
