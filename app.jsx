@@ -106,7 +106,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.43.0";
+const BLISS_V = "2.43.1";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -838,34 +838,27 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   
   const blocks = data.reservations.filter(r => r.date === selDate && branchesToShow.some(b=>b.id===r.bid));
 
-  // Time config - shared across all users via DB (branch timeline_settings)
+  // Time config - per-user via DB (app_users.timeline_settings)
   const getTlSettings = () => {
     try {
-      const br = (data.branchSettings||data.branches||[]).find(b => userBranches.includes(b.id));
-      if (br?.timeline_settings) {
-        const s = typeof br.timeline_settings === "string" ? JSON.parse(br.timeline_settings) : br.timeline_settings;
+      const u = currentUser;
+      if (u?.timeline_settings) {
+        const s = typeof u.timeline_settings === "string" ? JSON.parse(u.timeline_settings) : u.timeline_settings;
         return s || {};
       }
     } catch(e) {}
     return {};
   };
   const dbTl = useRef(getTlSettings());
-  useEffect(() => { dbTl.current = getTlSettings(); }, [data.branchSettings, data.branches]);
   const tlDef = (k, def) => dbTl.current[k] !== undefined ? Number(dbTl.current[k]) : def;
   const tlSaveTimer = useRef(null);
   const tlSaveDb = useCallback((allSettings) => {
+    if (!currentUser?.id) return;
     clearTimeout(tlSaveTimer.current);
     tlSaveTimer.current = setTimeout(() => {
-      const json = JSON.stringify(allSettings);
-      (data.branchSettings||data.branches||[]).filter(b=>userBranches.includes(b.id)).forEach(b => {
-        sb.update("branches", b.id, {timeline_settings:json}).catch(console.error);
-      });
-      setData(prev => ({...prev,
-        branchSettings: (prev.branchSettings||[]).map(b => userBranches.includes(b.id) ? {...b, timeline_settings:allSettings} : b),
-        branches: (prev.branches||[]).map(b => userBranches.includes(b.id) ? {...b, timeline_settings:allSettings} : b),
-      }));
+      sb.update("app_users", currentUser.id, {timeline_settings:JSON.stringify(allSettings)}).catch(console.error);
     }, 500);
-  }, [data.branchSettings, data.branches, userBranches]);
+  }, [currentUser]);
   const [startHour, setStartHourRaw] = useState(() => tlDef("sh", 8));
   const [endHour, setEndHourRaw] = useState(() => tlDef("eh", 22));
   const [rowH, setRowHRaw] = useState(() => tlDef("rh", 14));
