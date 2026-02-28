@@ -2,6 +2,7 @@
 const SB_URL = "https://dpftlrsuqxqqeouwbfjd.supabase.co";
 const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwZnRscnN1cXhxcWVvdXdiZmpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5MDU4MjQsImV4cCI6MjA4NzQ4MTgyNH0.iydEkjtPjZ0jXpUUPJben4IWWneDqLomv-HDlcFayE4";
 const sbHeaders = {"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-Type":"application/json","Prefer":"return=representation"};
+const supaRT = typeof supabase !== "undefined" ? supabase.createClient(SB_URL, SB_KEY) : null;
 const sb = {
   async get(table, filter="") { 
     const hasSortCol = ["services","products","service_tags","service_categories"].includes(table);
@@ -106,7 +107,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.43.1";
+const BLISS_V = "2.43.2";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -345,6 +346,36 @@ function App() {
     setActiveBiz(null);
     setPhase("login");
   };
+
+  // ─── Supabase Realtime: reservations 실시간 동기화 ───
+  useEffect(() => {
+    if (!supaRT || phase !== "app" || !currentBizId) return;
+    const ch = supaRT.channel("rt-res-" + currentBizId)
+      .on("postgres_changes", { event: "*", schema: "public", table: "reservations", filter: "business_id=eq." + currentBizId }, (payload) => {
+        const ev = payload.eventType;
+        const row = payload.new || {};
+        const oldRow = payload.old || {};
+        setData(prev => {
+          if (!prev) return prev;
+          const parsed = row.id ? fromDb("reservations", [row])[0] : null;
+          if (ev === "INSERT" && parsed) {
+            if (prev.reservations.some(r => r.id === parsed.id)) return prev;
+            return {...prev, reservations: [...prev.reservations, parsed]};
+          }
+          if (ev === "UPDATE" && parsed) {
+            return {...prev, reservations: prev.reservations.map(r => r.id === parsed.id ? {...r, ...parsed} : r)};
+          }
+          if (ev === "DELETE") {
+            const delId = oldRow.id;
+            if (!delId) return prev;
+            return {...prev, reservations: prev.reservations.filter(r => r.id !== delId)};
+          }
+          return prev;
+        });
+      })
+      .subscribe((status) => { console.log("Realtime reservations:", status); });
+    return () => { supaRT.removeChannel(ch); };
+  }, [phase, currentBizId]);
 
   const handleBackToSuper = async () => {
     try{const s=JSON.parse(sessionStorage.getItem("bliss_session")||"{}");delete s.bizId;sessionStorage.setItem("bliss_session",JSON.stringify(s));}catch(e){}
