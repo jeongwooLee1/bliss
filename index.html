@@ -120,7 +120,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.48.7";
+const BLISS_V = "2.48.8";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -1751,14 +1751,48 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       {showModal && <TimelineModal item={modalData} onSave={handleSave} onDelete={handleDelete} onDeleteRequest={handleDeleteRequest} onClose={()=>{setShowModal(false);setModalData(null)}} selBranch={userBranches[0]} userBranches={userBranches} data={data} setData={setData} setPage={setPage}/>}
 
       {/* Settings dropdown (fixed, outside overflow) */}
-      {showSettings && <>
+      {showSettings && <>{(() => {
+        const handleTouchStart = e => {
+          const el = e.currentTarget;
+          el.dataset.sy = e.touches[0].clientY;
+          el.dataset.dragging = "1";
+          el.style.transition = "none";
+        };
+        const handleTouchMove = e => {
+          const el = e.currentTarget;
+          if (el.dataset.dragging !== "1") return;
+          const dy = Math.max(0, e.touches[0].clientY - Number(el.dataset.sy||0));
+          el.style.transform = `translateY(${dy}px)`;
+          // fade overlay
+          const ov = el.previousElementSibling;
+          if (ov) ov.style.opacity = Math.max(0, 1 - dy / 300);
+        };
+        const handleTouchEnd = e => {
+          const el = e.currentTarget;
+          el.dataset.dragging = "0";
+          const dy = e.changedTouches[0].clientY - Number(el.dataset.sy||0);
+          if (dy > 80) {
+            el.style.transition = "transform .3s cubic-bezier(.4,0,1,1)";
+            el.style.transform = `translateY(${el.offsetHeight}px)`;
+            const ov = el.previousElementSibling;
+            if (ov) { ov.style.transition = "opacity .3s"; ov.style.opacity = "0"; }
+            setTimeout(() => setShowSettings(false), 300);
+          } else {
+            el.style.transition = "transform .25s cubic-bezier(.22,1,.36,1)";
+            el.style.transform = "translateY(0)";
+            const ov = el.previousElementSibling;
+            if (ov) { ov.style.transition = "opacity .25s"; ov.style.opacity = "1"; }
+          }
+        };
+        return <>
         <div style={{position:"fixed",inset:0,zIndex:99,background:"rgba(0,0,0,.3)"}} onClick={()=>setShowSettings(false)}/>
         <div
-          onTouchStart={e => { e.currentTarget.dataset.sy = e.touches[0].clientY; }}
-          onTouchEnd={e => { if (e.changedTouches[0].clientY - Number(e.currentTarget.dataset.sy||0) > 60) setShowSettings(false); }}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
           style={{position:"fixed",bottom:0,left:0,right:0,
           background:"#fff",borderRadius:"16px 16px 0 0",padding:"20px 20px 32px",boxShadow:"0 -8px 32px rgba(0,0,0,.15)",zIndex:100,
-          maxHeight:"80vh",overflowY:"auto",animation:"slideUp .6s cubic-bezier(.22,1,.36,1)"}}>
+          maxHeight:"80vh",overflowY:"auto",animation:"slideUp .6s cubic-bezier(.22,1,.36,1)",willChange:"transform"}}>
           <div style={{width:36,height:4,borderRadius:2,background:"#ddd",margin:"0 auto 16px",cursor:"grab"}}/>
           <div style={{fontSize:14,fontWeight:700,color:"#333",marginBottom:12}}><I name="settings" size={14}/> 타임라인 설정</div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
@@ -1800,7 +1834,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
             </div>
           </div>
         </div>
-      </>}
+      </>;})()}</>}
 
       {/* 알람 팝업 */}
       {alarmPopup && <div className="ov" onClick={()=>setAlarmPopup(null)} style={{zIndex:9999}}>
