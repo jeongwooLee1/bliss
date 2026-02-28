@@ -118,7 +118,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.41.7";
+const BLISS_V = "2.41.8";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -1356,7 +1356,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                           </div>}
                         </>}
                         {block.type==="reservation" && block.isSchedule && <div style={{fontWeight:700,color:"#333",fontSize:blockFs+1}}>
-                          {block.selectedTags?.map(tid=>{const tg=tags.find(t=>t.id===tid);return tg?.name}).filter(Boolean).join(", ")||"기타일정"}
+                          {block.selectedTags?.map(tid=>{const tg=tags.find(t=>t.id===tid);return tg?.name}).filter(Boolean).join(", ")||"내부일정"}
                         </div>}
                         {block.type==="memo" && <div style={{color:"#ef5350",fontWeight:600}}><I name="fileText" size={10} color="#ef5350"/> 메모</div>}
                         {block.type==="clockin" && <div style={{color:"#666",fontWeight:600}}><I name="clock" size={10} color="#666"/> {staff?.dn||"출근"}</div>}
@@ -1662,21 +1662,21 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
         boxShadow:"0 8px 30px rgba(0,0,0,.15)",display:"flex",flexDirection:"column"}}>
         {/* ═══ Chrome-style Tabs ═══ */}
         <div style={{display:"flex",alignItems:"flex-end",gap:0,padding:"0",background:"#f5f5f5",borderRadius:"8px 8px 0 0",position:"sticky",top:0,zIndex:10,borderBottom:"1px solid #e0e0e0"}}>
-          {/* 신규예약 탭 */}
+          {/* 예약 탭 */}
           <button onClick={()=>{setIsSchedule(false);setF(p=>({...p,isSchedule:false,selectedTags:[],type:"reservation"}));if(modalRef.current)modalRef.current.scrollTop=0}}
             style={{flex:1,padding:"12px 16px",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
               border:"none",borderBottom:isSchedule?"none":"2px solid #7c7cc8",
               background:isSchedule?"transparent":"#fff",color:isSchedule?"#999":"#7c7cc8",
               transition:"all .15s"}}>
-            <I name="calendar" size={12}/> 신규예약
+            <I name="calendar" size={12}/> 예약
           </button>
-          {/* 기타일정 탭 */}
+          {/* 내부일정 탭 */}
           <button onClick={()=>{setIsSchedule(true);setF(p=>({...p,isSchedule:true,selectedTags:[],type:"reservation"}));if(modalRef.current)modalRef.current.scrollTop=0}}
             style={{flex:1,padding:"12px 16px",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
               border:"none",borderBottom:isSchedule?"2px solid #e17055":"none",
               background:isSchedule?"#fff":"transparent",color:isSchedule?"#e17055":"#999",
               transition:"all .15s"}}>
-            <I name="clipboard" size={12}/> 기타일정
+            <I name="clipboard" size={12}/> 내부일정
           </button>
           {/* 닫기 */}
           <button onClick={onClose} style={{padding:"8px 14px",background:"transparent",border:"none",color:"#999",cursor:"pointer",
@@ -1708,7 +1708,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
             </div>
           </div>}
 
-          {/* ═══ 기타일정 모드 ═══ */}
+          {/* ═══ 내부일정 모드 ═══ */}
           {isSchedule && <>
             <div>
               <div className="res-time-row" style={{display:"flex",gap:3,alignItems:"center",flexWrap:"nowrap",overflowX:"auto"}}>
@@ -1748,7 +1748,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
                 {f.repeat === "monthly" && <span style={{fontSize:10,color:"#e17055"}}>매월 {new Date(f.date+"T00:00").getDate()}일 {f.time}에 반복</span>}
               </div>}
             </div>
-            <FLD label={`기타일정 항목${tagDurTotal > 0 ? ` — 소요시간: ${tagDurTotal}분` : ""}`}>
+            <FLD label={`내부일정 항목${tagDurTotal > 0 ? ` — 소요시간: ${tagDurTotal}분` : ""}`}>
               <div style={{display:"flex",flexWrap:"wrap",gap:5,padding:10,background:"#fff8f6",borderRadius:8,border:"1px dashed #e17055"}}>
                 {visibleTags.length > 0 ? visibleTags.map(tag => {
                   const sel = f.selectedTags?.includes(tag.id);
@@ -1762,7 +1762,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
                     {tag.name}
                     {tag.dur > 0 && <span style={{fontSize:9,opacity:0.7}}>({tag.dur}분)</span>}
                   </button>;
-                }) : <span style={{fontSize:11,color:"#999",padding:8}}>서비스태그관리에서 기타일정(Y) 항목을 등록하세요</span>}
+                }) : <span style={{fontSize:11,color:"#999",padding:8}}>서비스태그관리에서 내부일정(Y) 항목을 등록하세요</span>}
               </div>
               {(f.selectedTags||[]).length > 0 && <div style={{marginTop:6,display:"flex",flexWrap:"wrap",gap:4,alignItems:"center"}}>
                 <span style={{fontSize:10,color:"#999"}}>선택:</span>
@@ -1772,7 +1772,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
             </FLD>
           </>}
 
-          {/* ═══ 신규예약 모드 ═══ */}
+          {/* ═══ 예약 모드 ═══ */}
           {!isSchedule && <>
             {/* 고객 검색 */}
             <div>
@@ -1874,8 +1874,8 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
             </div>;
             })()}
 
-            {/* 상품/서비스 태그 */}
-            <FLD label={`상품/서비스${(tagDurTotal+svcDurTotal) > 0 ? ` — 합산 소요시간: ${tagDurTotal+svcDurTotal}분` : ""}`}>
+            {/* 예약태그 */}
+            <FLD label={`예약태그${(tagDurTotal+svcDurTotal) > 0 ? ` — 소요시간: ${tagDurTotal+svcDurTotal}분` : ""}`}>
               <div style={{display:"flex",flexWrap:"wrap",gap:4,padding:8,background:"#f8f8f8",borderRadius:8,border:"1px solid #e0e0e0"}}>
                 {visibleTags.map(tag => {
                   const sel = f.selectedTags?.includes(tag.id);
@@ -3769,11 +3769,11 @@ function AdminServiceTags({ data, setData }) {
 
   const inpS = {padding:"4px 6px",fontSize:11,background:"#f8f0f0",border:"1px solid #d0d0d0"};
 
-  const downloadXl = () => XL.download(tags.map((t,i)=>({태그명:t.name, 소요분:t.dur, 기타일정:t.scheduleYn, 색상:t.color||"", 사용:t.useYn!==false?"Y":"N"})), "서비스태그.xlsx", "태그", ["태그명","소요분","기타일정","색상","사용"]);
+  const downloadXl = () => XL.download(tags.map((t,i)=>({태그명:t.name, 소요분:t.dur, 내부일정:t.scheduleYn, 색상:t.color||"", 사용:t.useYn!==false?"Y":"N"})), "서비스태그.xlsx", "태그", ["태그명","소요분","내부일정","색상","사용"]);
   const uploadXl = async (e) => {
     const file = e.target.files[0]; if(!file) return;
     const rows = await XL.readFile(file);
-    const newTags = rows.map(r=>({id:uid(), name:r["태그명"]||r["name"]||"", dur:Number(r["소요분"]||r["dur"])||0, scheduleYn:r["기타일정"]||"N", color:r["색상"]||"", useYn:(r["사용"]||"Y")!=="N", sort:tags.length})).filter(r=>r.name);
+    const newTags = rows.map(r=>({id:uid(), name:r["태그명"]||r["name"]||"", dur:Number(r["소요분"]||r["dur"])||0, scheduleYn:r["내부일정"]||"N", color:r["색상"]||"", useYn:(r["사용"]||"Y")!=="N", sort:tags.length})).filter(r=>r.name);
     if(newTags.length && window.confirm(newTags.length+"개 태그를 추가하시겠습니까?")) {
       syncTags([...tags,...newTags]);
       newTags.forEach(t=>sb.insert("service_tags", tagToDb(t)).catch(console.error));
@@ -3787,7 +3787,7 @@ function AdminServiceTags({ data, setData }) {
       <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"flex-end"}}>
         <FLD label="태그명"><input className="inp" style={{width:160,...inpS}} value={newTag.name} onChange={e=>setNewTag(p=>({...p,name:e.target.value}))} placeholder="태그명" onKeyDown={e=>e.key==="Enter"&&addTag()}/></FLD>
         <FLD label="소요(분)"><input className="inp" type="number" style={{width:80,...inpS}} value={newTag.dur} onChange={e=>setNewTag(p=>({...p,dur:e.target.value}))}/></FLD>
-        <FLD label="기타일정"><select className="inp" style={{width:55,...inpS}} value={newTag.scheduleYn} onChange={e=>setNewTag(p=>({...p,scheduleYn:e.target.value}))}><option value="N">N</option><option value="Y">Y</option></select></FLD>
+        <FLD label="내부일정"><select className="inp" style={{width:55,...inpS}} value={newTag.scheduleYn} onChange={e=>setNewTag(p=>({...p,scheduleYn:e.target.value}))}><option value="N">N</option><option value="Y">Y</option></select></FLD>
         <FLD label="색상"><div style={{display:"flex",alignItems:"center",gap:3}}>
           <input type="color" value={newTag.color||"#e0e0e0"} onChange={e=>setNewTag(p=>({...p,color:e.target.value}))} style={{width:22,height:22,border:"none",cursor:"pointer"}}/>
           <input className="inp" style={{width:75,...inpS,fontFamily:"monospace",fontSize:9}} value={newTag.color} onChange={e=>setNewTag(p=>({...p,color:e.target.value}))} placeholder="#000000"/>
