@@ -107,7 +107,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.47.3";
+const BLISS_V = "2.47.4";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -596,7 +596,7 @@ function SuperDashboard({ superData, setSuperData, currentUser, onLogout, onEnte
   </>;
 
   return (
-    <div style={{display:"flex",height:"100vh",fontFamily:"'Pretendard',sans-serif",background:"#f8f8f8"}}>
+    <div style={{display:"flex",height:"100dvh",fontFamily:"'Pretendard',sans-serif",background:"#f8f8f8",position:"fixed",top:0,left:0,right:0,bottom:0}}>
       <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet"/>
       <style>{CSS}</style>
       {/* Desktop sidebar */}
@@ -610,7 +610,7 @@ function SuperDashboard({ superData, setSuperData, currentUser, onLogout, onEnte
           <SideContent/>
         </div>
       </div>}
-      <main className="main-c" style={{flex:1,display:"flex",flexDirection:"column",height:"100vh",overflow:"hidden"}}>
+      <main className="main-c" style={{flex:1,display:"flex",flexDirection:"column",height:"100%",overflow:"hidden"}}>
         {/* Mobile header */}
         <div className="mob-hdr" style={{padding:"10px 16px",background:"#fff",borderBottom:"1px solid #e0e0e0",display:"flex",alignItems:"center",gap:12}}>
           <button onClick={()=>setSideOpen(true)} style={{background:"none",border:"none",color:"#333",cursor:"pointer",fontSize:20,fontFamily:"inherit"}}><I name="menu" size={20}/></button>
@@ -1520,7 +1520,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       })()}
 
       {/* Timeline Grid */}
-      <div ref={scrollRef} className="timeline-scroll" style={{flex:1,overflow:"scroll",position:"relative",minHeight:0,WebkitOverflowScrolling:"touch",overscrollBehavior:"contain"}}>
+      <div ref={scrollRef} className="timeline-scroll" style={{flex:1,overflow:"scroll",position:"relative",minHeight:0,WebkitOverflowScrolling:"touch"}}>
         <div style={{display:"flex",minWidth:"fit-content"}}>
           {/* Time Labels */}
           <div style={{width:timeLabelsW,flexShrink:0,position:"sticky",left:0,zIndex:20,background:"#fff",borderRight:"1px solid #eee"}}>
@@ -4233,15 +4233,16 @@ function FLD({ label, children }) {
 // ─── Styles ───
 // Palette: #5cb5c5(teal) #7c7cc8(slate) #d0d0d0(pink) #f0f0f0(blush)
 const S = {
-  root: { display:"flex", height:"100vh", fontFamily:"'Pretendard',-apple-system,BlinkMacSystemFont,'Noto Sans KR',sans-serif", background:"#f8f8f8", color:"#333", overflow:"hidden" },
+  root: { display:"flex", height:"100dvh", fontFamily:"'Pretendard',-apple-system,BlinkMacSystemFont,'Noto Sans KR',sans-serif", background:"#f8f8f8", color:"#333", overflow:"hidden", position:"fixed", top:0, left:0, right:0, bottom:0 },
   sidebar: { width:200, background:"#fff", borderRight:"1px solid #e0e0e0", display:"flex", flexDirection:"column", position:"fixed", top:0, left:0, bottom:0, zIndex:50 },
-  main: { flex:1, marginLeft:200, display:"flex", flexDirection:"column", height:"100vh", minHeight:0, overflow:"hidden" },
+  main: { flex:1, marginLeft:200, display:"flex", flexDirection:"column", height:"100%", minHeight:0, overflow:"hidden" },
   mobHdr: { padding:"10px 16px", background:"#fff", borderBottom:"1px solid #e0e0e0", display:"flex", alignItems:"center", gap:12 },
   menuBtn: { background:"none", border:"none", color:"#333", cursor:"pointer", fontSize:20, fontFamily:"inherit" },
 };
 
 const CSS = `
-  html,body,#root{height:100%;margin:0;padding:0}
+  html,body,#root{height:100%;margin:0;padding:0;overflow:hidden}
+  @supports(height:100dvh){html,body,#root{height:100dvh}}
   *{box-sizing:border-box;margin:0;padding:0}
   input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
   input[type=number]{-moz-appearance:textfield}
