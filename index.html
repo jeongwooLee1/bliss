@@ -120,7 +120,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.46.0";
+const BLISS_V = "2.46.1";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -2242,7 +2242,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
 
           {/* 예약메모 */}
           <div>
-            <textarea className="inp" rows={3} value={f.memo} onChange={e=>set("memo",e.target.value)} style={{resize:"vertical"}} placeholder="예약 관련 메모를 입력하세요"/>
+            <textarea className="inp" rows={8} value={f.memo} onChange={e=>set("memo",e.target.value)} style={{resize:"vertical"}} placeholder="예약 관련 메모를 입력하세요"/>
             {(() => {
               const isNaverRes = !!(f.reservationId || (f.memo && /네이버/.test(f.memo)));
               if (!isNaverRes) return null;
