@@ -120,7 +120,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.48.4";
+const BLISS_V = "2.48.5";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -2647,7 +2647,7 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
         animation: "slideUp .6s cubic-bezier(.22,1,.36,1)", boxShadow: "0 12px 40px rgba(0,0,0,.18)"
       }}>
         {/* Header */}
-        <div style={{ padding: "10px 20px", borderBottom: "1px solid #e0e0e0", display: "flex", alignItems: "center", justifyContent: "space-between", background: "#f8f8f8", gap: 10 }}>
+        <div style={{ padding: "10px 20px", borderBottom: "1px solid #e0e0e0", display: "flex", alignItems: "center", justifyContent: "space-between", background: "#f8f8f8", gap: 10, borderRadius: "12px 12px 0 0" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", flex: 1 }}>
             <h3 style={{ fontSize: 16, fontWeight: 800, color: "#ef5350", flexShrink: 0 }}><I name="diamond" size={14}/> 매출 입력</h3>
             {cust.name ? (
@@ -2856,7 +2856,7 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
         </div>
 
         {/* Footer */}
-        <div style={{ padding: "10px 16px", borderTop: "1px solid #e0e0e0", display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", background: "#f8f8f8", flexWrap: "wrap" }}>
+        <div style={{ padding: "10px 16px", borderTop: "1px solid #e0e0e0", display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between", background: "#f8f8f8", flexWrap: "wrap", borderRadius: "0 0 12px 12px" }}>
           <div style={{ fontSize: 10, color: "#d0d0d0", flex: "1 1 200px" }}>
             {gender ? (gender === "F" ? "여성" : "남성") + " 가격 적용" : "성별 미선택"} · 체크한 항목만 매출 반영
           </div>
@@ -4350,6 +4350,14 @@ const CSS = `
     .stat-charts{grid-template-columns:1fr!important}
     .admin-tw{max-height:calc(100vh - 260px)!important}
     .ov{padding:8px!important}
+    .modal-res span:not(.badge),.modal-res label,.modal-res p{font-size:13px!important}
+    .modal-res h3{font-size:15px!important}
+    .modal-res button{font-size:13px!important}
+    .modal-res .inp,.modal-res select.inp,.modal-res textarea.inp{font-size:16px!important}
+    .ov>div:not(.modal-res) span:not(.badge),.ov>div:not(.modal-res) label{font-size:13px!important}
+    .ov>div:not(.modal-res) h3{font-size:15px!important}
+    .ov>div:not(.modal-res) button{font-size:13px!important}
+    .ov>div:not(.modal-res) .inp,.ov>div:not(.modal-res) select.inp{font-size:16px!important}
     .inp,.inp:focus{font-size:16px!important}
     select.inp{font-size:14px!important}
     .modal{padding:16px!important;max-height:90vh!important;width:92%!important;border-radius:12px!important}
