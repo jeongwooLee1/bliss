@@ -1749,26 +1749,23 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
               </div>}
             </div>
             <FLD label={`내부일정 항목${tagDurTotal > 0 ? ` — 소요시간: ${tagDurTotal}분` : ""}`}>
-              <div style={{display:"flex",flexWrap:"wrap",gap:5,padding:10,background:"#fff8f6",borderRadius:8,border:"1px dashed #e17055"}}>
+              <div style={{display:"flex",flexWrap:"wrap",gap:4,padding:8,background:"#fff8f6",borderRadius:8,border:"1px dashed #e17055"}}>
                 {visibleTags.length > 0 ? visibleTags.map(tag => {
                   const sel = f.selectedTags?.includes(tag.id);
                   const hasColor = tag.color && tag.color !== "";
+                  const bgClr = hasColor ? tag.color : "#e17055";
                   return <button key={tag.id} onClick={()=>toggleTag(tag.id)}
-                    style={{padding:"6px 12px",fontSize:11,fontWeight:sel?700:500,borderRadius:6,cursor:"pointer",fontFamily:"inherit",transition:"all .1s",
-                      border:`1px solid ${sel?(hasColor?tag.color:"#e17055"):"#d0d0d0"}`,
-                      background:sel?(hasColor?tag.color+"70":"#e1705520"):"transparent",
-                      color:sel?(hasColor?"#fff":"#e17055"):"#999",display:"flex",alignItems:"center",gap:4}}>
-                    {hasColor && <span style={{width:8,height:8,borderRadius:2,background:sel?"#fff":tag.color}}/>}
+                    style={{padding:"3px 8px",fontSize:11,fontWeight:600,borderRadius:3,cursor:"pointer",fontFamily:"inherit",transition:"all .1s",
+                      border:"none",
+                      background:sel?bgClr+"35":"#e8e8e8",
+                      color:sel?"#333":"#aaa",display:"inline-flex",alignItems:"center",gap:3,lineHeight:1.3}}>
+                    {hasColor && <span style={{width:6,height:6,borderRadius:1,background:bgClr,flexShrink:0,opacity:sel?1:0.4}}/>}
                     {tag.name}
-                    {tag.dur > 0 && <span style={{fontSize:9,opacity:0.7}}>({tag.dur}분)</span>}
+                    {tag.dur > 0 && <span style={{fontSize:9,opacity:0.6}}>({tag.dur}분)</span>}
                   </button>;
                 }) : <span style={{fontSize:11,color:"#999",padding:8}}>서비스태그관리에서 내부일정(Y) 항목을 등록하세요</span>}
               </div>
-              {(f.selectedTags||[]).length > 0 && <div style={{marginTop:6,display:"flex",flexWrap:"wrap",gap:4,alignItems:"center"}}>
-                <span style={{fontSize:10,color:"#999"}}>선택:</span>
-                {(f.selectedTags||[]).map(tid=>{const tag=tags.find(t=>t.id===tid);return tag?<span key={tid} style={{fontSize:10,padding:"2px 6px",borderRadius:3,background:tag.color?tag.color+"80":"#e1705530",color:tag.color?"#fff":"#e17055",fontWeight:600}}>{tag.name}{tag.dur>0?` ${tag.dur}분`:""}</span>:null})}
-                {tagDurTotal>0 && <span style={{fontSize:10,color:"#e17055",fontWeight:700,marginLeft:4}}>= {tagDurTotal}분</span>}
-              </div>}
+              {(f.selectedTags||[]).length > 0 && tagDurTotal>0 && <div style={{marginTop:4,fontSize:10,color:"#e17055",fontWeight:700,textAlign:"right"}}>합산 {tagDurTotal}분</div>}
             </FLD>
           </>}
 
@@ -1880,22 +1877,19 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
                 {visibleTags.map(tag => {
                   const sel = f.selectedTags?.includes(tag.id);
                   const hasColor = tag.color && tag.color !== "";
+                  const bgClr = hasColor ? tag.color : "#7c7cc8";
                   return <button key={tag.id} onClick={()=>toggleTag(tag.id)}
-                    style={{padding:"4px 8px",fontSize:10,fontWeight:sel?700:500,borderRadius:4,cursor:"pointer",fontFamily:"inherit",transition:"all .1s",
-                      border:`1px solid ${sel?(hasColor?tag.color:"#7c7cc8"):"#d0d0d0"}`,
-                      background:sel?(hasColor?tag.color+"70":"#7c7cc820"):"transparent",
-                      color:sel?(hasColor?"#fff":"#7c7cc8"):"#999",display:"flex",alignItems:"center",gap:3}}>
-                    {hasColor && <span style={{width:7,height:7,borderRadius:2,background:sel?"#fff":tag.color,flexShrink:0}}/>}
+                    style={{padding:"3px 8px",fontSize:11,fontWeight:600,borderRadius:3,cursor:"pointer",fontFamily:"inherit",transition:"all .1s",
+                      border:"none",
+                      background:sel?bgClr+"35":"#e8e8e8",
+                      color:sel?"#333":"#aaa",display:"inline-flex",alignItems:"center",gap:3,lineHeight:1.3}}>
+                    {hasColor && <span style={{width:6,height:6,borderRadius:1,background:bgClr,flexShrink:0,opacity:sel?1:0.4}}/>}
                     {tag.name}
-                    {tag.dur > 0 && <span style={{fontSize:8,opacity:0.7}}>({tag.dur}분)</span>}
+                    {tag.dur > 0 && <span style={{fontSize:9,opacity:0.6}}>({tag.dur}분)</span>}
                   </button>;
                 })}
               </div>
-              {(f.selectedTags||[]).length > 0 && <div style={{marginTop:6,display:"flex",flexWrap:"wrap",gap:4,alignItems:"center"}}>
-                <span style={{fontSize:10,color:"#999"}}>선택:</span>
-                {(f.selectedTags||[]).map(tid=>{const tag=tags.find(t=>t.id===tid);return tag?<span key={tid} style={{fontSize:10,padding:"2px 6px",borderRadius:3,background:tag.color?tag.color+"30":"#7c7cc820",color:tag.color||"#7c7cc8",fontWeight:600}}>{tag.name}{tag.dur>0?` ${tag.dur}분`:""}</span>:null})}
-                {tagDurTotal>0 && <span style={{fontSize:10,color:"#ef5350",fontWeight:700,marginLeft:4}}>= {tagDurTotal}분</span>}
-              </div>}
+              {(f.selectedTags||[]).length > 0 && tagDurTotal>0 && <div style={{marginTop:4,fontSize:10,color:"#ef5350",fontWeight:700,textAlign:"right"}}>합산 {tagDurTotal}분</div>}
             </FLD>
 
 
