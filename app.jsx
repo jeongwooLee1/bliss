@@ -106,7 +106,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.41.8";
+const BLISS_V = "2.41.9";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -1745,7 +1745,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
                   return <button key={tag.id} onClick={()=>toggleTag(tag.id)}
                     style={{padding:"3px 8px",fontSize:11,fontWeight:600,borderRadius:3,cursor:"pointer",fontFamily:"inherit",transition:"all .1s",
                       border:"none",
-                      background:sel?bgClr+"35":"#e8e8e8",
+                      background:sel?bgClr+"70":"#e8e8e8",
                       color:sel?"#333":"#aaa",display:"inline-flex",alignItems:"center",gap:3,lineHeight:1.3}}>
                     {hasColor && <span style={{width:6,height:6,borderRadius:1,background:bgClr,flexShrink:0,opacity:sel?1:0.4}}/>}
                     {tag.name}
@@ -1869,7 +1869,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
                   return <button key={tag.id} onClick={()=>toggleTag(tag.id)}
                     style={{padding:"3px 8px",fontSize:11,fontWeight:600,borderRadius:3,cursor:"pointer",fontFamily:"inherit",transition:"all .1s",
                       border:"none",
-                      background:sel?bgClr+"35":"#e8e8e8",
+                      background:sel?bgClr+"70":"#e8e8e8",
                       color:sel?"#333":"#aaa",display:"inline-flex",alignItems:"center",gap:3,lineHeight:1.3}}>
                     {hasColor && <span style={{width:6,height:6,borderRadius:1,background:bgClr,flexShrink:0,opacity:sel?1:0.4}}/>}
                     {tag.name}
