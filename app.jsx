@@ -107,7 +107,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.45.3";
+const BLISS_V = "2.46.0";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -1186,7 +1186,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   };
 
   // ── Drag handlers ──
-  const timeLabelsW = 62;
+  const timeLabelsW = 76;
   const handleDragStart = (block, e) => {
     e.stopPropagation();
     const isTouch = e.type === "touchstart";
@@ -1443,7 +1443,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
         {/* Row 1: Date nav + settings + branch */}
         <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
           <button onClick={()=>changeDate(-1)} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#666",padding:"2px 4px",flexShrink:0}}><I name="chevL" size={14}/></button>
-          <span style={{fontSize:13,fontWeight:700,color:"#333",cursor:"pointer",flexShrink:0,whiteSpace:"nowrap"}} onClick={()=>{const el=document.createElement("input");el.type="date";el.value=selDate;el.onchange=e=>setSelDate(e.target.value);el.showPicker?.();el.click()}}>{dateLabel}</span>
+          <span style={{fontSize:13,fontWeight:700,color:"#333",flexShrink:0,whiteSpace:"nowrap"}}>{dateLabel}</span>
           <div style={{position:"relative",flexShrink:0}}>
             <button onClick={()=>setShowCal(!showCal)} style={{background:"none",border:"none",cursor:"pointer",padding:"2px 4px",color:"#333",display:"flex",alignItems:"center"}}><I name="calendar" size={14}/></button>
             {showCal && <MiniCal selDate={selDate} onSelect={d=>{setSelDate(d);setShowCal(false);}} onClose={()=>setShowCal(false)}/>}
@@ -1565,7 +1565,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
             const isNewBranch = ci === 0 || room.branch_id !== allRooms[ci-1]?.branch_id;
             const branchColor = (data.branchSettings || []).find(bs => bs.id === room.branch_id)?.color || "";
             return (
-              <div key={room.id} style={{width:colW,flexShrink:0,borderLeft:room.isNaver?"2px solid #A5D6A7":"1px solid #f0f0f0",background:room.isNaver?"#F1F8E9":(branchColor||"#fff")}}>
+              <div key={room.id} style={{width:colW,flexShrink:0,borderLeft:room.isNaver?"2px solid #A5D6A7":(isNewBranch&&ci>0?"none":"1px solid #f0f0f0"),background:room.isNaver?"#F1F8E9":(branchColor||"#fff"),marginLeft:isNewBranch&&ci>0?4:0,boxShadow:isNewBranch&&ci>0?"-4px 0 8px rgba(0,0,0,.06)":room.isNaver?"inset 2px 0 4px rgba(76,175,80,.08)":"none"}}>
                 {/* Header */}
                 <div style={{height:headerH,borderBottom:"1px solid #eee",position:"sticky",top:0,zIndex:10,background:room.isNaver?"#E8F5E9":(branchColor||"#fff"),display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",lineHeight:1.2}}>
                   <span style={{fontSize:12,fontWeight:700,color:room.isNaver?"#2E7D32":"#333"}}>{room.branchName}</span>
@@ -1642,8 +1642,9 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                           border:isNaverCancelled?"1.5px dashed #E6A700":isNaverPending?`1.5px dashed ${color}`:"none",
                           borderLeft:`3.5px solid ${isNaverCancelled?"#E6A700":color}`,
                           borderRadius:8,padding:"4px 6px",overflow:"hidden",fontSize:blockFs,lineHeight:1.2,
+                          boxShadow:isDrag?"none":"0 1px 4px rgba(0,0,0,.1)",
                           cursor:isEditable?"grab":"pointer",zIndex:isDrag?0:3,transition:(isDrag||isBeingResized)?"none":"all .15s, box-shadow .2s",
-                          opacity:isDrag?0.3:1,userSelect:"none",WebkitUserSelect:"none",WebkitTouchCallout:"none"}}
+                          opacity:isDrag?0.15:1,userSelect:"none",WebkitUserSelect:"none",WebkitTouchCallout:"none"}}
                         className="tl-block">
                         {block.type==="reservation" && !block.isSchedule && <>
                           <div style={{display:"flex",alignItems:"center",gap:3,overflow:"hidden",whiteSpace:"nowrap"}}>
@@ -1694,7 +1695,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
           if (roomIdx < 0) return null;
           const snapLeft = timeLabelsW + roomIdx * colW + 2;
           return <div style={{position:"absolute",top:headerH+snapY,left:snapLeft,width:colW-4,height:snapH,
-            background:"#7c7cc820",border:"2px dashed #7c7cc8",borderRadius:4,pointerEvents:"none",zIndex:50}}/>
+            background:"#7c7cc815",border:"1.5px solid #7c7cc860",borderRadius:8,pointerEvents:"none",zIndex:50,boxShadow:"0 2px 8px rgba(124,124,200,.2)"}}/>
         })()}
       </div>
 
@@ -1702,12 +1703,13 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       {dragBlock && dragPos && <div style={{position:"fixed",
         left:scrollRef.current?.getBoundingClientRect().left+dragPos.x-50,
         top:scrollRef.current?.getBoundingClientRect().top+dragPos.y-15,
-        width:colW-10,padding:"4px 8px",
-        background:"#7c7cc8",color:"#fff",borderRadius:6,fontSize:10,fontWeight:700,
-        boxShadow:"0 8px 24px rgba(116,141,174,.35)",pointerEvents:"none",zIndex:100,opacity:.9}}>
-        <div>{dragBlock.time} → {dragSnap?.time||"?"}</div>
-        <div style={{fontWeight:500,fontSize:9,opacity:.85}}>{dragBlock.custGender && <span style={{color:dragBlock.custGender==="M"?"#4a7cc8":"#e57373"}}>{dragBlock.custGender==="M"?"남":"여"}</span>} {dragBlock.custName}</div>
-        <div style={{fontSize:8,opacity:.7}}>{allRooms.find(r=>r.id===dragSnap?.roomId)?.name||""}</div>
+        width:colW-10,padding:"5px 8px",
+        background:"#fff",color:"#333",borderRadius:8,fontSize:10,fontWeight:600,
+        borderLeft:`3px solid ${BLOCK_COLORS[dragBlock.type]||"#7c7cc8"}`,
+        boxShadow:"0 8px 24px rgba(0,0,0,.2)",pointerEvents:"none",zIndex:100,opacity:.95}}>
+        <div style={{fontSize:9,color:"#7c7cc8",fontWeight:700}}>{dragBlock.time} → {dragSnap?.time||"?"}</div>
+        <div>{dragBlock.custGender && <span style={{color:dragBlock.custGender==="M"?"#4a7cc8":"#e57373"}}>{dragBlock.custGender==="M"?"남":"여"}</span>} {dragBlock.custName}</div>
+        <div style={{fontSize:8,color:"#999"}}>{allRooms.find(r=>r.id===dragSnap?.roomId)?.name||""}</div>
       </div>}
 
       {/* 이동/리사이즈 확인 팝업 */}
@@ -1988,7 +1990,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
   return (
     <div className="ov" onClick={onClose} style={{alignItems:"flex-start",paddingTop:20,overflow:"auto",WebkitOverflowScrolling:"touch"}}>
       <div ref={modalRef} className="modal-res" onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:"8px",border:"1px solid #e0e0e0",
-        width:"95%",maxWidth:720,maxHeight:"95vh",overflow:"hidden",animation:"fadeIn .2s ease",marginBottom:20,flexShrink:0,
+        width:"95%",maxWidth:500,maxHeight:"95vh",overflow:"hidden",animation:"fadeIn .2s ease",marginBottom:20,flexShrink:0,
         boxShadow:"0 8px 30px rgba(0,0,0,.15)",display:"flex",flexDirection:"column"}}>
         {/* ═══ Chrome-style Tabs ═══ */}
         <div style={{display:"flex",alignItems:"flex-end",gap:0,padding:"0",background:"#f5f5f5",borderRadius:"8px 8px 0 0",position:"sticky",top:0,zIndex:10,borderBottom:"1px solid #e0e0e0"}}>
@@ -4262,8 +4264,8 @@ const CSS = `
   .tl-block{transition:box-shadow .2s ease,transform .15s ease !important}
   .tl-block:hover{box-shadow:0 2px 8px rgba(0,0,0,.12) !important}
   @media(pointer:coarse){.tl-block:active{box-shadow:0 2px 8px rgba(0,0,0,.12) !important}}
-  .tl-block:hover{box-shadow:0 4px 12px rgba(0,0,0,.15) !important;transform:translateY(-1px)}
-  .tl-block:active{box-shadow:0 2px 6px rgba(0,0,0,.1) !important;transform:translateY(0)}
+  .tl-block:hover{box-shadow:0 4px 14px rgba(0,0,0,.18) !important;transform:translateY(-1px)}
+  .tl-block:active{box-shadow:0 2px 6px rgba(0,0,0,.12) !important;transform:translateY(0)}
   input,select,textarea{font-family:inherit}
   @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
   @keyframes slideIn{from{transform:translateX(-100%)}to{transform:translateX(0)}}
