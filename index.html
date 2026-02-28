@@ -120,7 +120,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.44.0";
+const BLISS_V = "2.44.1";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -1131,8 +1131,17 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
     isDragging.current = false;
     longPressActive.current = false;
 
-    // 원래 블록 위치 저장 (상대 이동용)
     origBlockPos.current = { time: block.time, roomId: block.roomId, bid: block.bid };
+
+    // 블록 상단 Y와 클릭 지점 오프셋 계산 (점프 방지)
+    const sr = scrollRef.current;
+    const blockTopY = timeToY(block.time);
+    let clickOffsetY = 0;
+    if (sr) {
+      const rect = sr.getBoundingClientRect();
+      const cursorGridY = (startPt.clientY - rect.top + sr.scrollTop) - headerH;
+      clickOffsetY = cursorGridY - blockTopY;
+    }
 
     const getPoint = (ev) => isTouch ? ev.touches[0] : ev;
 
@@ -1148,7 +1157,6 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       const dx = pt.clientX - dragStartRef.current.x;
       const dy = pt.clientY - dragStartRef.current.y;
 
-      // 터치: 롱프레스 전에 움직이면 스크롤 (취소)
       if (isTouch && !longPressActive.current) {
         if (Math.abs(dx) + Math.abs(dy) > 8) {
           clearTimeout(longPressTimer.current);
@@ -1157,29 +1165,26 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
         }
         return;
       }
-      // 마우스: 6px 임계값
       if (!isTouch && !isDragging.current && Math.abs(dx) + Math.abs(dy) < 6) return;
       if (!isTouch && !isDragging.current) { isDragging.current = true; setDragBlock(block); }
 
       if (isTouch) ev.preventDefault();
 
-      const sr = scrollRef.current;
       if (!sr) return;
       const rect = sr.getBoundingClientRect();
       const x = pt.clientX - rect.left + sr.scrollLeft;
       const y = pt.clientY - rect.top + sr.scrollTop;
       setDragPos({ x: pt.clientX - rect.left, y: pt.clientY - rect.top });
 
-      // Snap: 원래 위치에서의 상대 이동으로 계산
       const colX = x - timeLabelsW;
       const roomIdx = Math.max(0, Math.min(allRooms.length - 1, Math.floor(colX / colW)));
       const targetRoom = allRooms[roomIdx];
-      const gridY = y - headerH;
+      // 블록 상단 기준으로 스냅 (클릭 오프셋 차감 → 점프 방지)
+      const gridY = y - headerH - clickOffsetY;
       const snappedTime = yToTime(Math.max(0, gridY));
       setDragSnap({ roomId: targetRoom?.id, bid: targetRoom?.branch_id, time: snappedTime });
       dragSnapRef.current = { roomId: targetRoom?.id, bid: targetRoom?.branch_id, time: snappedTime };
 
-      // Auto-scroll
       const edgeZone = 40;
       if (pt.clientY - rect.top < edgeZone) sr.scrollTop -= 8;
       if (rect.bottom - pt.clientY < edgeZone) sr.scrollTop += 8;
@@ -1192,9 +1197,16 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       if (isDragging.current && dragSnapRef.current) {
         const snap = dragSnapRef.current;
         const orig = origBlockPos.current;
-        // 변경사항 있을 때만 확인 팝업
         if (snap.time !== orig.time || snap.roomId !== orig.roomId) {
-          setPendingChange({ type: "move", block, data: snap });
+          // 미리보기: 변경된 위치로 임시 이동
+          setData(prev => ({...prev, reservations: prev.reservations.map(r => {
+            if (r.id !== block.id) return r;
+            const [sh,sm] = snap.time.split(":").map(Number);
+            const endMin = sh*60+sm+(r.dur||60);
+            const endTime = `${String(Math.floor(endMin/60)).padStart(2,"0")}:${String(endMin%60).padStart(2,"0")}`;
+            return {...r, time: snap.time, endTime, roomId: snap.roomId||r.roomId, bid: snap.bid||r.bid};
+          })}));
+          setPendingChange({ type: "move", block, data: snap, orig });
         }
       }
       setDragBlock(null); setDragPos(null); setDragSnap(null); dragSnapRef.current = null;
@@ -1204,11 +1216,9 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
     document.addEventListener(isTouch ? "touchmove" : "mousemove", onMove, isTouch ? {passive:false} : undefined);
     document.addEventListener(isTouch ? "touchend" : "mouseup", onUp);
 
-    // 터치: 500ms 롱프레스 후 드래그 시작
     if (isTouch) {
       longPressTimer.current = setTimeout(() => {
         startDrag();
-        // 진동 피드백 (지원 시)
         try { navigator.vibrate && navigator.vibrate(30); } catch(e){}
       }, 500);
     }
@@ -1236,7 +1246,6 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       const pt = isTouch ? ev.touches[0] : ev;
       if (!pt) return;
 
-      // 터치: 롱프레스 전에 움직이면 취소
       if (isTouch && !longPressActive.current) {
         const dy = Math.abs(pt.clientY - startY);
         if (dy > 8) {
@@ -1246,7 +1255,6 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
         }
         return;
       }
-      // 마우스: 즉시 시작
       if (!isTouch && !isResizing.current) { beginResize(); }
 
       if (isTouch) ev.preventDefault();
@@ -1263,7 +1271,15 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       document.removeEventListener(isTouch ? "touchend" : "mouseup", onUp);
       const finalDur = resizeDurRef.current;
       if (isResizing.current && finalDur !== origDur) {
-        setPendingChange({ type: "resize", block, data: { dur: finalDur } });
+        // 미리보기: 변경된 길이로 임시 적용
+        setData(prev => ({...prev, reservations: prev.reservations.map(r => {
+          if (r.id !== block.id) return r;
+          const [sh,sm] = r.time.split(":").map(Number);
+          const endMin = sh*60+sm+finalDur;
+          const endTime = `${String(Math.floor(endMin/60)).padStart(2,"0")}:${String(endMin%60).padStart(2,"0")}`;
+          return {...r, dur: finalDur, endTime};
+        })}));
+        setPendingChange({ type: "resize", block, data: { dur: finalDur }, orig: { dur: origDur } });
       }
       setResizeBlock(null); setResizeDur(0);
       setTimeout(() => { isResizing.current = false; longPressActive.current = false; }, 300);
@@ -1272,7 +1288,6 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
     document.addEventListener(isTouch ? "touchmove" : "mousemove", onMove, isTouch ? {passive:false} : undefined);
     document.addEventListener(isTouch ? "touchend" : "mouseup", onUp);
 
-    // 터치: 500ms 롱프레스 후 리사이즈 시작
     if (isTouch) {
       longPressTimer.current = setTimeout(beginResize, 500);
     } else {
@@ -1284,32 +1299,41 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   const confirmChange = () => {
     if (!pendingChange) return;
     const { type, block, data: d } = pendingChange;
+    // 이미 미리보기로 state에 반영됨 → DB만 저장
+    if (type === "move") {
+      const r = data.reservations.find(r => r.id === block.id);
+      if (r) sb.update("reservations", block.id, toDb("reservations", r)).catch(console.error);
+    }
+    if (type === "resize") {
+      const r = data.reservations.find(r => r.id === block.id);
+      if (r) sb.update("reservations", block.id, toDb("reservations", r)).catch(console.error);
+    }
+    setPendingChange(null);
+  };
+  const cancelChange = () => {
+    if (!pendingChange) return;
+    const { type, block, orig } = pendingChange;
+    // 원래 위치로 복원
     if (type === "move") {
       setData(prev => ({...prev, reservations: prev.reservations.map(r => {
         if (r.id !== block.id) return r;
-        const newTime = d.time || r.time;
-        const [sh, sm] = newTime.split(":").map(Number);
-        const endMin = sh * 60 + sm + (r.dur || 60);
+        const [sh,sm] = orig.time.split(":").map(Number);
+        const endMin = sh*60+sm+(r.dur||60);
         const endTime = `${String(Math.floor(endMin/60)).padStart(2,"0")}:${String(endMin%60).padStart(2,"0")}`;
-        const updated = {...r, time: newTime, endTime, roomId: d.roomId || r.roomId, bid: d.bid || r.bid};
-        sb.update("reservations", block.id, toDb("reservations", updated)).catch(console.error);
-        return updated;
+        return {...r, time: orig.time, endTime, roomId: orig.roomId, bid: orig.bid};
       })}));
     }
     if (type === "resize") {
       setData(prev => ({...prev, reservations: prev.reservations.map(r => {
         if (r.id !== block.id) return r;
-        const [sh, sm] = r.time.split(":").map(Number);
-        const endMin = sh * 60 + sm + d.dur;
+        const [sh,sm] = r.time.split(":").map(Number);
+        const endMin = sh*60+sm+orig.dur;
         const endTime = `${String(Math.floor(endMin/60)).padStart(2,"0")}:${String(endMin%60).padStart(2,"0")}`;
-        const updated = {...r, dur: d.dur, endTime};
-        sb.update("reservations", block.id, toDb("reservations", updated)).catch(console.error);
-        return updated;
+        return {...r, dur: orig.dur, endTime};
       })}));
     }
     setPendingChange(null);
   };
-  const cancelChange = () => { setPendingChange(null); };
 
   const changeDate = (off) => { const d = new Date(selDate); d.setDate(d.getDate()+off); setSelDate(fmtLocal(d)); };
 
@@ -1501,7 +1525,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                           borderLeft:`3px solid ${isNaverCancelled?"#E6A700":color}`,
                           borderRadius:4,padding:"2px 4px",overflow:"hidden",fontSize:blockFs,lineHeight:1.2,
                           cursor:isEditable?"grab":"pointer",zIndex:isDrag?0:3,transition:(isDrag||isBeingResized)?"none":"all .15s",
-                          opacity:isDrag?0.3:1,userSelect:"none"}}>
+                          opacity:isDrag?0.3:1,userSelect:"none",WebkitUserSelect:"none",WebkitTouchCallout:"none"}}>
                         {block.type==="reservation" && !block.isSchedule && <>
                           <div style={{display:"flex",alignItems:"center",gap:3,overflow:"hidden",whiteSpace:"nowrap"}}>
                             {isNaverCancelled && <span style={{fontSize:Math.max(6,blockFs-2),padding:"1px 3px",borderRadius:2,background:"#E6A700",color:"#fff",fontWeight:700,lineHeight:1,flexShrink:0}}>네이버취소</span>}
@@ -1569,16 +1593,22 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
 
       {/* 이동/리사이즈 확인 팝업 */}
       {pendingChange && (() => {
-        const { type, block, data: d } = pendingChange;
+        const { type, block, data: d, orig } = pendingChange;
+        const name = block.custName || "일정";
         const desc = type === "move"
-          ? `${block.custName||"일정"} → ${d.time} 이동`
-          : `${block.custName||"일정"} → ${d.dur}분 변경`;
-        return <div style={{position:"fixed",bottom:20,left:"50%",transform:"translateX(-50%)",zIndex:9999,
-          background:"#fff",borderRadius:12,boxShadow:"0 4px 20px rgba(0,0,0,0.25)",padding:"12px 16px",
-          display:"flex",alignItems:"center",gap:12,fontFamily:"inherit",minWidth:240}}>
-          <span style={{fontSize:13,fontWeight:600,flex:1}}>{desc}</span>
-          <button onClick={cancelChange} style={{padding:"6px 14px",fontSize:12,fontWeight:600,borderRadius:6,border:"1px solid #ddd",background:"#f5f5f5",color:"#666",cursor:"pointer",fontFamily:"inherit"}}>취소</button>
-          <button onClick={confirmChange} style={{padding:"6px 14px",fontSize:12,fontWeight:700,borderRadius:6,border:"none",background:"#7c7cc8",color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>완료</button>
+          ? `${name}: ${orig.time} → ${d.time}`
+          : `${name}: ${orig.dur}분 → ${d.dur}분`;
+        return <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,zIndex:9998,background:"rgba(0,0,0,0.3)",
+          display:"flex",alignItems:"center",justifyContent:"center"}} onClick={cancelChange}>
+          <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:14,boxShadow:"0 8px 30px rgba(0,0,0,0.25)",padding:"20px 24px",
+            fontFamily:"inherit",minWidth:260,maxWidth:340,textAlign:"center"}}>
+            <div style={{fontSize:14,fontWeight:700,marginBottom:6}}>{type==="move"?"예약 이동":"시간 변경"}</div>
+            <div style={{fontSize:13,color:"#555",marginBottom:16}}>{desc}</div>
+            <div style={{display:"flex",gap:10,justifyContent:"center"}}>
+              <button onClick={cancelChange} style={{flex:1,padding:"10px 0",fontSize:13,fontWeight:600,borderRadius:8,border:"1px solid #ddd",background:"#f5f5f5",color:"#666",cursor:"pointer",fontFamily:"inherit"}}>취소</button>
+              <button onClick={confirmChange} style={{flex:1,padding:"10px 0",fontSize:13,fontWeight:700,borderRadius:8,border:"none",background:"#7c7cc8",color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>완료</button>
+            </div>
+          </div>
         </div>;
       })()}
 
