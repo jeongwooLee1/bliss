@@ -118,7 +118,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.41.3";
+const BLISS_V = "2.41.4";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -1645,7 +1645,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
 
   return (
     <div className="ov" onClick={onClose} style={{alignItems:"flex-start",paddingTop:20,overflow:"auto"}}>
-      <div ref={modalRef} onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:"8px",border:"1px solid #e0e0e0",
+      <div ref={modalRef} className="modal-res" onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:"8px",border:"1px solid #e0e0e0",
         width:"95%",maxWidth:720,maxHeight:"95vh",overflow:"hidden",animation:"fadeIn .2s ease",marginBottom:20,flexShrink:0,
         boxShadow:"0 8px 30px rgba(0,0,0,.15)",display:"flex",flexDirection:"column"}}>
         {/* ═══ Chrome-style Tabs ═══ */}
@@ -3947,6 +3947,11 @@ const CSS = `
     .res-room-sep{display:none!important}
     .res-room-sel{flex:1 1 100%!important;margin-top:4px!important}
     .cust-row{grid-template-columns:5.5em 1fr 44px!important;gap:6px!important}
+    .cust-row .inp{height:38px!important;box-sizing:border-box!important}
+    .cust-row button{height:38px!important;box-sizing:border-box!important}
+    .form-col .inp,.form-col select.inp{height:38px!important;box-sizing:border-box!important;padding:5px 8px!important}
+    .form-col textarea.inp{height:auto!important}
+    .modal-res{max-height:none!important;height:100vh!important;height:100dvh!important;border-radius:0!important;margin:0!important;width:100%!important}
     .tl-topbar{flex-direction:column!important;gap:4px!important;padding:6px 8px!important}
     .tl-days{width:100%;justify-content:space-between}
     .page-filter{flex-wrap:wrap!important;gap:4px!important}
@@ -3958,7 +3963,7 @@ const CSS = `
     .stat-cards{grid-template-columns:repeat(auto-fit,minmax(100px,1fr))!important;gap:8px!important}
     .stat-charts{grid-template-columns:1fr!important}
     .admin-tw{max-height:calc(100vh - 260px)!important}
-    .ov{padding:6px!important}
+    .ov{padding:0!important}
     .inp,.inp:focus{font-size:16px!important}
     select.inp{font-size:14px!important}
     .modal{padding:16px!important;max-height:90vh!important}
