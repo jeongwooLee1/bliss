@@ -107,7 +107,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.49.3";
+const BLISS_V = "2.49.4";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -3741,19 +3741,18 @@ function AdminPlaces({ data, setData, bizId }) {
                 {label:"전화번호", val:b.phone||"", field:"phone", ph:"02-0000-0000"},
                 {label:"주소", val:b.address||"", field:"address", ph:"고객 안내용 주소"},
               ].map(row => (
-                <div key={row.field} style={{display:"flex",alignItems:"center",padding:"0 14px",
+                <div key={row.field} className="admin-place-row" style={{display:"flex",alignItems:"center",padding:"0 14px",
                   borderBottom:"1px solid #f2f2f7",minHeight:44}}>
                   <span style={{width:72,fontSize:12,color:"#666",flexShrink:0,fontWeight:500}}>{row.label}</span>
-                  <input className="inp admin-place-inp" value={row.val} onChange={e=>updateField(b.id,row.field,e.target.value)}
-                    placeholder={row.ph}
-                    style={{flex:1,border:"none",background:"transparent",fontSize:13,padding:"10px 0",borderRadius:0,outline:"none"}}/>
+                  <input className="inp" value={row.val} onChange={e=>updateField(b.id,row.field,e.target.value)}
+                    placeholder={row.ph} style={{flex:1,fontSize:13}}/>
                 </div>
               ))}
               {/* 사용구분 */}
-              <div style={{display:"flex",alignItems:"center",padding:"0 14px",borderBottom:"1px solid #f2f2f7",minHeight:44}}>
+              <div className="admin-place-row" style={{display:"flex",alignItems:"center",padding:"0 14px",borderBottom:"1px solid #f2f2f7",minHeight:44}}>
                 <span style={{width:72,fontSize:12,color:"#666",flexShrink:0,fontWeight:500}}>사용구분</span>
-                <select className="inp admin-place-inp" value={b.useYn!==false?"Y":"N"} onChange={e=>updateField(b.id,"useYn",e.target.value==="Y")}
-                  style={{flex:1,border:"none",background:"transparent",fontSize:13,padding:"10px 0",borderRadius:0,appearance:"none",
+                <select className="inp" value={b.useYn!==false?"Y":"N"} onChange={e=>updateField(b.id,"useYn",e.target.value==="Y")}
+                  style={{flex:1,fontSize:13,appearance:"none",
                     color:b.useYn!==false?"#34c759":"#ff3b30",fontWeight:600}}>
                   <option value="Y">사용</option><option value="N">미사용</option>
                 </select>
@@ -3766,7 +3765,7 @@ function AdminPlaces({ data, setData, bizId }) {
                     style={{width:32,height:32,border:"2px solid #f0f0f0",cursor:"pointer",padding:0,borderRadius:8}}/>
                   <EyeDrop onPick={c=>updateField(b.id,"color",c)} size={28}/>
                   <input className="inp admin-place-inp" value={b.color||""} onChange={e=>updateField(b.id,"color",e.target.value)}
-                    style={{width:80,background:"transparent",border:"1px solid #e8e8e8",fontSize:11,fontFamily:"monospace",
+                    style={{width:80,border:"1px solid #e8e8e8",fontSize:11,fontFamily:"monospace",
                       padding:"4px 8px",borderRadius:8,color:"#555"}}/>
                 </div>
               </div>
@@ -4459,8 +4458,10 @@ const CSS = `
   tr:hover td{background:#f5f5ff}
   .inp{background:#fff;border:1px solid #d0d0d0;color:#333;padding:7px 10px;border-radius:4px;font-size:13px;width:100%;font-family:inherit;outline:none;transition:border-color .15s}
   .inp:focus{border-color:#7c7cc8;box-shadow:0 0 0 2px rgba(124,124,200,.15)}
-  .admin-place-inp{transition:none!important}
-  .admin-place-inp:focus{box-shadow:none!important;border-color:#7c7cc860!important}
+  .admin-place-inp,.admin-place-inp:focus{transition:none!important;box-shadow:none!important;outline:none!important}
+  .admin-place-inp[style*="border:none"],.admin-place-inp[style*="border: none"]{background:transparent!important}
+  .admin-place-row input.inp,.admin-place-row select.inp{background:transparent!important;border:none!important;box-shadow:none!important;border-radius:0!important;padding:10px 0!important}
+  .admin-place-row input.inp:focus,.admin-place-row select.inp:focus{background:transparent!important;border:none!important;box-shadow:none!important}
   select.inp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;padding-right:26px}
   .badge{display:inline-flex;align-items:center;padding:2px 7px;border-radius:99px;font-size:10px;font-weight:600}
   .btn-p{background:#7c7cc8;color:#fff;padding:7px 14px;border-radius:4px;border:none;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit;display:inline-flex;align-items:center;gap:5px;transition:all .15s}
