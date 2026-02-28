@@ -120,7 +120,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.50.0";
+const BLISS_V = "2.50.1";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -3768,7 +3768,7 @@ function AdminPlaces({ data, setData, bizId }) {
                     placeholder="example@gmail.com" style={INP}/>
                 </div>
                 <div style={{padding:"0 18px 8px 90px",fontSize:11,color:"#aaa",lineHeight:1.4}}>
-                  네이버 예약 알림을 수신할 Gmail 주소입니다. Apps Script 연동 시 이 메일로 들어오는 네이버 예약을 자동으로 타임라인에 반영합니다.
+                  네이버 예약 알림을 수신할 Gmail 주소를 입력하세요.
                 </div>
               </div>
               {/* 네이버 Biz ID */}
