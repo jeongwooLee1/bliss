@@ -107,7 +107,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.48.3";
+const BLISS_V = "2.48.4";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -2185,9 +2185,9 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
                       const disabled = price===0;
                       const catName = CATS.find(c=>c.id===svc.cat)?.name||"";
                       return <div key={svc.id} onClick={()=>!disabled&&toggleService(svc.id)}
-                        style={{padding:"5px 10px",cursor:disabled?"default":"pointer",display:"flex",alignItems:"center",gap:6,
-                          borderBottom:"1px solid #f0f0f0",opacity:disabled?0.3:1,background:sel?"#7c7cc810":"transparent"}}>
-                        <input type="checkbox" checked={sel} readOnly style={{accentColor:"#7c7cc8",width:14,height:14,pointerEvents:"none"}}/>
+                        style={{padding:"6px 10px",cursor:disabled?"default":"pointer",display:"flex",alignItems:"center",gap:6,
+                          borderBottom:"1px solid #f0f0f0",opacity:disabled?0.3:1,background:sel?"#7c7cc810":"transparent",borderRadius:4,transition:"background .15s"}}>
+                        {sel && <span style={{color:"#7c7cc8",fontWeight:700,fontSize:12,flexShrink:0}}>✓</span>}
                         {catName && <span style={{fontSize:8,color:"#7c7cc8",background:"#f0f0ff",borderRadius:3,padding:"1px 4px",flexShrink:0}}>{catName}</span>}
                         <span style={{flex:1,fontSize:11,fontWeight:sel?600:400,color:sel?"#333":"#666"}}>{svc.name}</span>
                         <span style={{fontSize:9,color:"#999"}}>{svc.dur}분</span>
@@ -2287,18 +2287,20 @@ const SaleSvcRow = React.memo(function SaleSvcRow({ id, name, dur, checked, amou
   const [localAmt, setLocalAmt] = useState(amount || "");
   useEffect(() => { setLocalAmt(amount || ""); }, [checked]);
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "3px 0", borderBottom: "1px solid #e0e0e030", opacity: disabled ? 0.3 : 1 }}>
-      <input type="checkbox" checked={checked} disabled={disabled}
-        onChange={() => toggle(id, defPrice)}
-        style={{ accentColor: "#7c7cc8", width: 14, height: 14, flexShrink: 0, cursor: disabled ? "not-allowed" : "pointer" }} />
-      <span style={{ flex: 1, fontSize: 11, color: checked ? "#333" : "#999", fontWeight: checked ? 600 : 400 }}>
-        {name}
+    <div onClick={() => !disabled && !checked && toggle(id, defPrice)}
+      style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 8px", borderRadius: 6, marginBottom: 2,
+        background: checked ? "#7c7cc810" : "transparent", cursor: disabled ? "not-allowed" : "pointer",
+        opacity: disabled ? 0.3 : 1, transition: "background .15s" }}>
+      <span onClick={e => { e.stopPropagation(); if(!disabled) toggle(id, defPrice); }}
+        style={{ flex: 1, fontSize: 11, color: checked ? "#333" : "#999", fontWeight: checked ? 600 : 400 }}>
+        {checked && <span style={{color:"#7c7cc8",marginRight:4}}>✓</span>}{name}
       </span>
-      <span style={{ fontSize: 9, color: "#d0d0d0", flexShrink: 0, width: 32, textAlign: "center" }}>{dur}분</span>
+      <span style={{ fontSize: 9, color: "#bbb", flexShrink: 0, width: 32, textAlign: "center" }}>{dur}분</span>
       <input className="inp" type="number" value={checked ? localAmt : ""} placeholder={disabled ? "—" : (defPrice||0).toLocaleString()}
+        onClick={e => e.stopPropagation()}
         onChange={e => setLocalAmt(e.target.value)} onBlur={e => setAmt(id, e.target.value)} disabled={!checked}
-        style={{ width: 72, padding: "3px 5px", fontSize: 11, textAlign: "right",
-          background: checked ? "#fff" : "transparent", border: `1px solid ${checked ? "#d0d0d0" : "#e0e0e0"}`,
+        style={{ width: 72, padding: "4px 6px", fontSize: 11, textAlign: "right", borderRadius: 6,
+          background: checked ? "#fff" : "transparent", border: `1px solid ${checked ? "#d0d0d0" : "#eee"}`,
           color: checked ? "#ef5350" : "#d0d0d0", fontWeight: checked ? 700 : 400 }} />
     </div>
   );
@@ -2308,14 +2310,18 @@ const SaleProdRow = React.memo(function SaleProdRow({ id, name, price, checked, 
   const [localAmt, setLocalAmt] = useState(amount || "");
   useEffect(() => { setLocalAmt(amount || ""); }, [checked]);
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "3px 0", borderBottom: "1px solid #e0e0e030" }}>
-      <input type="checkbox" checked={checked} onChange={() => toggle(id, price)}
-        style={{ accentColor: "#6bab9e", width: 14, height: 14, flexShrink: 0, cursor: "pointer" }} />
-      <span style={{ flex: 1, fontSize: 11, color: checked ? "#333" : "#999", fontWeight: checked ? 600 : 400 }}>{name}</span>
+    <div onClick={() => !checked && toggle(id, price)}
+      style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 8px", borderRadius: 6, marginBottom: 2,
+        background: checked ? "#6bab9e10" : "transparent", cursor: "pointer", transition: "background .15s" }}>
+      <span onClick={e => { e.stopPropagation(); toggle(id, price); }}
+        style={{ flex: 1, fontSize: 11, color: checked ? "#333" : "#999", fontWeight: checked ? 600 : 400 }}>
+        {checked && <span style={{color:"#6bab9e",marginRight:4}}>✓</span>}{name}
+      </span>
       <input className="inp" type="number" value={checked ? localAmt : ""} placeholder="0"
+        onClick={e => e.stopPropagation()}
         onChange={e => setLocalAmt(e.target.value)} onBlur={e => setAmt(id, e.target.value)} disabled={!checked}
-        style={{ width: 72, padding: "3px 5px", fontSize: 11, textAlign: "right",
-          background: checked ? "#fff" : "transparent", border: `1px solid ${checked ? "#d0d0d0" : "#e0e0e0"}`,
+        style={{ width: 72, padding: "4px 6px", fontSize: 11, textAlign: "right", borderRadius: 6,
+          background: checked ? "#fff" : "transparent", border: `1px solid ${checked ? "#d0d0d0" : "#eee"}`,
           color: checked ? "#ef5350" : "#d0d0d0", fontWeight: checked ? 700 : 400 }} />
     </div>
   );
@@ -2326,17 +2332,18 @@ const SaleExtraRow = React.memo(function SaleExtraRow({ id, color, placeholder, 
   const [localAmt, setLocalAmt] = useState(amount || "");
   useEffect(() => { setLocalAmt(amount || ""); }, [checked]);
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 0", borderTop: "1px solid #d0d0d0", marginTop: 4 }}>
-      <input type="checkbox" checked={checked} onChange={() => toggle(id, 0)}
-        style={{ accentColor: color, width: 14, height: 14, cursor: "pointer" }} />
-      <span style={{ fontSize: 10, color: "#ef5350", fontWeight: 700, flexShrink: 0 }}>추가</span>
+    <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 8px", borderTop: "1px solid #e0e0e0", marginTop: 4 }}>
+      <span onClick={() => toggle(id, 0)}
+        style={{ fontSize: 10, color: checked ? "#ef5350" : "#999", fontWeight: 700, flexShrink: 0, cursor: "pointer" }}>
+        {checked ? "✓ 추가" : "+ 추가"}
+      </span>
       <input className="inp" value={localLabel} onChange={e => setLocalLabel(e.target.value)}
         onBlur={e => setLabel(id, e.target.value)}
-        placeholder={placeholder} style={{ flex: 1, padding: "3px 6px", fontSize: 11, background: "transparent", border: "1px solid #d0d0d0" }} />
+        placeholder={placeholder} style={{ flex: 1, padding: "4px 6px", fontSize: 11, background: "transparent", border: "1px solid #e0e0e0", borderRadius: 6 }} />
       <input className="inp" type="number" value={localAmt} placeholder="0"
         onChange={e => { setLocalAmt(e.target.value); setAmt(id, e.target.value); if(!checked && Number(e.target.value)>0) toggle(id, 0); }}
-        style={{ width: 72, padding: "3px 5px", fontSize: 11, textAlign: "right",
-          border: `1px solid ${checked ? "#d0d0d0" : "#e0e0e0"}`,
+        style={{ width: 72, padding: "4px 6px", fontSize: 11, textAlign: "right", borderRadius: 6,
+          border: `1px solid ${checked ? "#d0d0d0" : "#eee"}`,
           color: checked ? "#ef5350" : "#999", fontWeight: checked ? 700 : 400 }} />
     </div>
   );
@@ -2345,14 +2352,18 @@ const SaleExtraRow = React.memo(function SaleExtraRow({ id, color, placeholder, 
 const SaleDiscountRow = React.memo(function SaleDiscountRow({ id, checked, amount, toggle, setAmt }) {
   const [localAmt, setLocalAmt] = useState(amount || "");
   useEffect(() => { setLocalAmt(amount || ""); }, [checked]);
-  return <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "3px 0" }}>
-    <input type="checkbox" checked={checked} onChange={() => toggle(id, 0)}
-      style={{ accentColor: "#e8a0a0", width: 14, height: 14, cursor: "pointer" }} />
-    <span style={{ flex: 1, fontSize: 11, color: checked ? "#e8a0a0" : "#888", fontWeight: 600 }}>할인</span>
+  return <div onClick={() => !checked && toggle(id, 0)}
+    style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 8px", cursor: "pointer", borderRadius: 6,
+      background: checked ? "#e8a0a010" : "transparent", transition: "background .15s" }}>
+    <span onClick={e => { e.stopPropagation(); toggle(id, 0); }}
+      style={{ flex: 1, fontSize: 11, color: checked ? "#e8a0a0" : "#888", fontWeight: 600, cursor: "pointer" }}>
+      {checked ? <span style={{color:"#e8a0a0"}}>✓ </span> : ""}할인
+    </span>
     <input className="inp" type="number" value={checked ? localAmt : ""} placeholder="0"
+      onClick={e => e.stopPropagation()}
       onChange={e => { setLocalAmt(e.target.value); setAmt(id, e.target.value); }} disabled={!checked}
-      style={{ width: 72, padding: "3px 5px", fontSize: 11, textAlign: "right",
-        background: checked ? "#fff" : "transparent", border: `1px solid ${checked ? "#d0d0d0" : "#e0e0e0"}`,
+      style={{ width: 72, padding: "4px 6px", fontSize: 11, textAlign: "right", borderRadius: 6,
+        background: checked ? "#fff" : "transparent", border: `1px solid ${checked ? "#d0d0d0" : "#eee"}`,
         color: checked ? "#ef5350" : "#d0d0d0", fontWeight: checked ? 700 : 400 }} />
   </div>;
 });
