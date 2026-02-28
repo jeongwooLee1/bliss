@@ -107,7 +107,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.45.1";
+const BLISS_V = "2.45.2";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -1036,9 +1036,9 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   const halfH = rowH * (slotsPerHour / 2);
   const gridBg = useMemo(() => ({
     backgroundImage: [
-      `repeating-linear-gradient(to bottom, #bbb 0px, #bbb 1px, transparent 1px, transparent ${hourH}px)`,
-      ...(slotsPerHour >= 2 ? [`repeating-linear-gradient(to bottom, #ddd 0px, #ddd 1px, transparent 1px, transparent ${halfH}px)`] : []),
-      ...(slotsPerHour > 2 ? [`repeating-linear-gradient(to bottom, #eee 0px, #eee 1px, transparent 1px, transparent ${rowH}px)`] : []),
+      `repeating-linear-gradient(to bottom, #e8e8e8 0px, #e8e8e8 1px, transparent 1px, transparent ${hourH}px)`,
+      ...(slotsPerHour >= 2 ? [`repeating-linear-gradient(to bottom, #f0f0f0 0px, #f0f0f0 1px, transparent 1px, transparent ${halfH}px)`] : []),
+      ...(slotsPerHour > 2 ? [`repeating-linear-gradient(to bottom, #f5f5f5 0px, #f5f5f5 1px, transparent 1px, transparent ${rowH}px)`] : []),
     ].join(","),
     backgroundSize: "100% 100%",
   }), [rowH, hourH, halfH, slotsPerHour]);
@@ -1630,8 +1630,8 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                     const isDrag = dragBlock?.id === block.id;
                     const isSch = block.isSchedule;
                     const isEditable = canEdit(block.bid);
-                    const opHex = (pct) => Math.round(pct * 2.55).toString(16).padStart(2,"0"); // blockOp 0~100 → 00~FF but capped
-                    const bgAlpha = isSch ? opHex(Math.min(blockOp, 50)) : opHex(Math.min(blockOp * 0.4, 40)); // schedule max 50%, reservation max 40%
+                    const opHex = (pct) => Math.round(pct * 2.55).toString(16).padStart(2,"0");
+                    const bgAlpha = isSch ? opHex(Math.min(blockOp, 80)) : opHex(blockOp);
                     return (
                       <div key={block.id}
                         onClick={e=>handleBlockClick(block,e)}
@@ -1639,11 +1639,12 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                         onTouchStart={e=>{if(isEditable && !isResizing.current)handleDragStart(block,e)}}
                         style={{position:"absolute",top:y,left:2,right:2,height:Math.max(h,rowH*2),
                           background:isNaverCancelled?"#FFF8E1":isNaverPending?`${color}10`:`${color}${bgAlpha}`,
-                          border:isNaverCancelled?"1.5px dashed #E6A700":isNaverPending?`1.5px dashed ${color}`:`1px solid ${isSch?color:color+"60"}`,
+                          border:isNaverCancelled?"1.5px dashed #E6A700":isNaverPending?`1.5px dashed ${color}`:`1px solid ${isSch?color:color+"40"}`,
                           borderLeft:`3px solid ${isNaverCancelled?"#E6A700":color}`,
-                          borderRadius:4,padding:"2px 4px",overflow:"hidden",fontSize:blockFs,lineHeight:1.2,
-                          cursor:isEditable?"grab":"pointer",zIndex:isDrag?0:3,transition:(isDrag||isBeingResized)?"none":"all .15s",
-                          opacity:isDrag?0.3:1,userSelect:"none",WebkitUserSelect:"none",WebkitTouchCallout:"none"}}>
+                          borderRadius:8,padding:"3px 6px",overflow:"hidden",fontSize:blockFs,lineHeight:1.2,
+                          cursor:isEditable?"grab":"pointer",zIndex:isDrag?0:3,transition:(isDrag||isBeingResized)?"none":"all .15s, box-shadow .2s",
+                          opacity:isDrag?0.3:1,userSelect:"none",WebkitUserSelect:"none",WebkitTouchCallout:"none"}}
+                        className="tl-block">
                         {block.type==="reservation" && !block.isSchedule && <>
                           <div style={{display:"flex",alignItems:"center",gap:3,overflow:"hidden",whiteSpace:"nowrap"}}>
                             {isNaverCancelled && <span style={{fontSize:Math.max(6,blockFs-2),padding:"1px 3px",borderRadius:2,background:"#E6A700",color:"#fff",fontWeight:700,lineHeight:1,flexShrink:0}}>네이버취소</span>}
@@ -4237,6 +4238,8 @@ const CSS = `
   .timeline-scroll::-webkit-scrollbar-corner{background:#d0d0d0 !important}
   div:hover>.resize-handle{opacity:1 !important}
   @media(pointer:coarse){.resize-handle{opacity:0.6 !important}}
+  .tl-block:hover{box-shadow:0 4px 12px rgba(0,0,0,.15) !important;transform:translateY(-1px)}
+  .tl-block:active{box-shadow:0 2px 6px rgba(0,0,0,.1) !important;transform:translateY(0)}
   input,select,textarea{font-family:inherit}
   @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
   @keyframes slideIn{from{transform:translateX(-100%)}to{transform:translateX(0)}}
