@@ -107,7 +107,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.49.0";
+const BLISS_V = "2.49.1";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -3654,72 +3654,85 @@ function AdminPlaces({ data, setData, bizId }) {
     <div className="card" style={{padding:20}}>
       <AdminHeader title="예약장소 관리" count={branches.length} onAdd={addBranch} addLabel={<><I name="plus" size={12}/> 지점 추가</>} onDownload={downloadExcel} onUpload={uploadExcel}/>
       {selected.size > 0 && <div style={{marginBottom:8}}><button className="btn-d btn-sm" onClick={bulkDelete} style={{fontSize:10,padding:"4px 12px"}}><I name="trash" size={12}/> 선택 삭제 ({selected.size})</button></div>}
-      <div className="tw">
-        <table><thead><tr>
-          <th style={{width:30}}><input type="checkbox" checked={allChecked} onChange={toggleAll}/></th>
-          <th style={{width:30}}></th>
-          <th style={{width:40}}>번호</th>
-          <th style={{width:100}}>지점명</th>
-          <th>주소</th>
-          <th style={{width:140}}>전화번호</th>
-          <th style={{width:180}}>네이버연동 Gmail</th>
-          <th style={{width:100}}>네이버 Biz ID</th>
-          <th style={{width:60}}>네이버칼럼</th>
-          <th style={{width:80}}>사용구분</th>
-          <th style={{width:140}}>표시색상</th>
-          <th style={{width:55}}>적용</th>
-          <th style={{width:50}}>삭제</th>
-        </tr></thead>
-        <tbody onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
-          {branches.map((b,i) => (
-            <tr key={b.id}
-              draggable onDragStart={()=>setDragIdx(i)} onDragOver={e=>{e.preventDefault();setDragOverIdx(i)}} onDragEnd={handleDragEnd}
-              onTouchStart={e=>handleTouchStart(i,e)}
-              style={{
-                background: dragOverIdx===i ? "#7c7cc815" : edited[b.id] ? "rgba(167,139,250,.05)" : "transparent",
-                opacity: dragIdx===i ? 0.4 : 1, cursor:"grab", touchAction:"none"
-              }}>
-              <td><input type="checkbox" checked={selected.has(b.id)} onChange={()=>toggleOne(b.id)}/></td>
-              <td style={{textAlign:"center",fontSize:14,color:"#999"}}><I name="grip" size={14} color="#999"/></td>
-              <td style={{color:"#888",textAlign:"center"}}>{i+1}</td>
-              <td><input className="inp" value={b.name} onChange={e=>updateField(b.id,"name",e.target.value)} style={{background:"transparent",border:"1px solid #d0d0d0",fontWeight:600}}/></td>
-              <td><input className="inp" value={b.address||""} onChange={e=>updateField(b.id,"address",e.target.value)} style={{background:"transparent",border:"1px solid #d0d0d0",width:"100%"}} placeholder="고객 안내용 주소를 정확히 입력하세요"/></td>
-              <td><input className="inp" value={b.phone||""} onChange={e=>updateField(b.id,"phone",e.target.value)} style={{background:"transparent",border:"1px solid #d0d0d0",fontSize:11}}/></td>
-              <td><input className="inp" value={b.naverEmail||""} onChange={e=>updateField(b.id,"naverEmail",e.target.value)} style={{background:"transparent",border:"1px solid #d0d0d0",fontSize:11}} placeholder="example@gmail.com"/></td>
-              <td><input className="inp" value={b.naverBizId||""} onChange={e=>updateField(b.id,"naverBizId",e.target.value)} style={{background:"transparent",border:"1px solid #d0d0d0",fontSize:11}} placeholder="449920"/></td>
-              <td>{b.naverEmail ? <input type="number" className="inp" value={b.naverColCount||1} min={1} max={5} onChange={e=>updateField(b.id,"naverColCount",Math.max(1,Math.min(5,parseInt(e.target.value)||1)))} style={{background:"transparent",border:"1px solid #d0d0d0",fontSize:11,width:40,textAlign:"center"}}/> : <span style={{color:"#ccc",fontSize:10}}>—</span>}</td>
-              <td>
-                <select className="inp" value={b.useYn!==false?"사용":"미사용"} onChange={e=>updateField(b.id,"useYn",e.target.value==="사용")} style={{background:"transparent",border:"1px solid #d0d0d0",fontSize:11}}>
-                  <option>사용</option><option>미사용</option>
-                </select>
-              </td>
-              <td>
+
+      {/* Card list */}
+      <div style={{display:"flex",flexDirection:"column",gap:8}}>
+        {branches.map((b,i) => (
+          <div key={b.id}
+            draggable onDragStart={()=>setDragIdx(i)} onDragOver={e=>{e.preventDefault();setDragOverIdx(i)}} onDragEnd={handleDragEnd}
+            onTouchStart={e=>handleTouchStart(i,e)}
+            style={{
+              border:edited[b.id]?"1.5px solid #7c7cc8":"1px solid #e0e0e0", borderRadius:10, padding:"12px 14px",
+              background:dragOverIdx===i?"#7c7cc808":edited[b.id]?"#fafaff":"#fff",
+              opacity:dragIdx===i?0.4:1, touchAction:"none",
+              borderLeft:`4px solid ${b.color||"#ddd"}`
+            }}>
+            {/* Row 1: checkbox + name + badges */}
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+              <input type="checkbox" checked={selected.has(b.id)} onChange={()=>toggleOne(b.id)} style={{width:16,height:16,accentColor:"#7c7cc8",flexShrink:0}}/>
+              <I name="grip" size={14} color="#ccc"/>
+              <span style={{fontSize:10,color:"#999",flexShrink:0}}>{i+1}</span>
+              <input className="inp" value={b.name} onChange={e=>updateField(b.id,"name",e.target.value)}
+                style={{flex:1,background:"transparent",border:"none",borderBottom:"1px solid #e8e8e8",fontWeight:700,fontSize:14,padding:"4px 0",borderRadius:0,minWidth:0}}/>
+              <select className="inp" value={b.useYn!==false?"Y":"N"} onChange={e=>updateField(b.id,"useYn",e.target.value==="Y")}
+                style={{width:56,padding:"2px 4px",fontSize:10,border:"1px solid #e0e0e0",borderRadius:4,
+                  background:b.useYn!==false?"#e8f5e920":"#fce8e820",color:b.useYn!==false?"#4caf50":"#e57373",fontWeight:600,flexShrink:0}}>
+                <option value="Y">사용</option><option value="N">미사용</option>
+              </select>
+            </div>
+            {/* Row 2: fields grid */}
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"6px 10px",fontSize:12}}>
+              <div>
+                <span style={{fontSize:10,color:"#999",display:"block",marginBottom:2}}>전화번호</span>
+                <input className="inp" value={b.phone||""} onChange={e=>updateField(b.id,"phone",e.target.value)}
+                  placeholder="02-0000-0000" style={{width:"100%",background:"#f8f8f8",border:"1px solid #eee",fontSize:12,padding:"6px 8px",borderRadius:6}}/>
+              </div>
+              <div>
+                <span style={{fontSize:10,color:"#999",display:"block",marginBottom:2}}>표시색상</span>
                 <div style={{display:"flex",alignItems:"center",gap:4}}>
-                  <input type="color" value={b.color||"#FFFFFF"} onChange={e=>updateField(b.id,"color",e.target.value)} style={{width:24,height:24,border:"none",background:"none",cursor:"pointer",padding:0}}/>
+                  <input type="color" value={b.color||"#FFFFFF"} onChange={e=>updateField(b.id,"color",e.target.value)}
+                    style={{width:28,height:28,border:"none",cursor:"pointer",padding:0,borderRadius:4}}/>
                   <EyeDrop onPick={c=>updateField(b.id,"color",c)} size={24}/>
                   <input className="inp" value={b.color||""} onChange={e=>updateField(b.id,"color",e.target.value)}
-                    style={{width:72,background:b.color||"transparent",border:"1px solid #d0d0d0",fontSize:10,fontFamily:"monospace",color:"#333"}}/>
+                    style={{flex:1,background:b.color||"transparent",border:"1px solid #eee",fontSize:10,fontFamily:"monospace",padding:"4px 6px",borderRadius:4,minWidth:0}}/>
                 </div>
-              </td>
-              <td>
-                <button className={edited[b.id]?"btn-p btn-sm":"btn-s btn-sm"} onClick={()=>applyRow(b.id)} style={{padding:"4px 10px"}}>적용</button>
-              </td>
-              <td>
-                {deleteId===b.id ? (
-                  <div style={{display:"flex",gap:3,alignItems:"center"}}>
-                    <button onClick={()=>deleteBranch(b.id)}
-                      style={{padding:"2px 8px",fontSize:10,fontWeight:700,borderRadius:4,border:"none",background:"#e57373",color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>확인</button>
-                    <button onClick={()=>setDeleteId(null)}
-                      style={{padding:"2px 6px",fontSize:10,borderRadius:4,border:"1px solid #d0d0d0",background:"#fff",color:"#888",cursor:"pointer",fontFamily:"inherit"}}>취소</button>
+              </div>
+              <div style={{gridColumn:"1/-1"}}>
+                <span style={{fontSize:10,color:"#999",display:"block",marginBottom:2}}>주소</span>
+                <input className="inp" value={b.address||""} onChange={e=>updateField(b.id,"address",e.target.value)}
+                  placeholder="고객 안내용 주소" style={{width:"100%",background:"#f8f8f8",border:"1px solid #eee",fontSize:12,padding:"6px 8px",borderRadius:6}}/>
+              </div>
+              {/* 네이버 연동 */}
+              <div style={{gridColumn:"1/-1",borderTop:"1px dashed #e0e0e0",paddingTop:6,marginTop:2}}>
+                <span style={{fontSize:10,color:"#5cb5c5",fontWeight:600,marginBottom:4,display:"block"}}>네이버 연동</span>
+                <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:6}}>
+                  <div>
+                    <input className="inp" value={b.naverEmail||""} onChange={e=>updateField(b.id,"naverEmail",e.target.value)}
+                      placeholder="Gmail" style={{width:"100%",background:"#f8f8f8",border:"1px solid #eee",fontSize:11,padding:"6px 8px",borderRadius:6}}/>
                   </div>
-                ) : (
-                  <button onClick={()=>setDeleteId(b.id)}
-                    style={{background:"none",border:"none",cursor:"pointer",fontSize:13,color:"#e57373"}}><I name="trash" size={13}/></button>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody></table>
+                  <div style={{display:"flex",gap:4,alignItems:"center"}}>
+                    <input className="inp" value={b.naverBizId||""} onChange={e=>updateField(b.id,"naverBizId",e.target.value)}
+                      placeholder="BizID" style={{width:72,background:"#f8f8f8",border:"1px solid #eee",fontSize:11,padding:"6px 8px",borderRadius:6}}/>
+                    {b.naverEmail && <input type="number" className="inp" value={b.naverColCount||1} min={1} max={5}
+                      onChange={e=>updateField(b.id,"naverColCount",Math.max(1,Math.min(5,parseInt(e.target.value)||1)))}
+                      style={{width:36,background:"#f8f8f8",border:"1px solid #eee",fontSize:11,padding:"6px 4px",borderRadius:6,textAlign:"center"}}/>}
+                  </div>
+                </div>
+              </div>
+            </div>
+            {/* Row 3: action buttons */}
+            <div style={{display:"flex",gap:6,marginTop:10,justifyContent:"flex-end"}}>
+              {deleteId===b.id ? <>
+                <button onClick={()=>deleteBranch(b.id)} style={{padding:"6px 14px",fontSize:11,fontWeight:700,borderRadius:6,border:"none",background:"#e57373",color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>삭제 확인</button>
+                <button onClick={()=>setDeleteId(null)} style={{padding:"6px 12px",fontSize:11,borderRadius:6,border:"1px solid #d0d0d0",background:"#fff",color:"#888",cursor:"pointer",fontFamily:"inherit"}}>취소</button>
+              </> : <>
+                <button onClick={()=>setDeleteId(b.id)} style={{padding:"6px 10px",fontSize:11,borderRadius:6,border:"1px solid #f0c0c0",background:"#fff",color:"#e57373",cursor:"pointer",fontFamily:"inherit"}}><I name="trash" size={11}/></button>
+                <button className={edited[b.id]?"btn-p":"btn-s"} onClick={()=>applyRow(b.id)}
+                  style={{padding:"6px 16px",fontSize:11,borderRadius:6,fontWeight:edited[b.id]?700:500}}>{edited[b.id]?"저장":"적용"}</button>
+              </>}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   </div>;
