@@ -107,7 +107,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.48.1";
+const BLISS_V = "2.48.2";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -1981,16 +1981,14 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
   }
 
   return (
-    <div className="ov" onClick={onClose} style={{alignItems:"center",justifyContent:"center",padding:16,overflow:"hidden"}}>
+    <div className="ov" onClick={onClose} style={{alignItems:"flex-start",padding:"20px 16px",overflow:"auto",WebkitOverflowScrolling:"touch"}}>
       <div ref={modalRef} className="modal-res" onClick={e=>e.stopPropagation()} style={{background:"#fff",
         borderRadius:12,border:"1px solid #e0e0e0",
-        width:"92%",maxWidth:500,maxHeight:"90vh",
-        overflow:"hidden",
+        width:"92%",maxWidth:500,margin:"0 auto",
         animation:"slideUp 1.5s cubic-bezier(.22,1,.36,1)",
-        flexShrink:0,
-        boxShadow:"0 8px 40px rgba(0,0,0,.18)",display:"flex",flexDirection:"column"}}>
+        boxShadow:"0 8px 40px rgba(0,0,0,.18)"}}>
         {/* ═══ Chrome-style Tabs ═══ */}
-        <div style={{display:"flex",alignItems:"flex-end",gap:0,padding:"0",background:"#f5f5f5",borderRadius:"12px 12px 0 0",position:"sticky",top:0,zIndex:10,borderBottom:"1px solid #e0e0e0",overflow:"hidden"}}>
+        <div style={{display:"flex",alignItems:"flex-end",gap:0,padding:"0",background:"#f5f5f5",borderRadius:"12px 12px 0 0",borderBottom:"1px solid #e0e0e0",overflow:"hidden"}}>
           {/* 예약 탭 */}
           <button onClick={()=>{setIsSchedule(false);setF(p=>({...p,isSchedule:false,selectedTags:[],type:"reservation"}));if(modalRef.current)modalRef.current.scrollTop=0}}
             style={{flex:1,padding:"12px 16px",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
@@ -2013,7 +2011,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
             onMouseOver={e=>e.currentTarget.style.color="#e57373"} onMouseOut={e=>e.currentTarget.style.color="#999"}><I name="x" size={16}/></button>
         </div>
 
-        <div style={{padding:"16px 20px",borderTop:"1px solid #e0e0e0",flex:1,overflowY:"auto"}} className="form-col">
+        <div style={{padding:"16px 20px"}} className="form-col">
 
           {/* ═══ 네이버 예약 상태 배너 ═══ */}
           {f.status === "naver_cancelled" && <div style={{background:"#FFF8E1",border:"1.5px solid #E6A700",borderRadius:6,padding:"8px 12px",marginBottom:12,display:"flex",alignItems:"center",gap:8}}>
@@ -2245,7 +2243,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
 
           {/* Action Buttons - 한 줄 (pinned bottom) */}
         </div>
-        <div style={{padding:"12px 16px",borderTop:"1px solid #e0e0e0",background:"#fafafa",borderRadius:"0 0 12px 12px",flexShrink:0}}>
+        <div style={{padding:"12px 16px",borderTop:"1px solid #e0e0e0",background:"#fafafa",borderRadius:"0 0 12px 12px"}}>
             {/* 예약상태 버튼 */}
             {item?.id && !isSchedule && <div style={{display:"flex",gap:4,marginBottom:8}}>
               {STATUS_KEYS.map(k=>{const sc=getStatusClr();const sel=f.status===k;return <button key={k} onClick={()=>set("status",k)}
@@ -4313,8 +4311,8 @@ const CSS = `
     .cust-row button{height:38px!important;box-sizing:border-box!important}
     .form-col .inp,.form-col select.inp{height:38px!important;box-sizing:border-box!important;padding:5px 8px!important}
     .form-col textarea.inp{height:auto!important}
-    .modal-res{max-height:90vh!important;overflow:hidden!important;width:92%!important;max-width:500px!important;border-radius:12px!important}
-    .modal-res .form-col{overflow-y:auto!important;flex:1!important}
+    .modal-res{width:92%!important;max-width:500px!important;border-radius:12px!important}
+    .modal-res .form-col{overflow:visible!important}
     .ov{padding:8px!important;-webkit-overflow-scrolling:touch!important}
     .tl-topbar{flex-direction:column!important;gap:4px!important;padding:6px 8px!important}
     .tl-days{width:100%;justify-content:space-between}
