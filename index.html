@@ -120,7 +120,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.45.0";
+const BLISS_V = "2.45.1";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -1457,6 +1457,10 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
         <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
           <button onClick={()=>changeDate(-1)} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#666",padding:"2px 4px",flexShrink:0}}><I name="chevL" size={14}/></button>
           <span style={{fontSize:13,fontWeight:700,color:"#333",cursor:"pointer",flexShrink:0,whiteSpace:"nowrap"}} onClick={()=>{const el=document.createElement("input");el.type="date";el.value=selDate;el.onchange=e=>setSelDate(e.target.value);el.showPicker?.();el.click()}}>{dateLabel}</span>
+          <div style={{position:"relative",flexShrink:0}}>
+            <button onClick={()=>setShowCal(!showCal)} style={{background:"none",border:"none",cursor:"pointer",padding:"2px 4px",color:"#333",display:"flex",alignItems:"center"}}><I name="calendar" size={14}/></button>
+            {showCal && <MiniCal selDate={selDate} onSelect={d=>{setSelDate(d);setShowCal(false);}} onClose={()=>setShowCal(false)}/>}
+          </div>
           <button onClick={()=>changeDate(1)} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#666",padding:"2px 4px",flexShrink:0}}><I name="chevR" size={14}/></button>
           <button onClick={()=>setSelDate(todayStr())} style={{padding:"2px 8px",fontSize:10,border:"1px solid #d0d0d0",borderRadius:3,background:"#fff",color:"#666",cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>오늘</button>
           <div style={{position:"relative",flexShrink:0}} ref={el => { if(el) el._settingsBtn = el; }}>
@@ -1494,10 +1498,6 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
               <span>{dt.getDate()}</span>
             </button>;
           })}
-          <div style={{position:"relative",flexShrink:0,marginLeft:2}}>
-            <button onClick={()=>setShowCal(!showCal)} style={{width:28,height:28,border:"1px solid #d0d0d0",borderRadius:6,background:showCal?"#f0f0ff":"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0,color:"#888"}}><I name="calendar" size={14}/></button>
-            {showCal && <MiniCal selDate={selDate} onSelect={d=>{setSelDate(d);setShowCal(false);}} onClose={()=>setShowCal(false)}/>}
-          </div>
         </div>
       </div>
 
