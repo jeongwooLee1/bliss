@@ -120,7 +120,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.51.0";
+const BLISS_V = "2.52.0";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -510,8 +510,8 @@ function App() {
       </div>}
       <main className="main-c" style={S.main}>
         <div className="mob-hdr" style={S.mobHdr}>
-          <button onClick={()=>setSideOpen(true)} style={S.menuBtn}><I name="menu" size={20}/></button>
-          {bizName && <span style={{fontSize:14,fontWeight:700,color:"#7c7cc8"}}>{bizName}</span>}
+          <button onClick={()=>setSideOpen(true)} style={S.menuBtn}><I name="menu" size={22}/></button>
+          {bizName && <span style={{fontSize:18,fontWeight:800,color:"#7c7cc8"}}>{bizName}</span>}
         </div>
         <div className="page-pad" style={{flex:1,padding:page==="timeline"?"0":"16px 20px 16px",display:"flex",flexDirection:"column",minHeight:0,overflow:"hidden"}}>
           <div className={page==="timeline"?"":"fade-in"} key={page} style={page==="timeline"?{flex:1,display:"flex",flexDirection:"column",minHeight:0}:{overflow:"auto",flex:1,WebkitOverflowScrolling:"touch"}}>
@@ -1478,16 +1478,16 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
         {/* Row 1: Date nav + settings + branch */}
         <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
           <button onClick={()=>changeDate(-1)} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#666",padding:"2px 4px",flexShrink:0}}><I name="chevL" size={14}/></button>
-          <span style={{fontSize:13,fontWeight:700,color:"#333",flexShrink:0,whiteSpace:"nowrap"}}>{dateLabel}</span>
+          <span className="tl-date-label" style={{fontSize:13,fontWeight:700,color:"#333",flexShrink:0,whiteSpace:"nowrap"}}>{dateLabel}</span>
           <div style={{position:"relative",flexShrink:0}}>
             <button onClick={()=>setShowCal(!showCal)} style={{background:"none",border:"none",cursor:"pointer",padding:"2px 4px",color:"#333",display:"flex",alignItems:"center"}}><I name="calendar" size={14}/></button>
             {showCal && <MiniCal selDate={selDate} onSelect={d=>{setSelDate(d);setShowCal(false);}} onClose={()=>setShowCal(false)}/>}
           </div>
           <button onClick={()=>changeDate(1)} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#666",padding:"2px 4px",flexShrink:0}}><I name="chevR" size={14}/></button>
-          <button onClick={()=>setSelDate(todayStr())} style={{padding:"0 8px",height:28,fontSize:10,border:"1px solid #d0d0d0",borderRadius:4,background:"#fff",color:"#666",cursor:"pointer",fontFamily:"inherit",flexShrink:0,display:"flex",alignItems:"center"}}>오늘</button>
+          <button onClick={()=>setSelDate(todayStr())} style={{padding:"0 10px",height:32,fontSize:12,border:"1px solid #d0d0d0",borderRadius:6,background:"#fff",color:"#666",cursor:"pointer",fontFamily:"inherit",flexShrink:0,display:"flex",alignItems:"center"}}>오늘</button>
           <div style={{position:"relative",flexShrink:0}} ref={el => { if(el) el._settingsBtn = el; }}>
             <button onClick={(e)=>{setShowSettings(!showSettings);}} id="settings-btn"
-              style={{width:28,height:28,border:"1px solid #d0d0d0",borderRadius:4,background:showSettings?"#f0f0ff":"#fff",
+              style={{width:32,height:32,border:"1px solid #d0d0d0",borderRadius:6,background:showSettings?"#f0f0ff":"#fff",
                 cursor:"pointer",fontSize:12,display:"flex",alignItems:"center",justifyContent:"center",padding:0,color:"#888"}}><I name="settings" size={14}/></button>
           </div>
           {/* Branch multi-select */}
@@ -1498,7 +1498,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
             const label = allSelected ? "전체" : selectedCount === 1 ? (branchList.find(b=>viewBids.includes(b.id))?.short || branchList.find(b=>viewBids.includes(b.id))?.name || "지점") : `${selectedCount}개 지점`;
             return <div style={{position:"relative",flexShrink:0}}>
               <button onClick={()=>setShowBranchPicker(p=>!p)}
-                style={{height:28,padding:"0 8px",fontSize:10,border:"1px solid #d0d0d0",borderRadius:4,
+                style={{height:32,padding:"0 10px",fontSize:12,border:"1px solid #d0d0d0",borderRadius:6,
                   background:showBranchPicker?"#f0f0ff":"#fff",color:"#555",cursor:"pointer",fontFamily:"inherit",
                   fontWeight:600,display:"flex",alignItems:"center",gap:4,whiteSpace:"nowrap"}}>
                 <I name="building" size={10}/> {label} <I name="chevD" size={10}/>
@@ -1550,11 +1550,11 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
             const isSel = ds === selDate;
             const dayColor = dow===0?"#e57373":dow===6?"#4a7cc8":"#555";
             return <button key={i} onClick={()=>setSelDate(ds)}
-              style={{minWidth:38,height:28,borderRadius:6,border:isSel?"none":"1px solid #e8e8e8",
+              style={{minWidth:42,height:32,borderRadius:8,border:isSel?"none":"1px solid #e8e8e8",
                 background:isSel?"#7c7cc8":"#fff",color:isSel?"#fff":dayColor,
-                fontSize:11,fontWeight:isSel?700:500,cursor:"pointer",fontFamily:"inherit",padding:"2px 4px",flexShrink:0,
+                fontSize:13,fontWeight:isSel?700:500,cursor:"pointer",fontFamily:"inherit",padding:"2px 4px",flexShrink:0,
                 display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",lineHeight:1.1}}>
-              <span style={{fontSize:10}}>{DAYS_KR[dow]}</span>
+              <span style={{fontSize:12}}>{DAYS_KR[dow]}</span>
               <span>{dt.getDate()}</span>
             </button>;
           })}
@@ -1600,16 +1600,16 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       })()}
 
       {/* Timeline Grid */}
-      <div ref={scrollRef} className="timeline-scroll" style={{flex:1,overflow:"scroll",position:"relative",minHeight:0,WebkitOverflowScrolling:"touch"}}>
+      <div ref={scrollRef} className="timeline-scroll" onScroll={e=>{const hdr=document.querySelector(".mob-hdr");if(!hdr)return;if(e.target.scrollTop>20){hdr.style.transform="translateY(-100%)";hdr.style.opacity="0";}else{hdr.style.transform="translateY(0)";hdr.style.opacity="1";}}} style={{flex:1,overflow:"scroll",position:"relative",minHeight:0,WebkitOverflowScrolling:"touch"}}>
         <div style={{display:"flex",minWidth:"fit-content"}}>
           {/* Time Labels */}
-          <div style={{width:timeLabelsW,flexShrink:0,position:"sticky",left:0,zIndex:20,background:"#fff",borderRight:"1px solid #eee"}}>
-            <div style={{height:headerH,borderBottom:"1px solid #eee",position:"sticky",top:0,zIndex:25,background:"#fff"}}/>
+          <div className="tl-time-col" style={{width:timeLabelsW,flexShrink:0,position:"sticky",left:0,zIndex:20,background:"#fff",borderRight:"1px solid #eee"}}>
+            <div className="tl-hdr-cell" style={{height:headerH,borderBottom:"1px solid #eee",position:"sticky",top:0,zIndex:25,background:"#fff"}}/>
             <div style={{position:"relative",height:totalRows*rowH,...gridBg}}>
               {hoverCell && hoverCell.rowIdx>=0 && <div style={{position:"absolute",top:hoverCell.rowIdx*rowH,left:0,right:0,height:rowH,background:"rgba(124,124,200,0.08)",zIndex:1,pointerEvents:"none"}}/>}
               {timeLabels.map(({i, isHour, m, text}) => {
                 const isHighlighted = hoverCell && hoverCell.rowIdx === i;
-                return <div key={i} style={{position:"absolute",top:i*rowH,left:0,right:0,height:rowH,display:"flex",alignItems:"center",justifyContent:"flex-end",paddingRight:window.innerWidth<=768?3:6}}>
+                return <div key={i} className="tl-time-cell" style={{position:"absolute",top:i*rowH,left:0,right:0,height:rowH,display:"flex",alignItems:"center",justifyContent:"flex-end",paddingRight:window.innerWidth<=768?3:6}}>
                   <span style={{fontSize:isHour?(window.innerWidth<=768?10:11):(window.innerWidth<=768?8:9),fontWeight:isHighlighted?700:(isHour?600:400),color:isHighlighted?"#7c7cc8":(isHour?"#555":"#aaa"),whiteSpace:"nowrap",lineHeight:1,transition:"color 0.1s"}}>{text}</span>
                 </div>;
               })}
@@ -1640,9 +1640,9 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
             return (
               <div key={room.id} className="tl-room-col" style={{width:colW,flexShrink:0,borderLeft:room.isNaver?"2px solid #A5D6A7":(isNewBranch&&ci>0?"none":"1px solid #f0f0f0"),background:room.isNaver?"#F1F8E9":(branchColor||"#fff"),marginLeft:isNewBranch&&ci>0?4:0,boxShadow:isNewBranch&&ci>0?"-4px 0 8px rgba(0,0,0,.06)":room.isNaver?"inset 2px 0 4px rgba(76,175,80,.08)":"none"}}>
                 {/* Header */}
-                <div style={{height:headerH,borderBottom:"1px solid #eee",position:"sticky",top:0,zIndex:10,background:room.isNaver?"#E8F5E9":(branchColor||"#fff"),display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",lineHeight:1.2}}>
-                  <span style={{fontSize:12,fontWeight:700,color:room.isNaver?"#2E7D32":"#333"}}>{room.branchName}</span>
-                  <span style={{fontSize:9,color:room.isNaver?"#43A047":"#999"}}>{room.isNaver?<I name="naver" size={11}/> :"" }{room.name}</span>
+                <div className="tl-hdr-cell" style={{height:headerH,borderBottom:"1px solid #eee",position:"sticky",top:0,zIndex:10,background:room.isNaver?"#E8F5E9":(branchColor||"#fff"),display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",lineHeight:1.2}}>
+                  <span className="tl-room-name" style={{fontSize:12,fontWeight:700,color:room.isNaver?"#2E7D32":"#333"}}>{room.branchName}</span>
+                  <span className="tl-room-sub" style={{fontSize:9,color:room.isNaver?"#43A047":"#999"}}>{room.isNaver?<I name="naver" size={11}/> :"" }{room.name}</span>
                 </div>
                 {/* Grid Area */}
                 <div style={{position:"relative",height:totalRows*rowH,cursor:room.isNaver?"default":(canEdit(room.branch_id)?"pointer":"default"),...gridBg}}
@@ -4499,7 +4499,7 @@ const S = {
   root: { display:"flex", height:"100dvh", fontFamily:"'Pretendard',-apple-system,BlinkMacSystemFont,'Noto Sans KR',sans-serif", background:"#f8f8f8", color:"#333", overflow:"hidden", position:"fixed", top:0, left:0, right:0, bottom:0 },
   sidebar: { width:200, background:"#fff", borderRight:"1px solid #e0e0e0", display:"flex", flexDirection:"column", position:"fixed", top:0, left:0, bottom:0, zIndex:50 },
   main: { flex:1, marginLeft:200, display:"flex", flexDirection:"column", height:"100%", minHeight:0, overflow:"hidden" },
-  mobHdr: { padding:"10px 16px", background:"#fff", borderBottom:"1px solid #e0e0e0", display:"flex", alignItems:"center", gap:12 },
+  mobHdr: { padding:"10px 16px", background:"#fff", borderBottom:"1px solid #e0e0e0", display:"flex", alignItems:"center", gap:12, transition:"transform .3s ease, opacity .3s ease" },
   menuBtn: { background:"none", border:"none", color:"#333", cursor:"pointer", fontSize:20, fontFamily:"inherit" },
 };
 
@@ -4523,6 +4523,8 @@ const CSS = `
   div:hover>.resize-handle{opacity:1 !important}
   @media(pointer:coarse){.resize-handle{opacity:0.6 !important}}
   .tl-block{transition:box-shadow .2s ease,transform .15s ease !important}
+  .tl-time-col{position:-webkit-sticky;position:sticky}
+  .tl-hdr-cell{position:-webkit-sticky;position:sticky}
   .tl-block:hover{box-shadow:0 2px 8px rgba(0,0,0,.12) !important}
   @media(pointer:coarse){.tl-block:active{box-shadow:0 2px 8px rgba(0,0,0,.12) !important}}
   .tl-block:hover{box-shadow:0 4px 14px rgba(0,0,0,.18) !important;transform:translateY(-1px)}
@@ -4582,7 +4584,15 @@ const CSS = `
     .modal-res{width:92%!important;max-width:500px!important;border-radius:12px!important}
     .modal-res .form-col{overflow:visible!important}
     .ov{padding:8px!important;-webkit-overflow-scrolling:touch!important}
-    .tl-topbar{flex-direction:column!important;gap:4px!important;padding:6px 8px!important}
+    .tl-topbar{flex-direction:column!important;gap:4px!important;padding:8px 10px!important}
+    .mob-hdr{padding:10px 16px!important}
+    .tl-date-label{font-size:15px!important}
+    .tl-room-name{font-size:14px!important}
+    .tl-room-sub{font-size:11px!important}
+    .tl-time-col{position:-webkit-sticky!important;position:sticky!important}
+    .tl-hdr-cell{position:-webkit-sticky!important;position:sticky!important}
+    .tl-topbar{padding:8px 10px!important}
+
     .tl-days{width:100%;justify-content:space-between}
     .page-filter{flex-wrap:wrap!important;gap:4px!important}
     .page-filter .inp{max-width:130px!important}
