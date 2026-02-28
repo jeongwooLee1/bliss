@@ -120,7 +120,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.50.2";
+const BLISS_V = "2.51.0";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -187,6 +187,22 @@ const I = ({name,size=16,color="currentColor",style={},...p}) => {
   return icons[name] || null;
 };
 const BLOCK_LABELS = { reservation:"예약", memo:"메모", clockin:"출근", cleaning:"청소", break:"휴식" };
+
+// ─── Modal close animation utility ───
+function _mc(cb) {
+  const os = [...document.querySelectorAll('.ov')];
+  const o = os[os.length - 1];
+  if (!o) { cb(); return; }
+  const m = o.children[0];
+  o.style.transition = 'opacity .25s';
+  o.style.opacity = '0';
+  if (m) {
+    m.style.transition = 'transform .25s cubic-bezier(.4,0,.6,1), opacity .2s';
+    m.style.transform = 'scale(.88)';
+    m.style.opacity = '0';
+  }
+  setTimeout(cb, 260);
+}
 
 // ─── App ───
 function App() {
@@ -1776,21 +1792,20 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
         const desc = type === "move"
           ? `${name}: ${orig.time} → ${d.time}`
           : `${name}: ${orig.dur}분 → ${d.dur}분`;
-        return <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,zIndex:9998,background:"rgba(0,0,0,0.3)",
-          display:"flex",alignItems:"center",justifyContent:"center"}} onClick={cancelChange}>
+        return <div className="ov" style={{zIndex:9998}} onClick={()=>_mc(cancelChange)}>
           <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:14,boxShadow:"0 12px 40px rgba(0,0,0,0.2)",padding:"20px 24px",
             fontFamily:"inherit",minWidth:260,maxWidth:340,textAlign:"center",animation:"slideUp .6s cubic-bezier(.22,1,.36,1)"}}>
             <div style={{fontSize:14,fontWeight:700,marginBottom:6}}>{type==="move"?"예약 이동":"시간 변경"}</div>
             <div style={{fontSize:13,color:"#555",marginBottom:16}}>{desc}</div>
             <div style={{display:"flex",gap:10,justifyContent:"center"}}>
-              <button onClick={cancelChange} style={{flex:1,padding:"10px 0",fontSize:13,fontWeight:600,borderRadius:8,border:"1px solid #ddd",background:"#f5f5f5",color:"#666",cursor:"pointer",fontFamily:"inherit"}}>취소</button>
+              <button onClick={()=>_mc(cancelChange)} style={{flex:1,padding:"10px 0",fontSize:13,fontWeight:600,borderRadius:8,border:"1px solid #ddd",background:"#f5f5f5",color:"#666",cursor:"pointer",fontFamily:"inherit"}}>취소</button>
               <button onClick={confirmChange} style={{flex:1,padding:"10px 0",fontSize:13,fontWeight:700,borderRadius:8,border:"none",background:"#7c7cc8",color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>완료</button>
             </div>
           </div>
         </div>;
       })()}
 
-      {showModal && <TimelineModal item={modalData} onSave={handleSave} onDelete={handleDelete} onDeleteRequest={handleDeleteRequest} onClose={()=>{setShowModal(false);setModalData(null)}} selBranch={userBranches[0]} userBranches={userBranches} data={data} setData={setData} setPage={setPage}/>}
+      {showModal && <TimelineModal item={modalData} onSave={handleSave} onDelete={handleDelete} onDeleteRequest={handleDeleteRequest} onClose={()=>_mc(()=>{setShowModal(false);setModalData(null)})} selBranch={userBranches[0]} userBranches={userBranches} data={data} setData={setData} setPage={setPage}/>}
 
       {/* Settings dropdown (fixed, outside overflow) */}
       {showSettings && <>{(() => {
@@ -1827,14 +1842,21 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
           }
         };
         return <>
-        <div style={{position:"fixed",inset:0,zIndex:99,background:"rgba(0,0,0,.3)"}} onClick={()=>setShowSettings(false)}/>
+        <div style={{position:"fixed",inset:0,zIndex:99,background:"rgba(0,0,0,.3)",animation:"ovFadeIn .25s"}} onClick={()=>{
+          const p=document.querySelector('[data-settings-panel]');
+          const o=document.querySelector('[data-settings-ov]');
+          if(p){p.style.transition='transform .3s ease-out';p.style.transform='translateY(100%)';}
+          if(o){o.style.transition='opacity .3s';o.style.opacity='0';}
+          setTimeout(()=>setShowSettings(false),300);
+        }} data-settings-ov/>
         <div
+          data-settings-panel
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
           style={{position:"fixed",bottom:0,left:0,right:0,
           background:"#fff",borderRadius:"16px 16px 0 0",padding:"20px 20px 32px",boxShadow:"0 -8px 32px rgba(0,0,0,.15)",zIndex:100,
-          maxHeight:"80vh",overflowY:"auto",animation:"slideUp .6s cubic-bezier(.22,1,.36,1)",willChange:"transform"}}>
+          maxHeight:"80vh",overflowY:"auto",animation:"bottomSheet .4s cubic-bezier(.22,1,.36,1)",willChange:"transform"}}>
           <div style={{width:36,height:4,borderRadius:2,background:"#ddd",margin:"0 auto 16px",cursor:"grab"}}/>
           <div style={{fontSize:14,fontWeight:700,color:"#333",marginBottom:12}}><I name="settings" size={14}/> 타임라인 설정</div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
@@ -1879,7 +1901,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       </>;})()}</>}
 
       {/* 알람 팝업 */}
-      {alarmPopup && <div className="ov" onClick={()=>setAlarmPopup(null)} style={{zIndex:9999}}>
+      {alarmPopup && <div className="ov" onClick={()=>_mc(()=>setAlarmPopup(null))} style={{zIndex:9999}}>
         <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:12,padding:0,width:"90%",maxWidth:400,
           boxShadow:"0 16px 48px rgba(0,0,0,.25)",animation:"slideUp .6s cubic-bezier(.22,1,.36,1)",overflow:"hidden"}}>
           <div style={{background:"linear-gradient(135deg,#FF6B00,#FF9800)",padding:"20px 24px",color:"#fff",textAlign:"center"}}>
@@ -1896,14 +1918,14 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
               : <div style={{fontSize:13,color:"#999",textAlign:"center",padding:12}}>메모 내용 없음</div>}
           </div>
           <div style={{padding:"0 24px 20px",textAlign:"center"}}>
-            <button className="btn-p" onClick={()=>setAlarmPopup(null)}
+            <button className="btn-p" onClick={()=>_mc(()=>setAlarmPopup(null))}
               style={{width:"100%",padding:12,fontSize:14,background:"#FF6B00",borderRadius:8}}>확인</button>
           </div>
         </div>
       </div>}
 
       {/* 반복일정 삭제 옵션 팝업 */}
-      {deletePopup && <div className="ov" onClick={()=>setDeletePopup(null)} style={{zIndex:9998}}>
+      {deletePopup && <div className="ov" onClick={()=>_mc(()=>setDeletePopup(null))} style={{zIndex:9998}}>
         <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:12,width:"90%",maxWidth:340,
           boxShadow:"0 16px 48px rgba(0,0,0,.25)",animation:"slideUp .6s cubic-bezier(.22,1,.36,1)",overflow:"hidden"}}>
           <div style={{padding:"20px 24px 12px",borderBottom:"1px solid #eee"}}>
@@ -1927,7 +1949,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
             ))}
           </div>
           <div style={{padding:"8px 24px 16px"}}>
-            <button onClick={()=>setDeletePopup(null)}
+            <button onClick={()=>_mc(()=>setDeletePopup(null))}
               style={{width:"100%",padding:"10px",fontSize:12,border:"1px solid #ddd",borderRadius:6,background:"#fff",
                 color:"#888",cursor:"pointer",fontFamily:"inherit"}}>취소</button>
           </div>
@@ -2085,7 +2107,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
       <div ref={modalRef} className="modal-res" onClick={e=>e.stopPropagation()} style={{background:"#fff",
         borderRadius:12,border:"1px solid #e0e0e0",
         width:"92%",maxWidth:500,margin:"0 auto",
-        animation:"slideUp 1.5s cubic-bezier(.22,1,.36,1)",
+        animation:"slideUp .4s cubic-bezier(.22,1,.36,1)",
         boxShadow:"0 8px 40px rgba(0,0,0,.18)"}}>
         {/* ═══ Chrome-style Tabs ═══ */}
         <div style={{display:"flex",alignItems:"flex-end",gap:0,padding:"0",background:"#f5f5f5",borderRadius:"12px 12px 0 0",borderBottom:"1px solid #e0e0e0",overflow:"hidden"}}>
@@ -3137,12 +3159,12 @@ function SalesPage({ data, setData, userBranches, isMaster }) {
         staffId:(data.staff||[]).find(s=>s.bid===(userBranches[0]))?.id||"",serviceId:null,date:selDate}}
       branchId={userBranches[0]}
       onSubmit={(sale)=>{handleSave(sale);}}
-      onClose={()=>setShowModal(false)} data={data} setData={setData} />}
+      onClose={()=>_mc(()=>setShowModal(false))} data={data} setData={setData} />}
     {editSale && <DetailedSaleForm
       reservation={{...editSale, saleMemo:editSale.memo||""}}
       branchId={editSale.bid}
       onSubmit={handleEditSave}
-      onClose={()=>setEditSale(null)} data={data} setData={setData} />}
+      onClose={()=>_mc(()=>setEditSale(null))} data={data} setData={setData} />}
   </div>;
 }
 
@@ -3394,7 +3416,7 @@ function CustomersPage({ data, setData, userBranches, isMaster }) {
           })}
       </tbody></table>
     </div>
-    {showModal && <CustModal item={editItem} onSave={handleSave} onClose={()=>{setShowModal(false);setEditItem(null)}} defBranch={userBranches[0]} userBranches={userBranches} branches={data.branches||[]}/>}
+    {showModal && <CustModal item={editItem} onSave={handleSave} onClose={()=>_mc(()=>{setShowModal(false);setEditItem(null)})} defBranch={userBranches[0]} userBranches={userBranches} branches={data.branches||[]}/>}
   </div>;
 }
 
@@ -4507,8 +4529,8 @@ const CSS = `
   .tl-block:active{box-shadow:0 2px 6px rgba(0,0,0,.12) !important;transform:translateY(0)}
   input,select,textarea{font-family:inherit}
   @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-  @keyframes slideUp{from{opacity:0;transform:translateY(80px)}to{opacity:1;transform:translateY(0)}}
-  @keyframes cardOpen{from{opacity:0;transform:scale(.85)}to{opacity:1;transform:scale(1)}}
+  @keyframes slideUp{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:scale(1)}}
+  @keyframes bottomSheet{from{transform:translateY(100%)}to{transform:translateY(0)}}
   @keyframes ovFadeIn{from{opacity:0}to{opacity:1}}
   @keyframes slideIn{from{transform:translateX(-100%)}to{transform:translateX(0)}}
   @keyframes naverBlink{0%,100%{background:#fff3e0}50%{background:#ffe0b2}}
@@ -4533,7 +4555,7 @@ const CSS = `
   .btn-d{background:#e57373;color:#fff;padding:7px 14px;border-radius:4px;border:none;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;transition:all .15s}
   .btn-d:hover{background:#d32f2f}
   .btn-sm{padding:5px 10px;font-size:11px}
-  .ov{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.35);backdrop-filter:blur(2px);z-index:200;display:flex;align-items:center;justify-content:center;padding:16px}
+  .ov{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.35);backdrop-filter:blur(2px);z-index:200;display:flex;align-items:center;justify-content:center;padding:16px;animation:ovFadeIn .25s}
   .modal{background:#fff;border-radius:12px;border:1px solid #e0e0e0;padding:22px;width:92%;max-width:500px;max-height:85vh;overflow-y:auto;animation:slideUp .6s cubic-bezier(.22,1,.36,1);box-shadow:0 12px 40px rgba(0,0,0,.18)}
   .close-btn{background:none;border:none;color:#999;cursor:pointer;font-size:16px;font-family:inherit}
   .form-col{display:flex;flex-direction:column;gap:12px}
