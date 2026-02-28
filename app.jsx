@@ -107,7 +107,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.48.2";
+const BLISS_V = "2.48.3";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -2616,10 +2616,10 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
   const halfProd = Math.ceil(PROD_LIST.length / 2);
 
   return (
-    <div className="ov" onClick={onClose}>
+    <div className="ov" onClick={onClose} style={{alignItems:"flex-start",padding:"20px 16px",overflow:"auto",WebkitOverflowScrolling:"touch"}}>
       <div onClick={e => e.stopPropagation()} style={{
-        background: "#fff", borderRadius: 14, border: "1px solid #e0e0e0", padding: 0,
-        width: "92%", maxWidth: 1200, maxHeight: "92vh", overflow: "hidden", display: "flex", flexDirection: "column",
+        background: "#fff", borderRadius: 12, border: "1px solid #e0e0e0", padding: 0,
+        width: "92%", maxWidth: 1200, margin: "0 auto",
         animation: "slideUp .6s cubic-bezier(.22,1,.36,1)", boxShadow: "0 12px 40px rgba(0,0,0,.18)"
       }}>
         {/* Header */}
