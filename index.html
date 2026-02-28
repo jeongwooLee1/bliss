@@ -118,7 +118,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.42.3";
+const BLISS_V = "2.43.0";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -850,26 +850,60 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   
   const blocks = data.reservations.filter(r => r.date === selDate && branchesToShow.some(b=>b.id===r.bid));
 
-  // Time config - 5min intervals (persist to localStorage)
-  const tlKey = "bliss_tl_";
-  const tlLoad = (k, def) => { try { const v = localStorage.getItem(tlKey+k); return v !== null ? Number(v) : def; } catch(e) { return def; } };
-  const tlSave = (k, v) => { try { localStorage.setItem(tlKey+k, v); } catch(e) {} };
-  const [startHour, setStartHourRaw] = useState(() => tlLoad("sh", 8));
-  const [endHour, setEndHourRaw] = useState(() => tlLoad("eh", 22));
-  const [rowH, setRowHRaw] = useState(() => tlLoad("rh", 14));
-  const [colW, setColWRaw] = useState(() => tlLoad("cw", 160));
-  const [timeUnit, setTimeUnitRaw] = useState(() => tlLoad("tu", 5));
-  const [blockFs, setBlockFsRaw] = useState(() => tlLoad("fs", 10));
-  const [blockOp, setBlockOpRaw] = useState(() => tlLoad("op", 100));
-  const [statusClr, setStatusClrRaw] = useState(() => getStatusClr());
-  const setStatusClr = (k,v) => { setStatusClrRaw(p => { const n = {...p,[k]:v}; try{localStorage.setItem("tl_sc",JSON.stringify(n))}catch(e){} return n; }); };
-  const setStartHour = v => { const nv = typeof v === "function" ? v(startHour) : v; setStartHourRaw(nv); tlSave("sh", nv); };
-  const setEndHour = v => { const nv = typeof v === "function" ? v(endHour) : v; setEndHourRaw(nv); tlSave("eh", nv); };
-  const setRowH = v => { const nv = typeof v === "function" ? v(rowH) : v; setRowHRaw(nv); tlSave("rh", nv); };
-  const setColW = v => { const nv = typeof v === "function" ? v(colW) : v; setColWRaw(nv); tlSave("cw", nv); };
-  const setTimeUnit = v => { const nv = typeof v === "function" ? v(timeUnit) : v; setTimeUnitRaw(nv); tlSave("tu", nv); };
-  const setBlockFs = v => { const nv = typeof v === "function" ? v(blockFs) : v; setBlockFsRaw(nv); tlSave("fs", nv); };
-  const setBlockOp = v => { const nv = typeof v === "function" ? v(blockOp) : v; setBlockOpRaw(nv); tlSave("op", nv); };
+  // Time config - shared across all users via DB (branch timeline_settings)
+  const getTlSettings = () => {
+    try {
+      const br = (data.branchSettings||data.branches||[]).find(b => userBranches.includes(b.id));
+      if (br?.timeline_settings) {
+        const s = typeof br.timeline_settings === "string" ? JSON.parse(br.timeline_settings) : br.timeline_settings;
+        return s || {};
+      }
+    } catch(e) {}
+    return {};
+  };
+  const dbTl = useRef(getTlSettings());
+  useEffect(() => { dbTl.current = getTlSettings(); }, [data.branchSettings, data.branches]);
+  const tlDef = (k, def) => dbTl.current[k] !== undefined ? Number(dbTl.current[k]) : def;
+  const tlSaveTimer = useRef(null);
+  const tlSaveDb = useCallback((allSettings) => {
+    clearTimeout(tlSaveTimer.current);
+    tlSaveTimer.current = setTimeout(() => {
+      const json = JSON.stringify(allSettings);
+      (data.branchSettings||data.branches||[]).filter(b=>userBranches.includes(b.id)).forEach(b => {
+        sb.update("branches", b.id, {timeline_settings:json}).catch(console.error);
+      });
+      setData(prev => ({...prev,
+        branchSettings: (prev.branchSettings||[]).map(b => userBranches.includes(b.id) ? {...b, timeline_settings:allSettings} : b),
+        branches: (prev.branches||[]).map(b => userBranches.includes(b.id) ? {...b, timeline_settings:allSettings} : b),
+      }));
+    }, 500);
+  }, [data.branchSettings, data.branches, userBranches]);
+  const [startHour, setStartHourRaw] = useState(() => tlDef("sh", 8));
+  const [endHour, setEndHourRaw] = useState(() => tlDef("eh", 22));
+  const [rowH, setRowHRaw] = useState(() => tlDef("rh", 14));
+  const [colW, setColWRaw] = useState(() => tlDef("cw", 160));
+  const [timeUnit, setTimeUnitRaw] = useState(() => tlDef("tu", 5));
+  const [blockFs, setBlockFsRaw] = useState(() => tlDef("fs", 10));
+  const [blockOp, setBlockOpRaw] = useState(() => tlDef("op", 100));
+  const [statusClr, setStatusClrRaw] = useState(() => {
+    const sc = dbTl.current.sc;
+    return sc ? {...STATUS_CLR_DEFAULT,...sc} : {...STATUS_CLR_DEFAULT};
+  });
+  const makeTlSave = (k, rawSetter) => v => {
+    rawSetter(v);
+    dbTl.current = {...dbTl.current, [k]: v};
+    tlSaveDb(dbTl.current);
+  };
+  const setStartHour = makeTlSave("sh", setStartHourRaw);
+  const setEndHour = makeTlSave("eh", setEndHourRaw);
+  const setRowH = makeTlSave("rh", setRowHRaw);
+  const setColW = makeTlSave("cw", setColWRaw);
+  const setTimeUnit = makeTlSave("tu", setTimeUnitRaw);
+  const setBlockFs = makeTlSave("fs", setBlockFsRaw);
+  const setBlockOp = makeTlSave("op", setBlockOpRaw);
+  const setStatusClr = (k,v) => { setStatusClrRaw(p => { const n = {...p,[k]:v}; dbTl.current = {...dbTl.current, sc:n}; tlSaveDb(dbTl.current); try{localStorage.setItem("tl_sc",JSON.stringify(n))}catch(e){} return n; }); };
+  // Sync status colors to localStorage for other components using getStatusClr()
+  useEffect(() => { try{localStorage.setItem("tl_sc",JSON.stringify(statusClr))}catch(e){} }, [statusClr]);
   const slotsPerHour = 60 / timeUnit;
   const totalRows = (endHour - startHour) * slotsPerHour;
   const headerH = 40;
