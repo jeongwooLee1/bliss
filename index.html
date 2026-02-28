@@ -120,7 +120,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.48.5";
+const BLISS_V = "2.48.6";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -2268,6 +2268,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
             <button className="btn-s" style={{padding:"10px 16px"}} onClick={onClose}>닫기</button>
             {!isReadOnly && <><button className="btn-p" style={{flex:1,justifyContent:"center",padding:10,
               background:isSchedule?"#e17055":"#7c7cc8"}} onClick={()=>{
+                if(!isSchedule && !f.custGender) { alert("고객 성별을 선택해주세요."); return; }
                 const now = new Date();
                 const ts = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")} ${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`;
                 const prevLog = f.tsLog || [];
@@ -2581,6 +2582,10 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
     const custPhone = (cust.phone||"").trim();
     if (!custName || !custPhone) {
       alert("고객 이름과 연락처를 모두 입력해주세요.");
+      return;
+    }
+    if (!gender) {
+      alert("고객 성별을 선택해주세요.");
       return;
     }
     if (/\*/.test(custName) || /\*/.test(custPhone)) {
@@ -3323,7 +3328,7 @@ function CustModal({ item, onSave, onClose, defBranch, userBranches, branches })
         </div>
         <FLD label="성별"><select className="inp" value={f.gender} onChange={e=>set("gender",e.target.value)}><option value="">선택</option><option value="F">여성</option><option value="M">남성</option></select></FLD>
         <FLD label="메모"><textarea className="inp" rows={2} value={f.memo} onChange={e=>set("memo",e.target.value)}/></FLD>
-        <button className="btn-p" style={{width:"100%",justifyContent:"center",padding:12}} onClick={()=>onSave(f)}>{item?"수정":"등록"}</button>
+        <button className="btn-p" style={{width:"100%",justifyContent:"center",padding:12}} onClick={()=>{if(!f.gender){alert("고객 성별을 선택해주세요.");return;}onSave(f)}}>{item?"수정":"등록"}</button>
       </div>
     </div>
   </div>;
