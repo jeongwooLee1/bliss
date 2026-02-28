@@ -118,7 +118,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.41.6";
+const BLISS_V = "2.41.7";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -1837,6 +1837,43 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
               </div>
             </div>
 
+            {/* 시술 상품 선택 */}
+            {(() => {
+              const svcPriceTotal = (f.selectedServices||[]).reduce((sum, sid) => {
+                const svc = SVC_LIST.find(s=>s.id===sid);
+                return sum + (svc ? (f.custGender==="M"?svc.priceM:svc.priceF) : 0);
+              }, 0);
+              return <div>
+              <button onClick={()=>setShowSvcPicker(!showSvcPicker)}
+                style={{width:"100%",padding:"8px 12px",fontSize:11,fontWeight:600,borderRadius:6,cursor:"pointer",fontFamily:"inherit",
+                  border:"1px dashed #7c7cc8",background:showSvcPicker?"#7c7cc810":"#fafafa",color:"#7c7cc8",
+                  display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                <span>{(f.selectedServices||[]).length > 0 ?
+                  `${(f.selectedServices||[]).map(sid=>SVC_LIST.find(s=>s.id===sid)?.name).filter(Boolean).join(", ")} (${(f.selectedServices||[]).length}건, ${svcDurTotal}분, ${fmt(svcPriceTotal)}원)`
+                  : "시술 상품을 선택하세요"}</span>
+                <span style={{fontSize:13}}>{showSvcPicker?<I name="chevU" size={12}/>:<I name="chevD" size={12}/>}</span>
+              </button>
+              {showSvcPicker && <div style={{marginTop:6,border:"1px solid #e0e0e0",borderRadius:8,background:"#fff",maxHeight:280,overflow:"auto"}}>
+                {SVC_LIST.length===0 && <div style={{padding:12,fontSize:11,color:"#999",textAlign:"center"}}>시술 상품이 없습니다 (관리설정 → 시술상품관리에서 등록)</div>}
+                {SVC_LIST.length>0 && SVC_LIST.map(svc=>{
+                      const sel = (f.selectedServices||[]).includes(svc.id);
+                      const price = f.custGender==="M"?svc.priceM:svc.priceF;
+                      const disabled = price===0;
+                      const catName = CATS.find(c=>c.id===svc.cat)?.name||"";
+                      return <div key={svc.id} onClick={()=>!disabled&&toggleService(svc.id)}
+                        style={{padding:"5px 10px",cursor:disabled?"default":"pointer",display:"flex",alignItems:"center",gap:6,
+                          borderBottom:"1px solid #f0f0f0",opacity:disabled?0.3:1,background:sel?"#7c7cc810":"transparent"}}>
+                        <input type="checkbox" checked={sel} readOnly style={{accentColor:"#7c7cc8",width:14,height:14,pointerEvents:"none"}}/>
+                        {catName && <span style={{fontSize:8,color:"#7c7cc8",background:"#f0f0ff",borderRadius:3,padding:"1px 4px",flexShrink:0}}>{catName}</span>}
+                        <span style={{flex:1,fontSize:11,fontWeight:sel?600:400,color:sel?"#333":"#666"}}>{svc.name}</span>
+                        <span style={{fontSize:9,color:"#999"}}>{svc.dur}분</span>
+                        <span style={{fontSize:10,color:"#ef5350",fontWeight:600,width:55,textAlign:"right"}}>{price>0?fmt(price):"-"}</span>
+                      </div>;
+                    })}
+              </div>}
+            </div>;
+            })()}
+
             {/* 상품/서비스 태그 */}
             <FLD label={`상품/서비스${(tagDurTotal+svcDurTotal) > 0 ? ` — 합산 소요시간: ${tagDurTotal+svcDurTotal}분` : ""}`}>
               <div style={{display:"flex",flexWrap:"wrap",gap:4,padding:8,background:"#f8f8f8",borderRadius:8,border:"1px solid #e0e0e0"}}>
@@ -1861,42 +1898,6 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
               </div>}
             </FLD>
 
-            {/* 시술 상품 선택 */}
-            {(() => {
-              const svcPriceTotal = (f.selectedServices||[]).reduce((sum, sid) => {
-                const svc = SVC_LIST.find(s=>s.id===sid);
-                return sum + (svc ? (f.custGender==="M"?svc.priceM:svc.priceF) : 0);
-              }, 0);
-              return <FLD label={`시술 상품 선택${(f.selectedServices||[]).length > 0 ? ` (${(f.selectedServices||[]).length}건, ${svcDurTotal}분, ${fmt(svcPriceTotal)}원)` : ""}`}>
-              <button onClick={()=>setShowSvcPicker(!showSvcPicker)}
-                style={{width:"100%",padding:"8px 12px",fontSize:11,fontWeight:600,borderRadius:6,cursor:"pointer",fontFamily:"inherit",
-                  border:"1px dashed #7c7cc8",background:showSvcPicker?"#7c7cc810":"#fafafa",color:"#7c7cc8",
-                  display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                <span>{(f.selectedServices||[]).length > 0 ?
-                  (f.selectedServices||[]).map(sid=>SVC_LIST.find(s=>s.id===sid)?.name).filter(Boolean).join(", ")
-                  : "시술 상품을 선택하세요"}</span>
-                <span style={{fontSize:13}}>{showSvcPicker?<I name="chevU" size={12}/>:<I name="chevD" size={12}/>}</span>
-              </button>
-              {showSvcPicker && <div style={{marginTop:6,border:"1px solid #e0e0e0",borderRadius:8,background:"#fff",maxHeight:280,overflow:"auto"}}>
-                {SVC_LIST.length===0 && <div style={{padding:12,fontSize:11,color:"#999",textAlign:"center"}}>시술 상품이 없습니다 (관리설정 → 시술상품관리에서 등록)</div>}
-                {SVC_LIST.length>0 && SVC_LIST.map(svc=>{
-                      const sel = (f.selectedServices||[]).includes(svc.id);
-                      const price = f.custGender==="M"?svc.priceM:svc.priceF;
-                      const disabled = price===0;
-                      const catName = CATS.find(c=>c.id===svc.cat)?.name||"";
-                      return <div key={svc.id} onClick={()=>!disabled&&toggleService(svc.id)}
-                        style={{padding:"5px 10px",cursor:disabled?"default":"pointer",display:"flex",alignItems:"center",gap:6,
-                          borderBottom:"1px solid #f0f0f0",opacity:disabled?0.3:1,background:sel?"#7c7cc810":"transparent"}}>
-                        <input type="checkbox" checked={sel} readOnly style={{accentColor:"#7c7cc8",width:14,height:14,pointerEvents:"none"}}/>
-                        {catName && <span style={{fontSize:8,color:"#7c7cc8",background:"#f0f0ff",borderRadius:3,padding:"1px 4px",flexShrink:0}}>{catName}</span>}
-                        <span style={{flex:1,fontSize:11,fontWeight:sel?600:400,color:sel?"#333":"#666"}}>{svc.name}</span>
-                        <span style={{fontSize:9,color:"#999"}}>{svc.dur}분</span>
-                        <span style={{fontSize:10,color:"#ef5350",fontWeight:600,width:55,textAlign:"right"}}>{price>0?fmt(price):"-"}</span>
-                      </div>;
-                    })}
-              </div>}
-            </FLD>;
-            })()}
 
           </>}
 
