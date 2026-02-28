@@ -107,7 +107,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.52.1";
+const BLISS_V = "2.52.2";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -500,7 +500,7 @@ function App() {
           <button onClick={()=>setSideOpen(true)} style={S.menuBtn}><I name="menu" size={22}/></button>
           {bizName && <span style={{fontSize:18,fontWeight:800,color:"#7c7cc8"}}>{bizName}</span>}
         </div>
-        <div className="page-pad" style={{flex:1,padding:page==="timeline"?"0":"16px 20px 16px",display:"flex",flexDirection:"column",minHeight:0,overflow:"hidden"}}>
+        <div className="page-pad" style={{flex:1,padding:page==="timeline"?"0":"16px 20px 16px",display:"flex",flexDirection:"column",minHeight:0,overflow:page==="timeline"?"visible":"hidden"}}>
           <div className={page==="timeline"?"":"fade-in"} key={page} style={page==="timeline"?{flex:1,display:"flex",flexDirection:"column",minHeight:0}:{overflow:"auto",flex:1,WebkitOverflowScrolling:"touch"}}>
             {page==="timeline" && <Timeline data={data} setData={setData} userBranches={userBranches} viewBranches={viewBranches} isMaster={isMaster} currentUser={currentUser} setPage={setPage} bizId={currentBizId}/>}
             {page==="reservations" && <ReservationList data={data} setData={setData} userBranches={userBranches} isMaster={isMaster}/>}
@@ -1587,7 +1587,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       })()}
 
       {/* Timeline Grid */}
-      <div ref={scrollRef} className="timeline-scroll" onScroll={e=>{const hdr=document.querySelector(".mob-hdr");if(!hdr||window.innerWidth>768)return;const t=e.target.scrollTop;if(t>10){hdr.style.maxHeight="0";hdr.style.padding="0 16px";hdr.style.borderColor="transparent";}else{hdr.style.maxHeight="60px";hdr.style.padding="10px 16px";hdr.style.borderColor="#e0e0e0";}}} style={{flex:1,overflow:"scroll",position:"relative",minHeight:0}}>
+      <div ref={scrollRef} className="timeline-scroll" onScroll={e=>{if(window.innerWidth>768)return;const hdr=document.querySelector(".mob-hdr");if(!hdr)return;const t=e.target.scrollTop;if(t>5){hdr.style.maxHeight="0";hdr.style.padding="0 16px";}else{hdr.style.maxHeight="60px";hdr.style.padding="10px 16px";}}} style={{flex:1,overflow:"auto",minHeight:0}}>
         <div style={{display:"flex",minWidth:"fit-content"}}>
           {/* Time Labels */}
           <div className="tl-time-col" style={{width:timeLabelsW,flexShrink:0,position:"sticky",left:0,zIndex:20,background:"#fff",borderRight:"1px solid #eee"}}>
@@ -4485,8 +4485,8 @@ function FLD({ label, children }) {
 const S = {
   root: { display:"flex", height:"100dvh", fontFamily:"'Pretendard',-apple-system,BlinkMacSystemFont,'Noto Sans KR',sans-serif", background:"#f8f8f8", color:"#333", overflow:"hidden", position:"fixed", top:0, left:0, right:0, bottom:0 },
   sidebar: { width:200, background:"#fff", borderRight:"1px solid #e0e0e0", display:"flex", flexDirection:"column", position:"fixed", top:0, left:0, bottom:0, zIndex:50 },
-  main: { flex:1, marginLeft:200, display:"flex", flexDirection:"column", height:"100%", minHeight:0, overflow:"hidden" },
-  mobHdr: { padding:"10px 16px", background:"#fff", borderBottom:"1px solid #e0e0e0", display:"flex", alignItems:"center", gap:12, overflow:"hidden", transition:"max-height .3s ease, padding .3s ease, border-color .3s ease", maxHeight:60 },
+  main: { flex:1, marginLeft:200, display:"flex", flexDirection:"column", height:"100%", minHeight:0 },
+  mobHdr: { padding:"10px 16px", background:"#fff", display:"flex", alignItems:"center", gap:12, overflow:"hidden", transition:"max-height .3s ease, padding .3s ease", maxHeight:60 },
   menuBtn: { background:"none", border:"none", color:"#333", cursor:"pointer", fontSize:20, fontFamily:"inherit" },
 };
 
