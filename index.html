@@ -120,7 +120,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.49.2";
+const BLISS_V = "2.49.3";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -3663,12 +3663,66 @@ function AdminPlaces({ data, setData, bizId }) {
   };
   const handleTouchEnd = () => { handleDragEnd(); touchStartRef.current = null; touchRowRef.current = null; };
 
+  const isMobileView = window.innerWidth <= 768;
+
   return <div>
-    <div style={{padding:0}}>
+    <div className={isMobileView?undefined:"card"} style={{padding:isMobileView?0:20}}>
       <AdminHeader title="예약장소 관리" count={branches.length} onAdd={addBranch} addLabel={<><I name="plus" size={12}/> 지점 추가</>} onDownload={downloadExcel} onUpload={uploadExcel}/>
       {selected.size > 0 && <div style={{marginBottom:8}}><button className="btn-d btn-sm" onClick={bulkDelete} style={{fontSize:10,padding:"4px 12px"}}><I name="trash" size={12}/> 선택 삭제 ({selected.size})</button></div>}
 
-      {/* Apple-style card list */}
+      {/* ═══ Desktop: Table ═══ */}
+      {!isMobileView && <div className="tw">
+        <table><thead><tr>
+          <th style={{width:30}}><input type="checkbox" checked={allChecked} onChange={toggleAll}/></th>
+          <th style={{width:30}}></th>
+          <th style={{width:40}}>번호</th>
+          <th style={{width:100}}>지점명</th>
+          <th>주소</th>
+          <th style={{width:140}}>전화번호</th>
+          <th style={{width:180}}>네이버연동 Gmail</th>
+          <th style={{width:100}}>네이버 Biz ID</th>
+          <th style={{width:60}}>네이버칼럼</th>
+          <th style={{width:80}}>사용구분</th>
+          <th style={{width:140}}>표시색상</th>
+          <th style={{width:55}}>적용</th>
+          <th style={{width:50}}>삭제</th>
+        </tr></thead>
+        <tbody onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
+          {branches.map((b,i) => (
+            <tr key={b.id}
+              draggable onDragStart={()=>setDragIdx(i)} onDragOver={e=>{e.preventDefault();setDragOverIdx(i)}} onDragEnd={handleDragEnd}
+              onTouchStart={e=>handleTouchStart(i,e)}
+              style={{
+                background: dragOverIdx===i ? "#7c7cc815" : edited[b.id] ? "rgba(167,139,250,.05)" : "transparent",
+                opacity: dragIdx===i ? 0.4 : 1, cursor:"grab", touchAction:"none"
+              }}>
+              <td><input type="checkbox" checked={selected.has(b.id)} onChange={()=>toggleOne(b.id)}/></td>
+              <td style={{textAlign:"center"}}><I name="grip" size={14} color="#999"/></td>
+              <td style={{color:"#888",textAlign:"center"}}>{i+1}</td>
+              <td><input className="inp" value={b.name} onChange={e=>updateField(b.id,"name",e.target.value)} style={{background:"transparent",border:"1px solid #d0d0d0",fontWeight:600}}/></td>
+              <td><input className="inp" value={b.address||""} onChange={e=>updateField(b.id,"address",e.target.value)} style={{background:"transparent",border:"1px solid #d0d0d0",width:"100%"}} placeholder="고객 안내용 주소"/></td>
+              <td><input className="inp" value={b.phone||""} onChange={e=>updateField(b.id,"phone",e.target.value)} style={{background:"transparent",border:"1px solid #d0d0d0",fontSize:11}}/></td>
+              <td><input className="inp" value={b.naverEmail||""} onChange={e=>updateField(b.id,"naverEmail",e.target.value)} style={{background:"transparent",border:"1px solid #d0d0d0",fontSize:11}} placeholder="example@gmail.com"/></td>
+              <td><input className="inp" value={b.naverBizId||""} onChange={e=>updateField(b.id,"naverBizId",e.target.value)} style={{background:"transparent",border:"1px solid #d0d0d0",fontSize:11}} placeholder="449920"/></td>
+              <td>{b.naverEmail ? <input type="number" className="inp" value={b.naverColCount||1} min={1} max={5} onChange={e=>updateField(b.id,"naverColCount",Math.max(1,Math.min(5,parseInt(e.target.value)||1)))} style={{background:"transparent",border:"1px solid #d0d0d0",fontSize:11,width:40,textAlign:"center"}}/> : <span style={{color:"#ccc",fontSize:10}}>\u2014</span>}</td>
+              <td><select className="inp" value={b.useYn!==false?"사용":"미사용"} onChange={e=>updateField(b.id,"useYn",e.target.value==="사용")} style={{background:"transparent",border:"1px solid #d0d0d0",fontSize:11}}><option>사용</option><option>미사용</option></select></td>
+              <td><div style={{display:"flex",alignItems:"center",gap:4}}>
+                <input type="color" value={b.color||"#FFFFFF"} onChange={e=>updateField(b.id,"color",e.target.value)} style={{width:24,height:24,border:"none",background:"none",cursor:"pointer",padding:0}}/>
+                <EyeDrop onPick={c=>updateField(b.id,"color",c)} size={24}/>
+                <input className="inp" value={b.color||""} onChange={e=>updateField(b.id,"color",e.target.value)} style={{width:72,background:b.color||"transparent",border:"1px solid #d0d0d0",fontSize:10,fontFamily:"monospace",color:"#333"}}/>
+              </div></td>
+              <td><button className={edited[b.id]?"btn-p btn-sm":"btn-s btn-sm"} onClick={()=>applyRow(b.id)} style={{padding:"4px 10px"}}>적용</button></td>
+              <td>{deleteId===b.id ? <div style={{display:"flex",gap:3}}>
+                <button onClick={()=>deleteBranch(b.id)} style={{padding:"2px 8px",fontSize:10,fontWeight:700,borderRadius:4,border:"none",background:"#e57373",color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>확인</button>
+                <button onClick={()=>setDeleteId(null)} style={{padding:"2px 6px",fontSize:10,borderRadius:4,border:"1px solid #d0d0d0",background:"#fff",color:"#888",cursor:"pointer",fontFamily:"inherit"}}>취소</button>
+              </div> : <button onClick={()=>setDeleteId(b.id)} style={{background:"none",border:"none",cursor:"pointer",color:"#e57373"}}><I name="trash" size={13}/></button>}</td>
+            </tr>
+          ))}
+        </tbody></table>
+      </div>}
+
+      {/* ═══ Mobile: Apple-style cards ═══ */}
+      {isMobileView &&
       <div style={{display:"flex",flexDirection:"column",gap:12}}>
         {branches.map((b,i) => (
           <div key={b.id}
@@ -3758,7 +3812,7 @@ function AdminPlaces({ data, setData, bizId }) {
             </div>
           </div>
         ))}
-      </div>
+      </div>}
     </div>
   </div>;
 }
