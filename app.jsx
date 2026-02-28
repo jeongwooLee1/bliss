@@ -107,7 +107,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.44.4";
+const BLISS_V = "2.44.5";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -1600,9 +1600,9 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                         {block.memo && (() => { const clean = block.memo.split("\n").filter(l => !/^\[등록:|^\[수정:/.test(l.trim())).join(" ").trim(); return clean ? <div style={{color:"#555",marginTop:1}}><I name="msgSq" size={10} color="#888"/> {clean}</div> : null; })()}
                         {/* Resize handle */}
                         {isEditable && <div className="resize-handle" onMouseDown={e=>handleResizeStart(block,e)} onTouchStart={e=>handleResizeStart(block,e)}
-                          style={{position:"absolute",bottom:0,left:0,right:0,height:8,cursor:"ns-resize",
-                            display:"flex",alignItems:"center",justifyContent:"center",opacity:0,transition:"opacity .15s"}}>
-                          <div style={{width:20,height:3,borderRadius:2,background:color}}/>
+                          style={{position:"absolute",bottom:-8,left:0,right:0,height:24,cursor:"ns-resize",
+                            display:"flex",alignItems:"flex-start",justifyContent:"center",opacity:0,transition:"opacity .15s",zIndex:3}}>
+                          <div style={{width:24,height:4,borderRadius:2,background:color,marginTop:4}}/>
                         </div>}
                         {isBeingResized && <div style={{position:"absolute",bottom:2,right:4,fontSize:Math.max(6,blockFs-2),fontWeight:700,color,background:"#fff",padding:"0 3px",borderRadius:2}}>
                           {blockDur}분
@@ -4167,6 +4167,7 @@ const CSS = `
   .timeline-scroll::-webkit-scrollbar-thumb:hover{background:#666 !important}
   .timeline-scroll::-webkit-scrollbar-corner{background:#d0d0d0 !important}
   div:hover>.resize-handle{opacity:1 !important}
+  @media(pointer:coarse){.resize-handle{opacity:0.6 !important}}
   input,select,textarea{font-family:inherit}
   @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
   @keyframes slideIn{from{transform:translateX(-100%)}to{transform:translateX(0)}}
