@@ -107,7 +107,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.43.7";
+const BLISS_V = "2.43.8";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -396,11 +396,11 @@ function App() {
           console.log("RT:", status);
           if (status === "SUBSCRIBED") { clearInterval(pollIv); pollIv = null; console.log("✅ Realtime ON"); }
           if (status === "CLOSED" || status === "TIMED_OUT" || status === "CHANNEL_ERROR") {
-            if (!pollIv) { pollIv = setInterval(poll, 20000); console.log("⚠️ Polling 20s ON"); }
+            if (!pollIv) { pollIv = setInterval(poll, 180000); console.log("⚠️ Polling 3분 ON"); }
           }
         });
     } else {
-      pollIv = setInterval(poll, 20000);
+      pollIv = setInterval(poll, 180000);
     }
 
     return () => {
