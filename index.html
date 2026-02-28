@@ -118,7 +118,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.41.2";
+const BLISS_V = "2.41.3";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -1699,7 +1699,6 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
           {/* ═══ 기타일정 모드 ═══ */}
           {isSchedule && <>
             <div>
-              <label style={{fontSize:11,fontWeight:600,color:"#888",marginBottom:5,display:"block"}}>기간 / 장소·담당자</label>
               <div className="res-time-row" style={{display:"flex",gap:3,alignItems:"center",flexWrap:"nowrap",overflowX:"auto"}}>
                 <DatePick value={f.date} onChange={v=>set("date",v)} style={{flex:"1 1 0",minWidth:0}}/>
                 <select className="inp" style={{flex:"0 0 78px",fontSize:12,padding:"5px 8px"}} value={f.time} onChange={e=>{const nt=e.target.value;set("time",nt);set("endTime",addMin(nt,f.dur))}}>
@@ -1764,7 +1763,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
           {/* ═══ 신규예약 모드 ═══ */}
           {!isSchedule && <>
             {/* 고객 검색 */}
-            <FLD label="고객검색 (최대50건)">
+            <div>
               <div style={{position:"relative"}}>
                 <div style={{display:"flex",gap:6}}>
                   <input className="inp" style={{flex:1}} value={custSearch} onChange={e=>{setCustSearch(e.target.value);setShowCustDropdown(true)}}
@@ -1788,27 +1787,26 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
                   </div>
                 </div>}
               </div>
-            </FLD>
+            </div>
 
             {/* 고객 정보 */}
             <div className="cust-row" style={{display:"grid",gridTemplateColumns:"1fr 1fr 60px",gap:8}}>
-              <FLD label="고객명"><input className="inp" value={f.custName} onChange={e=>set("custName",e.target.value)} placeholder="고객명"
-                style={f.isNewCust?{borderColor:"#e57373",background:"#d0d0d008"}:{}}/></FLD>
-              <FLD label="연락처"><input className="inp" value={f.custPhone} onChange={e=>set("custPhone",e.target.value)} placeholder="010"
-                style={f.isNewCust?{borderColor:"#e57373",background:"#d0d0d008"}:{}}/></FLD>
-              <FLD label="성별">
+              <div><input className="inp" value={f.custName} onChange={e=>set("custName",e.target.value)} placeholder="고객명"
+                style={f.isNewCust?{borderColor:"#e57373",background:"#d0d0d008"}:{}}/></div>
+              <div><input className="inp" value={f.custPhone} onChange={e=>set("custPhone",e.target.value)} placeholder="010"
+                style={f.isNewCust?{borderColor:"#e57373",background:"#d0d0d008"}:{}}/></div>
+              <div>
                 <div style={{display:"flex",gap:1,height:34}}>
                   <button onClick={()=>set("custGender",f.custGender==="F"?"":"F")} style={{flex:1,fontSize:11,fontWeight:700,border:"1px solid #e57373",borderRadius:"4px 0 0 4px",cursor:"pointer",fontFamily:"inherit",padding:0,
                     background:f.custGender==="F"?"#e57373":"transparent",color:f.custGender==="F"?"#fff":"#e57373"}}>여</button>
                   <button onClick={()=>set("custGender",f.custGender==="M"?"":"M")} style={{flex:1,fontSize:11,fontWeight:700,border:"1px solid #7c7cc8",borderRadius:"0 4px 4px 0",cursor:"pointer",fontFamily:"inherit",padding:0,
                     background:f.custGender==="M"?"#7c7cc8":"transparent",color:f.custGender==="M"?"#fff":"#7c7cc8"}}>남</button>
                 </div>
-              </FLD>
+              </div>
             </div>
 
             {/* 예약기간 + 장소/담당자 */}
             <div>
-              <label style={{fontSize:11,fontWeight:600,color:"#888",marginBottom:5,display:"block"}}>예약기간 / 장소·담당자</label>
               <div className="res-time-row" style={{display:"flex",gap:3,alignItems:"center",flexWrap:"nowrap",overflowX:"auto"}}>
                 <DatePick value={f.date} onChange={v=>set("date",v)} style={{flex:"1 1 0",minWidth:0}}/>
                 <select className="inp" style={{flex:"0 0 78px",fontSize:12,padding:"5px 8px"}} value={f.time} onChange={e=>{const nt=e.target.value;set("time",nt);set("endTime",addMin(nt,f.dur))}}>
@@ -1891,7 +1889,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
           </>}
 
           {/* 예약메모 */}
-          <FLD label="예약메모">
+          <div>
             <textarea className="inp" rows={3} value={f.memo} onChange={e=>set("memo",e.target.value)} style={{resize:"vertical"}} placeholder="예약 관련 메모를 입력하세요"/>
             {(() => {
               const isNaverRes = !!(f.reservationId || (f.memo && /네이버/.test(f.memo)));
@@ -1907,7 +1905,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
             {(f.tsLog?.length > 0) && <div style={{marginTop:4,fontSize:10,color:"#999",lineHeight:1.6}}>
               {f.tsLog.map((ts,i)=><div key={i}>{ts}</div>)}
             </div>}
-          </FLD>
+          </div>
 
           {/* Action Buttons - 한 줄 (pinned bottom) */}
         </div>
