@@ -107,7 +107,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.53.2";
+const BLISS_V = "2.53.3";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -1484,13 +1484,13 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       <div ref={scrollRef} className="timeline-scroll" style={{flex:1,overflow:"auto",minHeight:0,overscrollBehavior:"none"}}>
 
         {/* Mobile header - scrolls away naturally, sticks left on horizontal scroll */}
-        {window.innerWidth<=768 && onMenuClick && <div style={{padding:"10px 16px",display:"flex",alignItems:"center",gap:12,background:"#fff",position:"sticky",left:0}}>
+        {window.innerWidth<=768 && onMenuClick && <div style={{padding:"6px 16px",display:"flex",alignItems:"center",gap:12,background:"#fff",position:"sticky",left:0,maxWidth:"100vw",boxSizing:"border-box"}}>
           <button onClick={onMenuClick} style={{background:"none",border:"none",cursor:"pointer",padding:4,color:"#333",display:"flex",alignItems:"center"}}><I name="menu" size={22}/></button>
           {bizName && <span style={{fontSize:18,fontWeight:800,color:"#7c7cc8"}}>{bizName}</span>}
         </div>}
 
         {/* Top Bar - sticky */}
-        <div ref={topbarRef} className="tl-topbar" style={{position:"sticky",top:0,left:0,zIndex:30,borderBottom:"1px solid #e0e0e0",background:"#fff",padding:"6px 12px",display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+        <div ref={topbarRef} className="tl-topbar" style={{position:"sticky",top:0,left:0,zIndex:30,borderBottom:"1px solid #e0e0e0",background:"#fff",padding:"6px 12px",display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",maxWidth:"100vw",boxSizing:"border-box"}}>
         {/* Row 1: Date nav + settings + branch */}
         <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
           <button onClick={()=>changeDate(-1)} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#666",padding:"2px 4px",flexShrink:0}}><I name="chevL" size={14}/></button>
@@ -1581,7 +1581,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       {(() => {
         const pendingList = data.reservations.filter(r => r.status === "pending" && branchesToShow.some(b => b.id === r.bid));
         if (pendingList.length === 0) return null;
-        return <div style={{background:"#FFF3E0",borderBottom:"1px solid #FFB74D",padding:"6px 12px",display:"flex",alignItems:"center",gap:8,flexShrink:0,cursor:"pointer",animation:"pendingBlink 2s infinite",position:"sticky",left:0}}
+        return <div style={{background:"#FFF3E0",borderBottom:"1px solid #FFB74D",padding:"6px 12px",display:"flex",alignItems:"center",gap:8,flexShrink:0,cursor:"pointer",animation:"pendingBlink 2s infinite",position:"sticky",left:0,maxWidth:"100vw",boxSizing:"border-box"}}
           onClick={()=>{
             const first = pendingList[0];
             setSelDate(first.date);
