@@ -120,7 +120,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.45.2";
+const BLISS_V = "2.45.3";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -1578,7 +1578,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
             const isNewBranch = ci === 0 || room.branch_id !== allRooms[ci-1]?.branch_id;
             const branchColor = (data.branchSettings || []).find(bs => bs.id === room.branch_id)?.color || "";
             return (
-              <div key={room.id} style={{width:colW,flexShrink:0,borderLeft:room.isNaver?"2px solid #A5D6A7":"1px solid #eee",background:room.isNaver?"#F1F8E9":(branchColor||"#fff")}}>
+              <div key={room.id} style={{width:colW,flexShrink:0,borderLeft:room.isNaver?"2px solid #A5D6A7":"1px solid #f0f0f0",background:room.isNaver?"#F1F8E9":(branchColor||"#fff")}}>
                 {/* Header */}
                 <div style={{height:headerH,borderBottom:"1px solid #eee",position:"sticky",top:0,zIndex:10,background:room.isNaver?"#E8F5E9":(branchColor||"#fff"),display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",lineHeight:1.2}}>
                   <span style={{fontSize:12,fontWeight:700,color:room.isNaver?"#2E7D32":"#333"}}>{room.branchName}</span>
@@ -1650,11 +1650,11 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                         onClick={e=>handleBlockClick(block,e)}
                         onMouseDown={e=>{if(isEditable && !isResizing.current)handleDragStart(block,e)}}
                         onTouchStart={e=>{if(isEditable && !isResizing.current)handleDragStart(block,e)}}
-                        style={{position:"absolute",top:y,left:2,right:2,height:Math.max(h,rowH*2),
-                          background:isNaverCancelled?"#FFF8E1":isNaverPending?`${color}10`:`${color}${bgAlpha}`,
-                          border:isNaverCancelled?"1.5px dashed #E6A700":isNaverPending?`1.5px dashed ${color}`:`1px solid ${isSch?color:color+"40"}`,
-                          borderLeft:`3px solid ${isNaverCancelled?"#E6A700":color}`,
-                          borderRadius:8,padding:"3px 6px",overflow:"hidden",fontSize:blockFs,lineHeight:1.2,
+                        style={{position:"absolute",top:y,left:3,right:3,height:Math.max(h,rowH*2),
+                          background:isNaverCancelled?"#FFF8E1":isNaverPending?`${color}15`:`${color}${bgAlpha}`,
+                          border:isNaverCancelled?"1.5px dashed #E6A700":isNaverPending?`1.5px dashed ${color}`:"none",
+                          borderLeft:`3.5px solid ${isNaverCancelled?"#E6A700":color}`,
+                          borderRadius:8,padding:"4px 6px",overflow:"hidden",fontSize:blockFs,lineHeight:1.2,
                           cursor:isEditable?"grab":"pointer",zIndex:isDrag?0:3,transition:(isDrag||isBeingResized)?"none":"all .15s, box-shadow .2s",
                           opacity:isDrag?0.3:1,userSelect:"none",WebkitUserSelect:"none",WebkitTouchCallout:"none"}}
                         className="tl-block">
@@ -1785,8 +1785,11 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
               {STATUS_KEYS.map(k=><div key={k} style={{background:"#f8f8fc",borderRadius:10,padding:"8px 12px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
                 <span style={{fontSize:12,fontWeight:600,color:statusClr[k]}}>{STATUS_LABEL[k]}</span>
-                <input type="color" value={statusClr[k]||STATUS_CLR_DEFAULT[k]} onChange={e=>setStatusClr(k,e.target.value)}
-                  style={{width:32,height:28,border:"1px solid #ddd",borderRadius:6,cursor:"pointer",padding:1}}/>
+                <div style={{display:"flex",alignItems:"center",gap:4}}>
+                  <input type="color" value={statusClr[k]||STATUS_CLR_DEFAULT[k]} onChange={e=>setStatusClr(k,e.target.value)}
+                    style={{width:32,height:28,border:"1px solid #ddd",borderRadius:6,cursor:"pointer",padding:1}}/>
+                  <EyeDrop onPick={c=>setStatusClr(k,c)} size={28}/>
+                </div>
               </div>)}
             </div>
           </div>
@@ -3606,6 +3609,7 @@ function AdminPlaces({ data, setData, bizId }) {
               <td>
                 <div style={{display:"flex",alignItems:"center",gap:4}}>
                   <input type="color" value={b.color||"#FFFFFF"} onChange={e=>updateField(b.id,"color",e.target.value)} style={{width:24,height:24,border:"none",background:"none",cursor:"pointer",padding:0}}/>
+                  <EyeDrop onPick={c=>updateField(b.id,"color",c)} size={24}/>
                   <input className="inp" value={b.color||""} onChange={e=>updateField(b.id,"color",e.target.value)}
                     style={{width:72,background:b.color||"transparent",border:"1px solid #d0d0d0",fontSize:10,fontFamily:"monospace",color:"#333"}}/>
                 </div>
@@ -3735,7 +3739,7 @@ function AdminWorkers({ data, setData }) {
             <td><select className="inp" value={editData.branch_id} onChange={e=>setEditData(p=>({...p,branch_id:e.target.value}))}>
               {regBranches.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
             </select></td>
-            <td><input type="color" value={editData.color||"#FFFFFF"} onChange={e=>setEditData(p=>({...p,color:e.target.value}))} style={{width:28,height:24,border:"none",cursor:"pointer"}}/></td>
+            <td><div style={{display:"flex",alignItems:"center",gap:3}}><input type="color" value={editData.color||"#FFFFFF"} onChange={e=>setEditData(p=>({...p,color:e.target.value}))} style={{width:28,height:24,border:"none",cursor:"pointer"}}/><EyeDrop onPick={c=>setEditData(p=>({...p,color:c}))} size={24}/></div></td>
             <td><div style={{display:"flex",gap:3}}><button className="btn-p btn-sm" onClick={saveEdit}>저장</button><button className="btn-s btn-sm" onClick={()=>setEditId(null)}>취소</button></div></td>
           </tr>;
           return <tr key={r.id}>
@@ -4124,6 +4128,7 @@ function AdminServiceTags({ data, setData }) {
         <FLD label="내부일정"><select className="inp" style={{width:55,...inpS}} value={newTag.scheduleYn} onChange={e=>setNewTag(p=>({...p,scheduleYn:e.target.value}))}><option value="N">N</option><option value="Y">Y</option></select></FLD>
         <FLD label="색상"><div style={{display:"flex",alignItems:"center",gap:3}}>
           <input type="color" value={newTag.color||"#e0e0e0"} onChange={e=>setNewTag(p=>({...p,color:e.target.value}))} style={{width:22,height:22,border:"none",cursor:"pointer"}}/>
+          <EyeDrop onPick={c=>setNewTag(p=>({...p,color:c}))} size={22}/>
           <input className="inp" style={{width:75,...inpS,fontFamily:"monospace",fontSize:9}} value={newTag.color} onChange={e=>setNewTag(p=>({...p,color:e.target.value}))} placeholder="#000000"/>
         </div></FLD>
         <button className="btn-p btn-sm" onClick={addTag} style={{padding:"6px 18px"}}>추가</button>
@@ -4163,6 +4168,7 @@ function AdminServiceTags({ data, setData }) {
           <td><select className="inp" value={editData.scheduleYn} onChange={e=>setEditData(p=>({...p,scheduleYn:e.target.value}))} style={{width:45,...inpS}}><option value="N">N</option><option value="Y">Y</option></select></td>
           <td><div style={{display:"flex",alignItems:"center",gap:2}}>
             <input type="color" value={editData.color||"#e0e0e0"} onChange={e=>setEditData(p=>({...p,color:e.target.value}))} style={{width:20,height:18,border:"none",cursor:"pointer"}}/>
+            <EyeDrop onPick={c=>setEditData(p=>({...p,color:c}))} size={20}/>
             <input className="inp" value={editData.color||""} onChange={e=>setEditData(p=>({...p,color:e.target.value}))} style={{width:55,...inpS,fontFamily:"monospace",fontSize:8}}/>
           </div></td>
           <td></td><td></td>
@@ -4202,6 +4208,21 @@ function AdminServiceTags({ data, setData }) {
 }
 
 // ─── Shared ───
+function EyeDrop({ onPick, size=20 }) {
+  const supported = typeof window !== "undefined" && "EyeDropper" in window;
+  if (!supported) return null;
+  const pick = async () => {
+    try {
+      const ed = new EyeDropper();
+      const r = await ed.open();
+      if (r?.sRGBHex) onPick(r.sRGBHex);
+    } catch(e) {}
+  };
+  return <button onClick={pick} title="화면에서 색상 추출" style={{width:size,height:size,border:"1px solid #d0d0d0",borderRadius:4,background:"#fff",cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center",padding:0,flexShrink:0}}>
+    <svg width={size-6} height={size-6} viewBox="0 0 16 16" fill="none" stroke="#666" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M13.5 2.5l-1-1-2 2-1-1-6 6-.5 3.5 3.5-.5 6-6-1-1 2-2z"/><path d="M3.5 9.5l3 3"/></svg>
+  </button>;
+}
+
 function DatePick({ value, onChange, style, min }) {
   const DAYS = ["일","월","화","수","목","금","토"];
   const fmt = (v) => {
@@ -4251,6 +4272,9 @@ const CSS = `
   .timeline-scroll::-webkit-scrollbar-corner{background:#d0d0d0 !important}
   div:hover>.resize-handle{opacity:1 !important}
   @media(pointer:coarse){.resize-handle{opacity:0.6 !important}}
+  .tl-block{transition:box-shadow .2s ease,transform .15s ease !important}
+  .tl-block:hover{box-shadow:0 2px 8px rgba(0,0,0,.12) !important}
+  @media(pointer:coarse){.tl-block:active{box-shadow:0 2px 8px rgba(0,0,0,.12) !important}}
   .tl-block:hover{box-shadow:0 4px 12px rgba(0,0,0,.15) !important;transform:translateY(-1px)}
   .tl-block:active{box-shadow:0 2px 6px rgba(0,0,0,.1) !important;transform:translateY(0)}
   input,select,textarea{font-family:inherit}
