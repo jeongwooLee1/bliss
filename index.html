@@ -120,7 +120,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.47.2";
+const BLISS_V = "2.47.3";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -2003,7 +2003,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
         margin:"auto 0",flexShrink:0,
         boxShadow:"0 8px 40px rgba(0,0,0,.18)",display:"flex",flexDirection:"column"}}>
         {/* ═══ Chrome-style Tabs ═══ */}
-        <div style={{display:"flex",alignItems:"flex-end",gap:0,padding:"0",background:"#f5f5f5",borderRadius:"12px 12px 0 0",position:"sticky",top:0,zIndex:10,borderBottom:"1px solid #e0e0e0"}}>
+        <div style={{display:"flex",alignItems:"flex-end",gap:0,padding:"0",background:"#f5f5f5",borderRadius:"12px 12px 0 0",position:"sticky",top:0,zIndex:10,borderBottom:"1px solid #e0e0e0",overflow:"hidden"}}>
           {/* 예약 탭 */}
           <button onClick={()=>{setIsSchedule(false);setF(p=>({...p,isSchedule:false,selectedTags:[],type:"reservation"}));if(modalRef.current)modalRef.current.scrollTop=0}}
             style={{flex:1,padding:"12px 16px",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
@@ -4330,8 +4330,6 @@ const CSS = `
     .ov{padding:8px!important;-webkit-overflow-scrolling:touch!important}
     .tl-topbar{flex-direction:column!important;gap:4px!important;padding:6px 8px!important}
     .tl-days{width:100%;justify-content:space-between}
-    .timeline-scroll{scroll-snap-type:x proximity;-webkit-scroll-snap-type:x proximity}
-    .tl-room-col{scroll-snap-align:start}
     .page-filter{flex-wrap:wrap!important;gap:4px!important}
     .page-filter .inp{max-width:130px!important}
     table{font-size:11px}
