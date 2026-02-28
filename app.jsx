@@ -107,7 +107,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.49.6";
+const BLISS_V = "2.49.7";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -3641,7 +3641,7 @@ function AdminPlaces({ data, setData, bizId }) {
   // Touch drag
   const touchStartRef = useRef(null);
   const touchRowRef = useRef(null);
-  const handleTouchStart = (i, e) => { touchStartRef.current = e.touches[0].clientY; touchRowRef.current = i; setDragIdx(i); };
+  const handleTouchStart = (i, e) => { const tag=e.target.tagName;if(tag==="INPUT"||tag==="SELECT"||tag==="BUTTON"||tag==="TEXTAREA")return; touchStartRef.current = e.touches[0].clientY; touchRowRef.current = i; setDragIdx(i); };
   const handleTouchMove = (e) => {
     if (touchStartRef.current === null) return;
     const dy = e.touches[0].clientY - touchStartRef.current;
