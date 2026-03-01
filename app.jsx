@@ -107,7 +107,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.53.6";
+const BLISS_V = "2.53.7";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -1910,6 +1910,34 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                   <input type="color" value={statusClr[k]||STATUS_CLR_DEFAULT[k]} onChange={e=>setStatusClr(k,e.target.value)}
                     style={{width:32,height:28,border:"1px solid #ddd",borderRadius:6,cursor:"pointer",padding:1}}/>
                   <EyeDrop onPick={c=>setStatusClr(k,c)} size={28}/>
+                </div>
+              </div>)}
+            </div>
+          </div>
+          <div style={{marginTop:8}}>
+            <span style={{fontSize:12,color:"#555",fontWeight:600,display:"block",marginBottom:6}}>지점 바탕색</span>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+              {allBranchList.map(br=><div key={br.id} style={{background:"#f8f8fc",borderRadius:10,padding:"8px 12px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                <div style={{display:"flex",alignItems:"center",gap:6,minWidth:0,flex:1}}>
+                  <div style={{width:12,height:12,borderRadius:4,background:br.color||"#fff",border:"1px solid #ddd",flexShrink:0}}/>
+                  <span style={{fontSize:12,fontWeight:600,color:"#333",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{br.short||br.name}</span>
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
+                  <input type="color" value={br.color||"#FFFFFF"} onChange={e=>{
+                    const c=e.target.value;
+                    setData(prev=>({...prev,
+                      branchSettings:(prev.branchSettings||[]).map(b=>b.id===br.id?{...b,color:c}:b),
+                      branches:(prev.branches||[]).map(b=>b.id===br.id?{...b,color:c}:b)
+                    }));
+                    sb.update("branches",br.id,{color:c}).catch(console.error);
+                  }} style={{width:32,height:28,border:"1px solid #ddd",borderRadius:6,cursor:"pointer",padding:1}}/>
+                  <EyeDrop onPick={c=>{
+                    setData(prev=>({...prev,
+                      branchSettings:(prev.branchSettings||[]).map(b=>b.id===br.id?{...b,color:c}:b),
+                      branches:(prev.branches||[]).map(b=>b.id===br.id?{...b,color:c}:b)
+                    }));
+                    sb.update("branches",br.id,{color:c}).catch(console.error);
+                  }} size={28}/>
                 </div>
               </div>)}
             </div>
@@ -3724,7 +3752,6 @@ function AdminPlaces({ data, setData, bizId }) {
           <th style={{width:100}}>네이버 Biz ID</th>
           <th style={{width:60}}>네이버칼럼</th>
           <th style={{width:80}}>사용구분</th>
-          <th style={{width:140}}>표시색상</th>
           <th style={{width:55}}>적용</th>
           <th style={{width:50}}>삭제</th>
         </tr></thead>
@@ -3747,11 +3774,6 @@ function AdminPlaces({ data, setData, bizId }) {
               <td><input className="inp" value={b.naverBizId||""} onChange={e=>updateField(b.id,"naverBizId",e.target.value)} style={{background:"transparent",border:"1px solid #d0d0d0",fontSize:11}} placeholder="449920"/></td>
               <td>{b.naverEmail ? <input type="number" className="inp" value={b.naverColCount||1} min={1} max={5} onChange={e=>updateField(b.id,"naverColCount",Math.max(1,Math.min(5,parseInt(e.target.value)||1)))} style={{background:"transparent",border:"1px solid #d0d0d0",fontSize:11,width:40,textAlign:"center"}}/> : <span style={{color:"#ccc",fontSize:10}}>\u2014</span>}</td>
               <td><select className="inp" value={b.useYn!==false?"사용":"미사용"} onChange={e=>updateField(b.id,"useYn",e.target.value==="사용")} style={{background:"transparent",border:"1px solid #d0d0d0",fontSize:11}}><option>사용</option><option>미사용</option></select></td>
-              <td><div style={{display:"flex",alignItems:"center",gap:4}}>
-                <input type="color" value={b.color||"#FFFFFF"} onChange={e=>updateField(b.id,"color",e.target.value)} style={{width:24,height:24,border:"none",background:"none",cursor:"pointer",padding:0}}/>
-                <EyeDrop onPick={c=>updateField(b.id,"color",c)} size={24}/>
-                <input className="inp" value={b.color||""} onChange={e=>updateField(b.id,"color",e.target.value)} style={{width:72,background:b.color||"transparent",border:"1px solid #d0d0d0",fontSize:10,fontFamily:"monospace",color:"#333"}}/>
-              </div></td>
               <td><button className={edited[b.id]?"btn-p btn-sm":"btn-s btn-sm"} onClick={()=>applyRow(b.id)} style={{padding:"4px 10px"}}>적용</button></td>
               <td>{deleteId===b.id ? <div style={{display:"flex",gap:3}}>
                 <button onClick={()=>deleteBranch(b.id)} style={{padding:"2px 8px",fontSize:10,fontWeight:700,borderRadius:4,border:"none",background:"#e57373",color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>확인</button>
@@ -3823,11 +3845,12 @@ function AdminPlaces({ data, setData, bizId }) {
                 {label:"지점명",field:"name",val:b.name,ph:"지점명을 입력하세요"},
                 {label:"주소",field:"address",val:b.address||"",ph:"고객 안내용 주소를 입력하세요"},
                 {label:"전화번호",field:"phone",val:b.phone||"",ph:"02-0000-0000"},
+                {label:"비즈 ID",field:"naverBizId",val:b.naverBizId||"",ph:"449920"},
               ].map(row=>(
                 <div key={row.field} style={{display:"flex",alignItems:"center",padding:"0 16px",borderBottom:"1px solid #f2f2f7",minHeight:44}}>
                   <span style={{width:56,fontSize:12,color:"#888",flexShrink:0,fontWeight:500}}>{row.label}</span>
                   <input value={row.val} onChange={e=>updateField(b.id,row.field,e.target.value)}
-                    placeholder={row.ph} style={INP}/>
+                    placeholder={row.ph} style={{...INP,flex:1}}/>
                 </div>
               ))}
               {/* 메일주소 */}
@@ -3835,17 +3858,11 @@ function AdminPlaces({ data, setData, bizId }) {
                 <div style={{display:"flex",alignItems:"center",padding:"0 16px",minHeight:44}}>
                   <span style={{width:56,fontSize:12,color:"#888",flexShrink:0,fontWeight:500}}>메일주소</span>
                   <input value={b.naverEmail||""} onChange={e=>updateField(b.id,"naverEmail",e.target.value)}
-                    placeholder="example@gmail.com" style={INP}/>
+                    placeholder="example@gmail.com" style={{...INP,flex:1}}/>
                 </div>
                 <div style={{padding:"0 16px 6px 72px",fontSize:10,color:"#bbb",lineHeight:1.3}}>
                   네이버 예약 알림을 수신할 Gmail 주소를 입력하세요.
                 </div>
-              </div>
-              {/* 비즈 ID */}
-              <div style={{display:"flex",alignItems:"center",padding:"0 16px",borderBottom:"1px solid #f2f2f7",minHeight:44}}>
-                <span style={{width:56,fontSize:12,color:"#888",flexShrink:0,fontWeight:500}}>비즈 ID</span>
-                <input value={b.naverBizId||""} onChange={e=>updateField(b.id,"naverBizId",e.target.value)}
-                  placeholder="네이버 예약 비즈니스 ID (숫자)" style={INP}/>
               </div>
               {/* 네이버예약 칼럼수 */}
               <div style={{display:"flex",alignItems:"center",padding:"0 16px",minHeight:44}}>
