@@ -111,7 +111,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.58.2";
+const BLISS_V = "2.58.3";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -4813,7 +4813,11 @@ function QuickBookModal({ onClose, onParsed, data }) {
 아래 텍스트/이미지/음성에서 예약 정보를 추출해 JSON으로만 응답하세요.
 마크다운 백틱이나 설명 없이 순수 JSON만 출력하세요.
 
-[이미지] 채팅 앱 스크린샷이면 상단 연락처/전화번호 확인. 앱 종류 파악. 최종 확정 날짜/시간 우선. 한국어+영어 처리.
+[이미지] 채팅 앱 스크린샷 분석 시 반드시 다음 순서로 처리:
+1단계: 화면 최상단 헤더 영역에서 전화번호/이름을 먼저 추출 (예: "+1 (916) 802-8699", "010-1234-5678", "홍길동")
+2단계: 대화 내용에서 날짜, 시간, 시술 정보 추출
+3단계: 앱 종류 판별 (WhatsApp, 카카오톡, iMessage 등)
+※ 헤더의 전화번호가 고객 전화번호입니다. 대화 내용보다 헤더 정보를 우선하세요.
 [음성] 오디오 첨부 시 음성을 듣고 추출. 공=0,일=1,이=2,삼=3,사=4,오=5,육=6,칠=7,팔=8,구=9. 공일공=010.
 
 [등록된 서비스태그] {${tagList || "없음"}}
