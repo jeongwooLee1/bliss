@@ -95,22 +95,23 @@ async function loadAllFromDb(bizId) {
     ]);
     return { businesses, groups, groupMembers, users:fromDb("app_users",users) };
   }
-  const [branches,rooms,users,customers,reservations,sales,serviceTags,services,products,cats,resSources] = await Promise.all([
+  const [branches,rooms,users,customers,reservations,sales,serviceTags,services,products,cats] = await Promise.all([
     sb.getByBiz("branches",bizId), sb.getByBiz("rooms",bizId),
     sb.get("app_users",`&business_id=eq.${bizId}`), sb.getByBiz("customers",bizId),
     sb.getByBiz("reservations",bizId), sb.getByBiz("sales",bizId), sb.getByBiz("service_tags",bizId),
     sb.getByBiz("services",bizId), sb.getByBiz("products",bizId), sb.getByBiz("service_categories",bizId),
-    sb.getByBiz("reservation_sources",bizId),
   ]);
+  let resSources = [];
+  try { resSources = await sb.getByBiz("reservation_sources",bizId); } catch(e) { console.warn("reservation_sources load failed:",e); }
   return { branches:fromDb("branches",branches), rooms, users:fromDb("app_users",users), customers:fromDb("customers",customers),
     reservations:fromDb("reservations",reservations), sales:fromDb("sales",sales),
     serviceTags:fromDb("service_tags",serviceTags), services:fromDb("services",services),
-    products, cats, resSources:fromDb("reservation_sources",resSources) };
+    products, cats, resSources:fromDb("reservation_sources",resSources||[]) };
   console.log("Data loaded:", {branches:branches.length, rooms:rooms.length, services:services.length, cats:cats.length, serviceTags:serviceTags.length, reservations:reservations.length});
 }
 
 // ─── Constants ───
-const BLISS_V = "2.54.0";
+const BLISS_V = "2.54.1";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
