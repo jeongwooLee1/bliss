@@ -111,7 +111,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.54.2";
+const BLISS_V = "2.54.3";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -4445,19 +4445,24 @@ function AdminResSources({ data, setData }) {
   const [newSrc, setNewSrc] = useState({ name:"", color:"#7c7cc8" });
   const [editId, setEditId] = useState(null);
   const [editVal, setEditVal] = useState({});
+  const nameRef = useRef(null);
+  const editNameRef = useRef(null);
 
   const addSource = () => {
-    if (!newSrc.name.trim()) { alert("경로명을 입력하세요"); return; }
-    const item = { id:"src_"+uid(), name:newSrc.name.trim(), color:newSrc.color||"#7c7cc8", sort:sources.length, useYn:true };
+    const name = nameRef.current?.value?.trim() || "";
+    if (!name) { alert("경로명을 입력하세요"); return; }
+    const item = { id:"src_"+uid(), name, color:newSrc.color||"#7c7cc8", sort:sources.length, useYn:true };
     setSources(p=>[...p, item]);
     sb.insert("reservation_sources", toDb("reservation_sources", item)).catch(console.error);
+    if(nameRef.current) nameRef.current.value = "";
     setNewSrc({ name:"", color:"#7c7cc8" });
     setShowAdd(false);
   };
 
   const saveEdit = (id) => {
-    setSources(p=>p.map(s=>s.id===id?{...s,...editVal}:s));
-    sb.update("reservation_sources", id, toDb("reservation_sources", editVal)).catch(console.error);
+    const finalVal = {...editVal, name: editNameRef.current?.value?.trim() || editVal.name};
+    setSources(p=>p.map(s=>s.id===id?{...s,...finalVal}:s));
+    sb.update("reservation_sources", id, toDb("reservation_sources", finalVal)).catch(console.error);
     setEditId(null);
   };
 
@@ -4476,8 +4481,8 @@ function AdminResSources({ data, setData }) {
   return <div>
     <AdminHeader title="예약경로 관리" count={sources.length} onAdd={()=>setShowAdd(!showAdd)} addLabel={showAdd?"취소":<><I name="plus" size={12}/> 경로 추가</>}/>
     {showAdd && <div className="fade-in" style={{display:"flex",gap:8,alignItems:"center",marginBottom:12,padding:12,background:"#f8f8fc",borderRadius:8,border:"1px solid #e0e0e0",flexWrap:"wrap"}}>
-      <FLD label="경로명"><input className="inp" style={{width:120}} value={newSrc.name} onChange={e=>setNewSrc(p=>({...p,name:e.target.value}))} placeholder="예: 카카오톡"/></FLD>
-      <FLD label="색상"><input type="color" value={newSrc.color} onChange={e=>setNewSrc(p=>({...p,color:e.target.value}))} style={{width:36,height:28,padding:0,border:"1px solid #ddd",borderRadius:4,cursor:"pointer"}}/></FLD>
+      <FLD label="경로명"><input ref={nameRef} className="inp" style={{width:120}} defaultValue="" placeholder="예: 카카오톡"/></FLD>
+      <FLD label="색상"><input type="color" defaultValue={newSrc.color} onChange={e=>setNewSrc(p=>({...p,color:e.target.value}))} style={{width:36,height:28,padding:0,border:"1px solid #ddd",borderRadius:4,cursor:"pointer"}}/></FLD>
       <button className="btn-p btn-sm" onClick={addSource}><I name="plus" size={12}/> 추가</button>
     </div>}
     <table className="admin-tbl" style={{width:"100%",borderCollapse:"collapse"}}>
@@ -4487,7 +4492,7 @@ function AdminResSources({ data, setData }) {
       <tbody>{sources.map((s,i)=><tr key={s.id} style={{borderBottom:"1px solid #f0f0f0",opacity:s.useYn===false?0.4:1}}>
         <td style={{textAlign:"center",fontSize:11,color:"#999"}}>{i+1}</td>
         <td>{editId===s.id
-          ? <input className="inp" value={editVal.name??s.name} onChange={e=>setEditVal(p=>({...p,name:e.target.value}))} style={{width:120}}/>
+          ? <input ref={editNameRef} className="inp" defaultValue={editVal.name??s.name} style={{width:120}}/>
           : <div style={{display:"flex",alignItems:"center",gap:6}}>
               <span style={{width:10,height:10,borderRadius:10,background:s.color||"#7c7cc8",flexShrink:0}}/>
               <span style={{fontWeight:600}}>{s.name}</span>
