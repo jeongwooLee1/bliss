@@ -4737,7 +4737,6 @@ function AdminAISettings() {
 
 // ─── 빠른등록 모달 ───
 function QuickBookModal({ onClose, onParsed, data }) {
-  const [mode, setMode] = useState("text");
   const [input, setInput] = useState("");
   const [imgData, setImgData] = useState(null);
   const [imgPreview, setImgPreview] = useState(null);
@@ -4751,10 +4750,12 @@ function QuickBookModal({ onClose, onParsed, data }) {
   const timerRef = useRef(null);
   const [audioData, setAudioData] = useState(null);
   const fileRef = useRef(null);
+  const camRef = useRef(null);
+  const inputRef = useRef(null);
   const apiKey = localStorage.getItem("bliss_gemini_key") || "";
   const C = "#7c7cc8";
+  const G1 = "#4285f4", G2 = "#9b72cb", G3 = "#d96570";
 
-  // Recording
   const startVoice = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({audio:true});
@@ -4766,85 +4767,38 @@ function QuickBookModal({ onClose, onParsed, data }) {
         stream.getTracks().forEach(t=>t.stop());
         const blob = new Blob(chunksRef.current, {type: mime});
         const reader = new FileReader();
-        reader.onload = () => {
-          const b64 = reader.result.split(",")[1];
-          setAudioData({base64:b64, mimeType:mime.split(";")[0]});
-        };
+        reader.onload = () => setAudioData({base64:reader.result.split(",")[1], mimeType:mime.split(";")[0]});
         reader.readAsDataURL(blob);
       };
-      rec.start(1000);
-      mediaRecRef.current = rec;
+      rec.start(1000); mediaRecRef.current = rec;
       setIsListening(true); setRecordSec(0); setAudioData(null); setResult(null); setError(null);
       timerRef.current = setInterval(()=>setRecordSec(s=>s+1), 1000);
     } catch(e) { alert("마이크 권한이 필요합니다"); }
   };
-  const stopVoice = () => {
-    mediaRecRef.current?.stop(); setIsListening(false); clearInterval(timerRef.current);
-  };
-
-  // Auto-analyze when audio ready
-  useEffect(() => { if (audioData && mode === "voice") doParse(null, audioData); }, [audioData]);
+  const stopVoice = () => { mediaRecRef.current?.stop(); setIsListening(false); clearInterval(timerRef.current); };
+  useEffect(() => { if (audioData) doParse(null, audioData); }, [audioData]);
 
   const handleImage = (e) => {
     const file = e.target.files?.[0]; if (!file) return;
-    setMode("image");
     const reader = new FileReader();
-    reader.onload = (ev) => {
-      setImgData({base64:ev.target.result.split(",")[1], mimeType:file.type});
-      setImgPreview(ev.target.result);
-    };
+    reader.onload = (ev) => { setImgData({base64:ev.target.result.split(",")[1], mimeType:file.type}); setImgPreview(ev.target.result); };
     reader.readAsDataURL(file);
   };
 
   const buildPrompt = () => {
-    const today = new Date();
-    const dow = ["일","월","화","수","목","금","토"];
+    const today = new Date(), dow = ["일","월","화","수","목","금","토"];
     const ds = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")} (${dow[today.getDay()]})`;
-
-    // Build available services list for matching
     const tags = (data?.serviceTags || []).filter(t=>t.useYn!==false && t.scheduleYn!=="Y");
     const svcs = (data?.services || []).filter(s=>s.useYn!==false);
     const tagList = tags.map(t=>`"${t.id}":"${t.name}"${t.dur?`(${t.dur}분)`:""}`).join(", ");
     const svcList = svcs.map(s=>`"${s.id}":"${s.name}"${s.dur?`(${s.dur}분)`:""}`).join(", ");
-
-    return `당신은 미용실/왁싱샵 예약 정보를 추출하는 AI입니다.
-오늘 날짜: ${ds}
-
-아래 텍스트/이미지/음성에서 예약 정보를 추출해 JSON으로만 응답하세요.
-마크다운 백틱이나 설명 없이 순수 JSON만 출력하세요.
-
-[이미지] 채팅 앱 스크린샷 분석 시 반드시 다음 순서로 처리:
-1단계: 화면 최상단 헤더 영역에서 전화번호/이름을 먼저 추출 (예: "+1 (916) 802-8699", "010-1234-5678", "홍길동")
-2단계: 대화 내용에서 날짜, 시간, 시술 정보 추출
-3단계: 앱 종류 판별 (WhatsApp, 카카오톡, iMessage 등)
-※ 헤더의 전화번호가 고객 전화번호입니다. 대화 내용보다 헤더 정보를 우선하세요.
-[음성] 오디오 첨부 시 음성을 듣고 추출. 공=0,일=1,이=2,삼=3,사=4,오=5,육=6,칠=7,팔=8,구=9. 공일공=010.
-
-[등록된 서비스태그] {${tagList || "없음"}}
-[등록된 시술상품] {${svcList || "없음"}}
-
-시술 내용이 언급되면 위 목록에서 가장 적합한 항목의 ID를 매칭하세요.
-부분 일치, 유사어, 영어↔한국어 매칭 모두 시도하세요.
-[왁싱 용어 매핑] 음모왁싱=브라질리언왁싱, eyebrows=눈썹, underarm=겨드랑이, leg=다리, arm=팔, bikini=비키니, full body=전신
-발음이 비슷하거나 의미가 같으면 적극적으로 매칭하세요.
-
-추출 항목:
-- custName: 고객 이름 (없으면 "")
-- custPhone: 전화번호 (010-XXXX-XXXX. 해외번호 원본유지. 하이픈 포함)
-- date: YYYY-MM-DD ("March 7th"→"2026-03-07", "수요일"→이번주 수요일)
-- time: HH:MM 24시간 ("1 pm"→"13:00", "3시반"→"15:30")
-- dur: 소요시간(분) (없으면 0)
-- memo: 시술내용/기타 (없으면 "")
-- source: 예약경로 ("WhatsApp","카카오톡","인스타","전화","네이버" 등)
-- custGender: "M" or "F" or ""
-- matchedTagIds: 매칭된 서비스태그 ID 배열 (예: ["abc123"]). 없으면 []
-- matchedServiceIds: 매칭된 시술상품 ID 배열 (예: ["xyz456"]). 없으면 []`;
+    return `당신은 미용실/왁싱샵 예약 정보를 추출하는 AI입니다.\n오늘 날짜: ${ds}\n\n아래 텍스트/이미지/음성에서 예약 정보를 추출해 JSON으로만 응답하세요.\n마크다운 백틱이나 설명 없이 순수 JSON만 출력하세요.\n\n[이미지] 채팅 앱 스크린샷 분석 시 반드시 다음 순서로 처리:\n1단계: 화면 최상단 헤더 영역에서 전화번호/이름을 먼저 추출\n2단계: 대화 내용에서 날짜, 시간, 시술 정보 추출\n3단계: 앱 종류 판별\n※ 헤더의 전화번호가 고객 전화번호입니다.\n[음성] 오디오 첨부 시 음성을 듣고 추출. 공=0,일=1,이=2,삼=3,사=4,오=5,육=6,칠=7,팔=8,구=9. 공일공=010.\n\n[등록된 서비스태그] {${tagList || "없음"}}\n[등록된 시술상품] {${svcList || "없음"}}\n\n시술 내용이 언급되면 위 목록에서 가장 적합한 항목의 ID를 매칭하세요.\n[왁싱 용어 매핑] 음모왁싱=브라질리언왁싱, eyebrows=눈썹, underarm=겨드랑이, leg=다리, arm=팔, bikini=비키니, full body=전신\n\n추출 항목:\n- custName: 고객 이름 (없으면 "")\n- custPhone: 전화번호 (010-XXXX-XXXX. 해외번호 원본유지)\n- date: YYYY-MM-DD\n- time: HH:MM 24시간\n- dur: 소요시간(분) (없으면 0)\n- memo: 시술내용/기타 (없으면 "")\n- source: 예약경로\n- custGender: "M" or "F" or ""\n- matchedTagIds: 매칭된 서비스태그 ID 배열. 없으면 []\n- matchedServiceIds: 매칭된 시술상품 ID 배열. 없으면 []`;
   };
 
   const doParse = async (evt, overrideAudio) => {
     const ad = overrideAudio || audioData;
     if (!apiKey) { setError("관리설정 → AI설정에서 API 키를 등록하세요"); return; }
-    if (!input.trim() && !imgData && !ad) { setError("입력 데이터가 없습니다"); return; }
+    if (!input.trim() && !imgData && !ad) { setError("텍스트, 이미지, 또는 음성을 입력하세요"); return; }
     setLoading(true); setError(null); setResult(null);
     try {
       const parts = [{text: buildPrompt()}];
@@ -4865,170 +4819,124 @@ function QuickBookModal({ onClose, onParsed, data }) {
 
   const editResult = (k,v) => setResult(p=>({...p,[k]:v}));
   const reset = () => { setResult(null);setError(null);setAudioData(null);setRecordSec(0);setImgData(null);setImgPreview(null);setInput(""); };
+  const handleSubmit = () => { if (input.trim() || imgData) doParse(); };
 
-  return <div style={{position:"fixed",inset:0,zIndex:500,background:"rgba(0,0,0,.4)",display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
-    <div style={{background:"#fff",borderRadius:"20px 20px 0 0",width:"100%",maxWidth:480,maxHeight:"92vh",overflow:"auto"}}>
-      <style>{`@keyframes qb-up{from{transform:translateY(100%)}to{transform:translateY(0)}}@keyframes qb-pulse{0%,100%{opacity:1}50%{opacity:.4}}@keyframes qb-spin{to{transform:rotate(360deg)}}`}</style>
-      <div style={{animation:"qb-up .25s ease"}}>
+  const sparkle = <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 2L13.09 8.26L18 6L14.74 10.91L21 12L14.74 13.09L18 18L13.09 15.74L12 22L10.91 15.74L6 18L9.26 13.09L3 12L9.26 10.91L6 6L10.91 8.26L12 2Z" fill="url(#gsp)"/><defs><linearGradient id="gsp" x1="3" y1="2" x2="21" y2="22"><stop stopColor="#4285f4"/><stop offset="0.5" stopColor="#9b72cb"/><stop offset="1" stopColor="#d96570"/></linearGradient></defs></svg>;
 
-      {/* Header */}
-      <div style={{padding:"18px 20px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"1px solid #f0f0f0",position:"sticky",top:0,background:"#fff",zIndex:10}}>
-        <span style={{fontSize:15,fontWeight:700,color:"#222",letterSpacing:-.3}}>빠른등록</span>
-        <button onClick={onClose} style={{background:"#f5f5f5",border:"none",width:28,height:28,borderRadius:14,cursor:"pointer",fontSize:13,color:"#999",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
-      </div>
+  return <div style={{position:"fixed",inset:0,zIndex:500,background:"#fff",display:"flex",flexDirection:"column"}}>
+    <style>{`@keyframes qb-spin{to{transform:rotate(360deg)}}@keyframes qb-pulse{0%,100%{transform:scale(1);opacity:.7}50%{transform:scale(1.15);opacity:1}}@keyframes qb-fade{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}.qb-field:focus{border-color:#7c7cc850!important;background:#fff!important}`}</style>
 
-      {/* Tabs - hide when showing results or loading */}
-      {!result && !loading && <div style={{display:"flex",padding:"12px 20px 0",gap:6}}>
-        {[["text","텍스트"],["voice","음성"],["image","이미지"]].map(([k,label])=>
-          <button key={k} onClick={()=>{setMode(k);setError(null);}} style={{flex:1,padding:"9px 0",fontSize:12,fontWeight:mode===k?700:500,
-            color:mode===k?C:"#999",background:mode===k?C+"0d":"transparent",
-            border:mode===k?`1.5px solid ${C}30`:"1.5px solid transparent",
-            borderRadius:8,cursor:"pointer",fontFamily:"inherit",transition:"all .15s"}}>
-            {label}
-          </button>
-        )}
+    {/* Top bar */}
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 16px",flexShrink:0}}>
+      <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",padding:6,display:"flex",color:"#666"}}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      </button>
+      <div style={{display:"flex",alignItems:"center",gap:6}}>{sparkle}<span style={{fontSize:15,fontWeight:700,color:"#333"}}>빠른등록</span></div>
+      <div style={{width:32}}/>
+    </div>
+
+    {/* Content */}
+    <div style={{flex:1,overflow:"auto",padding:"0 20px",display:"flex",flexDirection:"column"}}>
+
+      {/* Empty */}
+      {!result && !loading && !error && !imgPreview && !isListening && <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:12,opacity:.9}}>
+        <div style={{width:56,height:56,borderRadius:28,background:"linear-gradient(135deg,#4285f415,#9b72cb15,#d9657015)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M12 2L13.09 8.26L18 6L14.74 10.91L21 12L14.74 13.09L18 18L13.09 15.74L12 22L10.91 15.74L6 18L9.26 13.09L3 12L9.26 10.91L6 6L10.91 8.26L12 2Z" fill="url(#gsp)"/></svg>
+        </div>
+        <div style={{fontSize:18,fontWeight:700,color:"#333"}}>어떤 예약을 등록할까요?</div>
+        <div style={{fontSize:13,color:"#999",textAlign:"center",lineHeight:1.6}}>카톡 메시지 붙여넣기, 음성, 채팅 캡처<br/>무엇이든 AI가 분석해드려요</div>
       </div>}
 
-      <div style={{padding:"16px 20px 24px"}}>
+      {/* Image preview */}
+      {imgPreview && !result && !loading && <div style={{animation:"qb-fade .3s ease",marginTop:16}}>
+        <div style={{position:"relative",borderRadius:14,overflow:"hidden",border:"1px solid #eee",display:"inline-block"}}>
+          <img src={imgPreview} style={{maxWidth:"100%",maxHeight:240,display:"block",objectFit:"contain"}} alt=""/>
+          <button onClick={()=>{setImgData(null);setImgPreview(null);}} style={{position:"absolute",top:8,right:8,width:28,height:28,borderRadius:14,background:"rgba(0,0,0,.5)",color:"#fff",border:"none",cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+        </div>
+      </div>}
 
-        {/* TEXT */}
-        {!result && !loading && mode==="text" && <>
-          <textarea value={input} onChange={e=>setInput(e.target.value)}
-            placeholder={"이종호 010-7028-0080 수요일 3시반\n\n카톡 메시지 붙여넣기 또는 직접 입력"}
-            style={{width:"100%",height:110,padding:14,fontSize:13,border:"1.5px solid #e8e8e8",borderRadius:10,resize:"none",fontFamily:"inherit",lineHeight:1.7,background:"#fafafa",color:"#333",outline:"none"}}/>
-          <button onClick={doParse} disabled={!input.trim()}
-            style={{width:"100%",marginTop:10,padding:"13px 0",fontSize:13,fontWeight:600,
-              background:input.trim()?C:"#e0e0e0",color:"#fff",border:"none",borderRadius:10,cursor:input.trim()?"pointer":"default",fontFamily:"inherit"}}>
-            분석하기
-          </button>
-        </>}
+      {/* Loading */}
+      {loading && <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:16,animation:"qb-fade .3s ease"}}>
+        <div style={{display:"flex",gap:6}}>{["#4285f4","#9b72cb","#d96570"].map((c,i)=><div key={i} style={{width:10,height:10,borderRadius:5,background:c,animation:`qb-pulse .8s ease ${i*.15}s infinite`}}/>)}</div>
+        <div style={{fontSize:14,fontWeight:600,color:"#555"}}>{audioData?"음성을 분석하고 있어요":imgData?"이미지를 읽고 있어요":"분석 중이에요"}</div>
+      </div>}
 
-        {/* VOICE */}
-        {!result && !loading && mode==="voice" && <div style={{textAlign:"center",padding:"24px 0 8px"}}>
-          {isListening ? <>
-            <div style={{width:80,height:80,borderRadius:40,background:"#fee2e2",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px",position:"relative"}}>
-              <div style={{width:96,height:96,borderRadius:48,border:"2px solid #fca5a5",position:"absolute",animation:"qb-pulse 1.5s infinite"}}/>
-              <span style={{fontSize:28}}>🎙️</span>
-            </div>
-            <div style={{fontSize:28,fontWeight:700,color:"#ef4444",fontFamily:"monospace",marginBottom:6}}>
-              {Math.floor(recordSec/60)}:{String(recordSec%60).padStart(2,"0")}
-            </div>
-            <div style={{fontSize:12,color:"#999",marginBottom:20}}>말씀이 끝나면 중지를 눌러주세요</div>
-            <button onClick={stopVoice} style={{padding:"12px 40px",fontSize:13,fontWeight:600,background:"#ef4444",color:"#fff",border:"none",borderRadius:10,cursor:"pointer",fontFamily:"inherit"}}>
-              녹음 중지
-            </button>
-          </> : <>
-            <div onClick={startVoice} style={{width:80,height:80,borderRadius:40,background:C+"0d",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px",cursor:"pointer"}}>
-              <span style={{fontSize:28}}>🎙️</span>
-            </div>
-            <div style={{fontSize:13,fontWeight:600,color:"#555",marginBottom:4}}>탭하여 녹음 시작</div>
-            <div style={{fontSize:11,color:"#bbb"}}>이름, 전화번호, 날짜, 시간을 말씀하세요</div>
-          </>}
-        </div>}
+      {/* Recording */}
+      {isListening && <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:12,animation:"qb-fade .3s ease"}}>
+        <div style={{width:72,height:72,borderRadius:36,background:"linear-gradient(135deg,#d9657020,#9b72cb20)",display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}>
+          <div style={{position:"absolute",inset:-6,borderRadius:42,border:"2px solid #d9657040",animation:"qb-pulse 1.5s ease infinite"}}/>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="#d96570"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+        </div>
+        <div style={{fontSize:32,fontWeight:700,color:"#d96570",fontFamily:"monospace"}}>{Math.floor(recordSec/60)}:{String(recordSec%60).padStart(2,"0")}</div>
+        <div style={{fontSize:13,color:"#999"}}>듣고 있어요...</div>
+        <button onClick={stopVoice} style={{marginTop:8,padding:"10px 32px",fontSize:13,fontWeight:600,background:"#d96570",color:"#fff",border:"none",borderRadius:24,cursor:"pointer",fontFamily:"inherit"}}>완료</button>
+      </div>}
 
-        {/* IMAGE */}
-        {!result && !loading && mode==="image" && <>
-          <input ref={fileRef} type="file" accept="image/*" onChange={handleImage} style={{display:"none"}}/>
-          {imgPreview ? <div>
-            <div style={{borderRadius:10,overflow:"hidden",border:"1px solid #eee",marginBottom:10}}>
-              <img src={imgPreview} style={{width:"100%",maxHeight:260,objectFit:"contain",display:"block"}} alt=""/>
-            </div>
-            <div style={{display:"flex",gap:8}}>
-              <button onClick={()=>{setImgData(null);setImgPreview(null);}} style={{flex:1,padding:"11px 0",fontSize:12,fontWeight:500,background:"#f5f5f5",color:"#888",border:"none",borderRadius:8,cursor:"pointer",fontFamily:"inherit"}}>다른 이미지</button>
-              <button onClick={doParse} style={{flex:2,padding:"11px 0",fontSize:13,fontWeight:600,background:C,color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontFamily:"inherit"}}>분석하기</button>
-            </div>
-          </div> : <div style={{display:"flex",gap:10}}>
-            <div onClick={()=>{fileRef.current?.setAttribute("capture","environment");fileRef.current?.click();}}
-              style={{flex:1,padding:"28px 0",textAlign:"center",border:"1.5px dashed #ddd",borderRadius:12,cursor:"pointer",background:"#fafafa"}}>
-              <div style={{fontSize:28,marginBottom:6}}>📷</div>
-              <div style={{fontSize:11,fontWeight:600,color:"#888"}}>촬영</div>
-            </div>
-            <div onClick={()=>{fileRef.current?.removeAttribute("capture");fileRef.current?.click();}}
-              style={{flex:1,padding:"28px 0",textAlign:"center",border:"1.5px dashed #ddd",borderRadius:12,cursor:"pointer",background:"#fafafa"}}>
-              <div style={{fontSize:28,marginBottom:6}}>🖼️</div>
-              <div style={{fontSize:11,fontWeight:600,color:"#888"}}>갤러리</div>
-            </div>
-          </div>}
-        </>}
+      {/* Error */}
+      {error && <div style={{marginTop:20,padding:"14px 16px",background:"#fef2f2",borderRadius:12,fontSize:13,color:"#dc2626",lineHeight:1.5,animation:"qb-fade .3s ease"}}>{error}<button onClick={reset} style={{display:"block",marginTop:8,fontSize:12,color:"#4285f4",background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>다시 시도</button></div>}
 
-        {/* LOADING */}
-        {loading && <div style={{textAlign:"center",padding:"40px 0"}}>
-          <div style={{width:44,height:44,border:`3px solid ${C}20`,borderTop:`3px solid ${C}`,borderRadius:22,margin:"0 auto 16px",animation:"qb-spin .8s linear infinite"}}/>
-          <div style={{fontSize:13,fontWeight:600,color:"#555"}}>{mode==="voice"?"음성 인식 중...":mode==="image"?"이미지 분석 중...":"텍스트 분석 중..."}</div>
-        </div>}
-
-        {/* ERROR */}
-        {error && <div style={{marginTop:8,padding:"12px 14px",background:"#fef2f2",borderRadius:10,fontSize:12,color:"#dc2626",lineHeight:1.5}}>
-          {error}
-          <button onClick={reset} style={{display:"block",marginTop:8,fontSize:11,color:C,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>다시 시도</button>
-        </div>}
-
-        {/* RESULTS - editable */}
-        {result && <div>
-          <div style={{fontSize:12,fontWeight:600,color:"#999",marginBottom:12}}>추출 결과 <span style={{fontWeight:400}}>— 탭하여 수정</span></div>
-          {[["custName","고객명","text"],["custPhone","전화번호","tel"],["date","날짜","date"],["time","시간","time"],["memo","시술/메모","text"],["source","예약경로","text"]].map(([key,label,type])=>
-            <div key={key} style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
-              <label style={{width:58,fontSize:11,color:"#aaa",flexShrink:0,textAlign:"right"}}>{label}</label>
-              <input value={result[key]||""} onChange={e=>editResult(key,e.target.value)} type={type}
-                style={{flex:1,padding:"9px 12px",fontSize:13,border:"1.5px solid #e8e8e8",borderRadius:8,fontFamily:"inherit",color:"#333",outline:"none",background:"#fafafa"}}/>
-            </div>
+      {/* Results */}
+      {result && <div style={{paddingTop:12,paddingBottom:100,animation:"qb-fade .3s ease"}}>
+        <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:14}}>{sparkle}<span style={{fontSize:14,fontWeight:700,color:"#333"}}>분석 완료</span><span style={{fontSize:11,color:"#bbb",marginLeft:4}}>수정 가능</span></div>
+        <div style={{display:"flex",flexDirection:"column",gap:10}}>
+          {[["custName","고객명"],["custPhone","전화번호"],["date","날짜"],["time","시간"],["memo","시술/메모"],["source","예약경로"]].map(([key,label])=>
+            <div key={key}><div style={{fontSize:11,color:"#999",marginBottom:4,fontWeight:500}}>{label}</div>
+            <input value={result[key]||""} onChange={e=>editResult(key,e.target.value)} className="qb-field"
+              style={{width:"100%",padding:"11px 14px",fontSize:14,border:"1.5px solid #e8e8e8",borderRadius:10,fontFamily:"inherit",color:"#333",outline:"none",background:"#fafafa",transition:"all .15s"}}/></div>
           )}
-          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
-            <label style={{width:58,fontSize:11,color:"#aaa",flexShrink:0,textAlign:"right"}}>성별</label>
-            <div style={{display:"flex",gap:6}}>
-              {[["","미정"],["M","남"],["F","여"]].map(([v,l])=>
-                <button key={v} onClick={()=>editResult("custGender",v)}
-                  style={{padding:"7px 16px",fontSize:12,fontWeight:result.custGender===v?600:400,
-                    background:result.custGender===v?C+"12":"#f5f5f5",color:result.custGender===v?C:"#aaa",
-                    border:result.custGender===v?`1.5px solid ${C}30`:"1.5px solid #eee",borderRadius:7,cursor:"pointer",fontFamily:"inherit"}}>{l}</button>
-              )}
-            </div>
+          <div><div style={{fontSize:11,color:"#999",marginBottom:4,fontWeight:500}}>성별</div>
+            <div style={{display:"flex",gap:6}}>{[["","미정"],["M","남"],["F","여"]].map(([v,l])=>
+              <button key={v} onClick={()=>editResult("custGender",v)} style={{padding:"8px 20px",fontSize:13,fontWeight:result.custGender===v?600:400,background:result.custGender===v?"#7c7cc812":"#f5f5f5",color:result.custGender===v?"#7c7cc8":"#aaa",border:result.custGender===v?"1.5px solid #7c7cc840":"1.5px solid #eee",borderRadius:8,cursor:"pointer",fontFamily:"inherit"}}>{l}</button>
+            )}</div>
           </div>
-          {/* Matched services */}
           {(()=>{
             const tags = (data?.serviceTags||[]).filter(t=>t.useYn!==false && t.scheduleYn!=="Y");
             const svcs = (data?.services||[]).filter(s=>s.useYn!==false);
-            const mTags = result.matchedTagIds || [];
-            const mSvcs = result.matchedServiceIds || [];
+            const mTags = result.matchedTagIds || [], mSvcs = result.matchedServiceIds || [];
             const toggleTag = (id) => editResult("matchedTagIds", mTags.includes(id)?mTags.filter(x=>x!==id):[...mTags,id]);
             const toggleSvc = (id) => editResult("matchedServiceIds", mSvcs.includes(id)?mSvcs.filter(x=>x!==id):[...mSvcs,id]);
             if (!tags.length && !svcs.length) return null;
-            return <div style={{marginTop:4,marginBottom:4}}>
-              {tags.length>0 && <div style={{display:"flex",alignItems:"flex-start",gap:8,marginBottom:6}}>
-                <label style={{width:58,fontSize:11,color:"#aaa",flexShrink:0,textAlign:"right",paddingTop:6}}>서비스</label>
-                <div style={{display:"flex",flexWrap:"wrap",gap:4,flex:1}}>
-                  {tags.map(t=><button key={t.id} onClick={()=>toggleTag(t.id)}
-                    style={{padding:"5px 10px",fontSize:11,fontWeight:mTags.includes(t.id)?600:400,
-                      background:mTags.includes(t.id)?(t.color||C)+"18":"#f5f5f5",
-                      color:mTags.includes(t.id)?t.color||C:"#bbb",
-                      border:mTags.includes(t.id)?`1.5px solid ${t.color||C}40`:"1.5px solid #eee",
-                      borderRadius:6,cursor:"pointer",fontFamily:"inherit"}}>{t.name}</button>)}
-                </div>
-              </div>}
-              {svcs.length>0 && <div style={{display:"flex",alignItems:"flex-start",gap:8,marginBottom:6}}>
-                <label style={{width:58,fontSize:11,color:"#aaa",flexShrink:0,textAlign:"right",paddingTop:6}}>시술</label>
-                <div style={{display:"flex",flexWrap:"wrap",gap:4,flex:1}}>
-                  {svcs.map(s=><button key={s.id} onClick={()=>toggleSvc(s.id)}
-                    style={{padding:"5px 10px",fontSize:11,fontWeight:mSvcs.includes(s.id)?600:400,
-                      background:mSvcs.includes(s.id)?C+"18":"#f5f5f5",
-                      color:mSvcs.includes(s.id)?C:"#bbb",
-                      border:mSvcs.includes(s.id)?`1.5px solid ${C}40`:"1.5px solid #eee",
-                      borderRadius:6,cursor:"pointer",fontFamily:"inherit"}}>{s.name}</button>)}
-                </div>
-              </div>}
-            </div>;
+            return <>{tags.length>0 && <div><div style={{fontSize:11,color:"#999",marginBottom:6,fontWeight:500}}>서비스</div><div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+              {tags.map(t=><button key={t.id} onClick={()=>toggleTag(t.id)} style={{padding:"7px 14px",fontSize:12,fontWeight:mTags.includes(t.id)?600:400,background:mTags.includes(t.id)?(t.color||"#7c7cc8")+"15":"#f5f5f5",color:mTags.includes(t.id)?t.color||"#7c7cc8":"#bbb",border:mTags.includes(t.id)?`1.5px solid ${(t.color||"#7c7cc8")}40`:"1.5px solid #eee",borderRadius:8,cursor:"pointer",fontFamily:"inherit"}}>{t.name}</button>)}
+            </div></div>}
+            {svcs.length>0 && <div><div style={{fontSize:11,color:"#999",marginBottom:6,fontWeight:500}}>시술</div><div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+              {svcs.map(s=><button key={s.id} onClick={()=>toggleSvc(s.id)} style={{padding:"7px 14px",fontSize:12,fontWeight:mSvcs.includes(s.id)?600:400,background:mSvcs.includes(s.id)?"#7c7cc815":"#f5f5f5",color:mSvcs.includes(s.id)?"#7c7cc8":"#bbb",border:mSvcs.includes(s.id)?"1.5px solid #7c7cc840":"1.5px solid #eee",borderRadius:8,cursor:"pointer",fontFamily:"inherit"}}>{s.name}</button>)}
+            </div></div>}</>;
           })()}
-          <div style={{display:"flex",gap:8,marginTop:16}}>
-            <button onClick={reset} style={{flex:1,padding:"12px 0",fontSize:12,fontWeight:500,background:"#f5f5f5",color:"#888",border:"none",borderRadius:10,cursor:"pointer",fontFamily:"inherit"}}>다시</button>
-            <button onClick={()=>onParsed(result)} style={{flex:2,padding:"12px 0",fontSize:13,fontWeight:600,background:C,color:"#fff",border:"none",borderRadius:10,cursor:"pointer",fontFamily:"inherit"}}>예약폼에 적용</button>
-          </div>
-        </div>}
-      </div>
-      </div>
+        </div>
+        <div style={{display:"flex",gap:10,marginTop:20}}>
+          <button onClick={reset} style={{flex:1,padding:"13px 0",fontSize:13,fontWeight:500,background:"#f5f5f5",color:"#888",border:"none",borderRadius:12,cursor:"pointer",fontFamily:"inherit"}}>다시</button>
+          <button onClick={()=>onParsed(result)} style={{flex:2,padding:"13px 0",fontSize:14,fontWeight:600,background:"linear-gradient(135deg,#4285f4,#9b72cb)",color:"#fff",border:"none",borderRadius:12,cursor:"pointer",fontFamily:"inherit"}}>예약폼에 적용</button>
+        </div>
+      </div>}
     </div>
+
+    {/* Bottom input bar */}
+    {!isListening && !loading && !result && <div style={{flexShrink:0,padding:"8px 12px 16px",borderTop:"1px solid #f0f0f0",background:"#fff"}}>
+      <div style={{display:"flex",alignItems:"flex-end",gap:4,background:"#f0f0f5",borderRadius:24,padding:"6px 6px 6px 16px"}}>
+        <textarea ref={inputRef} value={input} onChange={e=>{setInput(e.target.value);e.target.style.height="auto";e.target.style.height=Math.min(e.target.scrollHeight,120)+"px";}}
+          onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();handleSubmit();}}}
+          placeholder="메시지를 입력하세요..." rows={1}
+          style={{flex:1,border:"none",background:"transparent",fontSize:14,fontFamily:"inherit",color:"#333",outline:"none",resize:"none",padding:"8px 0",lineHeight:1.5,maxHeight:120}}/>
+        <input ref={fileRef} type="file" accept="image/*" onChange={handleImage} style={{display:"none"}}/>
+        <input ref={camRef} type="file" accept="image/*" capture="environment" onChange={handleImage} style={{display:"none"}}/>
+        <button onClick={()=>fileRef.current?.click()} style={{width:36,height:36,borderRadius:18,background:"transparent",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:"#888"}}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+        </button>
+        <button onClick={()=>camRef.current?.click()} style={{width:36,height:36,borderRadius:18,background:"transparent",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:"#888"}}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        </button>
+        {(input.trim() || imgData) ? <button onClick={handleSubmit} style={{width:36,height:36,borderRadius:18,background:"linear-gradient(135deg,#4285f4,#9b72cb)",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+        </button>
+        : <button onClick={startVoice} style={{width:36,height:36,borderRadius:18,background:"transparent",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:"#888"}}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+        </button>}
+      </div>
+      {imgPreview && <div style={{marginTop:6,fontSize:11,color:"#999",paddingLeft:16}}>📎 이미지 첨부됨</div>}
+    </div>}
   </div>;
 }
-
 
 // ─── 서비스태그관리 ───
 function AdminServiceTags({ data, setData }) {
