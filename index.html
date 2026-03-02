@@ -122,7 +122,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.56.3";
+const BLISS_V = "2.57.0";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -4733,31 +4733,46 @@ function QuickBookModal({ onClose, onParsed, data }) {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
   const [isListening, setIsListening] = useState(false);
-  const recognitionRef = useRef(null);
+  const [recordSec, setRecordSec] = useState(0);
+  const mediaRecRef = useRef(null);
+  const chunksRef = useRef([]);
+  const timerRef = useRef(null);
+  const [audioData, setAudioData] = useState(null); // {base64, mimeType}
   const fileRef = useRef(null);
 
   const apiKey = localStorage.getItem("bliss_gemini_key") || "";
 
-  // Voice recognition
-  const startVoice = () => {
-    if (!("webkitSpeechRecognition" in window || "SpeechRecognition" in window)) {
-      alert("이 브라우저에서는 음성인식을 지원하지 않습니다"); return;
+  // Audio recording → send directly to Gemini
+  const startVoice = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+      const mime = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "audio/mp4";
+      const rec = new MediaRecorder(stream, {mimeType: mime});
+      chunksRef.current = [];
+      rec.ondataavailable = (e) => { if(e.data.size>0) chunksRef.current.push(e.data); };
+      rec.onstop = () => {
+        stream.getTracks().forEach(t=>t.stop());
+        const blob = new Blob(chunksRef.current, {type: mime});
+        const reader = new FileReader();
+        reader.onload = () => {
+          const base64 = reader.result.split(",")[1];
+          setAudioData({base64, mimeType: mime.split(";")[0]});
+        };
+        reader.readAsDataURL(blob);
+      };
+      rec.start(1000);
+      mediaRecRef.current = rec;
+      setIsListening(true); setRecordSec(0); setAudioData(null);
+      timerRef.current = setInterval(()=>setRecordSec(s=>s+1), 1000);
+    } catch(e) {
+      alert("마이크 권한이 필요합니다: "+e.message);
     }
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    const rec = new SR();
-    rec.lang = "ko-KR"; rec.continuous = true; rec.interimResults = true;
-    rec.onresult = (e) => {
-      let transcript = "";
-      for (let i = 0; i < e.results.length; i++) transcript += e.results[i][0].transcript;
-      setInput(transcript);
-    };
-    rec.onerror = (e) => { console.error("Speech error:", e); setIsListening(false); };
-    rec.onend = () => setIsListening(false);
-    rec.start();
-    recognitionRef.current = rec;
-    setIsListening(true);
   };
-  const stopVoice = () => { recognitionRef.current?.stop(); setIsListening(false); };
+  const stopVoice = () => {
+    mediaRecRef.current?.stop();
+    setIsListening(false);
+    clearInterval(timerRef.current);
+  };
 
   // Image upload
   const handleImage = (e) => {
@@ -4791,6 +4806,12 @@ function QuickBookModal({ onClose, onParsed, data }) {
 - 대화에서 최종 확정된 날짜/시간을 우선 사용하세요
 - 한국어와 영어 모두 처리 가능해야 합니다
 
+[음성 분석 시 주의사항]
+- 오디오가 첨부되면 음성을 텍스트로 변환하고 예약 정보를 추출하세요
+- 한국어 이름, 전화번호(공일공 = 010), 날짜, 시간을 정확히 인식하세요
+- "공"=0, "일"=1, "이"=2, "삼"=3, "사"=4, "오"=5, "육"=6, "칠"=7, "팔"=8, "구"=9
+- 모호한 발음은 문맥에 맞게 해석하세요
+
 추출 항목:
 - custName: 고객 이름 (채팅 상단 연락처명 포함. 없으면 "")
 - custPhone: 전화번호 (채팅 상단 번호 포함. 국제번호 +1, +82 등도 처리. 한국번호는 010-XXXX-XXXX 형식. 해외번호는 원본 유지. 하이픈 포함)
@@ -4813,13 +4834,14 @@ function QuickBookModal({ onClose, onParsed, data }) {
   // Parse with Gemini
   const doParse = async () => {
     if (!apiKey) { setError("관리설정 → AI설정에서 Gemini API 키를 먼저 등록하세요"); return; }
-    if (!input.trim() && !imgData) { setError("텍스트를 입력하거나 이미지를 업로드하세요"); return; }
+    if (!input.trim() && !imgData && !audioData) { setError("텍스트, 음성, 또는 이미지를 입력하세요"); return; }
     setLoading(true); setError(null); setResult(null);
 
     try {
       const parts = [{text: buildPrompt()}];
       if (input.trim()) parts.push({text: "입력 텍스트:\n" + input.trim()});
       if (imgData) parts.push({inlineData: {mimeType: imgData.mimeType, data: imgData.base64}});
+      if (audioData) parts.push({inlineData: {mimeType: audioData.mimeType, data: audioData.base64}});
 
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
         method:"POST", headers:{"Content-Type":"application/json"},
@@ -4864,18 +4886,40 @@ function QuickBookModal({ onClose, onParsed, data }) {
 
       <div style={{padding:20}}>
         {/* Text input */}
-        {(mode==="text"||mode==="voice") && <div style={{marginBottom:16}}>
+        {mode==="text" && <div style={{marginBottom:16}}>
           <textarea value={input} onChange={e=>setInput(e.target.value)}
             placeholder={"예: 이종호 010-7028-0080 수요일 3시반 200\n\n카톡 메시지를 붙여넣거나 직접 입력하세요"}
             style={{width:"100%",height:120,padding:12,fontSize:13,border:"1px solid #ddd",borderRadius:8,resize:"vertical",fontFamily:"inherit",lineHeight:1.6,background:"#fafafa"}}/>
-          {mode==="voice" && <div style={{marginTop:8,textAlign:"center"}}>
-            <button onClick={isListening?stopVoice:startVoice}
-              style={{...btnBase,justifyContent:"center",width:"100%",
-                background:isListening?"#ef4444":"#f0f0ff",color:isListening?"#fff":"#7c3aed",
-                border:isListening?"none":"1px solid #c4b5fd",padding:"12px 20px",fontSize:14}}>
-              {isListening ? <><span style={{animation:"pendingBlink 1s infinite"}}>🔴</span> 듣는 중... (탭하여 중지)</> : <><span>🎤</span> 음성 입력 시작</>}
-            </button>
-          </div>}
+        </div>}
+
+        {/* Voice recording */}
+        {mode==="voice" && <div style={{marginBottom:16}}>
+          <div style={{textAlign:"center",padding:20,background:"#fafafa",borderRadius:12,border:"1px solid #e0e0e0"}}>
+            {isListening ? <>
+              <div style={{fontSize:48,marginBottom:8,animation:"pendingBlink 1s infinite"}}>🔴</div>
+              <div style={{fontSize:24,fontWeight:800,color:"#ef4444",fontFamily:"monospace",marginBottom:12}}>
+                {Math.floor(recordSec/60)}:{String(recordSec%60).padStart(2,"0")}
+              </div>
+              <div style={{fontSize:12,color:"#888",marginBottom:16}}>말씀해주세요... (이름, 전화번호, 날짜, 시간)</div>
+              <button onClick={stopVoice} style={{...btnBase,justifyContent:"center",width:"100%",background:"#ef4444",color:"#fff",padding:"12px 20px",fontSize:14,borderRadius:10}}>
+                ⏹️ 녹음 중지
+              </button>
+            </> : audioData ? <>
+              <div style={{fontSize:48,marginBottom:8}}>✅</div>
+              <div style={{fontSize:14,fontWeight:700,color:"#22c55e",marginBottom:4}}>녹음 완료 ({recordSec}초)</div>
+              <div style={{fontSize:11,color:"#888",marginBottom:16}}>아래 "AI 분석" 버튼을 눌러 음성을 분석하세요</div>
+              <button onClick={()=>{setAudioData(null);setRecordSec(0);}} style={{fontSize:11,color:"#888",background:"none",border:"1px solid #ddd",borderRadius:6,padding:"4px 12px",cursor:"pointer",fontFamily:"inherit"}}>
+                다시 녹음
+              </button>
+            </> : <>
+              <div style={{fontSize:48,marginBottom:12}}>🎤</div>
+              <div style={{fontSize:12,color:"#888",marginBottom:16}}>버튼을 누르고 예약 정보를 말씀하세요</div>
+              <button onClick={startVoice} style={{...btnBase,justifyContent:"center",width:"100%",background:"#f0f0ff",color:"#7c3aed",border:"1px solid #c4b5fd",padding:"12px 20px",fontSize:14,borderRadius:10}}>
+                🎤 녹음 시작
+              </button>
+              <div style={{fontSize:10,color:"#aaa",marginTop:10}}>Gemini AI가 음성을 직접 인식합니다 (한국어/영어 지원)</div>
+            </>}
+          </div>
         </div>}
 
         {/* Image input */}
@@ -4938,7 +4982,7 @@ function QuickBookModal({ onClose, onParsed, data }) {
             )}
           </div>
           <div style={{display:"flex",gap:8,marginTop:14}}>
-            <button onClick={()=>{setResult(null);setError(null);}} style={{...btnBase,flex:1,justifyContent:"center",background:"#f5f5f5",color:"#666",border:"1px solid #ddd"}}>다시 분석</button>
+            <button onClick={()=>{setResult(null);setError(null);setAudioData(null);setRecordSec(0);}} style={{...btnBase,flex:1,justifyContent:"center",background:"#f5f5f5",color:"#666",border:"1px solid #ddd"}}>다시 분석</button>
             <button onClick={()=>onParsed(result)} style={{...btnBase,flex:1,justifyContent:"center",background:"#7c3aed",color:"#fff"}}>예약폼에 적용 →</button>
           </div>
         </div>}
