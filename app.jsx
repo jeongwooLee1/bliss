@@ -1547,7 +1547,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
           <button onClick={()=>changeDate(1)} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#666",padding:"2px 4px",flexShrink:0}}><I name="chevR" size={14}/></button>
           <button onClick={()=>setSelDate(todayStr())} style={{padding:"0 10px",height:32,fontSize:12,border:"1px solid #d0d0d0",borderRadius:6,background:"#fff",color:"#666",cursor:"pointer",fontFamily:"inherit",flexShrink:0,display:"flex",alignItems:"center"}}>오늘</button>
           <button onClick={()=>setShowQuickBook(true)} style={{padding:"0 10px",height:32,fontSize:12,border:"1px solid "+("#7c7cc8")+"50",borderRadius:6,background:"#7c7cc8"+"0a",color:"#7c7cc8",cursor:"pointer",fontFamily:"inherit",flexShrink:0,display:"flex",alignItems:"center",gap:4,fontWeight:600}}>
-            <I name="zap" size={12} color="#7c7cc8"/> 빠른등록
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style={{flexShrink:0}}><path d="M12 2L13.09 8.26L18 6L14.74 10.91L21 12L14.74 13.09L18 18L13.09 15.74L12 22L10.91 15.74L6 18L9.26 13.09L3 12L9.26 10.91L6 6L10.91 8.26L12 2Z" fill="url(#gsp9)"/><defs><linearGradient id="gsp9" x1="3" y1="2" x2="21" y2="22"><stop stopColor="#4285f4"/><stop offset="0.5" stopColor="#9b72cb"/><stop offset="1" stopColor="#d96570"/></linearGradient></defs></svg> AI Book
           </button>
           <div style={{position:"relative",flexShrink:0}} ref={el => { if(el) el._settingsBtn = el; }}>
             <button onClick={(e)=>{setShowSettings(!showSettings);}} id="settings-btn"
@@ -4714,7 +4714,7 @@ function AdminAISettings() {
     <div className="card" style={{padding:20,maxWidth:500}}>
       <div style={{fontSize:13,fontWeight:700,marginBottom:12,color:"#333"}}>Gemini API 키</div>
       <div style={{fontSize:11,color:"#888",marginBottom:12,lineHeight:1.6}}>
-        빠른등록 기능에 사용됩니다. 텍스트/음성/이미지에서 예약 정보를 자동 추출합니다.<br/>
+        AI Book 기능에 사용됩니다. 텍스트/음성/이미지에서 예약 정보를 자동 추출합니다.<br/>
         <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style={{color:"#7c7cc8",fontWeight:600}}>Google AI Studio</a>에서 무료로 발급받을 수 있습니다.
       </div>
       <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:12}}>
@@ -4729,7 +4729,7 @@ function AdminAISettings() {
     <div className="card" style={{padding:20,maxWidth:500,marginTop:16}}>
       <div style={{fontSize:13,fontWeight:700,marginBottom:8,color:"#333"}}>사용 안내</div>
       <div style={{fontSize:11,color:"#666",lineHeight:1.8}}>
-        타임라인 상단의 <span style={{background:"#ede9fe",color:"#7c7cc8",padding:"2px 6px",borderRadius:4,fontWeight:700,fontSize:10}}>⚡ 빠른등록</span> 버튼으로 사용합니다.<br/>
+        타임라인 상단의 <span style={{background:"#ede9fe",color:"#7c7cc8",padding:"2px 6px",borderRadius:4,fontWeight:700,fontSize:10}}>✨ AI Book</span> 버튼으로 사용합니다.<br/>
         • <strong>텍스트</strong>: 카톡 메시지 붙여넣기 또는 직접 입력<br/>
         • <strong>음성</strong>: 마이크로 말하면 자동 인식<br/>
         • <strong>이미지</strong>: 캡처/사진 업로드로 자동 인식<br/>
@@ -4739,7 +4739,7 @@ function AdminAISettings() {
   </div>;
 }
 
-// ─── 빠른등록 모달 ───
+// ─── AI Book 모달 ───
 function QuickBookModal({ onClose, onParsed, data }) {
   const [input, setInput] = useState("");
   const [imgData, setImgData] = useState(null);
@@ -4829,14 +4829,14 @@ function QuickBookModal({ onClose, onParsed, data }) {
   const sparkle = <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 2L13.09 8.26L18 6L14.74 10.91L21 12L14.74 13.09L18 18L13.09 15.74L12 22L10.91 15.74L6 18L9.26 13.09L3 12L9.26 10.91L6 6L10.91 8.26L12 2Z" fill="url(#gsp)"/><defs><linearGradient id="gsp" x1="3" y1="2" x2="21" y2="22"><stop stopColor="#4285f4"/><stop offset="0.5" stopColor="#9b72cb"/><stop offset="1" stopColor="#d96570"/></linearGradient></defs></svg>;
 
   return <div style={{position:"fixed",inset:0,zIndex:500,background:"#fff",display:"flex",flexDirection:"column"}}>
-    <style>{`@keyframes qb-spin{to{transform:rotate(360deg)}}@keyframes qb-pulse{0%,100%{transform:scale(1);opacity:.7}50%{transform:scale(1.15);opacity:1}}@keyframes qb-fade{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}.qb-field:focus{border-color:#7c7cc850!important;background:#fff!important}`}</style>
+    <style>{`@keyframes qb-spin{to{transform:rotate(360deg)}}@keyframes qb-pulse{0%,100%{transform:scale(1);opacity:.7}50%{transform:scale(1.15);opacity:1}}@keyframes qb-fade{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}@keyframes qb-breathe{0%{transform:scale(1) rotate(0deg);opacity:.85}15%{transform:scale(1.18) rotate(8deg);opacity:1}30%{transform:scale(.95) rotate(-5deg);opacity:.75}45%{transform:scale(1.22) rotate(12deg);opacity:.95}60%{transform:scale(1.05) rotate(-3deg);opacity:.8}75%{transform:scale(1.3) rotate(6deg);opacity:1}90%{transform:scale(.98) rotate(-8deg);opacity:.7}100%{transform:scale(1) rotate(0deg);opacity:.85}}@keyframes qb-glow{0%{box-shadow:0 0 15px #4285f420,0 0 30px #9b72cb10}33%{box-shadow:0 0 25px #9b72cb30,0 0 45px #d9657015}66%{box-shadow:0 0 20px #d9657025,0 0 40px #4285f410}100%{box-shadow:0 0 15px #4285f420,0 0 30px #9b72cb10}}.qb-field:focus{border-color:#7c7cc850!important;background:#fff!important}`}</style>
 
     {/* Top bar */}
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 16px",flexShrink:0}}>
       <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",padding:6,display:"flex",color:"#666"}}>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
       </button>
-      <div style={{display:"flex",alignItems:"center",gap:6}}>{sparkle}<span style={{fontSize:15,fontWeight:700,color:"#333"}}>빠른등록</span></div>
+      <div style={{display:"flex",alignItems:"center",gap:6}}>{sparkle}<span style={{fontSize:15,fontWeight:700,color:"#333"}}>AI Book</span></div>
       <div style={{width:32}}/>
     </div>
 
@@ -4845,8 +4845,8 @@ function QuickBookModal({ onClose, onParsed, data }) {
 
       {/* Empty */}
       {!result && !loading && !error && !imgPreview && !isListening && <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:12,opacity:.9}}>
-        <div style={{width:56,height:56,borderRadius:28,background:"linear-gradient(135deg,#4285f415,#9b72cb15,#d9657015)",display:"flex",alignItems:"center",justifyContent:"center"}}>
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none"><path d="M12 2L13.09 8.26L18 6L14.74 10.91L21 12L14.74 13.09L18 18L13.09 15.74L12 22L10.91 15.74L6 18L9.26 13.09L3 12L9.26 10.91L6 6L10.91 8.26L12 2Z" fill="url(#gsp)"/></svg>
+        <div style={{width:64,height:64,borderRadius:32,background:"linear-gradient(135deg,#4285f412,#9b72cb12,#d9657012)",display:"flex",alignItems:"center",justifyContent:"center",animation:"qb-glow 4s ease infinite"}}>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" style={{animation:"qb-breathe 6s ease-in-out infinite"}}><path d="M12 2L13.09 8.26L18 6L14.74 10.91L21 12L14.74 13.09L18 18L13.09 15.74L12 22L10.91 15.74L6 18L9.26 13.09L3 12L9.26 10.91L6 6L10.91 8.26L12 2Z" fill="url(#gsp)"/></svg>
         </div>
         <div style={{fontSize:18,fontWeight:700,color:"#333"}}>어떤 예약을 등록할까요?</div>
         <div style={{fontSize:13,color:"#999",textAlign:"center",lineHeight:1.6}}>카톡 메시지 붙여넣기, 음성, 채팅 캡처<br/>무엇이든 AI가 분석해드려요</div>
