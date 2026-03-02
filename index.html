@@ -10,7 +10,6 @@
 </head><body><div id="root"></div><script type="text/babel">
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 // React hooks provided by HTML wrapper
-
 // ─── Supabase Config ───
 const SB_URL = "https://dpftlrsuqxqqeouwbfjd.supabase.co";
 const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwZnRscnN1cXhxcWVvdXdiZmpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5MDU4MjQsImV4cCI6MjA4NzQ4MTgyNH0.iydEkjtPjZ0jXpUUPJben4IWWneDqLomv-HDlcFayE4";
@@ -34,13 +33,14 @@ const sb = {
 };
 // snake_case <-> camelCase column mapping per table
 const DBMAP = {
-  reservations:{business_id:"businessId",room_id:"roomId",cust_id:"custId",cust_name:"custName",cust_phone:"custPhone",cust_gender:"custGender",staff_id:"staffId",service_id:"serviceId",is_schedule:"isSchedule",is_new_cust:"isNewCust",selected_tags:"selectedTags",selected_services:"selectedServices",repeat_group_id:"repeatSourceId",repeat_until:"repeatUntil",reservation_id:"reservationId",updated_at:"_ua"},
+  reservations:{business_id:"businessId",room_id:"roomId",cust_id:"custId",cust_name:"custName",cust_phone:"custPhone",cust_gender:"custGender",staff_id:"staffId",service_id:"serviceId",is_schedule:"isSchedule",is_new_cust:"isNewCust",selected_tags:"selectedTags",selected_services:"selectedServices",repeat_group_id:"repeatSourceId",repeat_until:"repeatUntil",reservation_id:"reservationId",updated_at:"_ua",source:"source"},
   sales:{business_id:"businessId",cust_id:"custId",cust_name:"custName",cust_phone:"custPhone",cust_gender:"custGender",cust_num:"custNum",staff_id:"staffId",staff_name:"staffName",service_id:"serviceId",service_name:"serviceName",product_id:"productId",product_name:"productName",svc_cash:"svcCash",svc_transfer:"svcTransfer",svc_card:"svcCard",svc_point:"svcPoint",prod_cash:"prodCash",prod_transfer:"prodTransfer",prod_card:"prodCard",prod_point:"prodPoint",order_num:"orderNum",reservation_id:"reservationId"},
   customers:{business_id:"businessId",last_visit:"lastVisit",cust_num:"custNum"},
   service_tags:{business_id:"businessId",schedule_yn:"scheduleYn",use_yn:"useYn"},
   services:{business_id:"businessId",price_f:"priceF",price_m:"priceM"},
   app_users:{business_id:"businessId",login_id:"loginId",branch_ids:"branches",password:"pw",view_branch_ids:"viewBranches"},
   branches:{business_id:"businessId",use_yn:"useYn",naver_email:"naverEmail",naver_biz_id:"naverBizId",naver_col_count:"naverColCount"},
+  reservation_sources:{business_id:"businessId",use_yn:"useYn"},
 };
 function fromDb(table,rows){const m=DBMAP[table];if(!m)return rows;return rows.map(row=>{const r={};for(const[k,v]of Object.entries(row)){if(k==="created_at"){r.createdAt=v;continue;}const mk=m[k]||k;r[mk]=v;} 
   // Parse JSON string arrays for app_users
@@ -55,12 +55,13 @@ function fromDb(table,rows){const m=DBMAP[table];if(!m)return rows;return rows.m
   return r;});}
 // Valid DB columns per table (to filter out extra JS fields)
 const DB_COLS={
-  reservations:["id","business_id","bid","room_id","cust_id","cust_name","cust_phone","cust_gender","staff_id","service_id","date","time","dur","status","memo","type","is_schedule","is_new_cust","selected_tags","selected_services","repeat","repeat_until","repeat_group_id","reservation_id","updated_at"],
+  reservations:["id","business_id","bid","room_id","cust_id","cust_name","cust_phone","cust_gender","staff_id","service_id","date","time","dur","status","memo","type","is_schedule","is_new_cust","selected_tags","selected_services","repeat","repeat_until","repeat_group_id","reservation_id","updated_at","source"],
   sales:["id","business_id","bid","cust_id","cust_name","cust_phone","cust_gender","cust_num","staff_id","staff_name","date","service_id","service_name","product_id","product_name","svc_cash","svc_transfer","svc_card","svc_point","prod_cash","prod_transfer","prod_card","prod_point","gift","order_num","memo","reservation_id"],
   customers:["id","business_id","bid","name","phone","gender","visits","last_visit","memo","cust_num"],
   service_tags:["id","business_id","name","dur","schedule_yn","color","use_yn","sort"],
   services:["id","business_id","cat","name","dur","price_f","price_m","note","sort"],
   app_users:["id","business_id","login_id","password","name","role","branch_ids","view_branch_ids"],
+  reservation_sources:["id","business_id","name","color","sort","use_yn"],
 };
 // Global active business context - auto-injected into DB writes
 let _activeBizId = null;
@@ -106,21 +107,22 @@ async function loadAllFromDb(bizId) {
     ]);
     return { businesses, groups, groupMembers, users:fromDb("app_users",users) };
   }
-  const [branches,rooms,users,customers,reservations,sales,serviceTags,services,products,cats] = await Promise.all([
+  const [branches,rooms,users,customers,reservations,sales,serviceTags,services,products,cats,resSources] = await Promise.all([
     sb.getByBiz("branches",bizId), sb.getByBiz("rooms",bizId),
     sb.get("app_users",`&business_id=eq.${bizId}`), sb.getByBiz("customers",bizId),
     sb.getByBiz("reservations",bizId), sb.getByBiz("sales",bizId), sb.getByBiz("service_tags",bizId),
     sb.getByBiz("services",bizId), sb.getByBiz("products",bizId), sb.getByBiz("service_categories",bizId),
+    sb.getByBiz("reservation_sources",bizId),
   ]);
   return { branches:fromDb("branches",branches), rooms, users:fromDb("app_users",users), customers:fromDb("customers",customers),
     reservations:fromDb("reservations",reservations), sales:fromDb("sales",sales),
     serviceTags:fromDb("service_tags",serviceTags), services:fromDb("services",services),
-    products, cats };
+    products, cats, resSources:fromDb("reservation_sources",resSources) };
   console.log("Data loaded:", {branches:branches.length, rooms:rooms.length, services:services.length, cats:cats.length, serviceTags:serviceTags.length, reservations:reservations.length});
 }
 
 // ─── Constants ───
-const BLISS_V = "2.53.7";
+const BLISS_V = "2.54.0";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -135,6 +137,7 @@ const PAY_KEYS = ["cash","transfer","card","point"];
 const PAY_LABEL = { cash:"현금", transfer:"입금", card:"카드", point:"포인트", gift:"상품권" };
 const PAY_CLR = { cash:"#6bab9e", transfer:"#ef5350", card:"#7c7cc8", point:"#d0d0d0", gift:"#ef5350" };
 const STATUS_LABEL = { confirmed:"진행", completed:"완료", cancelled:"취소", no_show:"노쇼", pending:"확정대기", naver_cancelled:"네이버취소" };
+const DEFAULT_SOURCES = ["네이버","전화","방문","소개","인스타","카카오","기타"];
 const STATUS_KEYS = ["confirmed","completed","cancelled","no_show"];
 const STATUS_CLR_DEFAULT = { confirmed:"#5B9BD5", completed:"#6AB56A", cancelled:"#E8B830", no_show:"#E05252" };
 const getStatusClr = () => { try { const v = localStorage.getItem("tl_sc"); return v ? {...STATUS_CLR_DEFAULT,...JSON.parse(v)} : {...STATUS_CLR_DEFAULT}; } catch(e) { return {...STATUS_CLR_DEFAULT}; } };
@@ -1021,6 +1024,42 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   
   const blocks = data.reservations.filter(r => r.date === selDate && branchesToShow.some(b=>b.id===r.bid));
 
+  // ── 네이버 예약 자동배치: 빈 담당자(왼쪽부터) 배분 ──
+  const toMin = (t) => { const [h,m] = (t||"10:00").split(":").map(Number); return h*60+m; };
+  const naverAssignments = (() => {
+    const asgn = {};
+    branchesToShow.forEach(br => {
+      const brBlocks = blocks.filter(b => b.bid === br.id);
+      const brNaverBlocks = brBlocks.filter(b => isNaverRes(b));
+      if (brNaverBlocks.length === 0) return;
+      const naverRooms = allRooms.filter(r => r.isNaver && r.branch_id === br.id);
+      const regularRooms = allRooms.filter(r => !r.isNaver && r.branch_id === br.id);
+      const targetRooms = naverRooms.length > 0 ? naverRooms : regularRooms;
+      if (targetRooms.length === 0) return;
+      // Track occupied times per room
+      const roomOcc = new Map();
+      targetRooms.forEach(r => roomOcc.set(r.id, []));
+      // Pre-fill regular rooms with existing non-naver, non-schedule blocks (기타일정 무시)
+      if (naverRooms.length === 0) {
+        brBlocks.filter(b => !isNaverRes(b) && !b.isSchedule).forEach(b => {
+          if (roomOcc.has(b.roomId)) roomOcc.get(b.roomId).push({ s: toMin(b.time), e: toMin(b.time) + (b.dur||30) });
+        });
+      }
+      // Sort naver blocks by time, assign to leftmost available room
+      [...brNaverBlocks].sort((a,b) => a.time.localeCompare(b.time)).forEach(block => {
+        const bS = toMin(block.time), bE = bS + (block.dur||30);
+        let best = targetRooms[0].id;
+        for (const rm of targetRooms) {
+          const occ = roomOcc.get(rm.id) || [];
+          if (!occ.some(o => bS < o.e && o.s < bE)) { best = rm.id; break; }
+        }
+        asgn[block.id] = best;
+        roomOcc.get(best)?.push({ s: bS, e: bE });
+      });
+    });
+    return asgn;
+  })();
+
   // Time config - per-browser via localStorage
   const getTlSettings = () => {
     try {
@@ -1664,7 +1703,10 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                 }
                 return false;
               }
-              return !isNaverRes(b) && b.roomId === room.id;
+              // 일반 칼럼: 네이버칼럼이 없는 지점이면 네이버 예약도 roomId 기준으로 표시
+              const hasNaverCols = allRooms.some(r => r.isNaver && r.branch_id === room.branch_id);
+              if (isNaverRes(b) && hasNaverCols) return false;
+              return b.roomId === room.id;
             });
             const isNewBranch = ci === 0 || room.branch_id !== allRooms[ci-1]?.branch_id;
             const branchColor = (data.branchSettings || []).find(bs => bs.id === room.branch_id)?.color || "";
@@ -1715,7 +1757,40 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                     <div style={{position:"absolute",top:-4,left:-1,width:8,height:8,borderRadius:4,background:"#e57373"}}/>
                   </div>}
                   {/* Blocks */}
-                  {roomBlocks.map(block => {
+                  {(() => {
+                    // ── 겹침 감지 + 좌우 분할 (Google Calendar 방식) ──
+                    const layoutBlocks = (blocks) => {
+                      if (blocks.length <= 1) return blocks.map(b => ({...b, _col:0, _totalCols:1}));
+                      const sorted = [...blocks].sort((a,b) => timeToY(a.time) - timeToY(b.time));
+                      // Group overlapping blocks
+                      const groups = []; let cur = [sorted[0]];
+                      for (let i=1; i<sorted.length; i++) {
+                        const bk = sorted[i];
+                        const bkY = timeToY(bk.time);
+                        const grpMaxEnd = Math.max(...cur.map(g => timeToY(g.time) + Math.max((g.dur/timeUnit)*rowH, rowH*2)));
+                        if (bkY < grpMaxEnd - 1) { cur.push(bk); }
+                        else { groups.push(cur); cur = [bk]; }
+                      }
+                      groups.push(cur);
+                      const result = [];
+                      for (const grp of groups) {
+                        // Assign columns: greedy left-first
+                        const cols = [];
+                        for (const bk of grp) {
+                          const bkStart = timeToY(bk.time);
+                          const bkEnd = bkStart + Math.max((bk.dur/timeUnit)*rowH, rowH*2);
+                          let placed = false;
+                          for (let c=0; c<cols.length; c++) {
+                            if (bkStart >= cols[c]) { cols[c] = bkEnd; result.push({...bk, _col:c, _totalCols:0}); placed=true; break; }
+                          }
+                          if (!placed) { cols.push(bkEnd); result.push({...bk, _col:cols.length-1, _totalCols:0}); }
+                        }
+                        const totalCols = cols.length;
+                        for (let r = result.length - grp.length; r < result.length; r++) result[r]._totalCols = totalCols;
+                      }
+                      return result;
+                    };
+                    return layoutBlocks(roomBlocks).map(block => {
                     const y = timeToY(block.time);
                     const isBeingResized = resizeBlock?.id === block.id;
                     const blockDur = isBeingResized ? resizeDur : block.dur;
@@ -1741,7 +1816,11 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                         onClick={e=>handleBlockClick(block,e)}
                         onMouseDown={e=>{if(isEditable && !isResizing.current)handleDragStart(block,e)}}
                         onTouchStart={e=>{if(isEditable && !isResizing.current)handleDragStart(block,e)}}
-                        style={{position:"absolute",top:y,left:3,right:3,height:Math.max(h,rowH*2),
+                        style={{position:"absolute",top:y,
+                          left: block._totalCols > 1 ? 3 + (block._col * ((colW - 6) / block._totalCols)) : 3,
+                          width: block._totalCols > 1 ? ((colW - 6) / block._totalCols) - 2 : undefined,
+                          right: block._totalCols > 1 ? undefined : 3,
+                          height:Math.max(h,rowH*2),
                           background:isNaverCancelled?"#FFF8E1":isNaverPending?`${color}15`:`${color}${bgAlpha}`,
                           border:isNaverCancelled?"1.5px dashed #E6A700":isNaverPending?`1.5px dashed ${color}`:"none",
                           borderLeft:`3.5px solid ${isNaverCancelled?"#E6A700":color}`,
@@ -1755,6 +1834,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                             {isNaverCancelled && <span style={{fontSize:Math.max(6,blockFs-2),padding:"1px 3px",borderRadius:2,background:"#E6A700",color:"#fff",fontWeight:700,lineHeight:1,flexShrink:0}}>네이버취소</span>}
                             {isNaverPending && <span style={{fontSize:Math.max(6,blockFs-2),padding:"1px 3px",borderRadius:2,background:"#FF9800",color:"#fff",fontWeight:700,lineHeight:1,flexShrink:0,animation:"pendingBlink 1.5s infinite"}}>확정대기</span>}
                             {block.isNewCust && <span style={{fontSize:Math.max(6,blockFs-2),padding:"1px 3px",borderRadius:2,background:"#e57373",color:"#fff",fontWeight:700,lineHeight:1,flexShrink:0}}>신규</span>}
+                            {block.source && !isNaverCancelled && !isNaverPending && (() => {const srcObj=(data?.resSources||[]).find(s=>s.name===block.source);const srcClr=srcObj?.color||"#999";return <span style={{fontSize:Math.max(6,blockFs-2),padding:"1px 3px",borderRadius:2,background:srcClr+"30",color:srcClr,fontWeight:700,lineHeight:1,flexShrink:0,border:`1px solid ${srcClr}50`}}>{block.source}</span>})()}
                             <span style={{fontWeight:600,color:isNaverCancelled?"#999":"#333",overflow:"hidden",textOverflow:"ellipsis",textDecoration:isNaverCancelled?"line-through":"none"}}>{block.custGender && <span style={{color:block.custGender==="M"?"#4a7cc8":"#e57373"}}>{block.custGender==="M"?"남":"여"}</span>} {block.custName}</span>
                           </div>
                           {block.selectedTags?.length>0 && <div style={{display:"flex",flexWrap:"wrap",gap:2,marginTop:1}}>
@@ -2043,7 +2123,8 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
     endDate: item?.date||todayStr(), endTime: defaultEnd(),
     dur: itemDur, status:"confirmed", memo:"", type:"reservation",
     selectedTags: [], isNewCust: true, tsLog: [],
-    selectedServices: [], repeat: "none", repeatUntil: ""
+    selectedServices: [], repeat: "none", repeatUntil: "",
+    source: ""
   } : (() => {
     const existingTs = item?.tsLog || [];
     const memoLines = (item?.memo || "").split("\n");
@@ -2053,7 +2134,8 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
     return {...item, memo: cleanMemo, custGender: item?.custGender || "", endDate: item?.date||todayStr(), endTime: defaultEnd(),
       selectedTags: item?.selectedTags || [], isNewCust: false, tsLog: mergedTs,
       selectedServices: item?.selectedServices || [],
-      repeat: item?.repeat || "none", repeatUntil: item?.repeatUntil || ""};
+      repeat: item?.repeat || "none", repeatUntil: item?.repeatUntil || "",
+      source: item?.source || (isNaverItem ? "네이버" : "")};
   })());
   const set = (k,v) => setF(p=>({...p,[k]:v}));
 
@@ -2377,6 +2459,23 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
               </div>}
             </div>;
             })()}
+
+            {/* 예약경로 */}
+            {!isSchedule && <FLD label="예약경로">
+              <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                {(data?.resSources||[]).filter(s=>s.useYn!==false).sort((a,b)=>(a.sort||0)-(b.sort||0)).map(src => {
+                  const sel = f.source === src.name;
+                  const clr = src.color || "#7c7cc8";
+                  return <button key={src.id} onClick={()=>set("source",sel?"":src.name)}
+                    style={{padding:"3px 10px",fontSize:11,fontWeight:600,borderRadius:4,cursor:"pointer",fontFamily:"inherit",transition:"all .1s",
+                      border:sel?`1.5px solid ${clr}`:"1px solid #d0d0d0",
+                      background:sel?clr+"20":"#f5f5f5",color:sel?clr:"#aaa",display:"inline-flex",alignItems:"center",gap:4}}>
+                    <span style={{width:6,height:6,borderRadius:6,background:clr,opacity:sel?1:0.3}}/>
+                    {src.name}
+                  </button>;
+                })}
+              </div>
+            </FLD>}
 
             {/* 예약태그 */}
             <FLD label={`예약태그${(tagDurTotal+svcDurTotal) > 0 ? ` — 소요시간: ${tagDurTotal+svcDurTotal}분` : ""}`}>
@@ -3636,7 +3735,7 @@ function AdminPage({ data, setData, bizId }) {
   return <div>
     <h2 className="page-title">관리 설정</h2>
     <div style={{display:"flex",gap:2,marginBottom:16,background:"#e0e0e0",borderRadius:8,padding:3,width:"fit-content",flexWrap:"wrap"}}>
-      {[["places","예약장소관리"],["workers","담당자관리"],["saleitems","시술상품관리"],["prodmgmt","제품관리"],["svctags","서비스태그관리"]].map(([k,v])=>(
+      {[["places","예약장소관리"],["workers","담당자관리"],["saleitems","시술상품관리"],["prodmgmt","제품관리"],["svctags","서비스태그관리"],["ressrc","예약경로관리"]].map(([k,v])=>(
         <button key={k} className={tab===k?"btn-p btn-sm":"btn-s btn-sm"} onClick={()=>setTab(k)}>{v}</button>
       ))}
     </div>
@@ -3645,6 +3744,7 @@ function AdminPage({ data, setData, bizId }) {
     {tab==="saleitems" && <AdminSaleItems data={data} setData={setData}/>}
     {tab==="prodmgmt" && <AdminProductItems data={data} setData={setData}/>}
     {tab==="svctags" && <AdminServiceTags data={data} setData={setData}/>}
+    {tab==="ressrc" && <AdminResSources data={data} setData={setData}/>}
   </div>;
 }
 
@@ -4348,6 +4448,81 @@ function AdminProductItems({ data, setData }) {
   </div>;
 }
 
+// ─── 예약경로관리 ───
+function AdminResSources({ data, setData }) {
+  const [sources, setSources] = useState(()=>[...(data?.resSources || [])].sort((a,b)=>(a.sort||0)-(b.sort||0)));
+  useEffect(() => { setData(p => ({...p, resSources: sources})); }, [sources]);
+  const [showAdd, setShowAdd] = useState(false);
+  const [newSrc, setNewSrc] = useState({ name:"", color:"#7c7cc8" });
+  const [editId, setEditId] = useState(null);
+  const [editVal, setEditVal] = useState({});
+
+  const addSource = () => {
+    if (!newSrc.name.trim()) { alert("경로명을 입력하세요"); return; }
+    const item = { id:"src_"+uid(), name:newSrc.name.trim(), color:newSrc.color||"#7c7cc8", sort:sources.length, useYn:true };
+    setSources(p=>[...p, item]);
+    sb.insert("reservation_sources", toDb("reservation_sources", item)).catch(console.error);
+    setNewSrc({ name:"", color:"#7c7cc8" });
+    setShowAdd(false);
+  };
+
+  const saveEdit = (id) => {
+    setSources(p=>p.map(s=>s.id===id?{...s,...editVal}:s));
+    sb.update("reservation_sources", id, toDb("reservation_sources", editVal)).catch(console.error);
+    setEditId(null);
+  };
+
+  const toggleUse = (id) => {
+    setSources(p=>p.map(s=>s.id===id?{...s,useYn:!s.useYn}:s));
+    const cur = sources.find(s=>s.id===id);
+    sb.update("reservation_sources", id, {use_yn:!(cur?.useYn)}).catch(console.error);
+  };
+
+  const delSource = (id) => {
+    if (!window.confirm("이 예약경로를 삭제하시겠습니까?")) return;
+    setSources(p=>p.filter(s=>s.id!==id));
+    sb.del("reservation_sources", id).catch(console.error);
+  };
+
+  return <div>
+    <AdminHeader title="예약경로 관리" count={sources.length} onAdd={()=>setShowAdd(!showAdd)} addLabel={showAdd?"취소":<><I name="plus" size={12}/> 경로 추가</>}/>
+    {showAdd && <div className="fade-in" style={{display:"flex",gap:8,alignItems:"center",marginBottom:12,padding:12,background:"#f8f8fc",borderRadius:8,border:"1px solid #e0e0e0",flexWrap:"wrap"}}>
+      <FLD label="경로명"><input className="inp" style={{width:120}} value={newSrc.name} onChange={e=>setNewSrc(p=>({...p,name:e.target.value}))} placeholder="예: 카카오톡"/></FLD>
+      <FLD label="색상"><input type="color" value={newSrc.color} onChange={e=>setNewSrc(p=>({...p,color:e.target.value}))} style={{width:36,height:28,padding:0,border:"1px solid #ddd",borderRadius:4,cursor:"pointer"}}/></FLD>
+      <button className="btn-p btn-sm" onClick={addSource}><I name="plus" size={12}/> 추가</button>
+    </div>}
+    <table className="admin-tbl" style={{width:"100%",borderCollapse:"collapse"}}>
+      <thead><tr style={{background:"#f8f8fc"}}>
+        <th style={{width:35}}>No</th><th>경로명</th><th style={{width:60}}>색상</th><th style={{width:50}}>사용</th><th style={{width:100}}>관리</th>
+      </tr></thead>
+      <tbody>{sources.map((s,i)=><tr key={s.id} style={{borderBottom:"1px solid #f0f0f0",opacity:s.useYn===false?0.4:1}}>
+        <td style={{textAlign:"center",fontSize:11,color:"#999"}}>{i+1}</td>
+        <td>{editId===s.id
+          ? <input className="inp" value={editVal.name??s.name} onChange={e=>setEditVal(p=>({...p,name:e.target.value}))} style={{width:120}}/>
+          : <div style={{display:"flex",alignItems:"center",gap:6}}>
+              <span style={{width:10,height:10,borderRadius:10,background:s.color||"#7c7cc8",flexShrink:0}}/>
+              <span style={{fontWeight:600}}>{s.name}</span>
+            </div>}
+        </td>
+        <td style={{textAlign:"center"}}>{editId===s.id
+          ? <input type="color" value={editVal.color??s.color} onChange={e=>setEditVal(p=>({...p,color:e.target.value}))} style={{width:28,height:22,padding:0,border:"1px solid #ddd",borderRadius:3,cursor:"pointer"}}/>
+          : <span style={{display:"inline-block",width:20,height:20,borderRadius:4,background:s.color||"#7c7cc8",border:"1px solid #e0e0e0"}}/>}
+        </td>
+        <td style={{textAlign:"center"}}>
+          <button onClick={()=>toggleUse(s.id)} style={{background:"none",border:"none",cursor:"pointer",fontSize:14}}>
+            {s.useYn!==false ? "✅" : "⬜"}
+          </button>
+        </td>
+        <td style={{textAlign:"center"}}>
+          {editId===s.id
+            ? <><button className="btn-p btn-sm" onClick={()=>saveEdit(s.id)} style={{marginRight:4}}>저장</button><button className="btn-s btn-sm" onClick={()=>setEditId(null)}>취소</button></>
+            : <><button className="btn-s btn-sm" onClick={()=>{setEditId(s.id);setEditVal({name:s.name,color:s.color})}} style={{marginRight:4}}>수정</button><button className="btn-s btn-sm" style={{color:"#e57373"}} onClick={()=>delSource(s.id)}>삭제</button></>}
+        </td>
+      </tr>)}</tbody>
+    </table>
+  </div>;
+}
+
 // ─── 서비스태그관리 ───
 function AdminServiceTags({ data, setData }) {
   const [tags, setTags] = useState(()=>[...(data?.serviceTags || [])].sort((a,b)=>a.sort-b.sort));
@@ -4675,7 +4850,4 @@ const CSS = `
 
 ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
 
-
-
-ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
 </script></body></html>
