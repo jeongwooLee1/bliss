@@ -111,7 +111,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.58.0";
+const BLISS_V = "2.58.1";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -2136,12 +2136,35 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
     staffId: branchStaff[0]?.id, serviceId: (data.services||[])[0]?.id,
     date: item?._prefill?.date || item?.date||todayStr(),
     time: item?._prefill?.time || item?.time||"10:00",
-    endDate: item?._prefill?.date || item?.date||todayStr(), endTime: defaultEnd(),
-    dur: item?._prefill?.dur || itemDur, status:"confirmed",
+    endDate: item?._prefill?.date || item?.date||todayStr(), endTime: (() => {
+      // Calculate endTime from matched tags/services dur if available
+      const pf = item?._prefill;
+      if (pf?.matchedTagIds?.length || pf?.matchedServiceIds?.length) {
+        const tagDur = (pf.matchedTagIds||[]).reduce((s,tid)=>{const t=(data?.serviceTags||[]).find(x=>x.id===tid);return s+(t?.dur||0);},0);
+        const svcDur = (pf.matchedServiceIds||[]).reduce((s,sid)=>{const sv=(data?.services||[]).find(x=>x.id===sid);return s+(sv?.dur||0);},0);
+        const total = tagDur + svcDur;
+        if (total > 0) {
+          const t = pf.time || item?.time || "10:00";
+          const [h,m] = t.split(":").map(Number);
+          const em = h*60+m+total;
+          return `${String(Math.floor(em/60)).padStart(2,"0")}:${String(em%60).padStart(2,"0")}`;
+        }
+      }
+      return defaultEnd();
+    })(),
+    dur: (() => {
+      const pf = item?._prefill;
+      if (pf?.matchedTagIds?.length || pf?.matchedServiceIds?.length) {
+        const tagDur = (pf.matchedTagIds||[]).reduce((s,tid)=>{const t=(data?.serviceTags||[]).find(x=>x.id===tid);return s+(t?.dur||0);},0);
+        const svcDur = (pf.matchedServiceIds||[]).reduce((s,sid)=>{const sv=(data?.services||[]).find(x=>x.id===sid);return s+(sv?.dur||0);},0);
+        if (tagDur+svcDur > 0) return tagDur+svcDur;
+      }
+      return pf?.dur || itemDur;
+    })(), status:"confirmed",
     memo: item?._prefill?.memo || "",
     type:"reservation",
-    selectedTags: [], isNewCust: true, tsLog: [],
-    selectedServices: [], repeat: "none", repeatUntil: "",
+    selectedTags: item?._prefill?.matchedTagIds || [], isNewCust: true, tsLog: [],
+    selectedServices: item?._prefill?.matchedServiceIds || [], repeat: "none", repeatUntil: "",
     source: item?._prefill?.source || ""
   } : (() => {
     const existingTs = item?.tsLog || [];
@@ -4777,6 +4800,13 @@ function QuickBookModal({ onClose, onParsed, data }) {
     const today = new Date();
     const dow = ["일","월","화","수","목","금","토"];
     const ds = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")} (${dow[today.getDay()]})`;
+
+    // Build available services list for matching
+    const tags = (data?.serviceTags || []).filter(t=>t.useYn!==false && t.scheduleYn!=="Y");
+    const svcs = (data?.services || []).filter(s=>s.useYn!==false);
+    const tagList = tags.map(t=>`"${t.id}":"${t.name}"${t.dur?`(${t.dur}분)`:""}`).join(", ");
+    const svcList = svcs.map(s=>`"${s.id}":"${s.name}"${s.dur?`(${s.dur}분)`:""}`).join(", ");
+
     return `당신은 미용실/왁싱샵 예약 정보를 추출하는 AI입니다.
 오늘 날짜: ${ds}
 
@@ -4786,6 +4816,13 @@ function QuickBookModal({ onClose, onParsed, data }) {
 [이미지] 채팅 앱 스크린샷이면 상단 연락처/전화번호 확인. 앱 종류 파악. 최종 확정 날짜/시간 우선. 한국어+영어 처리.
 [음성] 오디오 첨부 시 음성을 듣고 추출. 공=0,일=1,이=2,삼=3,사=4,오=5,육=6,칠=7,팔=8,구=9. 공일공=010.
 
+[등록된 서비스태그] {${tagList || "없음"}}
+[등록된 시술상품] {${svcList || "없음"}}
+
+시술 내용이 언급되면 위 목록에서 가장 적합한 항목의 ID를 매칭하세요.
+부분 일치, 유사어, 영어↔한국어 매칭 모두 시도하세요.
+예: "eyebrows"→"눈썹", "왁싱"→왁싱 포함 항목, "브라질리언"→브라질리언 포함 항목
+
 추출 항목:
 - custName: 고객 이름 (없으면 "")
 - custPhone: 전화번호 (010-XXXX-XXXX. 해외번호 원본유지. 하이픈 포함)
@@ -4794,7 +4831,9 @@ function QuickBookModal({ onClose, onParsed, data }) {
 - dur: 소요시간(분) (없으면 0)
 - memo: 시술내용/기타 (없으면 "")
 - source: 예약경로 ("WhatsApp","카카오톡","인스타","전화","네이버" 등)
-- custGender: "M" or "F" or ""`;
+- custGender: "M" or "F" or ""
+- matchedTagIds: 매칭된 서비스태그 ID 배열 (예: ["abc123"]). 없으면 []
+- matchedServiceIds: 매칭된 시술상품 ID 배열 (예: ["xyz456"]). 없으면 []`;
   };
 
   const doParse = async (evt, overrideAudio) => {
@@ -4940,6 +4979,40 @@ function QuickBookModal({ onClose, onParsed, data }) {
               )}
             </div>
           </div>
+          {/* Matched services */}
+          {(()=>{
+            const tags = (data?.serviceTags||[]).filter(t=>t.useYn!==false && t.scheduleYn!=="Y");
+            const svcs = (data?.services||[]).filter(s=>s.useYn!==false);
+            const mTags = result.matchedTagIds || [];
+            const mSvcs = result.matchedServiceIds || [];
+            const toggleTag = (id) => editResult("matchedTagIds", mTags.includes(id)?mTags.filter(x=>x!==id):[...mTags,id]);
+            const toggleSvc = (id) => editResult("matchedServiceIds", mSvcs.includes(id)?mSvcs.filter(x=>x!==id):[...mSvcs,id]);
+            if (!tags.length && !svcs.length) return null;
+            return <div style={{marginTop:4,marginBottom:4}}>
+              {tags.length>0 && <div style={{display:"flex",alignItems:"flex-start",gap:8,marginBottom:6}}>
+                <label style={{width:58,fontSize:11,color:"#aaa",flexShrink:0,textAlign:"right",paddingTop:6}}>서비스</label>
+                <div style={{display:"flex",flexWrap:"wrap",gap:4,flex:1}}>
+                  {tags.map(t=><button key={t.id} onClick={()=>toggleTag(t.id)}
+                    style={{padding:"5px 10px",fontSize:11,fontWeight:mTags.includes(t.id)?600:400,
+                      background:mTags.includes(t.id)?(t.color||C)+"18":"#f5f5f5",
+                      color:mTags.includes(t.id)?t.color||C:"#bbb",
+                      border:mTags.includes(t.id)?`1.5px solid ${t.color||C}40`:"1.5px solid #eee",
+                      borderRadius:6,cursor:"pointer",fontFamily:"inherit"}}>{t.name}</button>)}
+                </div>
+              </div>}
+              {svcs.length>0 && <div style={{display:"flex",alignItems:"flex-start",gap:8,marginBottom:6}}>
+                <label style={{width:58,fontSize:11,color:"#aaa",flexShrink:0,textAlign:"right",paddingTop:6}}>시술</label>
+                <div style={{display:"flex",flexWrap:"wrap",gap:4,flex:1}}>
+                  {svcs.map(s=><button key={s.id} onClick={()=>toggleSvc(s.id)}
+                    style={{padding:"5px 10px",fontSize:11,fontWeight:mSvcs.includes(s.id)?600:400,
+                      background:mSvcs.includes(s.id)?C+"18":"#f5f5f5",
+                      color:mSvcs.includes(s.id)?C:"#bbb",
+                      border:mSvcs.includes(s.id)?`1.5px solid ${C}40`:"1.5px solid #eee",
+                      borderRadius:6,cursor:"pointer",fontFamily:"inherit"}}>{s.name}</button>)}
+                </div>
+              </div>}
+            </div>;
+          })()}
           <div style={{display:"flex",gap:8,marginTop:16}}>
             <button onClick={reset} style={{flex:1,padding:"12px 0",fontSize:12,fontWeight:500,background:"#f5f5f5",color:"#888",border:"none",borderRadius:10,cursor:"pointer",fontFamily:"inherit"}}>다시</button>
             <button onClick={()=>onParsed(result)} style={{flex:2,padding:"12px 0",fontSize:13,fontWeight:600,background:C,color:"#fff",border:"none",borderRadius:10,cursor:"pointer",fontFamily:"inherit"}}>예약폼에 적용</button>
