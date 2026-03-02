@@ -111,7 +111,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.54.4";
+const BLISS_V = "2.54.5";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -319,7 +319,7 @@ function App() {
           categories: db.cats, serviceTags: db.serviceTags,
           branchSettings: db.branches.map(b => ({...b, useYn: b.use_yn !== false})),
           users: db.users, customers: db.customers, reservations: db.reservations, sales: db.sales,
-          staff,
+          staff, resSources: db.resSources || [],
         });
         setUserBranches(user.role === "owner" ? db.branches.map(b=>b.id) : (user.branches || []));
         setViewBranches(user.viewBranches || []);
@@ -349,7 +349,7 @@ function App() {
         categories: db.cats, serviceTags: db.serviceTags,
         branchSettings: db.branches.map(b => ({...b, useYn: b.use_yn !== false})),
         users: db.users, customers: db.customers, reservations: db.reservations, sales: db.sales,
-        staff,
+        staff, resSources: db.resSources || [],
       });
       setRole("owner"); // super acts as owner inside a business
       setUserBranches(db.branches.map(b => b.id));
