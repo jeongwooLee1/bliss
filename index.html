@@ -2489,17 +2489,21 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
 
             {/* 시술 상품 선택 */}
             {(() => {
+              const hasGender = !!f.custGender;
               const svcPriceTotal = (f.selectedServices||[]).reduce((sum, sid) => {
                 const svc = SVC_LIST.find(s=>s.id===sid);
-                return sum + (svc ? (f.custGender==="M"?svc.priceM:svc.priceF) : 0);
+                if (!svc) return sum;
+                if (!hasGender && svc.priceF !== svc.priceM) return sum;
+                return sum + (hasGender ? (f.custGender==="M"?svc.priceM:svc.priceF) : svc.priceF);
               }, 0);
+              const hasGenderDep = (f.selectedServices||[]).some(sid => {const s=SVC_LIST.find(x=>x.id===sid); return s && s.priceF!==s.priceM;});
               return <div>
               <button onClick={()=>setShowSvcPicker(!showSvcPicker)}
                 style={{width:"100%",padding:"8px 12px",fontSize:11,fontWeight:600,borderRadius:6,cursor:"pointer",fontFamily:"inherit",
                   border:"1px dashed #7c7cc8",background:showSvcPicker?"#7c7cc810":"#fafafa",color:"#7c7cc8",
                   display:"flex",alignItems:"center",justifyContent:"space-between"}}>
                 <span>{(f.selectedServices||[]).length > 0 ?
-                  `${(f.selectedServices||[]).map(sid=>SVC_LIST.find(s=>s.id===sid)?.name).filter(Boolean).join(", ")} (${(f.selectedServices||[]).length}건, ${svcDurTotal}분, ${fmt(svcPriceTotal)}원)`
+                  `${(f.selectedServices||[]).map(sid=>SVC_LIST.find(s=>s.id===sid)?.name).filter(Boolean).join(", ")} (${(f.selectedServices||[]).length}건, ${svcDurTotal}분${!hasGender && hasGenderDep ? "" : ", "+fmt(svcPriceTotal)+"원"})`
                   : "시술 상품을 선택하세요"}</span>
                 <span style={{fontSize:13}}>{showSvcPicker?<I name="chevU" size={12}/>:<I name="chevD" size={12}/>}</span>
               </button>
@@ -2507,8 +2511,9 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
                 {SVC_LIST.length===0 && <div style={{padding:12,fontSize:11,color:"#999",textAlign:"center"}}>시술 상품이 없습니다 (관리설정 → 시술상품관리에서 등록)</div>}
                 {SVC_LIST.length>0 && SVC_LIST.map(svc=>{
                       const sel = (f.selectedServices||[]).includes(svc.id);
-                      const price = f.custGender==="M"?svc.priceM:svc.priceF;
-                      const disabled = price===0;
+                      const genderDep = svc.priceF !== svc.priceM;
+                      const price = hasGender ? (f.custGender==="M"?svc.priceM:svc.priceF) : (genderDep ? null : svc.priceF);
+                      const disabled = hasGender && price===0;
                       const catName = CATS.find(c=>c.id===svc.cat)?.name||"";
                       return <div key={svc.id} onClick={()=>!disabled&&toggleService(svc.id)}
                         style={{padding:"6px 10px",cursor:disabled?"default":"pointer",display:"flex",alignItems:"center",gap:6,
@@ -2517,7 +2522,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
                         {catName && <span style={{fontSize:8,color:"#7c7cc8",background:"#f0f0ff",borderRadius:3,padding:"1px 4px",flexShrink:0}}>{catName}</span>}
                         <span style={{flex:1,fontSize:11,fontWeight:sel?600:400,color:sel?"#333":"#666"}}>{svc.name}</span>
                         <span style={{fontSize:9,color:"#999"}}>{svc.dur}분</span>
-                        <span style={{fontSize:10,color:"#ef5350",fontWeight:600,width:55,textAlign:"right"}}>{price>0?fmt(price):"-"}</span>
+                        <span style={{fontSize:10,color:price===null?"#ccc":"#ef5350",fontWeight:600,width:55,textAlign:"right"}}>{price===null?"성별?":price>0?fmt(price):"-"}</span>
                       </div>;
                     })}
               </div>}
@@ -2598,7 +2603,6 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
             <button className="btn-s" style={{padding:"10px 16px"}} onClick={onClose}>닫기</button>
             {!isReadOnly && <><button className="btn-p" style={{flex:1,justifyContent:"center",padding:10,
               background:isSchedule?"#e17055":"#7c7cc8"}} onClick={()=>{
-                if(!isSchedule && !f.custGender) { alert("고객 성별을 선택해주세요."); return; }
                 const now = new Date();
                 const ts = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")} ${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`;
                 const prevLog = f.tsLog || [];
@@ -2827,7 +2831,7 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
     const selSvcs = reservation?.selectedServices || [];
     SVC_LIST.forEach(svc => {
       const preSelected = selSvcs.includes(svc.id);
-      const defPrice = (reservation?.custGender||"F")==="M" ? svc.priceM : svc.priceF;
+      const defPrice = gender ? ((gender==="M") ? svc.priceM : svc.priceF) : (svc.priceF===svc.priceM ? svc.priceF : 0);
       init[svc.id] = { checked: preSelected, amount: preSelected ? defPrice : 0 };
     });
     PROD_LIST.forEach(p => { init[p.id] = { checked: false, amount: 0 }; });
@@ -2907,23 +2911,11 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
       alert("매출 금액이 0원입니다. 시술 또는 제품을 선택해주세요.");
       return;
     }
-    // 고객 이름/연락처 필수 + 마스킹 체크
+    // 고객 이름/연락처 - 마스킹 체크만
     const custName = (cust.name||"").trim();
     const custPhone = (cust.phone||"").trim();
-    if (!custName || !custPhone) {
-      alert("고객 이름과 연락처를 모두 입력해주세요.");
-      return;
-    }
-    if (!gender) {
-      alert("고객 성별을 선택해주세요.");
-      return;
-    }
     if (/\*/.test(custName) || /\*/.test(custPhone)) {
       alert("고객 이름이나 연락처에 '*'가 포함되어 있습니다.\n네이버 마스킹 데이터가 아닌 실제 정보를 입력해주세요.");
-      return;
-    }
-    if (!gender) {
-      alert("고객 성별을 선택해주세요.");
       return;
     }
     const staff = (data.staff||[]).find(s => s.id === manager);
@@ -3078,13 +3070,13 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
           {/* Col 1: Services (left half) */}
           <div>
             <div style={{ fontSize: 10, fontWeight: 700, color: "#7c7cc8", padding: "4px 0 3px", borderBottom: "2px solid #7c7cc830", marginBottom: 1 }}>시술 ({SVC_LIST.length})</div>
-            {leftSvcs.map(svc => { const it=items[svc.id]||{}; const dp=(gender||"F")==="M"?svc.priceM:svc.priceF; return <SaleSvcRow key={svc.id} id={svc.id} name={svc.name} dur={svc.dur} checked={!!it.checked} amount={it.amount||0} defPrice={dp} toggle={toggle} setAmt={setAmt} />; })}
+            {leftSvcs.map(svc => { const it=items[svc.id]||{}; const dp=gender?(gender==="M"?svc.priceM:svc.priceF):(svc.priceF===svc.priceM?svc.priceF:0); return <SaleSvcRow key={svc.id} id={svc.id} name={svc.name} dur={svc.dur} checked={!!it.checked} amount={it.amount||0} defPrice={dp} toggle={toggle} setAmt={setAmt} />; })}
             <SaleExtraRow id="extra_svc" color="#7c7cc8" placeholder="추가 시술명 입력" checked={!!(items.extra_svc||{}).checked} amount={(items.extra_svc||{}).amount||0} label={(items.extra_svc||{}).label||""} toggle={toggle} setAmt={setAmt} setLabel={setLabel} />
           </div>
 
           {/* Col 2: Services (right half) */}
           <div>
-            {rightSvcs.map(svc => { const it=items[svc.id]||{}; const dp=(gender||"F")==="M"?svc.priceM:svc.priceF; return <SaleSvcRow key={svc.id} id={svc.id} name={svc.name} dur={svc.dur} checked={!!it.checked} amount={it.amount||0} defPrice={dp} toggle={toggle} setAmt={setAmt} />; })}
+            {rightSvcs.map(svc => { const it=items[svc.id]||{}; const dp=gender?(gender==="M"?svc.priceM:svc.priceF):(svc.priceF===svc.priceM?svc.priceF:0); return <SaleSvcRow key={svc.id} id={svc.id} name={svc.name} dur={svc.dur} checked={!!it.checked} amount={it.amount||0} defPrice={dp} toggle={toggle} setAmt={setAmt} />; })}
             {/* Discount */}
             <div style={{ marginTop: 6, padding: "4px 0", borderTop: "1px solid #d0d0d0" }}>
               <SaleDiscountRow id="discount" checked={items.discount?.checked} amount={items.discount?.amount||0} toggle={toggle} setAmt={setAmt} />
@@ -3658,7 +3650,7 @@ function CustModal({ item, onSave, onClose, defBranch, userBranches, branches })
         </div>
         <FLD label="성별"><select className="inp" value={f.gender} onChange={e=>set("gender",e.target.value)}><option value="">선택</option><option value="F">여성</option><option value="M">남성</option></select></FLD>
         <FLD label="메모"><textarea className="inp" rows={2} value={f.memo} onChange={e=>set("memo",e.target.value)}/></FLD>
-        <button className="btn-p" style={{width:"100%",justifyContent:"center",padding:12}} onClick={()=>{if(!f.gender){alert("고객 성별을 선택해주세요.");return;}onSave(f)}}>{item?"수정":"등록"}</button>
+        <button className="btn-p" style={{width:"100%",justifyContent:"center",padding:12}} onClick={()=>{onSave(f)}}>{item?"수정":"등록"}</button>
       </div>
     </div>
   </div>;
