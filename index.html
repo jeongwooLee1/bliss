@@ -17,7 +17,7 @@ const sbHeaders = {"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-T
 const _supaClient = typeof window !== "undefined" && window.supabase ? window.supabase.createClient(SB_URL, SB_KEY, {auth:{persistSession:false}, realtime:{params:{eventsPerSecond:10}, heartbeatIntervalMs:15000, timeout:20000, reconnectAfterMs:(tries)=>Math.min(1000*Math.pow(2,tries),30000)}}) : null;
 const sb = {
   async get(table, filter="") { 
-    const hasSortCol = ["services","products","service_tags","service_categories"].includes(table);
+    const hasSortCol = ["services","products","service_tags","service_categories","reservation_sources"].includes(table);
     const hasCreatedAt = !["rooms","services","products","service_categories","service_tags"].includes(table);
     const order = hasSortCol ? "order=sort.asc.nullsfirst" : (hasCreatedAt ? "order=created_at.asc.nullsfirst" : "order=id.asc");
     const r=await fetch(`${SB_URL}/rest/v1/${table}?select=*&${order}${filter}`,{headers:sbHeaders}); 
@@ -123,7 +123,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.54.3";
+const BLISS_V = "2.54.4";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
