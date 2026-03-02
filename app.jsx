@@ -111,7 +111,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.55.1";
+const BLISS_V = "2.56.0";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -175,6 +175,7 @@ const I = ({name,size=16,color="currentColor",style={},...p}) => {
     calPick:<svg {...a}><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/></svg>,
     grip:<svg {...a}><circle cx="9" cy="6" r="1" fill={color}/><circle cx="15" cy="6" r="1" fill={color}/><circle cx="9" cy="12" r="1" fill={color}/><circle cx="15" cy="12" r="1" fill={color}/><circle cx="9" cy="18" r="1" fill={color}/><circle cx="15" cy="18" r="1" fill={color}/></svg>,
     minus:<svg {...a}><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+    zap:<svg {...a}><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>,
   };
   return icons[name] || null;
 };
@@ -926,6 +927,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   const [selDate, setSelDate] = useState(todayStr());
   const [showModal, setShowModal] = useState(false);
   const [modalData, setModalData] = useState(null);
+  const [showQuickBook, setShowQuickBook] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showCal, setShowCal] = useState(false);
   const [showBranchPicker, setShowBranchPicker] = useState(false);
@@ -1544,6 +1546,9 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
           </div>
           <button onClick={()=>changeDate(1)} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#666",padding:"2px 4px",flexShrink:0}}><I name="chevR" size={14}/></button>
           <button onClick={()=>setSelDate(todayStr())} style={{padding:"0 10px",height:32,fontSize:12,border:"1px solid #d0d0d0",borderRadius:6,background:"#fff",color:"#666",cursor:"pointer",fontFamily:"inherit",flexShrink:0,display:"flex",alignItems:"center"}}>오늘</button>
+          <button onClick={()=>setShowQuickBook(true)} style={{padding:"0 10px",height:32,fontSize:12,border:"1px solid #a78bfa",borderRadius:6,background:"linear-gradient(135deg,#ede9fe,#f5f3ff)",color:"#7c3aed",cursor:"pointer",fontFamily:"inherit",flexShrink:0,display:"flex",alignItems:"center",gap:4,fontWeight:600}}>
+            <I name="zap" size={12} color="#7c3aed"/> 빠른등록
+          </button>
           <div style={{position:"relative",flexShrink:0}} ref={el => { if(el) el._settingsBtn = el; }}>
             <button onClick={(e)=>{setShowSettings(!showSettings);}} id="settings-btn"
               style={{width:32,height:32,border:"1px solid #d0d0d0",borderRadius:6,background:showSettings?"#f0f0ff":"#fff",
@@ -1907,6 +1912,22 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
 
       {showModal && <TimelineModal item={modalData} onSave={handleSave} onDelete={handleDelete} onDeleteRequest={handleDeleteRequest} onClose={()=>_mc(()=>{setShowModal(false);setModalData(null)})} selBranch={userBranches[0]} userBranches={userBranches} data={data} setData={setData} setPage={setPage}/>}
 
+      {showQuickBook && <QuickBookModal
+        onClose={()=>setShowQuickBook(false)}
+        onParsed={(parsed)=>{
+          setShowQuickBook(false);
+          const room = (data.rooms||[]).find(r=>r.branch_id===(userBranches[0]||(data.branches||[])[0]?.id));
+          setModalData({
+            roomId: room?.id, bid: room?.branch_id || userBranches[0],
+            date: parsed.date || selDate,
+            time: parsed.time || "10:00",
+            _prefill: parsed
+          });
+          setShowModal(true);
+        }}
+        data={data}
+      />}
+
       {/* Settings dropdown (fixed, outside overflow) */}
       {showSettings && <>{(() => {
         const handleTouchStart = e => {
@@ -2108,13 +2129,20 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
   const defaultEnd = () => { const t = item?.time||"10:00"; const [h,m] = t.split(":").map(Number); const em = m + itemDur; return `${String(h+Math.floor(em/60)).padStart(2,"0")}:${String(em%60).padStart(2,"0")}`; };
   const addMin = (t, mins) => { const [h,m] = t.split(":").map(Number); const em = m + mins; return `${String(h+Math.floor(em/60)).padStart(2,"0")}:${String(em%60).padStart(2,"0")}`; };
   const [f, setF] = useState(isNew && !item?.id ? {
-    id: uid(), bid: branchId, roomId: item?.roomId||branchRooms[0]?.id, custId:null, custName:"", custPhone:"", custGender:"",
-    staffId: branchStaff[0]?.id, serviceId: (data.services||[])[0]?.id, date: item?.date||todayStr(), time: item?.time||"10:00",
-    endDate: item?.date||todayStr(), endTime: defaultEnd(),
-    dur: itemDur, status:"confirmed", memo:"", type:"reservation",
+    id: uid(), bid: branchId, roomId: item?.roomId||branchRooms[0]?.id, custId:null,
+    custName: item?._prefill?.custName || "",
+    custPhone: item?._prefill?.custPhone || "",
+    custGender: item?._prefill?.custGender || "",
+    staffId: branchStaff[0]?.id, serviceId: (data.services||[])[0]?.id,
+    date: item?._prefill?.date || item?.date||todayStr(),
+    time: item?._prefill?.time || item?.time||"10:00",
+    endDate: item?._prefill?.date || item?.date||todayStr(), endTime: defaultEnd(),
+    dur: item?._prefill?.dur || itemDur, status:"confirmed",
+    memo: item?._prefill?.memo || "",
+    type:"reservation",
     selectedTags: [], isNewCust: true, tsLog: [],
     selectedServices: [], repeat: "none", repeatUntil: "",
-    source: ""
+    source: item?._prefill?.source || ""
   } : (() => {
     const existingTs = item?.tsLog || [];
     const memoLines = (item?.memo || "").split("\n");
@@ -3725,7 +3753,7 @@ function AdminPage({ data, setData, bizId }) {
   return <div>
     <h2 className="page-title">관리 설정</h2>
     <div style={{display:"flex",gap:2,marginBottom:16,background:"#e0e0e0",borderRadius:8,padding:3,width:"fit-content",flexWrap:"wrap"}}>
-      {[["places","예약장소관리"],["workers","담당자관리"],["saleitems","시술상품관리"],["prodmgmt","제품관리"],["svctags","서비스태그관리"],["ressrc","예약경로관리"]].map(([k,v])=>(
+      {[["places","예약장소관리"],["workers","담당자관리"],["saleitems","시술상품관리"],["prodmgmt","제품관리"],["svctags","서비스태그관리"],["ressrc","예약경로관리"],["aisettings","AI설정"]].map(([k,v])=>(
         <button key={k} className={tab===k?"btn-p btn-sm":"btn-s btn-sm"} onClick={()=>setTab(k)}>{v}</button>
       ))}
     </div>
@@ -3735,6 +3763,7 @@ function AdminPage({ data, setData, bizId }) {
     {tab==="prodmgmt" && <AdminProductItems data={data} setData={setData}/>}
     {tab==="svctags" && <AdminServiceTags data={data} setData={setData}/>}
     {tab==="ressrc" && <AdminResSources data={data} setData={setData}/>}
+    {tab==="aisettings" && <AdminAISettings/>}
   </div>;
 }
 
@@ -4032,7 +4061,7 @@ function AdminHeader({title, count, color="#7c7cc8", desc="", onAdd, addLabel, o
   return <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,flexWrap:"wrap",gap:8}}>
     <div>
       <h3 style={{fontSize:14,fontWeight:700,color}}>{title}</h3>
-      <p style={{fontSize:11,color:"#999",marginTop:2}}>{desc || `총 ${count}개`}</p>
+      <p style={{fontSize:11,color:"#999",marginTop:2}}>{desc || (count!=null ? `총 ${count}개` : "")}</p>
     </div>
     <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
       {onDownload && <button className="btn-s btn-sm" onClick={onDownload}><I name="download" size={12}/> 내려받기</button>}
@@ -4623,6 +4652,268 @@ function AdminResSources({ data, setData }) {
           </div></td>
         </tr>;
       })}</tbody></table>
+    </div>
+  </div>;
+}
+
+// ─── AI설정 ───
+function AdminAISettings() {
+  const [apiKey, setApiKey] = useState(()=>localStorage.getItem("bliss_gemini_key")||"");
+  const [saved, setSaved] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState(null);
+
+  const save = () => {
+    localStorage.setItem("bliss_gemini_key", apiKey.trim());
+    setSaved(true); setTimeout(()=>setSaved(false), 2000);
+  };
+
+  const testApi = async () => {
+    if (!apiKey.trim()) { alert("API 키를 입력하세요"); return; }
+    setTesting(true); setTestResult(null);
+    try {
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey.trim()}`, {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({contents:[{parts:[{text:"Hello, respond with just 'OK'"}]}]})
+      });
+      if (r.ok) { setTestResult({ok:true, msg:"✅ 연결 성공!"}); }
+      else { const e = await r.text(); setTestResult({ok:false, msg:"❌ 실패: "+e.slice(0,100)}); }
+    } catch(e) { setTestResult({ok:false, msg:"❌ 네트워크 에러: "+e.message}); }
+    setTesting(false);
+  };
+
+  return <div>
+    <AdminHeader title="AI 설정" count={null}/>
+    <div className="card" style={{padding:20,maxWidth:500}}>
+      <div style={{fontSize:13,fontWeight:700,marginBottom:12,color:"#333"}}>Gemini API 키</div>
+      <div style={{fontSize:11,color:"#888",marginBottom:12,lineHeight:1.6}}>
+        빠른등록 기능에 사용됩니다. 텍스트/음성/이미지에서 예약 정보를 자동 추출합니다.<br/>
+        <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style={{color:"#7c7cc8",fontWeight:600}}>Google AI Studio</a>에서 무료로 발급받을 수 있습니다.
+      </div>
+      <div style={{display:"flex",gap:8,alignItems:"center",marginBottom:12}}>
+        <input className="inp" type="password" value={apiKey} onChange={e=>setApiKey(e.target.value)} placeholder="AIza..." style={{flex:1,padding:"8px 12px",fontSize:13}}/>
+        <button className="btn-p btn-sm" onClick={save} style={{padding:"8px 16px",whiteSpace:"nowrap"}}>{saved?"저장됨 ✓":"저장"}</button>
+      </div>
+      <button className="btn-s btn-sm" onClick={testApi} disabled={testing} style={{padding:"6px 14px",fontSize:11}}>
+        {testing?"테스트 중...":"연결 테스트"}
+      </button>
+      {testResult && <div style={{marginTop:8,fontSize:11,color:testResult.ok?"#22c55e":"#e57373",fontWeight:600}}>{testResult.msg}</div>}
+    </div>
+    <div className="card" style={{padding:20,maxWidth:500,marginTop:16}}>
+      <div style={{fontSize:13,fontWeight:700,marginBottom:8,color:"#333"}}>사용 안내</div>
+      <div style={{fontSize:11,color:"#666",lineHeight:1.8}}>
+        타임라인 상단의 <span style={{background:"#ede9fe",color:"#7c3aed",padding:"2px 6px",borderRadius:4,fontWeight:700,fontSize:10}}>⚡ 빠른등록</span> 버튼으로 사용합니다.<br/>
+        • <strong>텍스트</strong>: 카톡 메시지 붙여넣기 또는 직접 입력<br/>
+        • <strong>음성</strong>: 마이크로 말하면 자동 인식<br/>
+        • <strong>이미지</strong>: 캡처/사진 업로드로 자동 인식<br/>
+        • 비용: 건당 약 $0.0001 (월 1000건 ≈ $0.10)
+      </div>
+    </div>
+  </div>;
+}
+
+// ─── 빠른등록 모달 ───
+function QuickBookModal({ onClose, onParsed, data }) {
+  const [mode, setMode] = useState("text"); // text, voice, image
+  const [input, setInput] = useState("");
+  const [imgData, setImgData] = useState(null);
+  const [imgPreview, setImgPreview] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState(null);
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef(null);
+  const fileRef = useRef(null);
+
+  const apiKey = localStorage.getItem("bliss_gemini_key") || "";
+
+  // Voice recognition
+  const startVoice = () => {
+    if (!("webkitSpeechRecognition" in window || "SpeechRecognition" in window)) {
+      alert("이 브라우저에서는 음성인식을 지원하지 않습니다"); return;
+    }
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const rec = new SR();
+    rec.lang = "ko-KR"; rec.continuous = true; rec.interimResults = true;
+    rec.onresult = (e) => {
+      let transcript = "";
+      for (let i = 0; i < e.results.length; i++) transcript += e.results[i][0].transcript;
+      setInput(transcript);
+    };
+    rec.onerror = (e) => { console.error("Speech error:", e); setIsListening(false); };
+    rec.onend = () => setIsListening(false);
+    rec.start();
+    recognitionRef.current = rec;
+    setIsListening(true);
+  };
+  const stopVoice = () => { recognitionRef.current?.stop(); setIsListening(false); };
+
+  // Image upload
+  const handleImage = (e) => {
+    const file = e.target.files?.[0]; if (!file) return;
+    setMode("image");
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const base64 = ev.target.result.split(",")[1];
+      setImgData({ base64, mimeType: file.type });
+      setImgPreview(ev.target.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Build prompt
+  const buildPrompt = () => {
+    const today = new Date();
+    const dow = ["일","월","화","수","목","금","토"];
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")} (${dow[today.getDay()]})`;
+
+    return `당신은 미용실/왁싱샵 예약 정보를 추출하는 AI입니다.
+오늘 날짜: ${todayStr}
+
+아래 텍스트(또는 이미지)에서 예약 정보를 추출해 JSON으로만 응답하세요.
+마크다운 백틱이나 설명 없이 순수 JSON만 출력하세요.
+
+추출 항목:
+- custName: 고객 이름 (없으면 "")
+- custPhone: 전화번호 (010-XXXX-XXXX 형식으로 정규화. 공육공→060이 아니라 010으로. 하이픈 포함)
+- date: 날짜 (YYYY-MM-DD 형식. "수요일"→이번주 수요일, "내일"→내일 날짜로 계산)
+- time: 시간 (HH:MM 24시간 형식. "3시반"→"15:30", "오후2시"→"14:00")
+- dur: 소요시간(분) (없으면 0)
+- memo: 기타 메모/시술내용 (없으면 "")
+- source: 예약경로 추정 ("카카오톡","전화","인스타","네이버" 등. 알 수 없으면 "")
+- custGender: 성별 추정 ("M" or "F" or "")
+
+예시 입력: "이종호 공일공 702-800-805번 수요일 3시30분 200"
+예시 출력: {"custName":"이종호","custPhone":"010-7028-0080","date":"2026-03-04","time":"15:30","dur":0,"memo":"200","source":"","custGender":"M"}
+
+한글 숫자(공,일,이 등)는 아라비아 숫자로 변환하세요.
+전화번호가 부분적이면 최대한 맞춰보세요.`;
+  };
+
+  // Parse with Gemini
+  const doParse = async () => {
+    if (!apiKey) { setError("관리설정 → AI설정에서 Gemini API 키를 먼저 등록하세요"); return; }
+    if (!input.trim() && !imgData) { setError("텍스트를 입력하거나 이미지를 업로드하세요"); return; }
+    setLoading(true); setError(null); setResult(null);
+
+    try {
+      const parts = [{text: buildPrompt()}];
+      if (input.trim()) parts.push({text: "입력 텍스트:\n" + input.trim()});
+      if (imgData) parts.push({inlineData: {mimeType: imgData.mimeType, data: imgData.base64}});
+
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({contents:[{parts}], generationConfig:{temperature:0}})
+      });
+      if (!r.ok) { const e = await r.text(); throw new Error("API 에러: "+e.slice(0,200)); }
+      const data = await r.json();
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      const clean = text.replace(/```json|```/g,"").trim();
+      const parsed = JSON.parse(clean);
+      setResult(parsed);
+    } catch(e) {
+      console.error("Gemini parse error:", e);
+      setError("파싱 실패: " + e.message);
+    }
+    setLoading(false);
+  };
+
+  const btnBase = {padding:"8px 16px",fontSize:12,fontWeight:600,borderRadius:6,border:"none",cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:6};
+
+  return <div style={{position:"fixed",inset:0,zIndex:500,background:"rgba(0,0,0,.5)",display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+    <div style={{background:"#fff",borderRadius:16,width:"100%",maxWidth:440,maxHeight:"90vh",overflow:"auto",boxShadow:"0 20px 60px rgba(0,0,0,.2)"}}>
+      {/* Header */}
+      <div style={{padding:"16px 20px",borderBottom:"1px solid #eee",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontSize:18}}>⚡</span>
+          <span style={{fontSize:16,fontWeight:800,color:"#333"}}>빠른등록</span>
+        </div>
+        <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",fontSize:18,color:"#999",padding:4}}>✕</button>
+      </div>
+
+      {/* Mode tabs */}
+      <div style={{display:"flex",gap:4,padding:"12px 20px",background:"#f8f8fc"}}>
+        {[["text","✏️","텍스트"],["voice","🎤","음성"],["image","📷","이미지"]].map(([k,icon,label])=>
+          <button key={k} onClick={()=>setMode(k)} style={{...btnBase, flex:1,justifyContent:"center",
+            background:mode===k?"#7c3aed":"#fff",color:mode===k?"#fff":"#666",
+            border:mode===k?"none":"1px solid #ddd",fontSize:11}}>
+            {icon} {label}
+          </button>
+        )}
+      </div>
+
+      <div style={{padding:20}}>
+        {/* Text input */}
+        {(mode==="text"||mode==="voice") && <div style={{marginBottom:16}}>
+          <textarea value={input} onChange={e=>setInput(e.target.value)}
+            placeholder={"예: 이종호 010-7028-0080 수요일 3시반 200\n\n카톡 메시지를 붙여넣거나 직접 입력하세요"}
+            style={{width:"100%",height:120,padding:12,fontSize:13,border:"1px solid #ddd",borderRadius:8,resize:"vertical",fontFamily:"inherit",lineHeight:1.6,background:"#fafafa"}}/>
+          {mode==="voice" && <div style={{marginTop:8,textAlign:"center"}}>
+            <button onClick={isListening?stopVoice:startVoice}
+              style={{...btnBase,justifyContent:"center",width:"100%",
+                background:isListening?"#ef4444":"#f0f0ff",color:isListening?"#fff":"#7c3aed",
+                border:isListening?"none":"1px solid #c4b5fd",padding:"12px 20px",fontSize:14}}>
+              {isListening ? <><span style={{animation:"pendingBlink 1s infinite"}}>🔴</span> 듣는 중... (탭하여 중지)</> : <><span>🎤</span> 음성 입력 시작</>}
+            </button>
+          </div>}
+        </div>}
+
+        {/* Image input */}
+        {mode==="image" && <div style={{marginBottom:16}}>
+          <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={handleImage} style={{display:"none"}}/>
+          <div onClick={()=>fileRef.current?.click()}
+            style={{border:"2px dashed #d0d0d0",borderRadius:12,padding:imgPreview?0:40,textAlign:"center",cursor:"pointer",background:"#fafafa",overflow:"hidden",minHeight:150,display:"flex",alignItems:"center",justifyContent:"center"}}>
+            {imgPreview
+              ? <img src={imgPreview} style={{maxWidth:"100%",maxHeight:300,objectFit:"contain"}} alt="preview"/>
+              : <div>
+                  <div style={{fontSize:40,marginBottom:8}}>📷</div>
+                  <div style={{fontSize:13,color:"#888",fontWeight:600}}>탭하여 사진 촬영 또는 갤러리에서 선택</div>
+                  <div style={{fontSize:11,color:"#aaa",marginTop:4}}>카톡 캡처, 예약 메모 사진 등</div>
+                </div>}
+          </div>
+          {imgPreview && <div style={{marginTop:8}}>
+            <textarea value={input} onChange={e=>setInput(e.target.value)} placeholder="이미지와 함께 추가 텍스트 입력 (선택사항)"
+              style={{width:"100%",height:60,padding:8,fontSize:12,border:"1px solid #ddd",borderRadius:6,resize:"none",fontFamily:"inherit"}}/>
+          </div>}
+        </div>}
+
+        {/* Parse button */}
+        <button onClick={doParse} disabled={loading}
+          style={{...btnBase,width:"100%",justifyContent:"center",padding:"14px 20px",fontSize:14,
+            background:loading?"#d0d0d0":"linear-gradient(135deg,#7c3aed,#6d28d9)",color:"#fff",borderRadius:10}}>
+          {loading ? "분석 중..." : "🔍 AI 분석"}
+        </button>
+
+        {/* Error */}
+        {error && <div style={{marginTop:12,padding:12,background:"#fef2f2",border:"1px solid #fecaca",borderRadius:8,fontSize:12,color:"#dc2626"}}>{error}</div>}
+
+        {/* Result */}
+        {result && <div style={{marginTop:16}}>
+          <div style={{fontSize:13,fontWeight:700,marginBottom:10,color:"#333"}}>📋 추출 결과</div>
+          <div style={{background:"#f8f8fc",borderRadius:10,padding:16,border:"1px solid #e0e0e0"}}>
+            {[
+              ["고객명", result.custName, "👤"],
+              ["전화번호", result.custPhone, "📱"],
+              ["날짜", result.date, "📅"],
+              ["시간", result.time, "🕐"],
+              ["소요시간", result.dur ? result.dur+"분" : "-", "⏱️"],
+              ["메모", result.memo, "📝"],
+              ["예약경로", result.source, "🔗"],
+              ["성별", result.custGender==="M"?"남성":result.custGender==="F"?"여성":"-", "👫"],
+            ].map(([label,val,icon])=>
+              <div key={label} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:"1px solid #f0f0f0"}}>
+                <span style={{fontSize:14,width:24,textAlign:"center"}}>{icon}</span>
+                <span style={{fontSize:11,color:"#888",width:60,flexShrink:0}}>{label}</span>
+                <span style={{fontSize:13,fontWeight:600,color:val&&val!=="-"?"#333":"#ccc"}}>{val||"-"}</span>
+              </div>
+            )}
+          </div>
+          <div style={{display:"flex",gap:8,marginTop:14}}>
+            <button onClick={()=>{setResult(null);setError(null);}} style={{...btnBase,flex:1,justifyContent:"center",background:"#f5f5f5",color:"#666",border:"1px solid #ddd"}}>다시 분석</button>
+            <button onClick={()=>onParsed(result)} style={{...btnBase,flex:1,justifyContent:"center",background:"#7c3aed",color:"#fff"}}>예약폼에 적용 →</button>
+          </div>
+        </div>}
+      </div>
     </div>
   </div>;
 }
