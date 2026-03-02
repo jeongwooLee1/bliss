@@ -122,7 +122,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.57.0";
+const BLISS_V = "2.58.0";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -1557,8 +1557,8 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
           </div>
           <button onClick={()=>changeDate(1)} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#666",padding:"2px 4px",flexShrink:0}}><I name="chevR" size={14}/></button>
           <button onClick={()=>setSelDate(todayStr())} style={{padding:"0 10px",height:32,fontSize:12,border:"1px solid #d0d0d0",borderRadius:6,background:"#fff",color:"#666",cursor:"pointer",fontFamily:"inherit",flexShrink:0,display:"flex",alignItems:"center"}}>오늘</button>
-          <button onClick={()=>setShowQuickBook(true)} style={{padding:"0 10px",height:32,fontSize:12,border:"1px solid #a78bfa",borderRadius:6,background:"linear-gradient(135deg,#ede9fe,#f5f3ff)",color:"#7c3aed",cursor:"pointer",fontFamily:"inherit",flexShrink:0,display:"flex",alignItems:"center",gap:4,fontWeight:600}}>
-            <I name="zap" size={12} color="#7c3aed"/> 빠른등록
+          <button onClick={()=>setShowQuickBook(true)} style={{padding:"0 10px",height:32,fontSize:12,border:"1px solid "+("#7c7cc8")+"50",borderRadius:6,background:"#7c7cc8"+"0a",color:"#7c7cc8",cursor:"pointer",fontFamily:"inherit",flexShrink:0,display:"flex",alignItems:"center",gap:4,fontWeight:600}}>
+            <I name="zap" size={12} color="#7c7cc8"/> 빠른등록
           </button>
           <div style={{position:"relative",flexShrink:0}} ref={el => { if(el) el._settingsBtn = el; }}>
             <button onClick={(e)=>{setShowSettings(!showSettings);}} id="settings-btn"
@@ -4713,7 +4713,7 @@ function AdminAISettings() {
     <div className="card" style={{padding:20,maxWidth:500,marginTop:16}}>
       <div style={{fontSize:13,fontWeight:700,marginBottom:8,color:"#333"}}>사용 안내</div>
       <div style={{fontSize:11,color:"#666",lineHeight:1.8}}>
-        타임라인 상단의 <span style={{background:"#ede9fe",color:"#7c3aed",padding:"2px 6px",borderRadius:4,fontWeight:700,fontSize:10}}>⚡ 빠른등록</span> 버튼으로 사용합니다.<br/>
+        타임라인 상단의 <span style={{background:"#ede9fe",color:"#7c7cc8",padding:"2px 6px",borderRadius:4,fontWeight:700,fontSize:10}}>⚡ 빠른등록</span> 버튼으로 사용합니다.<br/>
         • <strong>텍스트</strong>: 카톡 메시지 붙여넣기 또는 직접 입력<br/>
         • <strong>음성</strong>: 마이크로 말하면 자동 인식<br/>
         • <strong>이미지</strong>: 캡처/사진 업로드로 자동 인식<br/>
@@ -4725,7 +4725,7 @@ function AdminAISettings() {
 
 // ─── 빠른등록 모달 ───
 function QuickBookModal({ onClose, onParsed, data }) {
-  const [mode, setMode] = useState("text"); // text, voice, image
+  const [mode, setMode] = useState("text");
   const [input, setInput] = useState("");
   const [imgData, setImgData] = useState(null);
   const [imgPreview, setImgPreview] = useState(null);
@@ -4737,12 +4737,12 @@ function QuickBookModal({ onClose, onParsed, data }) {
   const mediaRecRef = useRef(null);
   const chunksRef = useRef([]);
   const timerRef = useRef(null);
-  const [audioData, setAudioData] = useState(null); // {base64, mimeType}
+  const [audioData, setAudioData] = useState(null);
   const fileRef = useRef(null);
-
   const apiKey = localStorage.getItem("bliss_gemini_key") || "";
+  const C = "#7c7cc8";
 
-  // Audio recording → send directly to Gemini
+  // Recording
   const startVoice = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({audio:true});
@@ -4755,241 +4755,213 @@ function QuickBookModal({ onClose, onParsed, data }) {
         const blob = new Blob(chunksRef.current, {type: mime});
         const reader = new FileReader();
         reader.onload = () => {
-          const base64 = reader.result.split(",")[1];
-          setAudioData({base64, mimeType: mime.split(";")[0]});
+          const b64 = reader.result.split(",")[1];
+          setAudioData({base64:b64, mimeType:mime.split(";")[0]});
         };
         reader.readAsDataURL(blob);
       };
       rec.start(1000);
       mediaRecRef.current = rec;
-      setIsListening(true); setRecordSec(0); setAudioData(null);
+      setIsListening(true); setRecordSec(0); setAudioData(null); setResult(null); setError(null);
       timerRef.current = setInterval(()=>setRecordSec(s=>s+1), 1000);
-    } catch(e) {
-      alert("마이크 권한이 필요합니다: "+e.message);
-    }
+    } catch(e) { alert("마이크 권한이 필요합니다"); }
   };
   const stopVoice = () => {
-    mediaRecRef.current?.stop();
-    setIsListening(false);
-    clearInterval(timerRef.current);
+    mediaRecRef.current?.stop(); setIsListening(false); clearInterval(timerRef.current);
   };
 
-  // Image upload
+  // Auto-analyze when audio ready
+  useEffect(() => { if (audioData && mode === "voice") doParse(null, audioData); }, [audioData]);
+
   const handleImage = (e) => {
     const file = e.target.files?.[0]; if (!file) return;
     setMode("image");
     const reader = new FileReader();
     reader.onload = (ev) => {
-      const base64 = ev.target.result.split(",")[1];
-      setImgData({ base64, mimeType: file.type });
+      setImgData({base64:ev.target.result.split(",")[1], mimeType:file.type});
       setImgPreview(ev.target.result);
     };
     reader.readAsDataURL(file);
   };
 
-  // Build prompt
   const buildPrompt = () => {
     const today = new Date();
     const dow = ["일","월","화","수","목","금","토"];
-    const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")} (${dow[today.getDay()]})`;
-
+    const ds = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")} (${dow[today.getDay()]})`;
     return `당신은 미용실/왁싱샵 예약 정보를 추출하는 AI입니다.
-오늘 날짜: ${todayStr}
+오늘 날짜: ${ds}
 
-아래 텍스트(또는 이미지)에서 예약 정보를 추출해 JSON으로만 응답하세요.
+아래 텍스트/이미지/음성에서 예약 정보를 추출해 JSON으로만 응답하세요.
 마크다운 백틱이나 설명 없이 순수 JSON만 출력하세요.
 
-[이미지 분석 시 주의사항]
-- 채팅 앱 스크린샷이면 화면 상단의 연락처/이름/전화번호를 반드시 확인하세요
-- WhatsApp, 카카오톡, iMessage, 인스타DM 등 앱 종류도 파악하세요
-- 대화 내용에서 예약 날짜, 시간, 시술 내용을 추출하세요
-- 대화에서 최종 확정된 날짜/시간을 우선 사용하세요
-- 한국어와 영어 모두 처리 가능해야 합니다
-
-[음성 분석 시 주의사항]
-- 오디오가 첨부되면 음성을 텍스트로 변환하고 예약 정보를 추출하세요
-- 한국어 이름, 전화번호(공일공 = 010), 날짜, 시간을 정확히 인식하세요
-- "공"=0, "일"=1, "이"=2, "삼"=3, "사"=4, "오"=5, "육"=6, "칠"=7, "팔"=8, "구"=9
-- 모호한 발음은 문맥에 맞게 해석하세요
+[이미지] 채팅 앱 스크린샷이면 상단 연락처/전화번호 확인. 앱 종류 파악. 최종 확정 날짜/시간 우선. 한국어+영어 처리.
+[음성] 오디오 첨부 시 음성을 듣고 추출. 공=0,일=1,이=2,삼=3,사=4,오=5,육=6,칠=7,팔=8,구=9. 공일공=010.
 
 추출 항목:
-- custName: 고객 이름 (채팅 상단 연락처명 포함. 없으면 "")
-- custPhone: 전화번호 (채팅 상단 번호 포함. 국제번호 +1, +82 등도 처리. 한국번호는 010-XXXX-XXXX 형식. 해외번호는 원본 유지. 하이픈 포함)
-- date: 날짜 (YYYY-MM-DD 형식. "March 7th"→"2026-03-07", "수요일"→이번주 수요일, "내일"→내일 날짜)
-- time: 시간 (HH:MM 24시간 형식. "1 pm"→"13:00", "3시반"→"15:30")
+- custName: 고객 이름 (없으면 "")
+- custPhone: 전화번호 (010-XXXX-XXXX. 해외번호 원본유지. 하이픈 포함)
+- date: YYYY-MM-DD ("March 7th"→"2026-03-07", "수요일"→이번주 수요일)
+- time: HH:MM 24시간 ("1 pm"→"13:00", "3시반"→"15:30")
 - dur: 소요시간(분) (없으면 0)
-- memo: 시술내용/기타정보 ("eyebrows waxing" 등. 없으면 "")
-- source: 예약경로 (채팅앱 종류: "WhatsApp","카카오톡","인스타","전화","네이버" 등)
-- custGender: 성별 추정 ("M" or "F" or "")
-
-예시1: "이종호 공일공702-800-805번 수요일 3시30분"
-→ {"custName":"이종호","custPhone":"010-7028-0080","date":"2026-03-04","time":"15:30","dur":0,"memo":"","source":"","custGender":"M"}
-
-예시2: WhatsApp 캡처에 "+1 (916) 802-8699" 상단, 대화내용 "March 7th 1pm eyebrows"
-→ {"custName":"","custPhone":"+1-916-802-8699","date":"2026-03-07","time":"13:00","dur":0,"memo":"eyebrows waxing","source":"WhatsApp","custGender":""}
-
-한글 숫자(공,일,이 등)는 아라비아 숫자로 변환하세요.`;
+- memo: 시술내용/기타 (없으면 "")
+- source: 예약경로 ("WhatsApp","카카오톡","인스타","전화","네이버" 등)
+- custGender: "M" or "F" or ""`;
   };
 
-  // Parse with Gemini
-  const doParse = async () => {
-    if (!apiKey) { setError("관리설정 → AI설정에서 Gemini API 키를 먼저 등록하세요"); return; }
-    if (!input.trim() && !imgData && !audioData) { setError("텍스트, 음성, 또는 이미지를 입력하세요"); return; }
+  const doParse = async (evt, overrideAudio) => {
+    const ad = overrideAudio || audioData;
+    if (!apiKey) { setError("관리설정 → AI설정에서 API 키를 등록하세요"); return; }
+    if (!input.trim() && !imgData && !ad) { setError("입력 데이터가 없습니다"); return; }
     setLoading(true); setError(null); setResult(null);
-
     try {
       const parts = [{text: buildPrompt()}];
-      if (input.trim()) parts.push({text: "입력 텍스트:\n" + input.trim()});
-      if (imgData) parts.push({inlineData: {mimeType: imgData.mimeType, data: imgData.base64}});
-      if (audioData) parts.push({inlineData: {mimeType: audioData.mimeType, data: audioData.base64}});
-
+      if (input.trim()) parts.push({text: "입력:\n" + input.trim()});
+      if (imgData) parts.push({inlineData:{mimeType:imgData.mimeType, data:imgData.base64}});
+      if (ad) parts.push({inlineData:{mimeType:ad.mimeType, data:ad.base64}});
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
         method:"POST", headers:{"Content-Type":"application/json"},
         body:JSON.stringify({contents:[{parts}], generationConfig:{temperature:0}})
       });
-      if (!r.ok) { const e = await r.text(); throw new Error("API 에러: "+e.slice(0,200)); }
-      const data = await r.json();
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-      const clean = text.replace(/```json|```/g,"").trim();
-      const parsed = JSON.parse(clean);
-      setResult(parsed);
-    } catch(e) {
-      console.error("Gemini parse error:", e);
-      setError("파싱 실패: " + e.message);
-    }
+      if (!r.ok) throw new Error("API: "+(await r.text()).slice(0,120));
+      const d = await r.json();
+      const txt = d.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      setResult(JSON.parse(txt.replace(/```json|```/g,"").trim()));
+    } catch(e) { setError("분석 실패: "+e.message); }
     setLoading(false);
   };
 
-  const btnBase = {padding:"8px 16px",fontSize:12,fontWeight:600,borderRadius:6,border:"none",cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:6};
+  const editResult = (k,v) => setResult(p=>({...p,[k]:v}));
+  const reset = () => { setResult(null);setError(null);setAudioData(null);setRecordSec(0);setImgData(null);setImgPreview(null);setInput(""); };
 
-  return <div style={{position:"fixed",inset:0,zIndex:500,background:"rgba(0,0,0,.5)",display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
-    <div style={{background:"#fff",borderRadius:16,width:"100%",maxWidth:440,maxHeight:"90vh",overflow:"auto",boxShadow:"0 20px 60px rgba(0,0,0,.2)"}}>
+  return <div style={{position:"fixed",inset:0,zIndex:500,background:"rgba(0,0,0,.4)",display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
+    <div style={{background:"#fff",borderRadius:"20px 20px 0 0",width:"100%",maxWidth:480,maxHeight:"92vh",overflow:"auto"}}>
+      <style>{`@keyframes qb-up{from{transform:translateY(100%)}to{transform:translateY(0)}}@keyframes qb-pulse{0%,100%{opacity:1}50%{opacity:.4}}@keyframes qb-spin{to{transform:rotate(360deg)}}`}</style>
+      <div style={{animation:"qb-up .25s ease"}}>
+
       {/* Header */}
-      <div style={{padding:"16px 20px",borderBottom:"1px solid #eee",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-        <div style={{display:"flex",alignItems:"center",gap:8}}>
-          <span style={{fontSize:18}}>⚡</span>
-          <span style={{fontSize:16,fontWeight:800,color:"#333"}}>빠른등록</span>
-        </div>
-        <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",fontSize:18,color:"#999",padding:4}}>✕</button>
+      <div style={{padding:"18px 20px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"1px solid #f0f0f0"}}>
+        <span style={{fontSize:15,fontWeight:700,color:"#222",letterSpacing:-.3}}>빠른등록</span>
+        <button onClick={onClose} style={{background:"#f5f5f5",border:"none",width:28,height:28,borderRadius:14,cursor:"pointer",fontSize:13,color:"#999",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
       </div>
 
-      {/* Mode tabs */}
-      <div style={{display:"flex",gap:4,padding:"12px 20px",background:"#f8f8fc"}}>
-        {[["text","✏️","텍스트"],["voice","🎤","음성"],["image","📷","이미지"]].map(([k,icon,label])=>
-          <button key={k} onClick={()=>setMode(k)} style={{...btnBase, flex:1,justifyContent:"center",
-            background:mode===k?"#7c3aed":"#fff",color:mode===k?"#fff":"#666",
-            border:mode===k?"none":"1px solid #ddd",fontSize:11}}>
-            {icon} {label}
+      {/* Tabs - hide when showing results or loading */}
+      {!result && !loading && <div style={{display:"flex",padding:"12px 20px 0",gap:6}}>
+        {[["text","텍스트"],["voice","음성"],["image","이미지"]].map(([k,label])=>
+          <button key={k} onClick={()=>{setMode(k);setError(null);}} style={{flex:1,padding:"9px 0",fontSize:12,fontWeight:mode===k?700:500,
+            color:mode===k?C:"#999",background:mode===k?C+"0d":"transparent",
+            border:mode===k?`1.5px solid ${C}30`:"1.5px solid transparent",
+            borderRadius:8,cursor:"pointer",fontFamily:"inherit",transition:"all .15s"}}>
+            {label}
           </button>
         )}
-      </div>
+      </div>}
 
-      <div style={{padding:20}}>
-        {/* Text input */}
-        {mode==="text" && <div style={{marginBottom:16}}>
+      <div style={{padding:"16px 20px 24px"}}>
+
+        {/* TEXT */}
+        {!result && !loading && mode==="text" && <>
           <textarea value={input} onChange={e=>setInput(e.target.value)}
-            placeholder={"예: 이종호 010-7028-0080 수요일 3시반 200\n\n카톡 메시지를 붙여넣거나 직접 입력하세요"}
-            style={{width:"100%",height:120,padding:12,fontSize:13,border:"1px solid #ddd",borderRadius:8,resize:"vertical",fontFamily:"inherit",lineHeight:1.6,background:"#fafafa"}}/>
+            placeholder={"이종호 010-7028-0080 수요일 3시반\n\n카톡 메시지 붙여넣기 또는 직접 입력"}
+            style={{width:"100%",height:110,padding:14,fontSize:13,border:"1.5px solid #e8e8e8",borderRadius:10,resize:"none",fontFamily:"inherit",lineHeight:1.7,background:"#fafafa",color:"#333",outline:"none"}}/>
+          <button onClick={doParse} disabled={!input.trim()}
+            style={{width:"100%",marginTop:10,padding:"13px 0",fontSize:13,fontWeight:600,
+              background:input.trim()?C:"#e0e0e0",color:"#fff",border:"none",borderRadius:10,cursor:input.trim()?"pointer":"default",fontFamily:"inherit"}}>
+            분석하기
+          </button>
+        </>}
+
+        {/* VOICE */}
+        {!result && !loading && mode==="voice" && <div style={{textAlign:"center",padding:"24px 0 8px"}}>
+          {isListening ? <>
+            <div style={{width:80,height:80,borderRadius:40,background:"#fee2e2",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px",position:"relative"}}>
+              <div style={{width:96,height:96,borderRadius:48,border:"2px solid #fca5a5",position:"absolute",animation:"qb-pulse 1.5s infinite"}}/>
+              <span style={{fontSize:28}}>🎙️</span>
+            </div>
+            <div style={{fontSize:28,fontWeight:700,color:"#ef4444",fontFamily:"monospace",marginBottom:6}}>
+              {Math.floor(recordSec/60)}:{String(recordSec%60).padStart(2,"0")}
+            </div>
+            <div style={{fontSize:12,color:"#999",marginBottom:20}}>말씀이 끝나면 중지를 눌러주세요</div>
+            <button onClick={stopVoice} style={{padding:"12px 40px",fontSize:13,fontWeight:600,background:"#ef4444",color:"#fff",border:"none",borderRadius:10,cursor:"pointer",fontFamily:"inherit"}}>
+              녹음 중지
+            </button>
+          </> : <>
+            <div onClick={startVoice} style={{width:80,height:80,borderRadius:40,background:C+"0d",display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto 16px",cursor:"pointer"}}>
+              <span style={{fontSize:28}}>🎙️</span>
+            </div>
+            <div style={{fontSize:13,fontWeight:600,color:"#555",marginBottom:4}}>탭하여 녹음 시작</div>
+            <div style={{fontSize:11,color:"#bbb"}}>이름, 전화번호, 날짜, 시간을 말씀하세요</div>
+          </>}
         </div>}
 
-        {/* Voice recording */}
-        {mode==="voice" && <div style={{marginBottom:16}}>
-          <div style={{textAlign:"center",padding:20,background:"#fafafa",borderRadius:12,border:"1px solid #e0e0e0"}}>
-            {isListening ? <>
-              <div style={{fontSize:48,marginBottom:8,animation:"pendingBlink 1s infinite"}}>🔴</div>
-              <div style={{fontSize:24,fontWeight:800,color:"#ef4444",fontFamily:"monospace",marginBottom:12}}>
-                {Math.floor(recordSec/60)}:{String(recordSec%60).padStart(2,"0")}
-              </div>
-              <div style={{fontSize:12,color:"#888",marginBottom:16}}>말씀해주세요... (이름, 전화번호, 날짜, 시간)</div>
-              <button onClick={stopVoice} style={{...btnBase,justifyContent:"center",width:"100%",background:"#ef4444",color:"#fff",padding:"12px 20px",fontSize:14,borderRadius:10}}>
-                ⏹️ 녹음 중지
-              </button>
-            </> : audioData ? <>
-              <div style={{fontSize:48,marginBottom:8}}>✅</div>
-              <div style={{fontSize:14,fontWeight:700,color:"#22c55e",marginBottom:4}}>녹음 완료 ({recordSec}초)</div>
-              <div style={{fontSize:11,color:"#888",marginBottom:16}}>아래 "AI 분석" 버튼을 눌러 음성을 분석하세요</div>
-              <button onClick={()=>{setAudioData(null);setRecordSec(0);}} style={{fontSize:11,color:"#888",background:"none",border:"1px solid #ddd",borderRadius:6,padding:"4px 12px",cursor:"pointer",fontFamily:"inherit"}}>
-                다시 녹음
-              </button>
-            </> : <>
-              <div style={{fontSize:48,marginBottom:12}}>🎤</div>
-              <div style={{fontSize:12,color:"#888",marginBottom:16}}>버튼을 누르고 예약 정보를 말씀하세요</div>
-              <button onClick={startVoice} style={{...btnBase,justifyContent:"center",width:"100%",background:"#f0f0ff",color:"#7c3aed",border:"1px solid #c4b5fd",padding:"12px 20px",fontSize:14,borderRadius:10}}>
-                🎤 녹음 시작
-              </button>
-              <div style={{fontSize:10,color:"#aaa",marginTop:10}}>Gemini AI가 음성을 직접 인식합니다 (한국어/영어 지원)</div>
-            </>}
-          </div>
-        </div>}
-
-        {/* Image input */}
-        {mode==="image" && <div style={{marginBottom:16}}>
+        {/* IMAGE */}
+        {!result && !loading && mode==="image" && <>
           <input ref={fileRef} type="file" accept="image/*" onChange={handleImage} style={{display:"none"}}/>
-          {imgPreview
-            ? <div>
-                <div style={{border:"1px solid #e0e0e0",borderRadius:12,overflow:"hidden",background:"#fafafa",textAlign:"center"}}>
-                  <img src={imgPreview} style={{maxWidth:"100%",maxHeight:300,objectFit:"contain"}} alt="preview"/>
-                </div>
-                <button onClick={()=>{setImgData(null);setImgPreview(null);}} style={{marginTop:8,fontSize:11,color:"#888",background:"none",border:"1px solid #ddd",borderRadius:6,padding:"4px 12px",cursor:"pointer",fontFamily:"inherit"}}>이미지 제거</button>
-              </div>
-            : <div style={{display:"flex",gap:10}}>
-                <div onClick={()=>{fileRef.current?.setAttribute("capture","environment");fileRef.current?.click();}}
-                  style={{flex:1,border:"2px dashed #d0d0d0",borderRadius:12,padding:30,textAlign:"center",cursor:"pointer",background:"#fafafa"}}>
-                  <div style={{fontSize:36,marginBottom:6}}>📷</div>
-                  <div style={{fontSize:12,color:"#888",fontWeight:600}}>카메라 촬영</div>
-                </div>
-                <div onClick={()=>{fileRef.current?.removeAttribute("capture");fileRef.current?.click();}}
-                  style={{flex:1,border:"2px dashed #d0d0d0",borderRadius:12,padding:30,textAlign:"center",cursor:"pointer",background:"#fafafa"}}>
-                  <div style={{fontSize:36,marginBottom:6}}>🖼️</div>
-                  <div style={{fontSize:12,color:"#888",fontWeight:600}}>갤러리 선택</div>
-                </div>
-              </div>}
-          {imgPreview && <div style={{marginTop:8}}>
-            <textarea value={input} onChange={e=>setInput(e.target.value)} placeholder="이미지와 함께 추가 텍스트 입력 (선택사항)"
-              style={{width:"100%",height:60,padding:8,fontSize:12,border:"1px solid #ddd",borderRadius:6,resize:"none",fontFamily:"inherit"}}/>
+          {imgPreview ? <div>
+            <div style={{borderRadius:10,overflow:"hidden",border:"1px solid #eee",marginBottom:10}}>
+              <img src={imgPreview} style={{width:"100%",maxHeight:260,objectFit:"contain",display:"block"}} alt=""/>
+            </div>
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={()=>{setImgData(null);setImgPreview(null);}} style={{flex:1,padding:"11px 0",fontSize:12,fontWeight:500,background:"#f5f5f5",color:"#888",border:"none",borderRadius:8,cursor:"pointer",fontFamily:"inherit"}}>다른 이미지</button>
+              <button onClick={doParse} style={{flex:2,padding:"11px 0",fontSize:13,fontWeight:600,background:C,color:"#fff",border:"none",borderRadius:8,cursor:"pointer",fontFamily:"inherit"}}>분석하기</button>
+            </div>
+          </div> : <div style={{display:"flex",gap:10}}>
+            <div onClick={()=>{fileRef.current?.setAttribute("capture","environment");fileRef.current?.click();}}
+              style={{flex:1,padding:"28px 0",textAlign:"center",border:"1.5px dashed #ddd",borderRadius:12,cursor:"pointer",background:"#fafafa"}}>
+              <div style={{fontSize:28,marginBottom:6}}>📷</div>
+              <div style={{fontSize:11,fontWeight:600,color:"#888"}}>촬영</div>
+            </div>
+            <div onClick={()=>{fileRef.current?.removeAttribute("capture");fileRef.current?.click();}}
+              style={{flex:1,padding:"28px 0",textAlign:"center",border:"1.5px dashed #ddd",borderRadius:12,cursor:"pointer",background:"#fafafa"}}>
+              <div style={{fontSize:28,marginBottom:6}}>🖼️</div>
+              <div style={{fontSize:11,fontWeight:600,color:"#888"}}>갤러리</div>
+            </div>
           </div>}
+        </>}
+
+        {/* LOADING */}
+        {loading && <div style={{textAlign:"center",padding:"40px 0"}}>
+          <div style={{width:44,height:44,border:`3px solid ${C}20`,borderTop:`3px solid ${C}`,borderRadius:22,margin:"0 auto 16px",animation:"qb-spin .8s linear infinite"}}/>
+          <div style={{fontSize:13,fontWeight:600,color:"#555"}}>{mode==="voice"?"음성 인식 중...":mode==="image"?"이미지 분석 중...":"텍스트 분석 중..."}</div>
         </div>}
 
-        {/* Parse button */}
-        <button onClick={doParse} disabled={loading}
-          style={{...btnBase,width:"100%",justifyContent:"center",padding:"14px 20px",fontSize:14,
-            background:loading?"#d0d0d0":"linear-gradient(135deg,#7c3aed,#6d28d9)",color:"#fff",borderRadius:10}}>
-          {loading ? "분석 중..." : "🔍 AI 분석"}
-        </button>
+        {/* ERROR */}
+        {error && <div style={{marginTop:8,padding:"12px 14px",background:"#fef2f2",borderRadius:10,fontSize:12,color:"#dc2626",lineHeight:1.5}}>
+          {error}
+          <button onClick={reset} style={{display:"block",marginTop:8,fontSize:11,color:C,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>다시 시도</button>
+        </div>}
 
-        {/* Error */}
-        {error && <div style={{marginTop:12,padding:12,background:"#fef2f2",border:"1px solid #fecaca",borderRadius:8,fontSize:12,color:"#dc2626"}}>{error}</div>}
-
-        {/* Result */}
-        {result && <div style={{marginTop:16}}>
-          <div style={{fontSize:13,fontWeight:700,marginBottom:10,color:"#333"}}>📋 추출 결과</div>
-          <div style={{background:"#f8f8fc",borderRadius:10,padding:16,border:"1px solid #e0e0e0"}}>
-            {[
-              ["고객명", result.custName, "👤"],
-              ["전화번호", result.custPhone, "📱"],
-              ["날짜", result.date, "📅"],
-              ["시간", result.time, "🕐"],
-              ["소요시간", result.dur ? result.dur+"분" : "-", "⏱️"],
-              ["메모", result.memo, "📝"],
-              ["예약경로", result.source, "🔗"],
-              ["성별", result.custGender==="M"?"남성":result.custGender==="F"?"여성":"-", "👫"],
-            ].map(([label,val,icon])=>
-              <div key={label} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",borderBottom:"1px solid #f0f0f0"}}>
-                <span style={{fontSize:14,width:24,textAlign:"center"}}>{icon}</span>
-                <span style={{fontSize:11,color:"#888",width:60,flexShrink:0}}>{label}</span>
-                <span style={{fontSize:13,fontWeight:600,color:val&&val!=="-"?"#333":"#ccc"}}>{val||"-"}</span>
-              </div>
-            )}
+        {/* RESULTS - editable */}
+        {result && <div>
+          <div style={{fontSize:12,fontWeight:600,color:"#999",marginBottom:12}}>추출 결과 <span style={{fontWeight:400}}>— 탭하여 수정</span></div>
+          {[["custName","고객명","text"],["custPhone","전화번호","tel"],["date","날짜","date"],["time","시간","time"],["memo","시술/메모","text"],["source","예약경로","text"]].map(([key,label,type])=>
+            <div key={key} style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+              <label style={{width:58,fontSize:11,color:"#aaa",flexShrink:0,textAlign:"right"}}>{label}</label>
+              <input value={result[key]||""} onChange={e=>editResult(key,e.target.value)} type={type}
+                style={{flex:1,padding:"9px 12px",fontSize:13,border:"1.5px solid #e8e8e8",borderRadius:8,fontFamily:"inherit",color:"#333",outline:"none",background:"#fafafa"}}/>
+            </div>
+          )}
+          <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+            <label style={{width:58,fontSize:11,color:"#aaa",flexShrink:0,textAlign:"right"}}>성별</label>
+            <div style={{display:"flex",gap:6}}>
+              {[["","미정"],["M","남"],["F","여"]].map(([v,l])=>
+                <button key={v} onClick={()=>editResult("custGender",v)}
+                  style={{padding:"7px 16px",fontSize:12,fontWeight:result.custGender===v?600:400,
+                    background:result.custGender===v?C+"12":"#f5f5f5",color:result.custGender===v?C:"#aaa",
+                    border:result.custGender===v?`1.5px solid ${C}30`:"1.5px solid #eee",borderRadius:7,cursor:"pointer",fontFamily:"inherit"}}>{l}</button>
+              )}
+            </div>
           </div>
-          <div style={{display:"flex",gap:8,marginTop:14}}>
-            <button onClick={()=>{setResult(null);setError(null);setAudioData(null);setRecordSec(0);}} style={{...btnBase,flex:1,justifyContent:"center",background:"#f5f5f5",color:"#666",border:"1px solid #ddd"}}>다시 분석</button>
-            <button onClick={()=>onParsed(result)} style={{...btnBase,flex:1,justifyContent:"center",background:"#7c3aed",color:"#fff"}}>예약폼에 적용 →</button>
+          <div style={{display:"flex",gap:8,marginTop:16}}>
+            <button onClick={reset} style={{flex:1,padding:"12px 0",fontSize:12,fontWeight:500,background:"#f5f5f5",color:"#888",border:"none",borderRadius:10,cursor:"pointer",fontFamily:"inherit"}}>다시</button>
+            <button onClick={()=>onParsed(result)} style={{flex:2,padding:"12px 0",fontSize:13,fontWeight:600,background:C,color:"#fff",border:"none",borderRadius:10,cursor:"pointer",fontFamily:"inherit"}}>예약폼에 적용</button>
           </div>
         </div>}
+      </div>
       </div>
     </div>
   </div>;
 }
+
 
 // ─── 서비스태그관리 ───
 function AdminServiceTags({ data, setData }) {
