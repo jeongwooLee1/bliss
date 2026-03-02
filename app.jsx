@@ -111,7 +111,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.54.5";
+const BLISS_V = "2.55.0";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -1503,7 +1503,9 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   // Measure topbar height for sticky offset
   useEffect(() => {
     if (!topbarRef.current) return;
-    const ro = new ResizeObserver(entries => { for (const e of entries) setTopbarH(e.contentRect.height + 1); });
+    const measure = () => { if(topbarRef.current) setTopbarH(topbarRef.current.offsetHeight); };
+    measure();
+    const ro = new ResizeObserver(() => measure());
     ro.observe(topbarRef.current);
     return () => ro.disconnect();
   }, []);
@@ -1823,7 +1825,6 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                             {isNaverCancelled && <span style={{fontSize:Math.max(6,blockFs-2),padding:"1px 3px",borderRadius:2,background:"#E6A700",color:"#fff",fontWeight:700,lineHeight:1,flexShrink:0}}>네이버취소</span>}
                             {isNaverPending && <span style={{fontSize:Math.max(6,blockFs-2),padding:"1px 3px",borderRadius:2,background:"#FF9800",color:"#fff",fontWeight:700,lineHeight:1,flexShrink:0,animation:"pendingBlink 1.5s infinite"}}>확정대기</span>}
                             {block.isNewCust && <span style={{fontSize:Math.max(6,blockFs-2),padding:"1px 3px",borderRadius:2,background:"#e57373",color:"#fff",fontWeight:700,lineHeight:1,flexShrink:0}}>신규</span>}
-                            {block.source && !isNaverCancelled && !isNaverPending && (() => {const srcObj=(data?.resSources||[]).find(s=>s.name===block.source);const srcClr=srcObj?.color||"#999";return <span style={{fontSize:Math.max(6,blockFs-2),padding:"1px 3px",borderRadius:2,background:srcClr+"30",color:srcClr,fontWeight:700,lineHeight:1,flexShrink:0,border:`1px solid ${srcClr}50`}}>{block.source}</span>})()}
                             <span style={{fontWeight:600,color:isNaverCancelled?"#999":"#333",overflow:"hidden",textOverflow:"ellipsis",textDecoration:isNaverCancelled?"line-through":"none"}}>{block.custGender && <span style={{color:block.custGender==="M"?"#4a7cc8":"#e57373"}}>{block.custGender==="M"?"남":"여"}</span>} {block.custName}</span>
                           </div>
                           {block.selectedTags?.length>0 && <div style={{display:"flex",flexWrap:"wrap",gap:2,marginTop:1}}>
@@ -2451,15 +2452,15 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
 
             {/* 예약경로 */}
             {!isSchedule && <FLD label="예약경로">
-              <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+              <div style={{display:"flex",flexWrap:"wrap",gap:4,padding:8,background:"#f8f8f8",borderRadius:8,border:"1px solid #e0e0e0",overflow:"visible"}}>
                 {(data?.resSources||[]).filter(s=>s.useYn!==false).sort((a,b)=>(a.sort||0)-(b.sort||0)).map(src => {
                   const sel = f.source === src.name;
                   const clr = src.color || "#7c7cc8";
                   return <button key={src.id} onClick={()=>set("source",sel?"":src.name)}
-                    style={{padding:"3px 10px",fontSize:11,fontWeight:600,borderRadius:4,cursor:"pointer",fontFamily:"inherit",transition:"all .1s",
-                      border:sel?`1.5px solid ${clr}`:"1px solid #d0d0d0",
-                      background:sel?clr+"20":"#f5f5f5",color:sel?clr:"#aaa",display:"inline-flex",alignItems:"center",gap:4}}>
-                    <span style={{width:6,height:6,borderRadius:6,background:clr,opacity:sel?1:0.3}}/>
+                    style={{padding:"3px 8px",fontSize:11,fontWeight:600,borderRadius:3,cursor:"pointer",fontFamily:"inherit",transition:"all .1s",
+                      border:sel?`1px solid ${clr}`:"1px solid #d0d0d0",
+                      background:sel?clr+"70":"#e8e8e8",color:sel?"#333":"#aaa",display:"inline-flex",alignItems:"center",gap:3,lineHeight:1.3,flexShrink:0}}>
+                    <span style={{width:6,height:6,borderRadius:1,background:clr,flexShrink:0,opacity:sel?1:0.4}}/>
                     {src.name}
                   </button>;
                 })}
@@ -4444,76 +4445,135 @@ function AdminResSources({ data, setData }) {
   const [showAdd, setShowAdd] = useState(false);
   const [newSrc, setNewSrc] = useState({ name:"", color:"#7c7cc8" });
   const [editId, setEditId] = useState(null);
-  const [editVal, setEditVal] = useState({});
-  const nameRef = useRef(null);
-  const editNameRef = useRef(null);
+  const [editData, setEditData] = useState({});
+  const [delConfirm, setDelConfirm] = useState(null);
+  const [selected, setSelected] = useState(new Set());
+  const syncSources = (updated) => { setSources(updated); if(setData) setData(prev=>({...prev,resSources:updated})); };
+  const drag = useDragSort(sources, syncSources, "sort", (reordered) => {
+    reordered.forEach(s => sb.update("reservation_sources", s.id, {sort: s.sort}).catch(console.error));
+  });
+
+  const allChecked = sources.length > 0 && sources.every(s => selected.has(s.id));
+  const toggleAll = () => { if (allChecked) setSelected(new Set()); else setSelected(new Set(sources.map(s => s.id))); };
+  const toggleOne = (id) => setSelected(prev => { const s = new Set(prev); s.has(id)?s.delete(id):s.add(id); return s; });
+  const bulkDelete = () => {
+    if (selected.size === 0) return;
+    if (!window.confirm(selected.size + "개 경로를 삭제하시겠습니까?")) return;
+    selected.forEach(id => sb.del("reservation_sources", id).catch(console.error));
+    syncSources(sources.filter(s => !selected.has(s.id)).map((s,i) => ({...s, sort:i})));
+    setSelected(new Set());
+  };
+
+  const srcToDb = (s) => ({id:s.id, business_id:_activeBizId, name:s.name, color:s.color||"", use_yn:s.useYn!==false, sort:s.sort||0});
 
   const addSource = () => {
-    const name = nameRef.current?.value?.trim() || "";
-    if (!name) { alert("경로명을 입력하세요"); return; }
-    const item = { id:"src_"+uid(), name, color:newSrc.color||"#7c7cc8", sort:sources.length, useYn:true };
-    setSources(p=>[...p, item]);
-    sb.insert("reservation_sources", toDb("reservation_sources", item)).catch(console.error);
-    if(nameRef.current) nameRef.current.value = "";
-    setNewSrc({ name:"", color:"#7c7cc8" });
-    setShowAdd(false);
+    if(!newSrc.name.trim()) return;
+    const s = {id:"src_"+uid(), name:newSrc.name.trim(), color:newSrc.color||"#7c7cc8", useYn:true, sort:sources.length};
+    syncSources([...sources, s]);
+    sb.insert("reservation_sources", srcToDb(s)).catch(console.error);
+    setNewSrc({name:"",color:"#7c7cc8"}); setShowAdd(false);
   };
-
-  const saveEdit = (id) => {
-    const finalVal = {...editVal, name: editNameRef.current?.value?.trim() || editVal.name};
-    setSources(p=>p.map(s=>s.id===id?{...s,...finalVal}:s));
-    sb.update("reservation_sources", id, toDb("reservation_sources", finalVal)).catch(console.error);
+  const deleteSource = (id) => {
+    syncSources(sources.filter(s=>s.id!==id).map((s,i)=>({...s,sort:i})));
+    sb.del("reservation_sources", id).catch(console.error);
+    setDelConfirm(null);
+  };
+  const startEdit = (src) => { setEditId(src.id); setEditData({...src}); };
+  const saveEdit = () => {
+    syncSources(sources.map(s=>s.id===editId?{...editData}:s));
+    sb.update("reservation_sources", editId, {name:editData.name, color:editData.color||"", use_yn:editData.useYn!==false, sort:editData.sort||0}).catch(console.error);
     setEditId(null);
   };
-
   const toggleUse = (id) => {
-    setSources(p=>p.map(s=>s.id===id?{...s,useYn:!s.useYn}:s));
-    const cur = sources.find(s=>s.id===id);
-    sb.update("reservation_sources", id, {use_yn:!(cur?.useYn)}).catch(console.error);
+    const src = sources.find(s=>s.id===id);
+    const newUse = src?.useYn===false;
+    syncSources(sources.map(s=>s.id===id?{...s,useYn:!s.useYn}:s));
+    sb.update("reservation_sources", id, {use_yn:newUse}).catch(console.error);
   };
 
-  const delSource = (id) => {
-    if (!window.confirm("이 예약경로를 삭제하시겠습니까?")) return;
-    setSources(p=>p.filter(s=>s.id!==id));
-    sb.del("reservation_sources", id).catch(console.error);
-  };
+  const inpS = {padding:"4px 6px",fontSize:11,background:"#f8f0f0",border:"1px solid #d0d0d0"};
 
   return <div>
     <AdminHeader title="예약경로 관리" count={sources.length} onAdd={()=>setShowAdd(!showAdd)} addLabel={showAdd?"취소":<><I name="plus" size={12}/> 경로 추가</>}/>
-    {showAdd && <div className="fade-in" style={{display:"flex",gap:8,alignItems:"center",marginBottom:12,padding:12,background:"#f8f8fc",borderRadius:8,border:"1px solid #e0e0e0",flexWrap:"wrap"}}>
-      <FLD label="경로명"><input ref={nameRef} className="inp" style={{width:120}} defaultValue="" placeholder="예: 카카오톡"/></FLD>
-      <FLD label="색상"><input type="color" defaultValue={newSrc.color} onChange={e=>setNewSrc(p=>({...p,color:e.target.value}))} style={{width:36,height:28,padding:0,border:"1px solid #ddd",borderRadius:4,cursor:"pointer"}}/></FLD>
-      <button className="btn-p btn-sm" onClick={addSource}><I name="plus" size={12}/> 추가</button>
+
+    {showAdd && <div className="card" style={{padding:14,marginBottom:14}}>
+      <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"flex-end"}}>
+        <FLD label="경로명"><input className="inp" style={{width:160,...inpS}} value={newSrc.name} onChange={e=>setNewSrc(p=>({...p,name:e.target.value}))} placeholder="경로명" onKeyDown={e=>e.key==="Enter"&&addSource()}/></FLD>
+        <FLD label="색상"><div style={{display:"flex",alignItems:"center",gap:3}}>
+          <input type="color" value={newSrc.color||"#7c7cc8"} onChange={e=>setNewSrc(p=>({...p,color:e.target.value}))} style={{width:22,height:22,border:"none",cursor:"pointer"}}/>
+          <EyeDrop onPick={c=>setNewSrc(p=>({...p,color:c}))} size={22}/>
+          <input className="inp" style={{width:75,...inpS,fontFamily:"monospace",fontSize:9}} value={newSrc.color} onChange={e=>setNewSrc(p=>({...p,color:e.target.value}))} placeholder="#000000"/>
+        </div></FLD>
+        <button className="btn-p btn-sm" onClick={addSource} style={{padding:"6px 18px"}}>추가</button>
+      </div>
     </div>}
-    <table className="admin-tbl" style={{width:"100%",borderCollapse:"collapse"}}>
-      <thead><tr style={{background:"#f8f8fc"}}>
-        <th style={{width:35}}>No</th><th>경로명</th><th style={{width:60}}>색상</th><th style={{width:50}}>사용</th><th style={{width:100}}>관리</th>
-      </tr></thead>
-      <tbody>{sources.map((s,i)=><tr key={s.id} style={{borderBottom:"1px solid #f0f0f0",opacity:s.useYn===false?0.4:1}}>
-        <td style={{textAlign:"center",fontSize:11,color:"#999"}}>{i+1}</td>
-        <td>{editId===s.id
-          ? <input ref={editNameRef} className="inp" defaultValue={editVal.name??s.name} style={{width:120}}/>
-          : <div style={{display:"flex",alignItems:"center",gap:6}}>
-              <span style={{width:10,height:10,borderRadius:10,background:s.color||"#7c7cc8",flexShrink:0}}/>
-              <span style={{fontWeight:600}}>{s.name}</span>
-            </div>}
-        </td>
-        <td style={{textAlign:"center"}}>{editId===s.id
-          ? <input type="color" value={editVal.color??s.color} onChange={e=>setEditVal(p=>({...p,color:e.target.value}))} style={{width:28,height:22,padding:0,border:"1px solid #ddd",borderRadius:3,cursor:"pointer"}}/>
-          : <span style={{display:"inline-block",width:20,height:20,borderRadius:4,background:s.color||"#7c7cc8",border:"1px solid #e0e0e0"}}/>}
-        </td>
-        <td style={{textAlign:"center"}}>
-          <button onClick={()=>toggleUse(s.id)} style={{background:"none",border:"none",cursor:"pointer",fontSize:14}}>
-            {s.useYn!==false ? "✅" : "⬜"}
-          </button>
-        </td>
-        <td style={{textAlign:"center"}}>
-          {editId===s.id
-            ? <><button className="btn-p btn-sm" onClick={()=>saveEdit(s.id)} style={{marginRight:4}}>저장</button><button className="btn-s btn-sm" onClick={()=>setEditId(null)}>취소</button></>
-            : <><button className="btn-s btn-sm" onClick={()=>{setEditId(s.id);setEditVal({name:s.name,color:s.color})}} style={{marginRight:4}}>수정</button><button className="btn-s btn-sm" style={{color:"#e57373"}} onClick={()=>delSource(s.id)}>삭제</button></>}
-        </td>
-      </tr>)}</tbody>
-    </table>
+
+    <div className="card" style={{padding:12,marginBottom:14}}>
+      <div style={{fontSize:10,color:"#888",marginBottom:6}}>미리보기</div>
+      <div style={{display:"flex",flexWrap:"wrap",gap:4,padding:8,background:"#f8f8f8",borderRadius:8,border:"1px solid #e0e0e0"}}>
+        {sources.filter(s=>s.useYn!==false).map(s=>{
+          const clr = s.color||"#7c7cc8";
+          return <span key={s.id} style={{padding:"4px 8px",fontSize:10,fontWeight:500,borderRadius:4,display:"flex",alignItems:"center",gap:3,
+            border:"1px solid "+clr+"80",color:clr,background:clr+"15"}}>
+            <span style={{width:6,height:6,borderRadius:6,background:clr}}/>{s.name}
+          </span>;
+        })}
+      </div>
+    </div>
+
+    {selected.size > 0 && <div style={{marginBottom:8}}><button className="btn-d btn-sm" onClick={bulkDelete} style={{fontSize:10,padding:"4px 12px"}}><I name="trash" size={12}/> 선택 삭제 ({selected.size})</button></div>}
+
+    <div className="tw admin-tw" style={{maxHeight:"calc(100vh - 400px)",overflow:"auto"}}>
+      <table><thead><tr>
+        <th style={{width:30}}><input type="checkbox" checked={allChecked} onChange={toggleAll}/></th>
+        <th style={{width:22}}></th><th style={{width:25}}>No</th><th>경로명</th>
+        <th style={{width:80,textAlign:"center"}}>색상</th><th style={{width:55,textAlign:"center"}}>사용</th>
+        <th style={{width:35,textAlign:"center"}}>순서</th><th style={{width:65,textAlign:"center"}}>관리</th>
+      </tr></thead><tbody>
+      {sources.map((src,i) => {
+        const isEdit = editId===src.id;
+        if (isEdit) return <tr key={src.id} style={{background:"#f5f5ff"}}>
+          <td><input type="checkbox" checked={selected.has(src.id)} onChange={()=>toggleOne(src.id)}/></td>
+          <td><DragHandle/></td><td style={{color:"#999"}}>{i+1}</td>
+          <td><input className="inp" value={editData.name} onChange={e=>setEditData(p=>({...p,name:e.target.value}))} style={{width:"100%",...inpS}}/></td>
+          <td><div style={{display:"flex",alignItems:"center",gap:2}}>
+            <input type="color" value={editData.color||"#7c7cc8"} onChange={e=>setEditData(p=>({...p,color:e.target.value}))} style={{width:20,height:18,border:"none",cursor:"pointer"}}/>
+            <EyeDrop onPick={c=>setEditData(p=>({...p,color:c}))} size={20}/>
+            <input className="inp" value={editData.color||""} onChange={e=>setEditData(p=>({...p,color:e.target.value}))} style={{width:55,...inpS,fontFamily:"monospace",fontSize:8}}/>
+          </div></td>
+          <td></td><td></td>
+          <td style={{textAlign:"center"}}><div style={{display:"flex",gap:3,justifyContent:"center"}}>
+            <button className="btn-p btn-sm" onClick={saveEdit} style={{padding:"1px 6px",fontSize:9}}>저장</button>
+            <button className="btn-s btn-sm" onClick={()=>setEditId(null)} style={{padding:"1px 5px",fontSize:9}}>취소</button>
+          </div></td>
+        </tr>;
+        return <tr key={src.id} draggable onDragStart={()=>drag.onDragStart(i)} onDragEnter={()=>drag.onDragEnter(i)} onDragEnd={drag.onDragEnd} onDragOver={e=>e.preventDefault()}
+          style={{opacity:src.useYn===false?0.45:1}}>
+          <td><input type="checkbox" checked={selected.has(src.id)} onChange={()=>toggleOne(src.id)}/></td>
+          <td><DragHandle/></td>
+          <td style={{color:"#999"}}>{i+1}</td>
+          <td style={{fontWeight:600,fontSize:12}}>
+            <span style={{padding:"2px 6px",borderRadius:4,display:"inline-flex",alignItems:"center",gap:4,border:"1px solid "+(src.color||"#7c7cc8")+"50",background:(src.color||"#7c7cc8")+"12",color:src.color||"#333"}}>
+              <span style={{width:6,height:6,borderRadius:6,background:src.color||"#7c7cc8"}}/>{src.name}
+            </span>
+          </td>
+          <td style={{textAlign:"center"}}>{src.color?<div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>
+            <div style={{width:24,height:16,borderRadius:3,background:src.color,border:"1px solid #d0d0d080"}}/>
+            <span style={{fontSize:8,color:"#888",fontFamily:"monospace"}}>{src.color}</span>
+          </div>:<span style={{color:"#bbb",fontSize:10}}>—</span>}</td>
+          <td style={{textAlign:"center"}}><button onClick={()=>toggleUse(src.id)}
+            style={{fontSize:10,padding:"2px 6px",borderRadius:4,border:"1px solid "+(src.useYn===false?"#e57373":"#d0d0d0"),cursor:"pointer",fontFamily:"inherit",
+              background:src.useYn===false?"#e5737320":"transparent",color:src.useYn===false?"#e8a0a0":"#888"}}>{src.useYn===false?"미사용":"사용"}</button></td>
+          <td style={{textAlign:"center",color:"#bbb",fontSize:10}}>{i+1}</td>
+          <td style={{textAlign:"center"}}><div style={{display:"flex",gap:3,justifyContent:"center"}}>
+            <button onClick={()=>startEdit(src)} style={{background:"none",border:"none",cursor:"pointer",color:"#7c7cc8",fontSize:12}}><I name="edit" size={13}/></button>
+            {delConfirm===src.id
+              ? <><button className="btn-d btn-sm" onClick={()=>deleteSource(src.id)} style={{padding:"1px 5px",fontSize:9}}>확인</button><button className="btn-s btn-sm" onClick={()=>setDelConfirm(null)} style={{padding:"1px 4px",fontSize:9}}>취소</button></>
+              : <button onClick={()=>setDelConfirm(src.id)} style={{background:"none",border:"none",cursor:"pointer",color:"#e57373",fontSize:12}}><I name="trash" size={13}/></button>}
+          </div></td>
+        </tr>;
+      })}</tbody></table>
+    </div>
   </div>;
 }
 
