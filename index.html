@@ -122,7 +122,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.58.1";
+const BLISS_V = "2.58.2";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -4832,7 +4832,8 @@ function QuickBookModal({ onClose, onParsed, data }) {
 
 시술 내용이 언급되면 위 목록에서 가장 적합한 항목의 ID를 매칭하세요.
 부분 일치, 유사어, 영어↔한국어 매칭 모두 시도하세요.
-예: "eyebrows"→"눈썹", "왁싱"→왁싱 포함 항목, "브라질리언"→브라질리언 포함 항목
+[왁싱 용어 매핑] 음모왁싱=브라질리언왁싱, eyebrows=눈썹, underarm=겨드랑이, leg=다리, arm=팔, bikini=비키니, full body=전신
+발음이 비슷하거나 의미가 같으면 적극적으로 매칭하세요.
 
 추출 항목:
 - custName: 고객 이름 (없으면 "")
