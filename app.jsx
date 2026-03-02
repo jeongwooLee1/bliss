@@ -111,7 +111,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.55.0";
+const BLISS_V = "2.55.1";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -4151,23 +4151,71 @@ function AdminWorkers({ data, setData }) {
 function useDragSort(items, setItems, sortKey="sort", onComplete) {
   const dragItem = useRef(null);
   const dragOver = useRef(null);
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
+  const [touchDragIdx, setTouchDragIdx] = useState(null);
+  const [touchOverIdx, setTouchOverIdx] = useState(null);
+  const rowEls = useRef({});
+
+  const doReorder = (fromIdx, toIdx) => {
+    if (fromIdx === toIdx) return;
+    const copy = [...itemsRef.current];
+    const dragged = copy.splice(fromIdx, 1)[0];
+    copy.splice(toIdx, 0, dragged);
+    const reordered = copy.map((it, i) => ({...it, [sortKey]: i}));
+    setItems(reordered);
+    if (onCompleteRef.current) onCompleteRef.current(reordered);
+  };
+
+  // Desktop drag
   const onDragStart = (idx) => { dragItem.current = idx; };
   const onDragEnter = (idx) => { dragOver.current = idx; };
   const onDragEnd = () => {
     if (dragItem.current === null || dragOver.current === null) return;
-    const copy = [...items];
-    const dragged = copy.splice(dragItem.current, 1)[0];
-    copy.splice(dragOver.current, 0, dragged);
-    const reordered = copy.map((it, i) => ({ ...it, [sortKey]: i }));
-    setItems(reordered);
-    if (onComplete) onComplete(reordered);
-    dragItem.current = null;
-    dragOver.current = null;
+    doReorder(dragItem.current, dragOver.current);
+    dragItem.current = null; dragOver.current = null;
   };
-  return { onDragStart, onDragEnter, onDragEnd };
+
+  // Touch drag (document-level listeners so touchmove/end always fire)
+  useEffect(() => {
+    const handleMove = (e) => {
+      if (dragItem.current === null) return;
+      e.preventDefault();
+      const touch = e.touches[0];
+      for (const [idxStr, el] of Object.entries(rowEls.current)) {
+        if (!el) continue;
+        const rect = el.getBoundingClientRect();
+        if (touch.clientY >= rect.top && touch.clientY <= rect.bottom) {
+          const idx = parseInt(idxStr);
+          if (dragOver.current !== idx) { dragOver.current = idx; setTouchOverIdx(idx); }
+          break;
+        }
+      }
+    };
+    const handleEnd = () => {
+      if (dragItem.current !== null && dragOver.current !== null) {
+        doReorder(dragItem.current, dragOver.current);
+      }
+      dragItem.current = null; dragOver.current = null;
+      setTouchDragIdx(null); setTouchOverIdx(null);
+    };
+    document.addEventListener('touchmove', handleMove, {passive: false});
+    document.addEventListener('touchend', handleEnd);
+    return () => { document.removeEventListener('touchmove', handleMove); document.removeEventListener('touchend', handleEnd); };
+  }, []);
+
+  const onTouchStart = (idx) => (e) => {
+    dragItem.current = idx; dragOver.current = idx;
+    setTouchDragIdx(idx); setTouchOverIdx(idx);
+  };
+  const rowRef = (idx) => (el) => { rowEls.current[idx] = el; };
+
+  return { onDragStart, onDragEnter, onDragEnd, onTouchStart, rowRef, touchDragIdx, touchOverIdx };
 }
 
-const DragHandle = () => <span style={{cursor:"grab",flexShrink:0,userSelect:"none"}}><I name="grip" size={14} color="#999"/></span>;
+const DragHandle = ({onTouchStart}) => <span onTouchStart={onTouchStart} style={{cursor:"grab",flexShrink:0,userSelect:"none",touchAction:"none",padding:"4px 2px"}}><I name="grip" size={14} color="#999"/></span>;
 
 // ─── 시술상품관리 ───
 function AdminSaleItems({ data, setData }) {
@@ -4302,9 +4350,9 @@ function AdminSaleItems({ data, setData }) {
       </tr></thead><tbody>
         {filtered.map((svc,i)=>{
           const isEdit = editId === svc.id;
-          if (isEdit) return <tr key={svc.id} style={{background:"#f5f5ff"}}>
+          if (isEdit) return <tr key={svc.id} ref={drag.rowRef(i)} style={{background:"#f5f5ff"}}>
             <td><input type="checkbox" checked={selected.has(svc.id)} onChange={()=>toggleOne(svc.id)}/></td>
-            <td><DragHandle/></td><td style={{color:"#999"}}>{i+1}</td>
+            <td><DragHandle onTouchStart={drag.onTouchStart(i)}/></td><td style={{color:"#999"}}>{i+1}</td>
             <td><select className="inp" value={editData.cat} onChange={e=>setEditData(p=>({...p,cat:e.target.value}))} style={{width:"100%",padding:"4px 6px",fontSize:11}}>{cats.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></td>
             <td>{inp(editData.name, v=>setEditData(p=>({...p,name:v})))}</td>
             <td>{inp(editData.priceF, v=>setEditData(p=>({...p,priceF:v})), "100%", "number")}</td>
@@ -4316,9 +4364,10 @@ function AdminSaleItems({ data, setData }) {
               <button className="btn-s btn-sm" onClick={()=>setEditId(null)} style={{padding:"2px 6px",fontSize:10}}>취소</button>
             </div></td>
           </tr>;
-          return <tr key={svc.id} draggable onDragStart={()=>drag.onDragStart(i)} onDragEnter={()=>drag.onDragEnter(i)} onDragEnd={drag.onDragEnd} onDragOver={e=>e.preventDefault()}>
+          return <tr key={svc.id} ref={drag.rowRef(i)} draggable onDragStart={()=>drag.onDragStart(i)} onDragEnter={()=>drag.onDragEnter(i)} onDragEnd={drag.onDragEnd} onDragOver={e=>e.preventDefault()}
+            style={{background:drag.touchOverIdx===i?"#ede8ff":undefined}}>
             <td><input type="checkbox" checked={selected.has(svc.id)} onChange={()=>toggleOne(svc.id)}/></td>
-            <td><DragHandle/></td>
+            <td><DragHandle onTouchStart={drag.onTouchStart(i)}/></td>
             <td style={{color:"#999"}}>{i+1}</td>
             <td><span className="badge" style={{background:"#f0f0ff",color:"#7c7cc8"}}>{cats.find(c=>c.id===svc.cat)?.name||"-"}</span></td>
             <td style={{fontWeight:500,fontSize:12}}>{svc.name}</td>
@@ -4410,9 +4459,9 @@ function AdminProductItems({ data, setData }) {
         <th style={{width:30}}><input type="checkbox" checked={allChecked} onChange={toggleAll}/></th><th style={{width:25}}></th><th style={{width:35}}>No</th><th>제품명</th><th style={{width:100,textAlign:"right"}}>가격</th><th style={{width:80,textAlign:"center"}}>관리</th>
       </tr></thead>
         <tbody>{items.map((it,i)=>{
-          if (editId===it.id) return <tr key={it.id} style={{background:"#f5f5ff"}}>
+          if (editId===it.id) return <tr key={it.id} ref={drag.rowRef(i)} style={{background:"#f5f5ff"}}>
             <td><input type="checkbox" checked={selected.has(it.id)} onChange={()=>toggleOne(it.id)}/></td>
-            <td><DragHandle/></td><td style={{color:"#999"}}>{i+1}</td>
+            <td><DragHandle onTouchStart={drag.onTouchStart(i)}/></td><td style={{color:"#999"}}>{i+1}</td>
             <td><input className="inp" value={editData.name} onChange={e=>setEditData(p=>({...p,name:e.target.value}))} style={{width:"100%"}}/></td>
             <td><input className="inp" type="number" value={editData.price} onChange={e=>setEditData(p=>({...p,price:Number(e.target.value)||0}))} style={{width:"100%",textAlign:"right"}}/></td>
             <td style={{textAlign:"center"}}><div style={{display:"flex",gap:3,justifyContent:"center"}}>
@@ -4420,9 +4469,10 @@ function AdminProductItems({ data, setData }) {
               <button className="btn-s btn-sm" onClick={()=>setEditId(null)} style={{padding:"2px 6px",fontSize:10}}>취소</button>
             </div></td>
           </tr>;
-          return <tr key={it.id} draggable onDragStart={()=>drag.onDragStart(i)} onDragEnter={()=>drag.onDragEnter(i)} onDragEnd={drag.onDragEnd} onDragOver={e=>e.preventDefault()}>
+          return <tr key={it.id} ref={drag.rowRef(i)} draggable onDragStart={()=>drag.onDragStart(i)} onDragEnter={()=>drag.onDragEnter(i)} onDragEnd={drag.onDragEnd} onDragOver={e=>e.preventDefault()}
+            style={{background:drag.touchOverIdx===i?"#ede8ff":undefined}}>
             <td><input type="checkbox" checked={selected.has(it.id)} onChange={()=>toggleOne(it.id)}/></td>
-            <td><DragHandle/></td><td style={{color:"#999"}}>{i+1}</td>
+            <td><DragHandle onTouchStart={drag.onTouchStart(i)}/></td><td style={{color:"#999"}}>{i+1}</td>
             <td style={{fontWeight:500,fontSize:12}}>{it.name}</td>
             <td style={{textAlign:"right",color:"#6bab9e",fontWeight:600,fontSize:12}}>{it.price>0?fmt(it.price)+"원":"-"}</td>
             <td style={{textAlign:"center"}}><div style={{display:"flex",gap:4,justifyContent:"center"}}>
@@ -4532,9 +4582,9 @@ function AdminResSources({ data, setData }) {
       </tr></thead><tbody>
       {sources.map((src,i) => {
         const isEdit = editId===src.id;
-        if (isEdit) return <tr key={src.id} style={{background:"#f5f5ff"}}>
+        if (isEdit) return <tr key={src.id} ref={drag.rowRef(i)} style={{background:"#f5f5ff"}}>
           <td><input type="checkbox" checked={selected.has(src.id)} onChange={()=>toggleOne(src.id)}/></td>
-          <td><DragHandle/></td><td style={{color:"#999"}}>{i+1}</td>
+          <td><DragHandle onTouchStart={drag.onTouchStart(i)}/></td><td style={{color:"#999"}}>{i+1}</td>
           <td><input className="inp" value={editData.name} onChange={e=>setEditData(p=>({...p,name:e.target.value}))} style={{width:"100%",...inpS}}/></td>
           <td><div style={{display:"flex",alignItems:"center",gap:2}}>
             <input type="color" value={editData.color||"#7c7cc8"} onChange={e=>setEditData(p=>({...p,color:e.target.value}))} style={{width:20,height:18,border:"none",cursor:"pointer"}}/>
@@ -4547,10 +4597,10 @@ function AdminResSources({ data, setData }) {
             <button className="btn-s btn-sm" onClick={()=>setEditId(null)} style={{padding:"1px 5px",fontSize:9}}>취소</button>
           </div></td>
         </tr>;
-        return <tr key={src.id} draggable onDragStart={()=>drag.onDragStart(i)} onDragEnter={()=>drag.onDragEnter(i)} onDragEnd={drag.onDragEnd} onDragOver={e=>e.preventDefault()}
-          style={{opacity:src.useYn===false?0.45:1}}>
+        return <tr key={src.id} ref={drag.rowRef(i)} draggable onDragStart={()=>drag.onDragStart(i)} onDragEnter={()=>drag.onDragEnter(i)} onDragEnd={drag.onDragEnd} onDragOver={e=>e.preventDefault()}
+          style={{opacity:src.useYn===false?0.45:1,background:drag.touchOverIdx===i?"#ede8ff":undefined}}>
           <td><input type="checkbox" checked={selected.has(src.id)} onChange={()=>toggleOne(src.id)}/></td>
-          <td><DragHandle/></td>
+          <td><DragHandle onTouchStart={drag.onTouchStart(i)}/></td>
           <td style={{color:"#999"}}>{i+1}</td>
           <td style={{fontWeight:600,fontSize:12}}>
             <span style={{padding:"2px 6px",borderRadius:4,display:"inline-flex",alignItems:"center",gap:4,border:"1px solid "+(src.color||"#7c7cc8")+"50",background:(src.color||"#7c7cc8")+"12",color:src.color||"#333"}}>
@@ -4685,9 +4735,9 @@ function AdminServiceTags({ data, setData }) {
       </tr></thead><tbody>
       {tags.map((tag,i) => {
         const isEdit = editId===tag.id;
-        if (isEdit) return <tr key={tag.id} style={{background:"#f5f5ff"}}>
+        if (isEdit) return <tr key={tag.id} ref={drag.rowRef(i)} style={{background:"#f5f5ff"}}>
           <td><input type="checkbox" checked={selected.has(tag.id)} onChange={()=>toggleOne(tag.id)}/></td>
-          <td><DragHandle/></td><td style={{color:"#999"}}>{i+1}</td>
+          <td><DragHandle onTouchStart={drag.onTouchStart(i)}/></td><td style={{color:"#999"}}>{i+1}</td>
           <td><input className="inp" value={editData.name} onChange={e=>setEditData(p=>({...p,name:e.target.value}))} style={{width:"100%",...inpS}}/></td>
           <td><input className="inp" type="number" value={editData.dur} onChange={e=>setEditData(p=>({...p,dur:Number(e.target.value)||0}))} style={{width:50,...inpS,textAlign:"center"}}/></td>
           <td><select className="inp" value={editData.scheduleYn} onChange={e=>setEditData(p=>({...p,scheduleYn:e.target.value}))} style={{width:45,...inpS}}><option value="N">N</option><option value="Y">Y</option></select></td>
@@ -4702,10 +4752,10 @@ function AdminServiceTags({ data, setData }) {
             <button className="btn-s btn-sm" onClick={()=>setEditId(null)} style={{padding:"1px 5px",fontSize:9}}>취소</button>
           </div></td>
         </tr>;
-        return <tr key={tag.id} draggable onDragStart={()=>drag.onDragStart(i)} onDragEnter={()=>drag.onDragEnter(i)} onDragEnd={drag.onDragEnd} onDragOver={e=>e.preventDefault()}
-          style={{opacity:tag.useYn===false?0.45:1}}>
+        return <tr key={tag.id} ref={drag.rowRef(i)} draggable onDragStart={()=>drag.onDragStart(i)} onDragEnter={()=>drag.onDragEnter(i)} onDragEnd={drag.onDragEnd} onDragOver={e=>e.preventDefault()}
+          style={{opacity:tag.useYn===false?0.45:1,background:drag.touchOverIdx===i?"#ede8ff":undefined}}>
           <td><input type="checkbox" checked={selected.has(tag.id)} onChange={()=>toggleOne(tag.id)}/></td>
-          <td><DragHandle/></td>
+          <td><DragHandle onTouchStart={drag.onTouchStart(i)}/></td>
           <td style={{color:"#999"}}>{i+1}</td>
           <td style={{fontWeight:600,fontSize:12}}>
             <span style={{padding:"2px 6px",borderRadius:4,border:"1px solid "+(tag.color||"#d0d0d0")+"50",background:tag.color?tag.color+"12":"transparent",color:tag.color||"#333"}}>{tag.name}</span>
