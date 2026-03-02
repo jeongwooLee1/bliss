@@ -111,7 +111,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.56.1";
+const BLISS_V = "2.56.2";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -4860,17 +4860,26 @@ function QuickBookModal({ onClose, onParsed, data }) {
 
         {/* Image input */}
         {mode==="image" && <div style={{marginBottom:16}}>
-          <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={handleImage} style={{display:"none"}}/>
-          <div onClick={()=>fileRef.current?.click()}
-            style={{border:"2px dashed #d0d0d0",borderRadius:12,padding:imgPreview?0:40,textAlign:"center",cursor:"pointer",background:"#fafafa",overflow:"hidden",minHeight:150,display:"flex",alignItems:"center",justifyContent:"center"}}>
-            {imgPreview
-              ? <img src={imgPreview} style={{maxWidth:"100%",maxHeight:300,objectFit:"contain"}} alt="preview"/>
-              : <div>
-                  <div style={{fontSize:40,marginBottom:8}}>📷</div>
-                  <div style={{fontSize:13,color:"#888",fontWeight:600}}>탭하여 사진 촬영 또는 갤러리에서 선택</div>
-                  <div style={{fontSize:11,color:"#aaa",marginTop:4}}>카톡 캡처, 예약 메모 사진 등</div>
-                </div>}
-          </div>
+          <input ref={fileRef} type="file" accept="image/*" onChange={handleImage} style={{display:"none"}}/>
+          {imgPreview
+            ? <div>
+                <div style={{border:"1px solid #e0e0e0",borderRadius:12,overflow:"hidden",background:"#fafafa",textAlign:"center"}}>
+                  <img src={imgPreview} style={{maxWidth:"100%",maxHeight:300,objectFit:"contain"}} alt="preview"/>
+                </div>
+                <button onClick={()=>{setImgData(null);setImgPreview(null);}} style={{marginTop:8,fontSize:11,color:"#888",background:"none",border:"1px solid #ddd",borderRadius:6,padding:"4px 12px",cursor:"pointer",fontFamily:"inherit"}}>이미지 제거</button>
+              </div>
+            : <div style={{display:"flex",gap:10}}>
+                <div onClick={()=>{fileRef.current?.setAttribute("capture","environment");fileRef.current?.click();}}
+                  style={{flex:1,border:"2px dashed #d0d0d0",borderRadius:12,padding:30,textAlign:"center",cursor:"pointer",background:"#fafafa"}}>
+                  <div style={{fontSize:36,marginBottom:6}}>📷</div>
+                  <div style={{fontSize:12,color:"#888",fontWeight:600}}>카메라 촬영</div>
+                </div>
+                <div onClick={()=>{fileRef.current?.removeAttribute("capture");fileRef.current?.click();}}
+                  style={{flex:1,border:"2px dashed #d0d0d0",borderRadius:12,padding:30,textAlign:"center",cursor:"pointer",background:"#fafafa"}}>
+                  <div style={{fontSize:36,marginBottom:6}}>🖼️</div>
+                  <div style={{fontSize:12,color:"#888",fontWeight:600}}>갤러리 선택</div>
+                </div>
+              </div>}
           {imgPreview && <div style={{marginTop:8}}>
             <textarea value={input} onChange={e=>setInput(e.target.value)} placeholder="이미지와 함께 추가 텍스트 입력 (선택사항)"
               style={{width:"100%",height:60,padding:8,fontSize:12,border:"1px solid #ddd",borderRadius:6,resize:"none",fontFamily:"inherit"}}/>
