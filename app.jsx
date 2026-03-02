@@ -4872,7 +4872,7 @@ function QuickBookModal({ onClose, onParsed, data }) {
       <div style={{animation:"qb-up .25s ease"}}>
 
       {/* Header */}
-      <div style={{padding:"18px 20px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"1px solid #f0f0f0"}}>
+      <div style={{padding:"18px 20px 14px",display:"flex",alignItems:"center",justifyContent:"space-between",borderBottom:"1px solid #f0f0f0",position:"sticky",top:0,background:"#fff",zIndex:10}}>
         <span style={{fontSize:15,fontWeight:700,color:"#222",letterSpacing:-.3}}>빠른등록</span>
         <button onClick={onClose} style={{background:"#f5f5f5",border:"none",width:28,height:28,borderRadius:14,cursor:"pointer",fontSize:13,color:"#999",display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
       </div>
