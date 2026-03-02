@@ -111,7 +111,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.56.2";
+const BLISS_V = "2.56.3";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -4773,21 +4773,30 @@ function QuickBookModal({ onClose, onParsed, data }) {
 아래 텍스트(또는 이미지)에서 예약 정보를 추출해 JSON으로만 응답하세요.
 마크다운 백틱이나 설명 없이 순수 JSON만 출력하세요.
 
+[이미지 분석 시 주의사항]
+- 채팅 앱 스크린샷이면 화면 상단의 연락처/이름/전화번호를 반드시 확인하세요
+- WhatsApp, 카카오톡, iMessage, 인스타DM 등 앱 종류도 파악하세요
+- 대화 내용에서 예약 날짜, 시간, 시술 내용을 추출하세요
+- 대화에서 최종 확정된 날짜/시간을 우선 사용하세요
+- 한국어와 영어 모두 처리 가능해야 합니다
+
 추출 항목:
-- custName: 고객 이름 (없으면 "")
-- custPhone: 전화번호 (010-XXXX-XXXX 형식으로 정규화. 공육공→060이 아니라 010으로. 하이픈 포함)
-- date: 날짜 (YYYY-MM-DD 형식. "수요일"→이번주 수요일, "내일"→내일 날짜로 계산)
-- time: 시간 (HH:MM 24시간 형식. "3시반"→"15:30", "오후2시"→"14:00")
+- custName: 고객 이름 (채팅 상단 연락처명 포함. 없으면 "")
+- custPhone: 전화번호 (채팅 상단 번호 포함. 국제번호 +1, +82 등도 처리. 한국번호는 010-XXXX-XXXX 형식. 해외번호는 원본 유지. 하이픈 포함)
+- date: 날짜 (YYYY-MM-DD 형식. "March 7th"→"2026-03-07", "수요일"→이번주 수요일, "내일"→내일 날짜)
+- time: 시간 (HH:MM 24시간 형식. "1 pm"→"13:00", "3시반"→"15:30")
 - dur: 소요시간(분) (없으면 0)
-- memo: 기타 메모/시술내용 (없으면 "")
-- source: 예약경로 추정 ("카카오톡","전화","인스타","네이버" 등. 알 수 없으면 "")
+- memo: 시술내용/기타정보 ("eyebrows waxing" 등. 없으면 "")
+- source: 예약경로 (채팅앱 종류: "WhatsApp","카카오톡","인스타","전화","네이버" 등)
 - custGender: 성별 추정 ("M" or "F" or "")
 
-예시 입력: "이종호 공일공 702-800-805번 수요일 3시30분 200"
-예시 출력: {"custName":"이종호","custPhone":"010-7028-0080","date":"2026-03-04","time":"15:30","dur":0,"memo":"200","source":"","custGender":"M"}
+예시1: "이종호 공일공702-800-805번 수요일 3시30분"
+→ {"custName":"이종호","custPhone":"010-7028-0080","date":"2026-03-04","time":"15:30","dur":0,"memo":"","source":"","custGender":"M"}
 
-한글 숫자(공,일,이 등)는 아라비아 숫자로 변환하세요.
-전화번호가 부분적이면 최대한 맞춰보세요.`;
+예시2: WhatsApp 캡처에 "+1 (916) 802-8699" 상단, 대화내용 "March 7th 1pm eyebrows"
+→ {"custName":"","custPhone":"+1-916-802-8699","date":"2026-03-07","time":"13:00","dur":0,"memo":"eyebrows waxing","source":"WhatsApp","custGender":""}
+
+한글 숫자(공,일,이 등)는 아라비아 숫자로 변환하세요.`;
   };
 
   // Parse with Gemini
