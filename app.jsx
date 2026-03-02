@@ -111,7 +111,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.56.0";
+const BLISS_V = "2.56.1";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -4672,7 +4672,7 @@ function AdminAISettings() {
     if (!apiKey.trim()) { alert("API 키를 입력하세요"); return; }
     setTesting(true); setTestResult(null);
     try {
-      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey.trim()}`, {
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey.trim()}`, {
         method:"POST", headers:{"Content-Type":"application/json"},
         body:JSON.stringify({contents:[{parts:[{text:"Hello, respond with just 'OK'"}]}]})
       });
@@ -4801,7 +4801,7 @@ function QuickBookModal({ onClose, onParsed, data }) {
       if (input.trim()) parts.push({text: "입력 텍스트:\n" + input.trim()});
       if (imgData) parts.push({inlineData: {mimeType: imgData.mimeType, data: imgData.base64}});
 
-      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
         method:"POST", headers:{"Content-Type":"application/json"},
         body:JSON.stringify({contents:[{parts}], generationConfig:{temperature:0}})
       });

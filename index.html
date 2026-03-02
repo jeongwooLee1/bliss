@@ -9,7 +9,6 @@
 <style>*{margin:0;padding:0;box-sizing:border-box}body,#root{-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none;-webkit-touch-callout:none}input,textarea,select,[contenteditable]{-webkit-user-select:text;-moz-user-select:text;user-select:text}</style>
 </head><body><div id="root"></div><script type="text/babel">
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
-// React hooks provided by HTML wrapper
 // ─── Supabase Config ───
 const SB_URL = "https://dpftlrsuqxqqeouwbfjd.supabase.co";
 const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwZnRscnN1cXhxcWVvdXdiZmpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5MDU4MjQsImV4cCI6MjA4NzQ4MTgyNH0.iydEkjtPjZ0jXpUUPJben4IWWneDqLomv-HDlcFayE4";
@@ -123,7 +122,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.56.0";
+const BLISS_V = "2.56.1";
 const uid = () => Math.random().toString(36).substr(2, 9);
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -4684,7 +4683,7 @@ function AdminAISettings() {
     if (!apiKey.trim()) { alert("API 키를 입력하세요"); return; }
     setTesting(true); setTestResult(null);
     try {
-      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey.trim()}`, {
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey.trim()}`, {
         method:"POST", headers:{"Content-Type":"application/json"},
         body:JSON.stringify({contents:[{parts:[{text:"Hello, respond with just 'OK'"}]}]})
       });
@@ -4813,7 +4812,7 @@ function QuickBookModal({ onClose, onParsed, data }) {
       if (input.trim()) parts.push({text: "입력 텍스트:\n" + input.trim()});
       if (imgData) parts.push({inlineData: {mimeType: imgData.mimeType, data: imgData.base64}});
 
-      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
         method:"POST", headers:{"Content-Type":"application/json"},
         body:JSON.stringify({contents:[{parts}], generationConfig:{temperature:0}})
       });
