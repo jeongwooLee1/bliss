@@ -124,24 +124,26 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.62.0";
+const BLISS_V = "2.62.1";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
-// ─── 알림톡 발송 ───
-const sendAlimtalk = async (templateCode, phone, params) => {
+// ─── 알림톡 발송 (Supabase Edge Function 경유) ───
+const sendAlimtalk = async (templateCode, phone, params, action) => {
   try {
     const cfg = JSON.parse(localStorage.getItem("bliss_nhn_config")||"{}");
-    if(!cfg.appKey||!cfg.secretKey||!cfg.senderKey||!templateCode||!phone) return;
-    const proxyUrl = cfg.proxyUrl || `https://api-alimtalk.cloud.toast.com/alimtalk/v2.3/appkeys/${cfg.appKey}`;
-    const r = await fetch(proxyUrl+"/messages", {
-      method:"POST", headers:{"Content-Type":"application/json","X-Secret-Key":cfg.secretKey},
-      body:JSON.stringify({ senderKey:cfg.senderKey, templateCode, recipientList:[{
-        recipientNo:phone.replace(/-/g,""), templateParameter:params
-      }]})
+    if(!cfg.appKey||!cfg.secretKey||!cfg.senderKey) return null;
+    if(!action && (!templateCode||!phone)) return null;
+    const payload = { appKey:cfg.appKey, secretKey:cfg.secretKey, senderKey:cfg.senderKey, action:action||"send" };
+    if(templateCode) payload.templateCode = templateCode;
+    if(phone) payload.recipientList = [{recipientNo:phone.replace(/-/g,""), templateParameter:params||{}}];
+    const r = await fetch(SB_URL+"/functions/v1/send-alimtalk", {
+      method:"POST", headers:{"Content-Type":"application/json","Authorization":"Bearer "+SB_KEY},
+      body:JSON.stringify(payload)
     });
     const res = await r.json();
     console.log("알림톡:", res.header?.isSuccessful?"성공":"실패", res);
-  } catch(e) { console.warn("알림톡 발송 실패:", e.message); }
+    return res;
+  } catch(e) { console.warn("알림톡 발송 실패:", e.message); return null; }
 };
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -4812,24 +4814,29 @@ function AdminNotiSettings({ data, setData }) {
     if(!cfg.appKey||!cfg.secretKey||!cfg.senderKey) return alert("App Key, Secret Key, 발신 프로필 키를 모두 입력하세요");
     if(!cfg.testPhone) return alert("테스트 수신번호를 입력하세요");
     setTesting(true); setTestResult(null);
+    // 먼저 저장
+    localStorage.setItem("bliss_nhn_config", JSON.stringify(cfg));
     try {
-      const proxyUrl = cfg.proxyUrl || `https://api-alimtalk.cloud.toast.com/alimtalk/v2.3/appkeys/${cfg.appKey}`;
-      const r = await fetch(proxyUrl+"/messages", {
-        method:"POST", headers:{"Content-Type":"application/json","X-Secret-Key":cfg.secretKey},
-        body:JSON.stringify({
-          senderKey:cfg.senderKey,
-          templateCode:cfg.tplReservation||"bliss_reservation",
-          recipientList:[{recipientNo:cfg.testPhone.replace(/-/g,""),templateParameter:{
-            "#{고객명}":"테스트고객","#{날짜}":"2026-03-03","#{시간}":"14:00","#{장소}":"강남점","#{전화번호}":"02-515-5141"
-          }}]
-        })
+      const res = await sendAlimtalk(cfg.tplReservation||"bliss_reservation", cfg.testPhone, {
+        "#{고객명}":"테스트고객","#{날짜}":"2026-03-03","#{시간}":"14:00","#{장소}":"강남점","#{전화번호}":"02-515-5141"
       });
-      const res = await r.json();
-      if(res.header?.isSuccessful) setTestResult({ok:true,msg:"✅ 발송 성공!"});
-      else setTestResult({ok:false,msg:"❌ "+JSON.stringify(res.header?.resultMessage||res).slice(0,120)});
+      if(res?.header?.isSuccessful) setTestResult({ok:true,msg:"✅ 발송 성공!"});
+      else setTestResult({ok:false,msg:"❌ "+(res?.header?.resultMessage||JSON.stringify(res||"응답없음")).slice(0,120)});
     } catch(e) {
-      setTestResult({ok:false,msg:"❌ "+e.message+(e.message.includes("CORS")||e.message.includes("Failed to fetch")?" → 프록시 URL 설정이 필요합니다":"")});
+      setTestResult({ok:false,msg:"❌ "+e.message});
     }
+    setTesting(false);
+  };
+
+  const testConnection = async () => {
+    if(!cfg.appKey||!cfg.secretKey||!cfg.senderKey) return alert("App Key, Secret Key, 발신 프로필 키를 모두 입력하세요");
+    setTesting(true); setTestResult(null);
+    localStorage.setItem("bliss_nhn_config", JSON.stringify(cfg));
+    try {
+      const res = await sendAlimtalk(null, null, null, "senders");
+      if(res?.header?.isSuccessful) setTestResult({ok:true,msg:"✅ 연결 성공! 발신 프로필 "+((res.body?.data||[]).length||0)+"개 확인"});
+      else setTestResult({ok:false,msg:"❌ "+(res?.header?.resultMessage||JSON.stringify(res||"응답없음")).slice(0,120)});
+    } catch(e) { setTestResult({ok:false,msg:"❌ "+e.message}); }
     setTesting(false);
   };
 
@@ -4852,14 +4859,11 @@ function AdminNotiSettings({ data, setData }) {
           <input className="inp" type={k==="secretKey"?"password":"text"} value={cfg[k]||""} onChange={e=>up(k,e.target.value)} placeholder={ph} style={{width:"100%",padding:"7px 10px",fontSize:12}}/>
         </div>
       )}
-      <div style={{marginBottom:10}}>
-        <div style={{fontSize:11,fontWeight:600,color:"#555",marginBottom:3}}>프록시 URL <span style={{color:"#ccc",fontWeight:400}}>(선택)</span></div>
-        <input className="inp" value={cfg.proxyUrl||""} onChange={e=>up("proxyUrl",e.target.value)} placeholder="CORS 우회용. 미입력 시 NHN 직접 호출" style={{width:"100%",padding:"7px 10px",fontSize:12}}/>
-        <div style={{fontSize:9,color:"#bbb",marginTop:2}}>Supabase Edge Function 또는 Cloudflare Worker URL</div>
-      </div>
       <div style={{display:"flex",gap:8,marginTop:14}}>
         <button className="btn-p btn-sm" onClick={save} style={{padding:"8px 20px"}}>{saved?"저장됨 ✓":"저장"}</button>
+        <button className="btn-s btn-sm" onClick={testConnection} disabled={testing} style={{padding:"8px 14px",fontSize:11}}>{testing?"확인 중...":"연결 테스트"}</button>
       </div>
+      {testResult && <div style={{marginTop:8,fontSize:11,color:testResult.ok?"#22c55e":"#e57373",fontWeight:600}}>{testResult.msg}</div>}
     </div>
 
     <div className="card" style={{padding:20,maxWidth:540,marginTop:16}}>
@@ -4927,7 +4931,7 @@ function AdminNotiSettings({ data, setData }) {
         5. 위 App Key, Secret Key, 발신 프로필 키 입력<br/>
         6. 템플릿 코드 입력 후 테스트 발송<br/><br/>
         <strong>비용:</strong> 건당 약 7원 (NHN Cloud 요금제 기준)<br/>
-        <strong>CORS 이슈 시:</strong> Supabase Edge Function 또는 Cloudflare Worker를 프록시로 사용하세요.
+        <strong>API:</strong> Supabase Edge Function 경유 (CORS 자동 해결)
       </div>
     </div>
   </div>;
