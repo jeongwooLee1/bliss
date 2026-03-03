@@ -16,7 +16,7 @@ const sbHeaders = {"apikey":SB_KEY,"Authorization":`Bearer ${SB_KEY}`,"Content-T
 const _supaClient = typeof window !== "undefined" && window.supabase ? window.supabase.createClient(SB_URL, SB_KEY, {auth:{persistSession:false}, realtime:{params:{eventsPerSecond:10}, heartbeatIntervalMs:15000, timeout:20000, reconnectAfterMs:(tries)=>Math.min(1000*Math.pow(2,tries),30000)}}) : null;
 const sb = {
   async get(table, filter="") { 
-    const hasSortCol = ["services","products","service_tags","service_categories","reservation_sources"].includes(table);
+    const hasSortCol = ["services","products","service_tags","service_categories","reservation_sources","branches"].includes(table);
     const hasCreatedAt = !["rooms","services","products","service_categories","service_tags"].includes(table);
     const order = hasSortCol ? "order=sort.asc.nullsfirst" : (hasCreatedAt ? "order=created_at.asc.nullsfirst" : "order=id.asc");
     const r=await fetch(`${SB_URL}/rest/v1/${table}?select=*&${order}${filter}`,{headers:sbHeaders}); 
@@ -124,7 +124,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.63.0";
+const BLISS_V = "2.63.1";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -3924,7 +3924,7 @@ function AdminPlaces({ data, setData, bizId }) {
   };
   const applyRow = (id) => {
     const b = branches.find(x=>x.id===id);
-    if(b) sb.update("branches", id, {name:b.name, short:b.short||b.name, phone:b.phone||"", address:b.address||"", color:b.color||"#FFFFFF", use_yn:b.useYn!==false, naver_email:b.naverEmail||"", naver_biz_id:b.naverBizId||"", naver_col_count:b.naverColCount||0}).catch(console.error);
+    if(b) sb.update("branches", id, {name:b.name, short:b.short||b.name, phone:b.phone||"", address:b.address||"", color:b.color||"#FFFFFF", use_yn:b.useYn!==false, naver_email:b.naverEmail||"", naver_biz_id:b.naverBizId||"", naver_col_count:b.naverColCount||0, noti_config:b.notiConfig?JSON.stringify(b.notiConfig):"{}"}).catch(console.error);
     setEdited(prev => { const n={...prev}; delete n[id]; return n; });
   };
   const addBranch = () => {
@@ -3944,8 +3944,8 @@ function AdminPlaces({ data, setData, bizId }) {
 
   // Excel download
   const downloadExcel = () => {
-    const rows = branches.map((b,i) => ({지점명:b.name, 약칭:b.short||"", 전화:b.phone||"", 주소:b.address||"", 색상:b.color||"", 사용:b.useYn!==false?"Y":"N"}));
-    XL.download(rows, "지점목록.xlsx", "지점", ["지점명","약칭","전화","주소","색상","사용"]);
+    const rows = branches.map((b,i) => ({지점명:b.name, 약칭:b.short||"", 전화:b.phone||"", 주소:b.address||"", 색상:b.color||"", 사용:b.useYn!==false?"Y":"N", 네이버Gmail:b.naverEmail||"", 네이버BizID:b.naverBizId||"", 네이버칼럼:b.naverColCount||""}));
+    XL.download(rows, "지점목록.xlsx", "지점", ["지점명","약칭","전화","주소","색상","사용","네이버Gmail","네이버BizID","네이버칼럼"]);
   };
   // Excel upload
   const uploadExcel = (e) => {
@@ -3956,10 +3956,11 @@ function AdminPlaces({ data, setData, bizId }) {
       const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
       const newBranches = rows.map((r,i) => ({
         id:"br_"+uid(), name:r["지점명"]||r["name"]||"", short:r["약칭"]||r["short"]||"", phone:r["전화"]||r["phone"]||"",
-        address:r["주소"]||r["address"]||"", color:r["색상"]||r["color"]||"#FFFFFF", useYn:(r["사용"]||"Y")!=="N", business_id:bizId
+        address:r["주소"]||r["address"]||"", color:r["색상"]||r["color"]||"#FFFFFF", useYn:(r["사용"]||"Y")!=="N", business_id:bizId,
+        naverEmail:r["네이버Gmail"]||"", naverBizId:r["네이버BizID"]||"", naverColCount:Number(r["네이버칼럼"])||0
       }));
       if(newBranches.length && confirm(`${newBranches.length}개 지점을 추가하시겠습니까?`)) {
-        newBranches.forEach(b => sb.insert("branches", {id:b.id, business_id:bizId||_activeBizId, name:b.name, short:b.short, phone:b.phone, address:b.address, color:b.color, sort:0, use_yn:b.useYn}).catch(console.error));
+        newBranches.forEach(b => sb.insert("branches", {id:b.id, business_id:bizId||_activeBizId, name:b.name, short:b.short, phone:b.phone, address:b.address, color:b.color, sort:0, use_yn:b.useYn, naver_email:b.naverEmail, naver_biz_id:b.naverBizId, naver_col_count:b.naverColCount}).catch(console.error));
         setData(prev => ({...prev, branchSettings:[...(prev.branchSettings||[]),...newBranches], branches:[...(prev.branches||[]),...newBranches]}));
       }
     };
@@ -3972,7 +3973,8 @@ function AdminPlaces({ data, setData, bizId }) {
       const reordered = [...branches];
       const [moved] = reordered.splice(dragIdx, 1);
       reordered.splice(dragOverIdx, 0, moved);
-      setData(prev => ({...prev, branchSettings: reordered}));
+      setData(prev => ({...prev, branchSettings: reordered, branches: reordered}));
+      reordered.forEach((b,i) => sb.update("branches", b.id, {sort: i}).catch(console.error));
     }
     setDragIdx(null); setDragOverIdx(null);
   };
@@ -4002,8 +4004,8 @@ function AdminPlaces({ data, setData, bizId }) {
           <th style={{width:30}}><input type="checkbox" checked={allChecked} onChange={toggleAll}/></th>
           <th style={{width:30}}></th>
           <th style={{width:40}}>번호</th>
-          <th style={{width:100}}>지점명</th>
-          <th>주소</th>
+          <th style={{minWidth:130}}>지점명</th>
+          <th style={{minWidth:200}}>주소</th>
           <th style={{width:140}}>전화번호</th>
           <th style={{width:180}}>네이버연동 Gmail</th>
           <th style={{width:100}}>네이버 Biz ID</th>
@@ -4015,14 +4017,15 @@ function AdminPlaces({ data, setData, bizId }) {
         <tbody onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd}>
           {branches.map((b,i) => (
             <tr key={b.id}
-              draggable onDragStart={()=>setDragIdx(i)} onDragOver={e=>{e.preventDefault();setDragOverIdx(i)}} onDragEnd={handleDragEnd}
+              onDragOver={e=>{e.preventDefault();setDragOverIdx(i)}}
               onTouchStart={e=>handleTouchStart(i,e)}
               style={{
                 background: dragOverIdx===i ? "#7c7cc815" : edited[b.id] ? "rgba(167,139,250,.05)" : "transparent",
-                opacity: dragIdx===i ? 0.4 : 1, cursor:"grab", touchAction:"none"
+                opacity: dragIdx===i ? 0.4 : 1
               }}>
               <td><input type="checkbox" checked={selected.has(b.id)} onChange={()=>toggleOne(b.id)}/></td>
-              <td style={{textAlign:"center"}}><I name="grip" size={14} color="#999"/></td>
+              <td draggable onDragStart={()=>setDragIdx(i)} onDragOver={e=>{e.preventDefault();setDragOverIdx(i)}} onDragEnd={handleDragEnd}
+                style={{textAlign:"center",cursor:"grab",touchAction:"none"}}><I name="grip" size={14} color="#999"/></td>
               <td style={{color:"#888",textAlign:"center"}}>{i+1}</td>
               <td><input className="inp" value={b.name} onChange={e=>updateField(b.id,"name",e.target.value)} style={{background:"transparent",border:"1px solid #d0d0d0",fontWeight:600}}/></td>
               <td><input className="inp" value={b.address||""} onChange={e=>updateField(b.id,"address",e.target.value)} style={{background:"transparent",border:"1px solid #d0d0d0",width:"100%"}} placeholder="고객 안내용 주소"/></td>
@@ -5062,6 +5065,22 @@ function QuickBookModal({ onClose, onParsed, data }) {
     reader.readAsDataURL(file);
   };
 
+  const handlePaste = (e) => {
+    const items = e.clipboardData?.items;
+    if(!items) return;
+    for(let i=0;i<items.length;i++){
+      if(items[i].type.startsWith("image/")){
+        e.preventDefault();
+        const file = items[i].getAsFile();
+        if(!file) continue;
+        const reader = new FileReader();
+        reader.onload = (ev) => { setImgData({base64:ev.target.result.split(",")[1], mimeType:file.type}); setImgPreview(ev.target.result); };
+        reader.readAsDataURL(file);
+        break;
+      }
+    }
+  };
+
   const buildPrompt = () => {
     const today = new Date(), dow = ["일","월","화","수","목","금","토"];
     const ds = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")} (${dow[today.getDay()]})`;
@@ -5194,7 +5213,8 @@ function QuickBookModal({ onClose, onParsed, data }) {
       <div style={{display:"flex",alignItems:"flex-end",gap:4,background:"#f0f0f5",borderRadius:24,padding:"6px 6px 6px 16px"}}>
         <textarea ref={inputRef} value={input} onChange={e=>{setInput(e.target.value);e.target.style.height="auto";e.target.style.height=Math.min(e.target.scrollHeight,120)+"px";}}
           onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();handleSubmit();}}}
-          placeholder="메시지를 입력하세요..." rows={1}
+          onPaste={handlePaste}
+          placeholder="메시지를 입력하거나 이미지를 붙여넣으세요..." rows={1}
           style={{flex:1,border:"none",background:"transparent",fontSize:14,fontFamily:"inherit",color:"#333",outline:"none",resize:"none",padding:"8px 0",lineHeight:1.5,maxHeight:120}}/>
         <input ref={fileRef} type="file" accept="image/*" onChange={handleImage} style={{display:"none"}}/>
         <input ref={camRef} type="file" accept="image/*" capture="environment" onChange={handleImage} style={{display:"none"}}/>
