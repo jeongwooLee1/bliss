@@ -126,6 +126,23 @@ async function loadAllFromDb(bizId) {
 // ─── Constants ───
 const BLISS_V = "2.62.0";
 const uid = () => Math.random().toString(36).substr(2, 9);
+
+// ─── 알림톡 발송 ───
+const sendAlimtalk = async (templateCode, phone, params) => {
+  try {
+    const cfg = JSON.parse(localStorage.getItem("bliss_nhn_config")||"{}");
+    if(!cfg.appKey||!cfg.secretKey||!cfg.senderKey||!templateCode||!phone) return;
+    const proxyUrl = cfg.proxyUrl || `https://api-alimtalk.cloud.toast.com/alimtalk/v2.3/appkeys/${cfg.appKey}`;
+    const r = await fetch(proxyUrl+"/messages", {
+      method:"POST", headers:{"Content-Type":"application/json","X-Secret-Key":cfg.secretKey},
+      body:JSON.stringify({ senderKey:cfg.senderKey, templateCode, recipientList:[{
+        recipientNo:phone.replace(/-/g,""), templateParameter:params
+      }]})
+    });
+    const res = await r.json();
+    console.log("알림톡:", res.header?.isSuccessful?"성공":"실패", res);
+  } catch(e) { console.warn("알림톡 발송 실패:", e.message); }
+};
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 const todayStr = () => fmtLocal(new Date());
@@ -1216,6 +1233,19 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
     });
     // Async sync to Supabase
     setTimeout(()=>{ if(allItems.length) sb.upsert("reservations", allItems.map(i=>toDb("reservations",i))).catch(console.error); }, 0);
+    // 알림톡 자동 발송 (신규 예약 & 내부일정 아닌 경우)
+    if(!item.isSchedule && allItems.length > 0 && item.custPhone) {
+      try {
+        const nCfg = JSON.parse(localStorage.getItem("bliss_nhn_config")||"{}");
+        if(nCfg.autoReservation && nCfg.tplReservation) {
+          const branch = (data.branches||[]).find(b=>b.id===item.bid);
+          sendAlimtalk(nCfg.tplReservation, item.custPhone, {
+            "#{고객명}":item.custName||"고객", "#{날짜}":item.date||"", "#{시간}":item.time||"",
+            "#{장소}":branch?.name||"", "#{전화번호}":branch?.phone||""
+          });
+        }
+      } catch(e) { console.warn("알림톡:", e); }
+    }
     setShowModal(false); setModalData(null);
   };
 
@@ -3845,7 +3875,7 @@ function AdminPage({ data, setData, bizId }) {
   return <div>
     <h2 className="page-title">관리 설정</h2>
     <div style={{display:"flex",gap:2,marginBottom:16,background:"#e0e0e0",borderRadius:8,padding:3,width:"fit-content",flexWrap:"wrap"}}>
-      {[["places","예약장소관리"],["workers","담당자관리"],["saleitems","시술상품관리"],["prodmgmt","제품관리"],["svctags","서비스태그관리"],["ressrc","예약경로관리"],["aisettings","AI설정"]].map(([k,v])=>(
+      {[["places","예약장소관리"],["workers","담당자관리"],["saleitems","시술상품관리"],["prodmgmt","제품관리"],["svctags","서비스태그관리"],["ressrc","예약경로관리"],["notiSettings","알림톡설정"],["aisettings","AI설정"]].map(([k,v])=>(
         <button key={k} className={tab===k?"btn-p btn-sm":"btn-s btn-sm"} onClick={()=>setTab(k)}>{v}</button>
       ))}
     </div>
@@ -3855,6 +3885,7 @@ function AdminPage({ data, setData, bizId }) {
     {tab==="prodmgmt" && <AdminProductItems data={data} setData={setData}/>}
     {tab==="svctags" && <AdminServiceTags data={data} setData={setData}/>}
     {tab==="ressrc" && <AdminResSources data={data} setData={setData}/>}
+    {tab==="notiSettings" && <AdminNotiSettings data={data} setData={setData}/>}
     {tab==="aisettings" && <AdminAISettings/>}
   </div>;
 }
@@ -4758,6 +4789,146 @@ function AdminResSources({ data, setData }) {
           </div></td>
         </tr>;
       })}</tbody></table>
+    </div>
+  </div>;
+}
+
+// ─── 알림톡 설정 ───
+function AdminNotiSettings({ data, setData }) {
+  const [cfg, setCfg] = useState(()=>{
+    try { return JSON.parse(localStorage.getItem("bliss_nhn_config")||"{}"); } catch{ return {}; }
+  });
+  const [saved, setSaved] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState(null);
+
+  const up = (k,v) => setCfg(p=>({...p,[k]:v}));
+  const save = () => {
+    localStorage.setItem("bliss_nhn_config", JSON.stringify(cfg));
+    setSaved(true); setTimeout(()=>setSaved(false), 2000);
+  };
+
+  const testSend = async () => {
+    if(!cfg.appKey||!cfg.secretKey||!cfg.senderKey) return alert("App Key, Secret Key, 발신 프로필 키를 모두 입력하세요");
+    if(!cfg.testPhone) return alert("테스트 수신번호를 입력하세요");
+    setTesting(true); setTestResult(null);
+    try {
+      const proxyUrl = cfg.proxyUrl || `https://api-alimtalk.cloud.toast.com/alimtalk/v2.3/appkeys/${cfg.appKey}`;
+      const r = await fetch(proxyUrl+"/messages", {
+        method:"POST", headers:{"Content-Type":"application/json","X-Secret-Key":cfg.secretKey},
+        body:JSON.stringify({
+          senderKey:cfg.senderKey,
+          templateCode:cfg.tplReservation||"bliss_reservation",
+          recipientList:[{recipientNo:cfg.testPhone.replace(/-/g,""),templateParameter:{
+            "#{고객명}":"테스트고객","#{날짜}":"2026-03-03","#{시간}":"14:00","#{장소}":"강남점","#{전화번호}":"02-515-5141"
+          }}]
+        })
+      });
+      const res = await r.json();
+      if(res.header?.isSuccessful) setTestResult({ok:true,msg:"✅ 발송 성공!"});
+      else setTestResult({ok:false,msg:"❌ "+JSON.stringify(res.header?.resultMessage||res).slice(0,120)});
+    } catch(e) {
+      setTestResult({ok:false,msg:"❌ "+e.message+(e.message.includes("CORS")||e.message.includes("Failed to fetch")?" → 프록시 URL 설정이 필요합니다":"")});
+    }
+    setTesting(false);
+  };
+
+  return <div>
+    <AdminHeader title="알림톡 설정" count={null}/>
+
+    <div className="card" style={{padding:20,maxWidth:540}}>
+      <div style={{fontSize:13,fontWeight:700,marginBottom:12,color:"#333"}}>NHN Cloud 알림톡 API</div>
+      <div style={{fontSize:11,color:"#888",marginBottom:16,lineHeight:1.6}}>
+        예약 등록 시 고객에게 카카오 알림톡을 자동 발송합니다.<br/>
+        <a href="https://www.nhncloud.com/kr/service/notification/alimtalk" target="_blank" rel="noopener" style={{color:"#7c7cc8",fontWeight:600}}>NHN Cloud 알림톡</a>에서 서비스를 활성화하세요.
+      </div>
+      {[
+        ["appKey","App Key","NHN Cloud 콘솔 → Notification → KakaoTalk Bizmessage"],
+        ["secretKey","Secret Key","API 보안 설정에서 생성"],
+        ["senderKey","발신 프로필 키","카카오 채널 연동 후 발급"]
+      ].map(([k,label,ph])=>
+        <div key={k} style={{marginBottom:10}}>
+          <div style={{fontSize:11,fontWeight:600,color:"#555",marginBottom:3}}>{label}</div>
+          <input className="inp" type={k==="secretKey"?"password":"text"} value={cfg[k]||""} onChange={e=>up(k,e.target.value)} placeholder={ph} style={{width:"100%",padding:"7px 10px",fontSize:12}}/>
+        </div>
+      )}
+      <div style={{marginBottom:10}}>
+        <div style={{fontSize:11,fontWeight:600,color:"#555",marginBottom:3}}>프록시 URL <span style={{color:"#ccc",fontWeight:400}}>(선택)</span></div>
+        <input className="inp" value={cfg.proxyUrl||""} onChange={e=>up("proxyUrl",e.target.value)} placeholder="CORS 우회용. 미입력 시 NHN 직접 호출" style={{width:"100%",padding:"7px 10px",fontSize:12}}/>
+        <div style={{fontSize:9,color:"#bbb",marginTop:2}}>Supabase Edge Function 또는 Cloudflare Worker URL</div>
+      </div>
+      <div style={{display:"flex",gap:8,marginTop:14}}>
+        <button className="btn-p btn-sm" onClick={save} style={{padding:"8px 20px"}}>{saved?"저장됨 ✓":"저장"}</button>
+      </div>
+    </div>
+
+    <div className="card" style={{padding:20,maxWidth:540,marginTop:16}}>
+      <div style={{fontSize:13,fontWeight:700,marginBottom:12,color:"#333"}}>알림톡 템플릿 코드</div>
+      <div style={{fontSize:11,color:"#888",marginBottom:12,lineHeight:1.6}}>
+        NHN Cloud에서 검수 통과한 템플릿 코드를 입력하세요.<br/>
+        변수: {"#{고객명} #{날짜} #{시간} #{장소} #{전화번호} #{시술명}"}
+      </div>
+      {[
+        ["tplReservation","예약 확인 알림","예약 등록 시 자동 발송"],
+        ["tplReminder","시술 후 리마인더","시술 완료 후 지정 간격으로 발송"],
+        ["tplChange","예약 변경 알림","예약 수정/취소 시 발송"]
+      ].map(([k,label,desc])=>
+        <div key={k} style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
+          <div style={{width:120}}>
+            <div style={{fontSize:11,fontWeight:600,color:"#555"}}>{label}</div>
+            <div style={{fontSize:9,color:"#bbb"}}>{desc}</div>
+          </div>
+          <input className="inp" value={cfg[k]||""} onChange={e=>up(k,e.target.value)} placeholder="템플릿 코드" style={{flex:1,padding:"6px 10px",fontSize:12}}/>
+        </div>
+      )}
+      <div style={{display:"flex",gap:8,marginTop:14}}>
+        <button className="btn-p btn-sm" onClick={save} style={{padding:"8px 20px"}}>{saved?"저장됨 ✓":"저장"}</button>
+      </div>
+    </div>
+
+    <div className="card" style={{padding:20,maxWidth:540,marginTop:16}}>
+      <div style={{fontSize:13,fontWeight:700,marginBottom:12,color:"#333"}}>자동 발송 설정</div>
+      {[
+        ["autoReservation","예약 등록 시 알림톡 자동 발송"],
+        ["autoReminder","시술 완료 후 리마인더 발송"]
+      ].map(([k,label])=>
+        <label key={k} style={{display:"flex",alignItems:"center",gap:8,marginBottom:8,cursor:"pointer"}}>
+          <input type="checkbox" checked={!!cfg[k]} onChange={e=>up(k,e.target.checked)} style={{accentColor:"#7c7cc8"}}/>
+          <span style={{fontSize:12,color:"#555"}}>{label}</span>
+        </label>
+      )}
+      {cfg.autoReminder && <div style={{display:"flex",gap:8,alignItems:"center",marginTop:4,marginLeft:26}}>
+        <span style={{fontSize:11,color:"#888"}}>리마인더 간격:</span>
+        <select className="inp" value={cfg.reminderDays||7} onChange={e=>up("reminderDays",Number(e.target.value))} style={{width:80,padding:"4px 6px",fontSize:11}}>
+          {[3,5,7,14,21,28,30].map(d=><option key={d} value={d}>{d}일 후</option>)}
+        </select>
+      </div>}
+      <div style={{display:"flex",gap:8,marginTop:14}}>
+        <button className="btn-p btn-sm" onClick={save} style={{padding:"8px 20px"}}>{saved?"저장됨 ✓":"저장"}</button>
+      </div>
+    </div>
+
+    <div className="card" style={{padding:20,maxWidth:540,marginTop:16}}>
+      <div style={{fontSize:13,fontWeight:700,marginBottom:12,color:"#333"}}>발송 테스트</div>
+      <div style={{display:"flex",gap:8,alignItems:"center"}}>
+        <input className="inp" value={cfg.testPhone||""} onChange={e=>up("testPhone",e.target.value)} placeholder="010-0000-0000" style={{width:160,padding:"7px 10px",fontSize:12}}/>
+        <button className="btn-s btn-sm" onClick={testSend} disabled={testing} style={{padding:"7px 14px",fontSize:11}}>{testing?"발송 중...":"테스트 발송"}</button>
+      </div>
+      {testResult && <div style={{marginTop:8,fontSize:11,color:testResult.ok?"#22c55e":"#e57373",fontWeight:600}}>{testResult.msg}</div>}
+    </div>
+
+    <div className="card" style={{padding:20,maxWidth:540,marginTop:16}}>
+      <div style={{fontSize:13,fontWeight:700,marginBottom:8,color:"#333"}}>설정 가이드</div>
+      <div style={{fontSize:11,color:"#666",lineHeight:1.8}}>
+        1. <a href="https://www.nhncloud.com" target="_blank" rel="noopener" style={{color:"#7c7cc8"}}>NHN Cloud</a> 가입 → 프로젝트 생성<br/>
+        2. Notification → KakaoTalk Bizmessage 서비스 활성화<br/>
+        3. 카카오 채널 연동 → 발신 프로필 등록<br/>
+        4. 알림톡 템플릿 등록 (검수 1~2일 소요)<br/>
+        5. 위 App Key, Secret Key, 발신 프로필 키 입력<br/>
+        6. 템플릿 코드 입력 후 테스트 발송<br/><br/>
+        <strong>비용:</strong> 건당 약 7원 (NHN Cloud 요금제 기준)<br/>
+        <strong>CORS 이슈 시:</strong> Supabase Edge Function 또는 Cloudflare Worker를 프록시로 사용하세요.
+      </div>
     </div>
   </div>;
 }
