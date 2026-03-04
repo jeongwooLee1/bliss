@@ -1560,6 +1560,49 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
 
   return (
     <div style={{display:"flex",flexDirection:"column",flex:1,minHeight:0}}>
+      {/* Pending Reservations Alert - OUTSIDE scroll container, always visible */}
+      {(() => {
+        const pendingList = data.reservations.filter(r => r.status === "pending" && branchesToShow.some(b => b.id === r.bid));
+        if (pendingList.length === 0) return null;
+        return <div style={{background:"#FFF3E0",borderBottom:"1px solid #FFB74D",padding:"6px 12px",display:"flex",alignItems:"center",gap:8,flexShrink:0,cursor:"pointer",animation:"pendingBlink 2s infinite",width:"100%",boxSizing:"border-box"}}
+          onClick={()=>{
+            if (pendingList.length === 0) return;
+            const idx = pendingClickIdx.current % pendingList.length;
+            const target = pendingList[idx];
+            pendingClickIdx.current = idx + 1;
+            setSelDate(target.date);
+            setTimeout(()=>{
+              if(!scrollRef.current) return;
+              const [h,m] = (target.time||"10:00").split(":").map(Number);
+              const y = ((h - startHour) * 60 + m) / timeUnit * rowH;
+              const mobileOff = window.innerWidth<=768 ? 42 : 0;
+              const stickyH = topbarH + headerH;
+              const visibleH = scrollRef.current.clientHeight - stickyH;
+              scrollRef.current.scrollTo({top: Math.max(0, mobileOff + y - visibleH / 2), behavior:"smooth"});
+            }, 300);
+          }}>
+          <span style={{fontSize:18}}><I name="bell" size={18} color="#FF9800"/></span>
+          <div style={{flex:1,minWidth:0}}>
+            <span style={{fontSize:12,fontWeight:700,color:"#E65100"}}>확정대기 {pendingList.length}건</span>
+            <span style={{fontSize:11,color:"#F57C00",marginLeft:8}}>
+              {pendingList.slice(0,3).map(r => {
+                const br = allBranchList.find(b=>b.id===r.bid);
+                return `${br?.short||br?.name||""} ${r.custName||"네이버"} ${r.date.slice(5)}`;
+              }).join(" · ")}
+              {pendingList.length > 3 ? ` 외 ${pendingList.length-3}건` : ""}
+            </span>
+          </div>
+          <span style={{fontSize:11,color:"#E65100",fontWeight:600,flexShrink:0}}>확인 <I name="chevR" size={11} color="#E65100"/></span>
+          {(() => {
+            const first = pendingList[0];
+            const br = allBranchList.find(b=>b.id===first.bid);
+            const bizId = br?.naverBizId;
+            return bizId ? <a href={`https://partner.booking.naver.com/bizes/${bizId}/booking-list-view`} target="_blank" rel="noopener noreferrer"
+              onClick={e=>e.stopPropagation()}
+              style={{fontSize:11,color:"#fff",fontWeight:700,background:"#03C75A",padding:"4px 10px",borderRadius:6,textDecoration:"none",flexShrink:0,whiteSpace:"nowrap"}}>네이버 확정</a> : null;
+          })()}
+        </div>;
+      })()}
       {/* Single scroll container */}
       <div ref={scrollRef} className="timeline-scroll" style={{flex:1,overflow:"auto",minHeight:0,overscrollBehavior:"none"}}>
 
@@ -1660,54 +1703,6 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
         </div>
       </div>
 
-      {/* Pending Reservations Alert */}
-      {(() => {
-        const pendingList = data.reservations.filter(r => r.status === "pending" && branchesToShow.some(b => b.id === r.bid));
-        if (pendingList.length === 0) return null;
-        return <div style={{background:"#FFF3E0",borderBottom:"1px solid #FFB74D",padding:"6px 12px",display:"flex",alignItems:"center",gap:8,flexShrink:0,cursor:"pointer",animation:"pendingBlink 2s infinite",position:"sticky",left:0,top:topbarH,zIndex:28,width:"100vw",boxSizing:"border-box"}}
-          onClick={()=>{
-            if (pendingList.length === 0) return;
-            const idx = pendingClickIdx.current % pendingList.length;
-            const target = pendingList[idx];
-            pendingClickIdx.current = idx + 1;
-            setSelDate(target.date);
-            setTimeout(()=>{
-              if(!scrollRef.current) return;
-              const rid = target.reservationId || target.id;
-              const el = scrollRef.current.querySelector(`[data-rid="${rid}"]`);
-              if (el) {
-                el.scrollIntoView({behavior:"smooth",block:"center"});
-              } else {
-                const [h,m] = (target.time||"10:00").split(":").map(Number);
-                const y = ((h - startHour) * 60 + m) / timeUnit * rowH;
-                const gridTop = (window.innerWidth<=768?42:0) + topbarH + headerH;
-                const vpH = scrollRef.current.clientHeight;
-                scrollRef.current.scrollTo({top: Math.max(0, gridTop + y - vpH / 2), behavior:"smooth"});
-              }
-            }, 200);
-          }}>
-          <span style={{fontSize:18}}><I name="bell" size={18} color="#FF9800"/></span>
-          <div style={{flex:1,minWidth:0}}>
-            <span style={{fontSize:12,fontWeight:700,color:"#E65100"}}>확정대기 {pendingList.length}건</span>
-            <span style={{fontSize:11,color:"#F57C00",marginLeft:8}}>
-              {pendingList.slice(0,3).map(r => {
-                const br = allBranchList.find(b=>b.id===r.bid);
-                return `${br?.short||br?.name||""} ${r.custName||"네이버"} ${r.date.slice(5)}`;
-              }).join(" · ")}
-              {pendingList.length > 3 ? ` 외 ${pendingList.length-3}건` : ""}
-            </span>
-          </div>
-          <span style={{fontSize:11,color:"#E65100",fontWeight:600,flexShrink:0}}>확인 <I name="chevR" size={11} color="#E65100"/></span>
-          {(() => {
-            const first = pendingList[0];
-            const br = allBranchList.find(b=>b.id===first.bid);
-            const bizId = br?.naverBizId;
-            return bizId ? <a href={`https://partner.booking.naver.com/bizes/${bizId}/booking-list-view`} target="_blank" rel="noopener noreferrer"
-              onClick={e=>e.stopPropagation()}
-              style={{fontSize:11,color:"#fff",fontWeight:700,background:"#03C75A",padding:"4px 10px",borderRadius:6,textDecoration:"none",flexShrink:0,whiteSpace:"nowrap"}}>네이버 확정</a> : null;
-          })()}
-        </div>;
-      })()}
 
 
 
