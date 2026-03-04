@@ -3265,24 +3265,61 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
 function ReservationList({ data, setData, userBranches, isMaster }) {
   const [selDate, setSelDate] = useState(todayStr());
   const [vb, setVb] = useState("all");
-  const res = data.reservations.filter(r => r.date===selDate && r.type==="reservation" && ((vb==="all"?userBranches.includes(r.bid):r.bid===vb))).sort((a,b)=>a.time.localeCompare(b.time));
+  const [q, setQ] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [searchAll, setSearchAll] = useState(false);
+  const res = data.reservations.filter(r => {
+    if (r.type !== "reservation") return false;
+    if (!searchAll && r.date !== selDate) return false;
+    if (!(vb==="all" ? userBranches.includes(r.bid) : r.bid===vb)) return false;
+    if (statusFilter !== "all" && r.status !== statusFilter) return false;
+    if (q) {
+      const sq = q.toLowerCase();
+      const svc = (data.services||[]).find(s=>s.id===r.serviceId);
+      const staff = (data.staff||[]).find(s=>s.id===r.staffId);
+      return (r.custName||"").toLowerCase().includes(sq) ||
+             (r.custPhone||"").includes(sq) ||
+             (svc?.name||"").toLowerCase().includes(sq) ||
+             (staff?.dn||"").toLowerCase().includes(sq);
+    }
+    return true;
+  }).sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time));
   const changeDate = (off) => { const d = new Date(selDate); d.setDate(d.getDate()+off); setSelDate(fmtLocal(d)); };
   const updateStatus = (id, status) => { setData(prev=>({...prev,reservations:prev.reservations.map(r=>r.id===id?{...r,status}:r)})); sb.update("reservations",id,{status}).catch(console.error); };
   const deleteRes = (id) => setData(prev=>({...prev,reservations:prev.reservations.filter(r=>r.id!==id)}));
 
   return <div>
     <h2 className="page-title">예약 목록</h2>
-    <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap",alignItems:"center"}}>
+    <div style={{display:"flex",gap:10,marginBottom:10,flexWrap:"wrap",alignItems:"center"}}>
       <div style={{display:"flex",alignItems:"center",gap:4}}>
-        <button className="btn-s btn-sm" onClick={()=>changeDate(-1)}><I name="chevL" size={14}/></button>
-        <input type="date" className="inp" style={{maxWidth:150,width:"auto"}} value={selDate} onChange={e=>setSelDate(e.target.value)}/>
-        <button className="btn-s btn-sm" onClick={()=>changeDate(1)}><I name="chevR" size={14}/></button>
+        <button className="btn-s btn-sm" onClick={()=>changeDate(-1)} disabled={searchAll}><I name="chevL" size={14}/></button>
+        <input type="date" className="inp" style={{maxWidth:150,width:"auto"}} value={selDate} onChange={e=>setSelDate(e.target.value)} disabled={searchAll}/>
+        <button className="btn-s btn-sm" onClick={()=>changeDate(1)} disabled={searchAll}><I name="chevR" size={14}/></button>
       </div>
-      <button className="btn-s btn-sm" onClick={()=>setSelDate(todayStr())}>오늘</button>
-      {<select className="inp" style={{maxWidth:140,width:"auto"}} value={vb} onChange={e=>setVb(e.target.value)}>
+      <button className="btn-s btn-sm" onClick={()=>setSelDate(todayStr())} disabled={searchAll}>오늘</button>
+      <select className="inp" style={{maxWidth:140,width:"auto"}} value={vb} onChange={e=>setVb(e.target.value)}>
         <option value="all">전체 매장</option>
         {(data.branches||[]).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
-      </select>}
+      </select>
+      <select className="inp" style={{maxWidth:110,width:"auto"}} value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}>
+        <option value="all">전체 상태</option>
+        <option value="pending">대기</option>
+        <option value="confirmed">확정</option>
+        <option value="completed">완료</option>
+        <option value="cancelled">취소</option>
+        <option value="noshow">노쇼</option>
+      </select>
+    </div>
+    <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap",alignItems:"center"}}>
+      <div style={{position:"relative",flex:1,minWidth:180}}>
+        <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:"#999",fontSize:14}}><I name="search" size={14}/></span>
+        <input className="inp" style={{paddingLeft:32}} placeholder="고객명, 연락처, 시술, 시술자 검색..." value={q} onChange={e=>{setQ(e.target.value); if(e.target.value) setSearchAll(true); else setSearchAll(false);}}/>
+        {q && <button onClick={()=>{setQ("");setSearchAll(false);}} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",color:"#999",fontSize:16}}>×</button>}
+      </div>
+      <label style={{display:"flex",alignItems:"center",gap:5,fontSize:12,color:"#666",cursor:"pointer",whiteSpace:"nowrap"}}>
+        <input type="checkbox" checked={searchAll} onChange={e=>setSearchAll(e.target.checked)} style={{cursor:"pointer"}}/>
+        전체 기간
+      </label>
       <span style={{fontSize:13,color:"#888"}}>총 {res.length}건</span>
     </div>
     <div className="card tw">
@@ -3325,13 +3362,23 @@ function SalesPage({ data, setData, userBranches, isMaster }) {
   const [vb, setVb] = useState("all");
   const [tab, setTab] = useState("daily");
   const [showModal, setShowModal] = useState(false);
-  const [editSale, setEditSale] = useState(null); // sale being edited
-  
+  const [editSale, setEditSale] = useState(null);
+  const [q, setQ] = useState("");
+
   const sales = data.sales.filter(s => {
     const brMatch = (vb==="all"?userBranches.includes(s.bid):s.bid===vb);
-    if (tab==="daily") return s.date===selDate && brMatch;
-    if (tab==="prev") { const d=new Date(selDate);d.setDate(d.getDate()-1); return s.date===fmtLocal(d) && brMatch; }
-    return brMatch;
+    if (!brMatch) return false;
+    if (q) {
+      const sq = q.toLowerCase();
+      return (s.custName||"").toLowerCase().includes(sq) ||
+             (s.custPhone||"").includes(sq) ||
+             (s.staffName||"").toLowerCase().includes(sq) ||
+             (s.custNum||"").includes(sq) ||
+             (s.memo||"").toLowerCase().includes(sq);
+    }
+    if (tab==="daily") return s.date===selDate;
+    if (tab==="prev") { const d=new Date(selDate);d.setDate(d.getDate()-1); return s.date===fmtLocal(d); }
+    return true;
   });
 
   const totals = sales.reduce((a,s)=>({
@@ -3363,17 +3410,25 @@ function SalesPage({ data, setData, userBranches, isMaster }) {
       ))}
     </div>
     {/* Filters */}
-    <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap",alignItems:"center"}}>
-      {tab!=="all"&&<div style={{display:"flex",alignItems:"center",gap:4}}>
+    <div style={{display:"flex",gap:10,marginBottom:10,flexWrap:"wrap",alignItems:"center"}}>
+      {tab!=="all"&&!q&&<div style={{display:"flex",alignItems:"center",gap:4}}>
         <button className="btn-s btn-sm" onClick={()=>changeDate(-1)}><I name="chevL" size={14}/></button>
         <input type="date" className="inp" style={{maxWidth:150,width:"auto"}} value={selDate} onChange={e=>setSelDate(e.target.value)}/>
         <button className="btn-s btn-sm" onClick={()=>changeDate(1)}><I name="chevR" size={14}/></button>
         <button className="btn-s btn-sm" onClick={()=>setSelDate(todayStr())}>오늘</button>
       </div>}
-      {<select className="inp" style={{maxWidth:140,width:"auto"}} value={vb} onChange={e=>setVb(e.target.value)}>
+      <select className="inp" style={{maxWidth:140,width:"auto"}} value={vb} onChange={e=>setVb(e.target.value)}>
         <option value="all">전체 매장</option>
         {(data.branches||[]).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
-      </select>}
+      </select>
+    </div>
+    <div style={{display:"flex",gap:8,marginBottom:14,alignItems:"center"}}>
+      <div style={{position:"relative",flex:1,minWidth:180}}>
+        <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:"#999",fontSize:14}}><I name="search" size={14}/></span>
+        <input className="inp" style={{paddingLeft:32}} placeholder="고객명, 연락처, 매니저, 고객번호, 메모 검색..." value={q} onChange={e=>setQ(e.target.value)}/>
+        {q && <button onClick={()=>setQ("")} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",color:"#999",fontSize:16}}>×</button>}
+      </div>
+      <span style={{fontSize:12,color:"#888",whiteSpace:"nowrap"}}>{sales.length}건</span>
     </div>
     {/* Sales Table - like existing admin */}
     <div className="card tw">
@@ -3608,7 +3663,7 @@ function CustomersPage({ data, setData, userBranches, isMaster }) {
 
   const custs = data.customers.filter(c => {
     const bm = (vb==="all"?userBranches.includes(c.bid):c.bid===vb);
-    const sm = !q||c.name.includes(q)||c.phone.includes(q);
+    const sm = !q||c.name.includes(q)||c.phone.includes(q)||(c.memo||"").includes(q);
     return bm&&sm;
   }).sort((a,b)=>b.visits-a.visits);
 
@@ -3632,7 +3687,7 @@ function CustomersPage({ data, setData, userBranches, isMaster }) {
     <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap",alignItems:"center"}}>
       <div style={{position:"relative",flex:1,minWidth:180}}>
         <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:"#999",fontSize:14}}><I name="search" size={14} color="#999"/></span>
-        <input className="inp" style={{paddingLeft:32}} placeholder="이름 또는 전화번호 검색..." value={q} onChange={e=>setQ(e.target.value)}/>
+        <input className="inp" style={{paddingLeft:32}} placeholder="이름, 전화번호, 메모 검색..." value={q} onChange={e=>setQ(e.target.value)}/>
       </div>
       {<select className="inp" style={{maxWidth:140,width:"auto"}} value={vb} onChange={e=>setVb(e.target.value)}>
         <option value="all">전체 매장</option>{(data.branches||[]).filter(b=>userBranches.includes(b.id)).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
