@@ -124,7 +124,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.63.1";
+const BLISS_V = "2.63.2";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -848,7 +848,7 @@ function Login({ users, onLogin }) {
           <div style={{fontSize:10,color:"#bbb",textAlign:"center",marginTop:4}}>
             슈퍼관리자: admin / 1234 · 업체대표: master / 1234
           </div>
-          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v{BLISS_V}</div>
+          <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v{BLISS_V}</div><div style={{fontSize:20,color:"#ff0000",textAlign:"center",fontWeight:900,marginTop:4}}>v{BLISS_V}</div>
         </div>
       </div>
     </div>
@@ -888,7 +888,7 @@ function Sidebar({ nav, page, setPage, role, branchNames, onLogout, bizName="", 
     <div style={{padding:12,borderTop:"1px solid #e0e0e0",display:"flex",flexDirection:"column",gap:6}}>
       {isSuper && <button onClick={onBackToSuper} style={{width:"100%",padding:"8px 14px",borderRadius:4,border:"1px solid #7c7cc8",background:"#7c7cc810",color:"#7c7cc8",cursor:"pointer",fontSize:12,fontWeight:600,fontFamily:"inherit",textAlign:"center"}}><I name="arrowL" size={14}/> 관리자 대시보드</button>}
       <button onClick={onLogout} style={{width:"100%",padding:"8px 14px",borderRadius:4,border:"1px solid #d0d0d0",background:"#fff",color:"#888",cursor:"pointer",fontSize:12,fontWeight:600,fontFamily:"inherit",textAlign:"center"}}>로그아웃</button>
-      <div style={{fontSize:9,color:"#ccc",textAlign:"center",marginTop:2}}>v{BLISS_V}</div>
+      <div style={{fontSize:9,color:"#ccc",textAlign:"center",marginTop:2}}>v{BLISS_V}</div><div style={{fontSize:20,color:"#ff0000",textAlign:"center",fontWeight:900,marginTop:4}}>v{BLISS_V}</div>
     </div>
   </>;
 }
@@ -965,6 +965,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   const [showBranchPicker, setShowBranchPicker] = useState(false);
   const scrollRef = useRef(null);
   const topbarRef = useRef(null);
+  const pendingClickIdx = useRef(0);
   const [topbarH, setTopbarH] = useState(80);
 
   // Branch view: 편집가능(userBranches) + 열람가능(viewBranches)
@@ -1570,6 +1571,60 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
 
   return (
     <div style={{display:"flex",flexDirection:"column",flex:1,minHeight:0}}>
+      {/* Pending Reservations Alert - OUTSIDE scroll, always visible */}
+      {(() => {
+        const pendingList = data.reservations.filter(r => r.status === "pending" && branchesToShow.some(b => b.id === r.bid));
+        if (pendingList.length === 0) return null;
+        return <div style={{background:"#FFF3E0",borderBottom:"1px solid #FFB74D",padding:"6px 12px",display:"flex",alignItems:"center",gap:8,flexShrink:0,cursor:"pointer",animation:"pendingBlink 2s infinite",width:"100%",boxSizing:"border-box"}}
+          onClick={()=>{
+            if (pendingList.length === 0) return;
+            const tryScroll = (attempt) => {
+              if (attempt >= pendingList.length) return;
+              const idx = (pendingClickIdx.current + attempt) % pendingList.length;
+              const target = pendingList[idx];
+              setSelDate(target.date);
+              setTimeout(()=>{
+                if(!scrollRef.current) return;
+                const rid = target.reservationId || target.id;
+                const el = scrollRef.current.querySelector(`[data-rid="${rid}"]`);
+                if (el) {
+                  pendingClickIdx.current = idx + 1;
+                  const rect = el.getBoundingClientRect();
+                  const sr = scrollRef.current;
+                  const srRect = sr.getBoundingClientRect();
+                  const elTop = rect.top - srRect.top + sr.scrollTop;
+                  const stickyH = topbarH + headerH;
+                  const visibleH = sr.clientHeight - stickyH;
+                  sr.scrollTo({top: Math.max(0, elTop - stickyH - visibleH / 2 + rect.height / 2), behavior:"smooth"});
+                } else {
+                  tryScroll(attempt + 1);
+                }
+              }, 400);
+            };
+            tryScroll(0);
+          }}>
+          <span style={{fontSize:18}}><I name="bell" size={18} color="#FF9800"/></span>
+          <div style={{flex:1,minWidth:0}}>
+            <span style={{fontSize:12,fontWeight:700,color:"#E65100"}}>확정대기 {pendingList.length}건</span>
+            <span style={{fontSize:11,color:"#F57C00",marginLeft:8}}>
+              {pendingList.slice(0,3).map(r => {
+                const br = allBranchList.find(b=>b.id===r.bid);
+                return `${br?.short||br?.name||""} ${r.custName||"네이버"} ${r.date.slice(5)}`;
+              }).join(" · ")}
+              {pendingList.length > 3 ? ` 외 ${pendingList.length-3}건` : ""}
+            </span>
+          </div>
+          <span style={{fontSize:11,color:"#E65100",fontWeight:600,flexShrink:0}}>확인 <I name="chevR" size={11} color="#E65100"/></span>
+          {(() => {
+            const first = pendingList[0];
+            const br = allBranchList.find(b=>b.id===first.bid);
+            const bizId = br?.naverBizId;
+            return bizId ? <a href={`https://partner.booking.naver.com/bizes/${bizId}/booking-list-view`} target="_blank" rel="noopener noreferrer"
+              onClick={e=>e.stopPropagation()}
+              style={{fontSize:11,color:"#fff",fontWeight:700,background:"#03C75A",padding:"4px 10px",borderRadius:6,textDecoration:"none",flexShrink:0,whiteSpace:"nowrap"}}>네이버 확정</a> : null;
+          })()}
+        </div>;
+      })()}
       {/* Single scroll container */}
       <div ref={scrollRef} className="timeline-scroll" style={{flex:1,overflow:"auto",minHeight:0,overscrollBehavior:"none"}}>
 
@@ -1669,45 +1724,6 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
           })}
         </div>
       </div>
-
-      {/* Pending Reservations Alert */}
-      {(() => {
-        const pendingList = data.reservations.filter(r => r.status === "pending" && branchesToShow.some(b => b.id === r.bid));
-        if (pendingList.length === 0) return null;
-        return <div style={{background:"#FFF3E0",borderBottom:"1px solid #FFB74D",padding:"6px 12px",display:"flex",alignItems:"center",gap:8,flexShrink:0,cursor:"pointer",animation:"pendingBlink 2s infinite",position:"sticky",left:0,width:"100vw",boxSizing:"border-box"}}
-          onClick={()=>{
-            const first = pendingList[0];
-            setSelDate(first.date);
-            setTimeout(()=>{
-              if(!scrollRef.current) return;
-              const [h,m] = (first.time||"10:00").split(":").map(Number);
-              const y = ((h - startHour) * 60 + m) / timeUnit * rowH;
-              const gridTop = (window.innerWidth<=768?42:0) + topbarH + headerH;
-              scrollRef.current.scrollTo({top: Math.max(0, gridTop + y - 60), behavior:"smooth"});
-            }, 100);
-          }}>
-          <span style={{fontSize:18}}><I name="bell" size={18} color="#FF9800"/></span>
-          <div style={{flex:1,minWidth:0}}>
-            <span style={{fontSize:12,fontWeight:700,color:"#E65100"}}>확정대기 {pendingList.length}건</span>
-            <span style={{fontSize:11,color:"#F57C00",marginLeft:8}}>
-              {pendingList.slice(0,3).map(r => {
-                const br = allBranchList.find(b=>b.id===r.bid);
-                return `${br?.short||br?.name||""} ${r.custName||"네이버"} ${r.date.slice(5)}`;
-              }).join(" · ")}
-              {pendingList.length > 3 ? ` 외 ${pendingList.length-3}건` : ""}
-            </span>
-          </div>
-          <span style={{fontSize:11,color:"#E65100",fontWeight:600,flexShrink:0}}>확인 <I name="chevR" size={11} color="#E65100"/></span>
-          {(() => {
-            const first = pendingList[0];
-            const br = allBranchList.find(b=>b.id===first.bid);
-            const bizId = br?.naverBizId;
-            return bizId ? <a href={`https://partner.booking.naver.com/bizes/${bizId}/booking-list-view`} target="_blank" rel="noopener noreferrer"
-              onClick={e=>e.stopPropagation()}
-              style={{fontSize:11,color:"#fff",fontWeight:700,background:"#03C75A",padding:"4px 10px",borderRadius:6,textDecoration:"none",flexShrink:0,whiteSpace:"nowrap"}}>네이버 확정</a> : null;
-          })()}
-        </div>;
-      })()}
 
 
 
@@ -1853,7 +1869,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                     const opHex = (pct) => Math.round(pct * 2.55).toString(16).padStart(2,"0");
                     const bgAlpha = isSch ? opHex(Math.min(blockOp, 80)) : opHex(blockOp);
                     return (
-                      <div key={block.id}
+                      <div key={block.id} data-rid={block.reservationId||block.id}
                         onClick={e=>handleBlockClick(block,e)}
                         onMouseDown={e=>{if(isEditable && !isResizing.current)handleDragStart(block,e)}}
                         onTouchStart={e=>{if(isEditable && !isResizing.current)handleDragStart(block,e)}}
