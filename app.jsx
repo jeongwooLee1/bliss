@@ -113,7 +113,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.63.1";
+const BLISS_V = "2.63.2";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -838,6 +838,7 @@ function Login({ users, onLogin }) {
             슈퍼관리자: admin / 1234 · 업체대표: master / 1234
           </div>
           <div style={{fontSize:9,color:"#d0d0d0",textAlign:"center",marginTop:8}}>v{BLISS_V}</div>
+          <div style={{fontSize:20,color:"#ff0000",textAlign:"center",fontWeight:900,marginTop:4}}>v{BLISS_V}</div>
         </div>
       </div>
     </div>
@@ -878,6 +879,7 @@ function Sidebar({ nav, page, setPage, role, branchNames, onLogout, bizName="", 
       {isSuper && <button onClick={onBackToSuper} style={{width:"100%",padding:"8px 14px",borderRadius:4,border:"1px solid #7c7cc8",background:"#7c7cc810",color:"#7c7cc8",cursor:"pointer",fontSize:12,fontWeight:600,fontFamily:"inherit",textAlign:"center"}}><I name="arrowL" size={14}/> 관리자 대시보드</button>}
       <button onClick={onLogout} style={{width:"100%",padding:"8px 14px",borderRadius:4,border:"1px solid #d0d0d0",background:"#fff",color:"#888",cursor:"pointer",fontSize:12,fontWeight:600,fontFamily:"inherit",textAlign:"center"}}>로그아웃</button>
       <div style={{fontSize:9,color:"#ccc",textAlign:"center",marginTop:2}}>v{BLISS_V}</div>
+      <div style={{fontSize:20,color:"#ff0000",textAlign:"center",fontWeight:900,marginTop:4}}>v{BLISS_V}</div>
     </div>
   </>;
 }
