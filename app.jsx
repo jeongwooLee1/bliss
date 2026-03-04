@@ -1567,19 +1567,30 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
         return <div style={{background:"#FFF3E0",borderBottom:"1px solid #FFB74D",padding:"6px 12px",display:"flex",alignItems:"center",gap:8,flexShrink:0,cursor:"pointer",animation:"pendingBlink 2s infinite",width:"100%",boxSizing:"border-box"}}
           onClick={()=>{
             if (pendingList.length === 0) return;
-            const idx = pendingClickIdx.current % pendingList.length;
-            const target = pendingList[idx];
-            pendingClickIdx.current = idx + 1;
-            setSelDate(target.date);
-            setTimeout(()=>{
-              if(!scrollRef.current) return;
-              const [h,m] = (target.time||"10:00").split(":").map(Number);
-              const y = ((h - startHour) * 60 + m) / timeUnit * rowH;
-              const mobileOff = window.innerWidth<=768 ? 42 : 0;
-              const stickyH = topbarH + headerH;
-              const visibleH = scrollRef.current.clientHeight - stickyH;
-              scrollRef.current.scrollTo({top: Math.max(0, mobileOff + y - visibleH / 2), behavior:"smooth"});
-            }, 300);
+            const tryScroll = (attempt) => {
+              if (attempt >= pendingList.length) return;
+              const idx = (pendingClickIdx.current + attempt) % pendingList.length;
+              const target = pendingList[idx];
+              setSelDate(target.date);
+              setTimeout(()=>{
+                if(!scrollRef.current) return;
+                const rid = target.reservationId || target.id;
+                const el = scrollRef.current.querySelector(`[data-rid="${rid}"]`);
+                if (el) {
+                  pendingClickIdx.current = idx + 1;
+                  const rect = el.getBoundingClientRect();
+                  const sr = scrollRef.current;
+                  const srRect = sr.getBoundingClientRect();
+                  const elTop = rect.top - srRect.top + sr.scrollTop;
+                  const stickyH = topbarH + headerH;
+                  const visibleH = sr.clientHeight - stickyH;
+                  sr.scrollTo({top: Math.max(0, elTop - stickyH - visibleH / 2 + rect.height / 2), behavior:"smooth"});
+                } else {
+                  tryScroll(attempt + 1);
+                }
+              }, 400);
+            };
+            tryScroll(0);
           }}>
           <span style={{fontSize:18}}><I name="bell" size={18} color="#FF9800"/></span>
           <div style={{flex:1,minWidth:0}}>
