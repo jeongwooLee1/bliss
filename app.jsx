@@ -1664,7 +1664,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       {(() => {
         const pendingList = data.reservations.filter(r => r.status === "pending" && branchesToShow.some(b => b.id === r.bid));
         if (pendingList.length === 0) return null;
-        return <div style={{background:"#FFF3E0",borderBottom:"1px solid #FFB74D",padding:"6px 12px",display:"flex",alignItems:"center",gap:8,flexShrink:0,cursor:"pointer",animation:"pendingBlink 2s infinite",position:"sticky",left:0,width:"100vw",boxSizing:"border-box"}}
+        return <div style={{background:"#FFF3E0",borderBottom:"1px solid #FFB74D",padding:"6px 12px",display:"flex",alignItems:"center",gap:8,flexShrink:0,cursor:"pointer",animation:"pendingBlink 2s infinite",position:"sticky",left:0,top:topbarH,zIndex:28,width:"100vw",boxSizing:"border-box"}}
           onClick={()=>{
             if (pendingList.length === 0) return;
             const idx = pendingClickIdx.current % pendingList.length;
@@ -1673,12 +1673,18 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
             setSelDate(target.date);
             setTimeout(()=>{
               if(!scrollRef.current) return;
-              const [h,m] = (target.time||"10:00").split(":").map(Number);
-              const y = ((h - startHour) * 60 + m) / timeUnit * rowH;
-              const gridTop = (window.innerWidth<=768?42:0) + topbarH + headerH;
-              const vpH = scrollRef.current.clientHeight;
-              scrollRef.current.scrollTo({top: Math.max(0, gridTop + y - vpH / 2), behavior:"smooth"});
-            }, 100);
+              const rid = target.reservationId || target.id;
+              const el = scrollRef.current.querySelector(`[data-rid="${rid}"]`);
+              if (el) {
+                el.scrollIntoView({behavior:"smooth",block:"center"});
+              } else {
+                const [h,m] = (target.time||"10:00").split(":").map(Number);
+                const y = ((h - startHour) * 60 + m) / timeUnit * rowH;
+                const gridTop = (window.innerWidth<=768?42:0) + topbarH + headerH;
+                const vpH = scrollRef.current.clientHeight;
+                scrollRef.current.scrollTo({top: Math.max(0, gridTop + y - vpH / 2), behavior:"smooth"});
+              }
+            }, 200);
           }}>
           <span style={{fontSize:18}}><I name="bell" size={18} color="#FF9800"/></span>
           <div style={{flex:1,minWidth:0}}>
@@ -1847,7 +1853,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                     const opHex = (pct) => Math.round(pct * 2.55).toString(16).padStart(2,"0");
                     const bgAlpha = isSch ? opHex(Math.min(blockOp, 80)) : opHex(blockOp);
                     return (
-                      <div key={block.id}
+                      <div key={block.id} data-rid={block.reservationId||block.id}
                         onClick={e=>handleBlockClick(block,e)}
                         onMouseDown={e=>{if(isEditable && !isResizing.current)handleDragStart(block,e)}}
                         onTouchStart={e=>{if(isEditable && !isResizing.current)handleDragStart(block,e)}}
