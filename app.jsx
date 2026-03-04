@@ -954,6 +954,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   const [showBranchPicker, setShowBranchPicker] = useState(false);
   const scrollRef = useRef(null);
   const topbarRef = useRef(null);
+  const pendingClickIdx = useRef(0);
   const [topbarH, setTopbarH] = useState(80);
 
   // Branch view: 편집가능(userBranches) + 열람가능(viewBranches)
@@ -1665,14 +1666,18 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
         if (pendingList.length === 0) return null;
         return <div style={{background:"#FFF3E0",borderBottom:"1px solid #FFB74D",padding:"6px 12px",display:"flex",alignItems:"center",gap:8,flexShrink:0,cursor:"pointer",animation:"pendingBlink 2s infinite",position:"sticky",left:0,width:"100vw",boxSizing:"border-box"}}
           onClick={()=>{
-            const first = pendingList[0];
-            setSelDate(first.date);
+            if (pendingList.length === 0) return;
+            const idx = pendingClickIdx.current % pendingList.length;
+            const target = pendingList[idx];
+            pendingClickIdx.current = idx + 1;
+            setSelDate(target.date);
             setTimeout(()=>{
               if(!scrollRef.current) return;
-              const [h,m] = (first.time||"10:00").split(":").map(Number);
+              const [h,m] = (target.time||"10:00").split(":").map(Number);
               const y = ((h - startHour) * 60 + m) / timeUnit * rowH;
               const gridTop = (window.innerWidth<=768?42:0) + topbarH + headerH;
-              scrollRef.current.scrollTo({top: Math.max(0, gridTop + y - 60), behavior:"smooth"});
+              const vpH = scrollRef.current.clientHeight;
+              scrollRef.current.scrollTo({top: Math.max(0, gridTop + y - vpH / 2), behavior:"smooth"});
             }, 100);
           }}>
           <span style={{fontSize:18}}><I name="bell" size={18} color="#FF9800"/></span>
@@ -5551,4 +5556,3 @@ const CSS = `
 `;
 
 ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
-
