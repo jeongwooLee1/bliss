@@ -124,7 +124,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.63.2";
+const BLISS_V = "2.63.3";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -1561,6 +1561,16 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   // Current time line (updates every minute)
   const [nowTick, setNowTick] = useState(Date.now());
   useEffect(() => { const t = setInterval(() => setNowTick(Date.now()), 60000); return () => clearInterval(t); }, []);
+  // Auto-fix: memo에 "확정완료"가 있는데 status가 pending인 예약 자동 confirmed 처리
+  useEffect(() => {
+    if (!data?.reservations) return;
+    const mismatched = data.reservations.filter(r => r.status === "pending" && r.memo && r.memo.includes("확정완료"));
+    if (mismatched.length === 0) return;
+    mismatched.forEach(r => {
+      sb.update("reservations", r.id, {status: "confirmed"}).then(() => console.log(`Auto-confirmed: ${r.id} (memo has 확정완료)`));
+    });
+    setData(prev => ({...prev, reservations: prev.reservations.map(r => mismatched.some(m => m.id === r.id) ? {...r, status: "confirmed"} : r)}));
+  }, [data?.reservations?.filter(r => r.status === "pending").length]);
   const now = new Date(nowTick);
   const nowY = (selDate === todayStr() && now.getHours() >= startHour && now.getHours() < endHour) ? timeToY(`${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`) : -1;
 
@@ -1573,7 +1583,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
     <div style={{display:"flex",flexDirection:"column",flex:1,minHeight:0}}>
       {/* Pending Reservations Alert - OUTSIDE scroll, always visible */}
       {(() => {
-        const pendingList = data.reservations.filter(r => r.status === "pending" && branchesToShow.some(b => b.id === r.bid));
+        const pendingList = data.reservations.filter(r => r.status === "pending" && branchesToShow.some(b => b.id === r.bid) && !(r.memo && r.memo.includes("확정완료")));
         if (pendingList.length === 0) return null;
         return <div style={{background:"#FFF3E0",borderBottom:"1px solid #FFB74D",padding:"6px 12px",display:"flex",alignItems:"center",gap:8,flexShrink:0,cursor:"pointer",animation:"pendingBlink 2s infinite",width:"100%",boxSizing:"border-box"}}
           onClick={()=>{
@@ -1859,7 +1869,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                       : "";
                     // 네이버 취소/대기 상태 처리
                     const isNaverCancelled = block.status === "naver_cancelled";
-                    const isNaverPending = block.status === "pending";
+                    const isNaverPending = block.status === "pending" && !(block.memo && block.memo.includes("확정완료"));
                     const stClr = block.type==="reservation" && !block.isSchedule && statusClr[block.status];
                     const color = isNaverCancelled ? "#E6A700" : (stClr || tagColor || BLOCK_COLORS[block.type] || "#7c7cc8");
                     const staff = (data.staff||[]).find(s=>s.id===block.staffId);
@@ -2395,7 +2405,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
             <span style={{fontSize:13,fontWeight:700,color:"#E6A700"}}>네이버 취소 예약</span>
             {f.reservationId && <span style={{fontSize:11,color:"#999",marginLeft:"auto"}}>#{f.reservationId}</span>}
           </div>}
-          {f.status === "pending" && <div style={{background:"#FFF3E0",border:"1.5px solid #FF9800",borderRadius:6,padding:"8px 12px",marginBottom:12,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",animation:"naverBlink 1.5s infinite"}}>
+          {f.status === "pending" && !(f.memo && f.memo.includes("확정완료")) && <div style={{background:"#FFF3E0",border:"1.5px solid #FF9800",borderRadius:6,padding:"8px 12px",marginBottom:12,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",animation:"naverBlink 1.5s infinite"}}>
             <span style={{fontSize:16}}><I name="bell" size={16} color="#E65100"/></span>
             <span style={{fontSize:13,fontWeight:700,color:"#E65100"}}>네이버 확정대기</span>
             <div style={{marginLeft:"auto",display:"flex",gap:6}}>
