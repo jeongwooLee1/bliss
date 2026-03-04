@@ -124,7 +124,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.63.6";
+const BLISS_V = "2.63.7";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -1649,13 +1649,13 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
         {/* Row 1: Date nav + settings + branch */}
         <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0,flexWrap:"wrap",maxWidth:"100%"}}>
           <button onClick={()=>changeDate(-1)} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#666",padding:"2px 4px",flexShrink:0}}><I name="chevL" size={14}/></button>
-          <span className="tl-date-label" style={{fontSize:13,fontWeight:700,color:"#333",flexShrink:0,whiteSpace:"nowrap"}}>{dateLabel}</span>
+          <span className="tl-date-label" onClick={()=>setShowCal(!showCal)} style={{fontSize:13,fontWeight:700,color:"#333",flexShrink:0,whiteSpace:"nowrap",cursor:"pointer"}}>{dateLabel}</span>
           <div style={{position:"relative",flexShrink:0}}>
-            <button onClick={()=>setShowCal(!showCal)} style={{background:"none",border:"none",cursor:"pointer",padding:"2px 4px",color:"#333",display:"flex",alignItems:"center"}}><I name="calendar" size={14}/></button>
+            
             {showCal && <MiniCal selDate={selDate} onSelect={d=>{setSelDate(d);setShowCal(false);}} onClose={()=>setShowCal(false)}/>}
           </div>
           <button onClick={()=>changeDate(1)} style={{background:"none",border:"none",cursor:"pointer",fontSize:12,color:"#666",padding:"2px 4px",flexShrink:0}}><I name="chevR" size={14}/></button>
-          <button onClick={()=>setSelDate(todayStr())} style={{padding:"0 10px",height:32,fontSize:12,border:"1px solid #d0d0d0",borderRadius:6,background:"#fff",color:"#666",cursor:"pointer",fontFamily:"inherit",flexShrink:0,display:"flex",alignItems:"center"}}>오늘</button>
+          <button onClick={()=>setSelDate(todayStr())} style={{padding:"0 10px",height:32,fontSize:12,border:"1px solid #d0d0d0",borderRadius:6,background:"#fff",color:"#666",cursor:"pointer",fontFamily:"inherit",flexShrink:0,display:"flex",alignItems:"center"}} className="hide-mobile">오늘</button>
           <button onClick={()=>setShowQuickBook(true)} style={{padding:"0 12px",height:32,fontSize:12,border:"none",borderRadius:16,background:"linear-gradient(135deg,#4285f4,#9b72cb,#d96570)",color:"#fff",cursor:"pointer",fontFamily:"inherit",flexShrink:0,display:"flex",alignItems:"center",gap:5,fontWeight:700,boxShadow:"0 2px 8px rgba(66,133,244,.25)"}}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff" style={{flexShrink:0}}><path d="M12 2L13.09 8.26L18 6L14.74 10.91L21 12L14.74 13.09L18 18L13.09 15.74L12 22L10.91 15.74L6 18L9.26 13.09L3 12L9.26 10.91L6 6L10.91 8.26L12 2Z"/></svg> AI Book
           </button>
@@ -5525,6 +5525,7 @@ const CSS = `
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
   .page-title{font-size:18px;font-weight:800;color:#333;margin-bottom:16px}
   @media(max-width:768px){
+    .hide-mobile{display:none!important;}
     .sidebar-d{display:none!important}
     .main-c{margin-left:0!important}
     .page-title{font-size:15px;margin-bottom:10px}
