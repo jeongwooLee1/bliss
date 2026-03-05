@@ -124,7 +124,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.63.12";
+const BLISS_V = "2.63.13";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -3350,11 +3350,11 @@ function NaverDateSheet({ open, onClose, startDate, endDate, onApply, mode }) {
           <span style={{fontSize:17,fontWeight:700,color:"#222"}}>날짜 선택</span>
         </div>
         <div style={{display:"flex",gap:8,alignItems:"center"}}>
-          <button onClick={()=>applyPeriod("1day")} style={{height:34,padding:"0 14px",borderRadius:8,border:"1.5px solid #ddd",background:"#fff",fontSize:13,fontWeight:500,cursor:"pointer",color:"#444"}}>오늘</button>
+          <button onClick={()=>applyPeriod("1day")} style={{height:34,padding:"0 14px",borderRadius:8,border:"1px solid #e0e0e0",background:"#fff",fontSize:13,fontWeight:500,cursor:"pointer",color:"#444",boxShadow:"0 1px 4px rgba(0,0,0,.08)"}}>오늘</button>
           {/* 기간 드롭다운 */}
           <div style={{position:"relative"}}>
             <button onClick={()=>setShowPeriodMenu(v=>!v)}
-              style={{height:34,padding:"0 12px 0 14px",borderRadius:8,border:"1.5px solid #ddd",background:"#fff",fontSize:13,fontWeight:500,cursor:"pointer",color:"#444",display:"flex",alignItems:"center",gap:4}}>
+              style={{height:34,padding:"0 12px 0 14px",borderRadius:8,border:"1px solid #e0e0e0",background:"#fff",fontSize:13,fontWeight:500,cursor:"pointer",color:"#444",display:"flex",alignItems:"center",gap:4,boxShadow:"0 1px 4px rgba(0,0,0,.08)"}}>
               {periodLabel} <span style={{fontSize:10,color:"#999"}}>▼</span>
             </button>
             {showPeriodMenu && <div style={{position:"absolute",right:0,top:"calc(100% + 6px)",background:"#fff",borderRadius:12,boxShadow:"0 4px 20px rgba(0,0,0,0.15)",minWidth:120,zIndex:100,overflow:"hidden"}}>
@@ -3464,7 +3464,7 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage }) {
     periodKey==="1day" || startDate===endDate ? fmtShort(startDate) :
     `${fmtShort(startDate)} ~ ${fmtShort(endDate)}`;
 
-  const ss = {height:36,borderRadius:8,border:"1.5px solid #e0e0e0",background:"#fff",fontSize:13,padding:"0 14px",cursor:"pointer",fontFamily:"inherit",color:"#444",display:"flex",alignItems:"center",gap:5,outline:"none"};
+  const ss = {height:36,borderRadius:8,border:"1px solid #e0e0e0",background:"#fff",fontSize:13,padding:"0 14px",cursor:"pointer",fontFamily:"inherit",color:"#444",display:"flex",alignItems:"center",gap:5,outline:"none",boxShadow:"0 1px 4px rgba(0,0,0,.08),0 2px 8px rgba(0,0,0,.06)"};
 
   return <div>
     <h2 className="page-title">예약 목록</h2>
@@ -3493,7 +3493,7 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage }) {
     <div style={{display:"flex",gap:8,marginBottom:14,alignItems:"center"}}>
       <div style={{position:"relative",flex:1,minWidth:180}}>
         <span style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",color:"#bbb"}}><I name="search" size={14}/></span>
-        <input style={{width:"100%",height:36,borderRadius:8,border:"1.5px solid #e0e0e0",paddingLeft:36,paddingRight:32,fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:"inherit",color:"#333"}} placeholder="고객명, 연락처, 시술, 시술자" value={q} onChange={e=>setQ(e.target.value)}/>
+        <input style={{width:"100%",height:36,borderRadius:8,border:"1px solid #e0e0e0",paddingLeft:36,paddingRight:32,fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:"inherit",color:"#333",boxShadow:"0 1px 4px rgba(0,0,0,.08),0 2px 8px rgba(0,0,0,.06)"}} placeholder="고객명, 연락처, 시술, 시술자" value={q} onChange={e=>setQ(e.target.value)}/>
         {q && <button onClick={()=>setQ("")} style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",color:"#bbb",fontSize:16,lineHeight:1}}>×</button>}
       </div>
       <span style={{fontSize:12,color:"#aaa",whiteSpace:"nowrap"}}>{res.length}건</span>
@@ -3519,9 +3519,9 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage }) {
               <td style={{fontSize:12}}>{staff?.dn||"-"}</td>
               <td><span style={{fontSize:11,fontWeight:700,color:sc[r.status]||"#999"}}>{STATUS_LABEL[r.status]||r.status}</span></td>
               <td><div style={{display:"flex",gap:4}}>
-                <button title="타임라인" onClick={()=>setPage&&setPage("timeline")} style={{width:28,height:28,borderRadius:6,border:"1.5px solid #e0e0e0",background:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"#7c7cc8"}}><I name="calendar" size={12}/></button>
+                <button title="타임라인" onClick={()=>setPage&&setPage("timeline")} style={{width:28,height:28,borderRadius:6,border:"1px solid #e8e8e8",background:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"#7c7cc8",boxShadow:"0 1px 3px rgba(0,0,0,.08)"}}><I name="calendar" size={12}/></button>
                 {r.status==="confirmed"&&<button onClick={()=>updateStatus(r.id,"completed")} style={{height:28,padding:"0 8px",borderRadius:6,border:"none",background:"#e8f5f0",color:"#6bab9e",cursor:"pointer",fontSize:11,fontWeight:600}}>완료</button>}
-                <button onClick={()=>deleteRes(r.id)} style={{width:28,height:28,borderRadius:6,border:"1.5px solid #ffe0e0",background:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"#e57373"}}><I name="trash" size={12}/></button>
+                <button onClick={()=>deleteRes(r.id)} style={{width:28,height:28,borderRadius:6,border:"1px solid #ffe0e0",background:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"#e57373",boxShadow:"0 1px 3px rgba(0,0,0,.08)"}}><I name="trash" size={12}/></button>
               </div></td>
             </tr>;
           })}
@@ -5739,21 +5739,21 @@ const CSS = `
   @keyframes naverBlink{0%,100%{background:#fff3e0}50%{background:#ffe0b2}}
   @keyframes pendingBlink{0%,100%{opacity:1}50%{opacity:.5}}
   .fade-in{animation:fadeIn .6s ease}
-  .card{background:#fff;border-radius:4px;border:1px solid #e0e0e0;box-shadow:none}
+  .card{background:#fff;border-radius:8px;border:1px solid #ebebeb;box-shadow:0 2px 8px rgba(0,0,0,.08),0 4px 16px rgba(0,0,0,.05)}
   .tw{overflow-x:auto}
   table{width:100%;border-collapse:collapse;font-size:13px}
   th{text-align:left;padding:8px 10px;color:#555;font-weight:600;font-size:11px;letter-spacing:.3px;border-bottom:2px solid #e0e0e0;white-space:nowrap;position:sticky;top:0;background:#fff;z-index:1}
   td{padding:7px 10px;border-bottom:1px solid #eee;white-space:nowrap;color:#333}
   tr:hover td{background:#f5f5ff}
-  .inp{background:#fff;border:1px solid #d0d0d0;color:#333;padding:7px 10px;border-radius:4px;font-size:13px;width:100%;font-family:inherit;outline:none;transition:border-color .15s}
-  .inp:focus{border-color:#7c7cc8;box-shadow:0 0 0 2px rgba(124,124,200,.15)}
+  .inp{background:#fff;border:1px solid #e0e0e0;color:#333;padding:7px 10px;border-radius:8px;font-size:13px;width:100%;font-family:inherit;outline:none;transition:border-color .15s,box-shadow .15s;box-shadow:0 1px 4px rgba(0,0,0,.08),0 2px 8px rgba(0,0,0,.06)}
+  .inp:focus{border-color:#7c7cc8;box-shadow:0 0 0 2px rgba(124,124,200,.15),0 2px 8px rgba(0,0,0,.08)}
 
   select.inp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;padding-right:26px}
   .badge{display:inline-flex;align-items:center;padding:2px 7px;border-radius:99px;font-size:10px;font-weight:600}
-  .btn-p{background:#7c7cc8;color:#fff;padding:7px 14px;border-radius:4px;border:none;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit;display:inline-flex;align-items:center;gap:5px;transition:all .15s}
+  .btn-p{background:#7c7cc8;color:#fff;padding:7px 14px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit;display:inline-flex;align-items:center;gap:5px;transition:all .15s;box-shadow:0 1px 3px rgba(0,0,0,.10),0 2px 6px rgba(0,0,0,.07)}
   .btn-p:hover{background:#6a6ab8}
   .btn-p:active{transform:scale(.97)}
-  .btn-s{background:#f5f5f5;color:#555;padding:7px 14px;border-radius:4px;border:1px solid #d0d0d0;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;display:inline-flex;align-items:center;gap:5px;transition:all .15s}
+  .btn-s{background:#fff;color:#555;padding:7px 14px;border-radius:8px;border:1px solid #e0e0e0;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;display:inline-flex;align-items:center;gap:5px;transition:all .15s;box-shadow:0 1px 4px rgba(0,0,0,.08),0 2px 8px rgba(0,0,0,.06)}
   .btn-s:hover{background:#ebebeb}
   .btn-d{background:#e57373;color:#fff;padding:7px 14px;border-radius:4px;border:none;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;transition:all .15s}
   .btn-d:hover{background:#d32f2f}
