@@ -124,7 +124,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.63.10";
+const BLISS_V = "2.63.11";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -3262,71 +3262,179 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
 // ═══════════════════════════════════════════
 // RESERVATION LIST
 // ═══════════════════════════════════════════
-function DateRangePicker({ rangeType, setRangeType, startDate, setStartDate, endDate, setEndDate, mode="sales" }) {
-  // mode="res" : 오늘/7일후/한달후/전체/직접
-  // mode="sales": 오늘/전일/이번달/지난달/직접
-  const today = todayStr();
-  const presets = mode==="res"
-    ? [["today","오늘"],["7days","7일"],["month","한달"],["all","전체"],["custom","직접"]]
-    : [["today","오늘"],["prev","전일"],["thismonth","이번달"],["lastmonth","지난달"],["custom","직접"]];
+function NaverDateSheet({ open, onClose, startDate, endDate, onApply, mode }) {
+  // 네이버 스타일 바텀시트 달력
+  const [selStart, setSelStart] = useState(startDate || todayStr());
+  const [selEnd, setSelEnd]     = useState(endDate || todayStr());
+  const [period, setPeriod]     = useState("7days");
+  const [showPeriodMenu, setShowPeriodMenu] = useState(false);
+  const [calMonth, setCalMonth] = useState(() => {
+    const d = new Date(startDate || todayStr()); return {y: d.getFullYear(), m: d.getMonth()};
+  });
 
-  const applyPreset = (type) => {
+  const periods = mode === "res"
+    ? [["1day","일간"],["7days","7일"],["month","한달"],["all","전체"],["custom","직접선택"]]
+    : [["1day","오늘"],["prev","전일"],["thismonth","이번달"],["lastmonth","지난달"],["custom","직접선택"]];
+
+  const applyPeriod = (key) => {
+    const today = todayStr();
     const d = new Date(); const y=d.getFullYear(); const m=d.getMonth();
-    if (type==="today") { setStartDate(today); setEndDate(today); }
-    else if (type==="7days") {
-      if (mode==="res") { const e=new Date(); e.setDate(e.getDate()+6); setStartDate(today); setEndDate(fmtLocal(e)); }
-      else { const s=new Date(); s.setDate(s.getDate()-6); setStartDate(fmtLocal(s)); setEndDate(today); }
+    let s=today, e=today;
+    if (key==="1day") { s=e=today; }
+    else if (key==="prev") { const p=new Date(); p.setDate(p.getDate()-1); s=e=fmtLocal(p); }
+    else if (key==="7days") {
+      if (mode==="res") { const en=new Date(); en.setDate(en.getDate()+6); e=fmtLocal(en); }
+      else { const st=new Date(); st.setDate(st.getDate()-6); s=fmtLocal(st); }
     }
-    else if (type==="month") {
-      if (mode==="res") { const e=new Date(); e.setDate(e.getDate()+29); setStartDate(today); setEndDate(fmtLocal(e)); }
-      else { const s=new Date(); s.setDate(s.getDate()-29); setStartDate(fmtLocal(s)); setEndDate(today); }
+    else if (key==="month") {
+      if (mode==="res") { const en=new Date(); en.setDate(en.getDate()+29); e=fmtLocal(en); }
+      else { const st=new Date(); st.setDate(st.getDate()-29); s=fmtLocal(st); }
     }
-    else if (type==="prev") { const p=new Date(); p.setDate(p.getDate()-1); const ps=fmtLocal(p); setStartDate(ps); setEndDate(ps); }
-    else if (type==="thismonth") { setStartDate(`${y}-${String(m+1).padStart(2,"0")}-01`); setEndDate(today); }
-    else if (type==="lastmonth") {
+    else if (key==="thismonth") { s=`${y}-${String(m+1).padStart(2,"0")}-01`; e=today; }
+    else if (key==="lastmonth") {
       const lm=m===0?11:m-1; const ly=m===0?y-1:y;
-      const last=new Date(y,m,0);
-      setStartDate(`${ly}-${String(lm+1).padStart(2,"0")}-01`); setEndDate(fmtLocal(last));
+      s=`${ly}-${String(lm+1).padStart(2,"0")}-01`;
+      e=fmtLocal(new Date(y,m,0));
     }
-    else if (type==="all") { setStartDate(""); setEndDate(""); }
-    setRangeType(type);
+    else if (key==="all") { s=""; e=""; }
+    setPeriod(key); setSelStart(s); setSelEnd(e); setShowPeriodMenu(false);
+    if (s) setCalMonth({y:parseInt(s.slice(0,4)),m:parseInt(s.slice(5,7))-1});
   };
 
-  const btnBase = {height:32,padding:"0 11px",fontSize:12,border:"1px solid #ddd",cursor:"pointer",fontFamily:"inherit",transition:"all .15s"};
-  const btnAct  = {...btnBase,background:"#7c7cc8",color:"#fff",borderColor:"#7c7cc8",fontWeight:700};
-  const btnIdle = {...btnBase,background:"#fff",color:"#555",fontWeight:400};
+  const periodLabel = periods.find(([k])=>k===period)?.[1] || "7일";
 
-  return <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
-    <div style={{display:"flex",borderRadius:7,overflow:"hidden",border:"1px solid #ddd"}}>
-      {presets.map(([k,v],i)=>(
-        <button key={k} onClick={()=>applyPreset(k)}
-          style={{...(rangeType===k?btnAct:btnIdle),borderRadius:0,borderLeft:i===0?"none":"1px solid #e0e0e0",borderTop:"none",borderBottom:"none",borderRight:"none"}}>
-          {v}
-        </button>
-      ))}
+  // 달력 날짜 생성
+  const buildCal = (y,m) => {
+    const first = new Date(y,m,1).getDay();
+    const days = new Date(y,m+1,0).getDate();
+    const cells = [];
+    for(let i=0;i<first;i++) cells.push(null);
+    for(let i=1;i<=days;i++) cells.push(`${y}-${String(m+1).padStart(2,"0")}-${String(i).padStart(2,"0")}`);
+    return cells;
+  };
+
+  const cells = buildCal(calMonth.y, calMonth.m);
+  const prevMonth = () => { const d=new Date(calMonth.y,calMonth.m-1,1); setCalMonth({y:d.getFullYear(),m:d.getMonth()}); };
+  const nextMonth = () => { const d=new Date(calMonth.y,calMonth.m+1,1); setCalMonth({y:d.getFullYear(),m:d.getMonth()}); };
+
+  const inSel = (ds) => selStart && selEnd && ds >= selStart && ds <= selEnd;
+  const isStart = (ds) => ds === selStart;
+  const isEnd   = (ds) => ds === selEnd;
+
+  const handleDayClick = (ds) => {
+    if (period !== "custom") { setPeriod("custom"); }
+    if (!selStart || (selStart && selEnd && ds !== selStart)) {
+      setSelStart(ds); setSelEnd(ds);
+    } else if (ds < selStart) {
+      setSelStart(ds);
+    } else {
+      setSelEnd(ds);
+    }
+  };
+
+  if (!open) return null;
+  const DAYS = ["일","월","화","수","목","금","토"];
+  const mStr = `${calMonth.y}.${String(calMonth.m+1).padStart(2,"0")}`;
+
+  return <div style={{position:"fixed",inset:0,zIndex:3000,display:"flex",flexDirection:"column",justifyContent:"flex-end"}} onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
+    <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.45)"}} onClick={onClose}/>
+    <div style={{position:"relative",background:"#fff",borderRadius:"20px 20px 0 0",padding:"0 0 32px",maxHeight:"90vh",overflowY:"auto"}}>
+      {/* 핸들 */}
+      <div style={{display:"flex",justifyContent:"center",padding:"12px 0 4px"}}>
+        <div style={{width:36,height:4,borderRadius:2,background:"#e0e0e0"}}/>
+      </div>
+      {/* 헤더 */}
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 20px 16px"}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <I name="calendar" size={18} color="#333"/>
+          <span style={{fontSize:17,fontWeight:700,color:"#222"}}>날짜 선택</span>
+        </div>
+        <div style={{display:"flex",gap:8,alignItems:"center"}}>
+          <button onClick={()=>applyPeriod("1day")} style={{height:34,padding:"0 14px",borderRadius:17,border:"1.5px solid #ddd",background:"#fff",fontSize:13,fontWeight:500,cursor:"pointer",color:"#444"}}>오늘</button>
+          {/* 기간 드롭다운 */}
+          <div style={{position:"relative"}}>
+            <button onClick={()=>setShowPeriodMenu(v=>!v)}
+              style={{height:34,padding:"0 12px 0 14px",borderRadius:17,border:"1.5px solid #ddd",background:"#fff",fontSize:13,fontWeight:500,cursor:"pointer",color:"#444",display:"flex",alignItems:"center",gap:4}}>
+              {periodLabel} <span style={{fontSize:10,color:"#999"}}>▼</span>
+            </button>
+            {showPeriodMenu && <div style={{position:"absolute",right:0,top:"calc(100% + 6px)",background:"#fff",borderRadius:12,boxShadow:"0 4px 20px rgba(0,0,0,0.15)",minWidth:120,zIndex:100,overflow:"hidden"}}>
+              {periods.map(([k,v])=>(
+                <button key={k} onClick={()=>applyPeriod(k)}
+                  style={{display:"block",width:"100%",padding:"12px 18px",border:"none",background:"none",textAlign:"left",fontSize:14,cursor:"pointer",color:period===k?"#1EC800":"#333",fontWeight:period===k?700:400}}>
+                  {v}
+                </button>
+              ))}
+            </div>}
+          </div>
+        </div>
+      </div>
+      {/* 월 네비 */}
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 20px",marginBottom:12}}>
+        <button onClick={prevMonth} style={{width:32,height:32,border:"none",background:"none",cursor:"pointer",fontSize:18,color:"#555",display:"flex",alignItems:"center",justifyContent:"center"}}>‹</button>
+        <span style={{fontSize:20,fontWeight:700,color:"#222"}}>{mStr}</span>
+        <button onClick={nextMonth} style={{width:32,height:32,border:"none",background:"none",cursor:"pointer",fontSize:18,color:"#555",display:"flex",alignItems:"center",justifyContent:"center"}}>›</button>
+      </div>
+      {/* 요일 헤더 */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",padding:"0 12px",marginBottom:4}}>
+        {DAYS.map((d,i)=>(
+          <div key={d} style={{textAlign:"center",fontSize:12,fontWeight:500,color:i===0?"#e53935":i===6?"#1E88E5":"#666",padding:"4px 0"}}>{d}</div>
+        ))}
+      </div>
+      {/* 날짜 그리드 */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",padding:"0 12px",gap:"2px 0"}}>
+        {cells.map((ds,i)=>{
+          if (!ds) return <div key={i}/>;
+          const today = todayStr();
+          const isToday = ds===today;
+          const isSt = isStart(ds) && selStart;
+          const isEn = isEnd(ds) && selEnd && selEnd!==selStart;
+          const inR = inSel(ds) && selStart !== selEnd;
+          const dow = new Date(ds).getDay();
+          let textColor = dow===0?"#e53935":dow===6?"#1E88E5":"#333";
+          if (isSt || isEn) textColor="#fff";
+          return <div key={ds} style={{display:"flex",justifyContent:"center",position:"relative",
+            background: inR?"#e8f5e9":"transparent",
+            borderRadius: isSt?"8px 0 0 8px": isEn?"0 8px 8px 0":"0"
+          }}>
+            <button onClick={()=>handleDayClick(ds)} style={{
+              width:38,height:38,borderRadius:"50%",border:"none",cursor:"pointer",fontSize:14,fontFamily:"inherit",fontWeight:isToday||isSt||isEn?700:400,
+              background: isSt||isEn?"#1EC800": isToday?"#f0f0f0":"transparent",
+              color: textColor, position:"relative"
+            }}>
+              {parseInt(ds.slice(8))}
+              {isToday && !(isSt||isEn) && <span style={{position:"absolute",bottom:3,left:"50%",transform:"translateX(-50%)",width:4,height:4,borderRadius:"50%",background:"#1EC800"}}/>}
+            </button>
+          </div>;
+        })}
+      </div>
+      {/* 선택된 기간 표시 */}
+      {selStart && <div style={{padding:"16px 20px 0",textAlign:"center",color:"#888",fontSize:13}}>
+        {selStart}{selEnd&&selEnd!==selStart?` ~ ${selEnd}`:""}
+      </div>}
+      {/* 버튼 */}
+      <div style={{display:"flex",gap:10,padding:"20px 20px 0"}}>
+        <button onClick={onClose} style={{flex:1,height:48,border:"1.5px solid #ddd",borderRadius:10,background:"#fff",fontSize:15,cursor:"pointer",color:"#555",fontFamily:"inherit",fontWeight:500}}>취소</button>
+        <button onClick={()=>onApply(selStart,selEnd,period)} style={{flex:2,height:48,border:"none",borderRadius:10,background:"#1EC800",fontSize:15,cursor:"pointer",color:"#fff",fontFamily:"inherit",fontWeight:700}}>적용</button>
+      </div>
     </div>
-    {rangeType==="custom" && <div style={{display:"flex",alignItems:"center",gap:4}}>
-      <input type="date" className="inp" style={{maxWidth:128,width:"auto",fontSize:12,height:32,padding:"0 8px"}} value={startDate} onChange={e=>setStartDate(e.target.value)}/>
-      <span style={{color:"#aaa",fontSize:12}}>~</span>
-      <input type="date" className="inp" style={{maxWidth:128,width:"auto",fontSize:12,height:32,padding:"0 8px"}} value={endDate} onChange={e=>setEndDate(e.target.value)}/>
-    </div>}
-    {rangeType!=="custom" && rangeType!=="all" && rangeType!=="today" && startDate && endDate &&
-      <span style={{fontSize:11,color:"#aaa"}}>{startDate} ~ {endDate}</span>}
   </div>;
 }
 
 function ReservationList({ data, setData, userBranches, isMaster, setPage }) {
-  const [rangeType, setRangeType] = useState("today");
-  const [startDate, setStartDate] = useState(todayStr());
-  const [endDate, setEndDate] = useState(todayStr());
+  const today = todayStr();
+  const [startDate, setStartDate] = useState(today);
+  const [endDate, setEndDate] = useState(() => { const d=new Date(); d.setDate(d.getDate()+6); return fmtLocal(d); });
+  const [periodKey, setPeriodKey] = useState("7days");
+  const [showSheet, setShowSheet] = useState(false);
   const [vb, setVb] = useState("all");
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
+  const periodLabels = {"1day":"오늘","7days":"7일","month":"한달","all":"전체","custom":"직접","prev":"전일","thismonth":"이번달","lastmonth":"지난달"};
+
   const inRange = (date) => {
-    if (rangeType==="all" || (!startDate && !endDate)) return true;
+    if (periodKey==="all" || (!startDate && !endDate)) return true;
     if (startDate && endDate) return date >= startDate && date <= endDate;
-    if (startDate) return date >= startDate;
     return true;
   };
 
@@ -3338,30 +3446,35 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage }) {
       const sq = q.toLowerCase();
       const svc = (data.services||[]).find(s=>s.id===r.serviceId);
       const staff = (data.staff||[]).find(s=>s.id===r.staffId);
-      return (r.custName||"").toLowerCase().includes(sq) ||
-             (r.custPhone||"").includes(sq) ||
-             (svc?.name||"").toLowerCase().includes(sq) ||
-             (staff?.dn||"").toLowerCase().includes(sq);
+      return (r.custName||"").toLowerCase().includes(sq)||(r.custPhone||"").includes(sq)||(svc?.name||"").toLowerCase().includes(sq)||(staff?.dn||"").toLowerCase().includes(sq);
     }
     return inRange(r.date);
   }).sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time));
 
-  const updateStatus = (id, status) => { setData(prev=>({...prev,reservations:prev.reservations.map(r=>r.id===id?{...r,status}:r)})); sb.update("reservations",id,{status}).catch(console.error); };
+  const updateStatus = (id,status) => { setData(prev=>({...prev,reservations:prev.reservations.map(r=>r.id===id?{...r,status}:r)})); sb.update("reservations",id,{status}).catch(console.error); };
   const deleteRes = (id) => setData(prev=>({...prev,reservations:prev.reservations.filter(r=>r.id!==id)}));
 
-  const goTimeline = (r) => {
-    if (setPage) setPage("timeline");
-  };
+  const dateLabel = periodKey==="all" ? "전체" :
+    periodKey==="1day" ? startDate :
+    `${startDate} ~ ${endDate}`;
+
+  const ss = {height:36,borderRadius:18,border:"1.5px solid #e0e0e0",background:"#fff",fontSize:13,padding:"0 14px",cursor:"pointer",fontFamily:"inherit",color:"#444",display:"flex",alignItems:"center",gap:5,outline:"none"};
 
   return <div>
     <h2 className="page-title">예약 목록</h2>
-    <div style={{display:"flex",gap:10,marginBottom:10,flexWrap:"wrap",alignItems:"center"}}>
-      <DateRangePicker rangeType={rangeType} setRangeType={setRangeType} startDate={startDate} setStartDate={setStartDate} endDate={endDate} setEndDate={setEndDate} mode="res"/>
-      <select className="inp" style={{maxWidth:140,width:"auto"}} value={vb} onChange={e=>setVb(e.target.value)}>
+    {/* 필터 바 */}
+    <div style={{display:"flex",gap:8,marginBottom:10,flexWrap:"wrap",alignItems:"center"}}>
+      {/* 날짜 버튼 */}
+      <button onClick={()=>setShowSheet(true)} style={{...ss,gap:6,background:"#f7f7ff",borderColor:"#c5c5f0",color:"#5b5bb8",fontWeight:600,minWidth:160}}>
+        <I name="calendar" size={14} color="#7c7cc8"/>
+        <span style={{fontSize:12}}>{dateLabel}</span>
+        <span style={{fontSize:9,color:"#aaa",marginLeft:"auto"}}>▼</span>
+      </button>
+      <select style={{...ss,appearance:"auto"}} value={vb} onChange={e=>setVb(e.target.value)}>
         <option value="all">전체 매장</option>
         {(data.branches||[]).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
       </select>
-      <select className="inp" style={{maxWidth:110,width:"auto"}} value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}>
+      <select style={{...ss,appearance:"auto"}} value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}>
         <option value="all">전체 상태</option>
         <option value="pending">대기</option>
         <option value="confirmed">확정</option>
@@ -3370,64 +3483,66 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage }) {
         <option value="noshow">노쇼</option>
       </select>
     </div>
-    <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap",alignItems:"center"}}>
+    {/* 검색 */}
+    <div style={{display:"flex",gap:8,marginBottom:14,alignItems:"center"}}>
       <div style={{position:"relative",flex:1,minWidth:180}}>
-        <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:"#999",fontSize:14}}><I name="search" size={14}/></span>
-        <input className="inp" style={{paddingLeft:32}} placeholder="고객명, 연락처, 시술, 시술자 검색..." value={q} onChange={e=>setQ(e.target.value)}/>
-        {q && <button onClick={()=>setQ("")} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",color:"#999",fontSize:16}}>×</button>}
+        <span style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",color:"#bbb"}}><I name="search" size={14}/></span>
+        <input style={{width:"100%",height:36,borderRadius:18,border:"1.5px solid #e0e0e0",paddingLeft:36,paddingRight:32,fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:"inherit",color:"#333"}} placeholder="고객명, 연락처, 시술, 시술자" value={q} onChange={e=>setQ(e.target.value)}/>
+        {q && <button onClick={()=>setQ("")} style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",color:"#bbb",fontSize:16,lineHeight:1}}>×</button>}
       </div>
-      <span style={{fontSize:13,color:"#888"}}>총 {res.length}건</span>
+      <span style={{fontSize:12,color:"#aaa",whiteSpace:"nowrap"}}>{res.length}건</span>
     </div>
     <div className="card tw">
       <table><thead><tr>
-        <th>날짜</th><th>시간</th><th>매장</th><th>룸</th><th>고객</th><th>성별</th><th>연락처</th><th>시술</th><th>시술자</th><th>상태</th><th>액션</th>
+        <th>날짜</th><th>시간</th><th>매장</th><th>고객</th><th>연락처</th><th>시술</th><th>시술자</th><th>상태</th><th>액션</th>
       </tr></thead><tbody>
-        {res.length===0?<tr><td colSpan={11} style={{textAlign:"center",color:"#999",padding:40}}>예약이 없습니다</td></tr>:
+        {res.length===0?<tr><td colSpan={9} style={{textAlign:"center",color:"#bbb",padding:40,fontSize:13}}>예약이 없습니다</td></tr>:
           res.map(r=>{
-            const svc = (data.services||[]).find(s=>s.id===r.serviceId);
-            const staff = (data.staff||[]).find(s=>s.id===r.staffId);
-            const br = (data.branches||[]).find(b=>b.id===r.bid);
-            const room = (data.rooms||[]).find(rm=>rm.id===r.roomId);
-            const g = r.custGender || "";
+            const svc=(data.services||[]).find(s=>s.id===r.serviceId);
+            const staff=(data.staff||[]).find(s=>s.id===r.staffId);
+            const br=(data.branches||[]).find(b=>b.id===r.bid);
+            const g=r.custGender||"";
+            const sc=getStatusClr();
             return <tr key={r.id}>
-              <td style={{fontSize:11,color:"#888"}}>{r.date}</td>
+              <td style={{fontSize:11,color:"#aaa"}}>{r.date}</td>
               <td style={{fontWeight:700,color:"#7c7cc8"}}>{r.time}</td>
-              <td>{br?.short}</td>
-              <td>{room?.name||"-"}</td>
-              <td style={{fontWeight:600}}>{r.custName||"-"}</td>
-              <td>{g ? <span className="badge" style={{background:g==="M"?"#e0edf5":"#fce8e8",color:g==="M"?"#7c7cc8":"#e57373",fontSize:10}}>{g==="M"?"남":"여"}</span> : <span style={{color:"#ccc",fontSize:10}}>-</span>}</td>
-              <td style={{color:"#7c7cc8"}}>{r.custPhone||"-"}</td>
-              <td>{svc?.name||"-"}</td>
-              <td>{staff?.dn||"-"}</td>
-              <td>{(()=>{ const sc=getStatusClr(); const c=sc[r.status]||"#999"; return <span style={{fontSize:11,fontWeight:700,color:c}}>{STATUS_LABEL[r.status]||r.status}</span>; })()}</td>
-              <td><div style={{display:"flex",gap:3}}>
-                <button title="타임라인에서 보기" className="btn-sm btn-s" onClick={()=>goTimeline(r)} style={{padding:"4px 8px",background:"#f0f0ff",color:"#7c7cc8",border:"none",borderRadius:6,cursor:"pointer"}}><I name="calendar" size={13}/></button>
-                {r.status==="confirmed"&&<button className="btn-sm" style={{background:"#e8f5f0",color:"#6bab9e",border:"none",borderRadius:6,padding:"4px 8px",cursor:"pointer",fontSize:11}} onClick={()=>updateStatus(r.id,"completed")}><I name="check" size={11}/> 완료</button>}
-                <button className="btn-sm btn-s" onClick={()=>deleteRes(r.id)} style={{padding:"4px 8px"}}><I name="trash" size={13}/></button>
+              <td style={{fontSize:11}}>{br?.short}</td>
+              <td style={{fontWeight:600}}>{r.custName||"-"}{g?<span style={{marginLeft:4,fontSize:10,color:g==="M"?"#7c7cc8":"#e57373"}}>{g==="M"?"남":"여"}</span>:null}</td>
+              <td style={{color:"#7c7cc8",fontSize:12}}>{r.custPhone||"-"}</td>
+              <td style={{fontSize:12}}>{svc?.name||"-"}</td>
+              <td style={{fontSize:12}}>{staff?.dn||"-"}</td>
+              <td><span style={{fontSize:11,fontWeight:700,color:sc[r.status]||"#999"}}>{STATUS_LABEL[r.status]||r.status}</span></td>
+              <td><div style={{display:"flex",gap:4}}>
+                <button title="타임라인" onClick={()=>setPage&&setPage("timeline")} style={{width:28,height:28,borderRadius:14,border:"1.5px solid #e0e0e0",background:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"#7c7cc8"}}><I name="calendar" size={12}/></button>
+                {r.status==="confirmed"&&<button onClick={()=>updateStatus(r.id,"completed")} style={{height:28,padding:"0 8px",borderRadius:14,border:"none",background:"#e8f5f0",color:"#6bab9e",cursor:"pointer",fontSize:11,fontWeight:600}}>완료</button>}
+                <button onClick={()=>deleteRes(r.id)} style={{width:28,height:28,borderRadius:14,border:"1.5px solid #ffe0e0",background:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"#e57373"}}><I name="trash" size={12}/></button>
               </div></td>
-            </tr>
+            </tr>;
           })}
       </tbody></table>
     </div>
+    <NaverDateSheet open={showSheet} onClose={()=>setShowSheet(false)} startDate={startDate} endDate={endDate} mode="res"
+      onApply={(s,e,p)=>{ setStartDate(s); setEndDate(e); setPeriodKey(p); setShowSheet(false); }}/>
   </div>;
 }
+
 
 // ═══════════════════════════════════════════
 // SALES PAGE (시술/제품 분리, 결제수단 세분화)
 // ═══════════════════════════════════════════
 function SalesPage({ data, setData, userBranches, isMaster, setPage }) {
-  const [rangeType, setRangeType] = useState("today");
   const [startDate, setStartDate] = useState(todayStr());
   const [endDate, setEndDate] = useState(todayStr());
+  const [periodKey, setPeriodKey] = useState("1day");
+  const [showSheet, setShowSheet] = useState(false);
   const [vb, setVb] = useState("all");
   const [showModal, setShowModal] = useState(false);
   const [editSale, setEditSale] = useState(null);
   const [q, setQ] = useState("");
 
   const inRange = (date) => {
-    if (rangeType==="all" || (!startDate && !endDate)) return true;
+    if (periodKey==="all" || (!startDate && !endDate)) return true;
     if (startDate && endDate) return date >= startDate && date <= endDate;
-    if (startDate) return date >= startDate;
     return true;
   };
 
@@ -3467,12 +3582,21 @@ function SalesPage({ data, setData, userBranches, isMaster, setPage }) {
       <button className="btn-p" onClick={()=>setShowModal(true)}><I name="plus" size={12}/> 매출등록</button>
     </div>
     {/* Filters */}
-    <div style={{display:"flex",gap:10,marginBottom:10,flexWrap:"wrap",alignItems:"center"}}>
-      <DateRangePicker rangeType={rangeType} setRangeType={setRangeType} startDate={startDate} setStartDate={setStartDate} endDate={endDate} setEndDate={setEndDate}/>
-      <select className="inp" style={{maxWidth:140,width:"auto"}} value={vb} onChange={e=>setVb(e.target.value)}>
-        <option value="all">전체 매장</option>
-        {(data.branches||[]).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
-      </select>
+    <div style={{display:"flex",gap:8,marginBottom:10,flexWrap:"wrap",alignItems:"center"}}>
+      {(()=>{ const ss={height:36,borderRadius:18,border:"1.5px solid #e0e0e0",background:"#fff",fontSize:13,padding:"0 14px",cursor:"pointer",fontFamily:"inherit",color:"#444",display:"flex",alignItems:"center",gap:5,outline:"none"};
+        const dateLabel = periodKey==="all"?"전체":periodKey==="1day"?startDate:`${startDate} ~ ${endDate}`;
+        return <>
+          <button onClick={()=>setShowSheet(true)} style={{...ss,gap:6,background:"#f7f7ff",borderColor:"#c5c5f0",color:"#5b5bb8",fontWeight:600,minWidth:160}}>
+            <I name="calendar" size={14} color="#7c7cc8"/>
+            <span style={{fontSize:12}}>{dateLabel}</span>
+            <span style={{fontSize:9,color:"#aaa",marginLeft:"auto"}}>▼</span>
+          </button>
+          <select style={{...ss,appearance:"auto"}} value={vb} onChange={e=>setVb(e.target.value)}>
+            <option value="all">전체 매장</option>
+            {(data.branches||[]).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
+          </select>
+        </>;
+      })()}
     </div>
     <div style={{display:"flex",gap:8,marginBottom:14,alignItems:"center"}}>
       <div style={{position:"relative",flex:1,minWidth:180}}>
@@ -3545,6 +3669,8 @@ function SalesPage({ data, setData, userBranches, isMaster, setPage }) {
       branchId={editSale.bid}
       onSubmit={handleEditSave}
       onClose={()=>_mc(()=>setEditSale(null))} data={data} setData={setData} />}
+    <NaverDateSheet open={showSheet} onClose={()=>setShowSheet(false)} startDate={startDate} endDate={endDate} mode="sales"
+      onApply={(s,e,p)=>{ setStartDate(s); setEndDate(e); setPeriodKey(p); setShowSheet(false); }}/>
   </div>;
 }
 
