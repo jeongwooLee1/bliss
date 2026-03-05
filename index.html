@@ -244,6 +244,7 @@ function App() {
   const [page, setPageRaw] = useState(() => {
     try { const p = sessionStorage.getItem("bliss_page"); console.log("[SESSION] page restore:", p); return p || "timeline"; } catch(e){ return "timeline"; }
   });
+  const [pendingOpenRes, setPendingOpenRes] = useState(null);
   const setPage = useCallback((p) => {
     console.log("[SESSION] page save:", p);
     setPageRaw(p);
@@ -540,8 +541,8 @@ function App() {
         </div>
         <div className="page-pad" style={{flex:1,padding:page==="timeline"?"0":"16px 20px 16px",display:"flex",flexDirection:"column",minHeight:0,overflow:"hidden"}}>
           <div className={page==="timeline"?"":"fade-in"} key={page} style={page==="timeline"?{flex:1,display:"flex",flexDirection:"column",minHeight:0}:{overflow:"auto",flex:1,WebkitOverflowScrolling:"touch"}}>
-            {page==="timeline" && <Timeline data={data} setData={setData} userBranches={userBranches} viewBranches={viewBranches} isMaster={isMaster} currentUser={currentUser} setPage={setPage} bizId={currentBizId} onMenuClick={()=>setSideOpen(true)} bizName={bizName}/>}
-            {page==="reservations" && <ReservationList data={data} setData={setData} userBranches={userBranches} isMaster={isMaster} setPage={setPage}/>}
+            {page==="timeline" && <Timeline data={data} setData={setData} userBranches={userBranches} viewBranches={viewBranches} isMaster={isMaster} currentUser={currentUser} setPage={setPage} bizId={currentBizId} onMenuClick={()=>setSideOpen(true)} bizName={bizName} pendingOpenRes={pendingOpenRes} setPendingOpenRes={setPendingOpenRes}/>}
+            {page==="reservations" && <ReservationList data={data} setData={setData} userBranches={userBranches} isMaster={isMaster} setPage={setPage} setPendingOpenRes={setPendingOpenRes}/>}
             {page==="sales" && <SalesPage data={data} setData={setData} userBranches={userBranches} isMaster={isMaster} setPage={setPage}/>}
             {page==="stats" && <StatsPage data={data} userBranches={userBranches} isMaster={isMaster} role={role}/>}
             {page==="customers" && <CustomersPage data={data} setData={setData} userBranches={userBranches} isMaster={isMaster}/>}
@@ -953,12 +954,22 @@ function MiniCal({ selDate, onSelect, onClose }) {
   </div>;
 }
 
-function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, currentUser, setPage, bizId, onMenuClick, bizName }) {
+function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, currentUser, setPage, bizId, onMenuClick, bizName, pendingOpenRes, setPendingOpenRes }) {
   const SVC_LIST = (data?.services || []).slice().sort((a,b)=>(a.sort||0)-(b.sort||0));
   const PROD_LIST = (data?.products || []);
   const [selDate, setSelDate] = useState(todayStr());
   const [showModal, setShowModal] = useState(false);
   const [modalData, setModalData] = useState(null);
+
+  // ReservationList에서 넘어온 예약 자동 오픈
+  useEffect(()=>{
+    if (pendingOpenRes) {
+      setSelDate(pendingOpenRes.date || todayStr());
+      setModalData({...pendingOpenRes});
+      setShowModal(true);
+      setPendingOpenRes && setPendingOpenRes(null);
+    }
+  },[pendingOpenRes]);
   const [showQuickBook, setShowQuickBook] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showCal, setShowCal] = useState(false);
@@ -3441,7 +3452,7 @@ function SmartDatePicker({ open, onClose, anchorEl, startDate, endDate, onApply,
   </div>;
 }
 
-function ReservationList({ data, setData, userBranches, isMaster, setPage }) {
+function ReservationList({ data, setData, userBranches, isMaster, setPage, setPendingOpenRes }) {
   const today = todayStr();
   const dateAnchorRef = React.useRef(null);
   const [startDate, setStartDate] = useState(today);
@@ -3566,7 +3577,7 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage }) {
               <td style={{fontSize:12}}>{staff?.dn||"-"}</td>
               <td><span style={{fontSize:11,fontWeight:700,color:sc[r.status]||"#999"}}>{STATUS_LABEL[r.status]||r.status}</span></td>
               <td><div style={{display:"flex",gap:4}}>
-                <button title="타임라인" onClick={()=>setPage&&setPage("timeline")} style={{width:28,height:28,borderRadius:6,border:"1px solid #e8e8e8",background:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"#7c7cc8",boxShadow:"0 1px 3px rgba(0,0,0,.08)"}}><I name="calendar" size={12}/></button>
+                <button title="타임라인에서 열기" onClick={()=>{if(setPendingOpenRes)setPendingOpenRes(r);if(setPage)setPage("timeline");}} style={{width:28,height:28,borderRadius:6,border:"1px solid #e8e8e8",background:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"#7c7cc8",boxShadow:"0 1px 3px rgba(0,0,0,.08)"}}><I name="calendar" size={12}/></button>
 <button onClick={()=>deleteRes(r.id)} style={{width:28,height:28,borderRadius:6,border:"1px solid #ffe0e0",background:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"#e57373",boxShadow:"0 1px 3px rgba(0,0,0,.08)"}}><I name="trash" size={12}/></button>
               </div></td>
             </tr>;
