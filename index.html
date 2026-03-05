@@ -124,7 +124,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.63.17";
+const BLISS_V = "2.63.18";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -961,15 +961,65 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   const [showModal, setShowModal] = useState(false);
   const [modalData, setModalData] = useState(null);
 
-  // ReservationList에서 넘어온 예약 자동 오픈
+  // ReservationList에서 넘어온 예약 자동 오픈 + 스크롤 중앙 정렬
   useEffect(()=>{
     if (!pendingOpenRes) return;
+
+    // 1. 날짜 이동
+    setSelDate(pendingOpenRes.date || todayStr());
+
     const timer = setTimeout(()=>{
-      setSelDate(pendingOpenRes.date || todayStr());
+      try {
+        const sr = scrollRef.current;
+        if (sr) {
+          // 2. 세로 스크롤 - 예약 시간 위치 중앙
+          const timeStr = pendingOpenRes.time || "10:00";
+          const [hh, mm] = timeStr.split(":").map(Number);
+          const startHourLocal = 8;
+          const rowHLocal = 60;
+          const timeUnitLocal = 10;
+          const headerHLocal = 60;
+          const topbarHLocal = window.innerWidth <= 768 ? 42 : 48;
+          const gridTopLocal = topbarHLocal + headerHLocal;
+          const yPos = gridTopLocal + ((hh - startHourLocal) * 60 + mm) / timeUnitLocal * (rowHLocal / (60 / timeUnitLocal));
+          const srH = sr.clientHeight;
+          sr.scrollTop = Math.max(0, yPos - srH / 2);
+
+          // 3. 가로 스크롤 - 해당 지점 컬럼 중앙
+          const rid = pendingOpenRes.reservationId || pendingOpenRes.id;
+          const el = rid ? sr.querySelector(`[data-rid="${rid}"]`) : null;
+          if (el) {
+            const elRect = el.getBoundingClientRect();
+            const srRect = sr.getBoundingClientRect();
+            const elLeft = elRect.left - srRect.left + sr.scrollLeft;
+            const elW = elRect.width || 160;
+            sr.scrollLeft = Math.max(0, elLeft - sr.clientWidth / 2 + elW / 2);
+          } else {
+            // rid로 못 찾으면 bid 기준으로 컬럼 인덱스 계산
+            const bid = pendingOpenRes.bid;
+            if (bid) {
+              const tlW = window.innerWidth <= 768 ? 52 : 88;
+              const colEls = sr.querySelectorAll(".tl-room-col");
+              let colLeft = tlW;
+              for (const col of colEls) {
+                const brId = col.getAttribute("data-branch-id");
+                if (brId === bid) {
+                  const colW = col.offsetWidth || 160;
+                  sr.scrollLeft = Math.max(0, colLeft - sr.clientWidth / 2 + colW / 2);
+                  break;
+                }
+                colLeft += col.offsetWidth || 160;
+              }
+            }
+          }
+        }
+      } catch(e) { console.warn("scroll err:", e); }
+
+      // 4. 모달 오픈
       setModalData({...pendingOpenRes, readOnly: false});
       setShowModal(true);
       setPendingOpenRes && setPendingOpenRes(null);
-    }, 80);
+    }, 120);
     return ()=>clearTimeout(timer);
   },[pendingOpenRes]);
   const [showQuickBook, setShowQuickBook] = useState(false);
@@ -1791,7 +1841,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
             const isNewBranch = ci === 0 || room.branch_id !== allRooms[ci-1]?.branch_id;
             const branchColor = (data.branchSettings || []).find(bs => bs.id === room.branch_id)?.color || "";
             return (
-              <div key={room.id} className="tl-room-col" style={{width:colW,flexShrink:0,borderLeft:room.isNaver?"2px solid #A5D6A7":(isNewBranch&&ci>0?"none":"1px solid #f0f0f0"),background:room.isNaver?"#F1F8E9":(branchColor||"#fff"),marginLeft:isNewBranch&&ci>0?4:0,boxShadow:isNewBranch&&ci>0?"-4px 0 8px rgba(0,0,0,.06)":room.isNaver?"inset 2px 0 4px rgba(76,175,80,.08)":"none"}}>
+              <div key={room.id} className="tl-room-col" data-branch-id={room.branch_id} style={{width:colW,flexShrink:0,borderLeft:room.isNaver?"2px solid #A5D6A7":(isNewBranch&&ci>0?"none":"1px solid #f0f0f0"),background:room.isNaver?"#F1F8E9":(branchColor||"#fff"),marginLeft:isNewBranch&&ci>0?4:0,boxShadow:isNewBranch&&ci>0?"-4px 0 8px rgba(0,0,0,.06)":room.isNaver?"inset 2px 0 4px rgba(76,175,80,.08)":"none"}}>
                 {/* Room Header - sticky */}
                 <div style={{height:headerH,borderBottom:"1px solid #eee",position:"sticky",top:topbarH,zIndex:10,background:room.isNaver?"#E8F5E9":(branchColor||"#fff"),display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",lineHeight:1.2}}>
                   <span className="tl-room-name" style={{fontSize:12,fontWeight:700,color:room.isNaver?"#2E7D32":"#333"}}>{room.branchName}</span>
