@@ -1584,9 +1584,15 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                   const sr = scrollRef.current;
                   const srRect = sr.getBoundingClientRect();
                   const elTop = rect.top - srRect.top + sr.scrollTop;
+                  const elLeft = rect.left - srRect.left + sr.scrollLeft;
                   const stickyH = topbarH + headerH;
                   const visibleH = sr.clientHeight - stickyH;
-                  sr.scrollTo({top: Math.max(0, elTop - stickyH - visibleH / 2 + rect.height / 2), behavior:"smooth"});
+                  const visibleW = sr.clientWidth;
+                  sr.scrollTo({
+                    top: Math.max(0, elTop - stickyH - visibleH / 2 + rect.height / 2),
+                    left: Math.max(0, elLeft - visibleW / 2 + rect.width / 2),
+                    behavior: "smooth"
+                  });
                 } else {
                   tryScroll(attempt + 1);
                 }
