@@ -3617,9 +3617,9 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
     })()}
     <div className="card tw">
       <table><thead><tr>
-        <th>날짜</th><th>시간</th><th>매장</th><th>고객</th><th>연락처</th><th>시술</th><th>시술자</th><th>경로</th><th style={{color:"#e65100"}}>예약금</th><th>상태</th><th>액션</th>
+        <th>날짜</th><th>시간</th><th>매장</th><th>고객</th><th>연락처</th><th>시술</th><th>시술자</th><th>요청사항</th><th>경로</th><th style={{color:"#e65100"}}>예약금</th><th>상태</th><th>액션</th>
       </tr></thead><tbody>
-        {res.length===0?<tr><td colSpan={11} style={{textAlign:"center",color:"#bbb",padding:40,fontSize:13}}>예약이 없습니다</td></tr>:
+        {res.length===0?<tr><td colSpan={12} style={{textAlign:"center",color:"#bbb",padding:40,fontSize:13}}>예약이 없습니다</td></tr>:
           res.map(r=>{
             const svc=(data.services||[]).find(s=>s.id===r.serviceId);
             const svcNames=(r.selectedServices||[]).map(sid=>(data.services||[]).find(s=>s.id===sid)?.name).filter(Boolean);
@@ -3628,6 +3628,8 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
             const br=(data.branches||[]).find(b=>b.id===r.bid);
             const g=r.custGender||"";
             const sc=getStatusClr();
+            const reqMatch=(r.memo||"").match(/요청:\s*(.+)/);
+            const reqText=reqMatch?reqMatch[1].trim():"";
             return <tr key={r.id}>
               <td style={{fontSize:11,color:"#aaa"}}>{r.date}</td>
               <td style={{fontWeight:700,color:"#7c7cc8"}}>{r.time}</td>
@@ -3636,6 +3638,7 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
               <td style={{color:"#7c7cc8",fontSize:12}}>{r.custPhone||"-"}</td>
               <td style={{fontSize:12}}>{svcDisplay}</td>
               <td style={{fontSize:12}}>{staff?.dn||"-"}</td>
+              <td style={{fontSize:11,color:"#666",maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{reqText||<span style={{color:"#ccc"}}>-</span>}</td>
               <td>{(()=>{
                 const src = r.source||"";
                 if(!src) return <span style={{color:"#ccc",fontSize:11}}>-</span>;
