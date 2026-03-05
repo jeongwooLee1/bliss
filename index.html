@@ -124,7 +124,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.63.14";
+const BLISS_V = "2.63.15";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -3468,7 +3468,7 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage }) {
 
   return <div>
     <h2 className="page-title">예약 목록</h2>
-    {/* 필터 바 - 한 줄 */}
+    {/* 필터 바 - 날짜 + 매장 */}
     <div style={{display:"flex",gap:8,marginBottom:10,alignItems:"center",flexWrap:"wrap"}}>
       <button onClick={()=>setShowSheet(true)} style={{...SS,background:"#f7f7ff",borderColor:"#c5c5f0",color:"#5b5bb8",fontWeight:600,flex:"0 0 auto",minWidth:150}}>
         <I name="calendar" size={15} color="#7c7cc8"/>
@@ -3479,24 +3479,51 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage }) {
         <option value="all">전체 매장</option>
         {(data.branches||[]).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
       </select>
-      <select style={{...SS,flex:"0 0 auto",width:110,appearance:"auto"}} value={statusFilter} onChange={e=>setStatusFilter(e.target.value)}>
-        <option value="all">전체 상태</option>
-        <option value="pending">대기</option>
-        <option value="confirmed">확정</option>
-        <option value="completed">완료</option>
-        <option value="cancelled">취소</option>
-        <option value="noshow">노쇼</option>
-      </select>
     </div>
     {/* 검색 */}
-    <div style={{display:"flex",gap:8,marginBottom:14,alignItems:"center"}}>
+    <div style={{display:"flex",gap:8,marginBottom:12,alignItems:"center"}}>
       <div style={{position:"relative",flex:1}}>
         <span style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",color:"#bbb"}}><I name="search" size={15}/></span>
         <input style={{width:"100%",height:42,borderRadius:8,border:"1px solid #e0e0e0",paddingLeft:42,paddingRight:36,fontSize:14,outline:"none",boxSizing:"border-box",fontFamily:"inherit",color:"#333",boxShadow:"0 1px 4px rgba(0,0,0,.08),0 2px 8px rgba(0,0,0,.06)"}} placeholder="고객명, 연락처, 시술, 시술자" value={q} onChange={e=>setQ(e.target.value)}/>
         {q && <button onClick={()=>setQ("")} style={{position:"absolute",right:14,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",color:"#bbb",fontSize:18,lineHeight:1}}>×</button>}
       </div>
-      <span style={{fontSize:13,color:"#999",whiteSpace:"nowrap"}}>{res.length}건</span>
     </div>
+    {/* 상태 필터 - 네이버 스타일 pill */}
+    {(()=>{
+      const allRes = data.reservations.filter(r=>r.type==="reservation"&&(vb==="all"?userBranches.includes(r.bid):r.bid===vb)&&inRange(r.date));
+      const counts = {all:allRes.length, confirmed:0, pending:0, completed:0, cancelled:0, noshow:0};
+      allRes.forEach(r=>{ if(counts[r.status]!==undefined) counts[r.status]++; });
+      const tabs = [
+        {k:"all", label:"전체"},
+        {k:"confirmed", label:"확정"},
+        {k:"pending", label:"대기"},
+        {k:"completed", label:"완료"},
+        {k:"cancelled", label:"취소"},
+        {k:"noshow", label:"노쇼"},
+      ];
+      return <div style={{display:"flex",gap:6,marginBottom:14,flexWrap:"wrap"}}>
+        {tabs.map(({k,label})=>{
+          const active = statusFilter===k;
+          const cnt = counts[k]||0;
+          return <button key={k} onClick={()=>setStatusFilter(k)} style={{
+            height:34,padding:"0 13px",borderRadius:20,border:"1.5px solid",fontSize:13,fontWeight:active?700:500,cursor:"pointer",fontFamily:"inherit",
+            display:"flex",alignItems:"center",gap:5,transition:"all .15s",
+            background: active?"#7c7cc8":"#fff",
+            borderColor: active?"#7c7cc8":"#e0e0e0",
+            color: active?"#fff":"#555",
+            boxShadow: active?"0 2px 8px rgba(124,124,200,.3)":"0 1px 3px rgba(0,0,0,.08)",
+          }}>
+            <span>{label}</span>
+            <span style={{
+              fontSize:11,fontWeight:700,
+              background: active?"rgba(255,255,255,.25)":"#f0f0f0",
+              color: active?"#fff":"#888",
+              borderRadius:10,padding:"1px 6px",lineHeight:"16px",
+            }}>{cnt}</span>
+          </button>;
+        })}
+      </div>;
+    })()}
     <div className="card tw">
       <table><thead><tr>
         <th>날짜</th><th>시간</th><th>매장</th><th>고객</th><th>연락처</th><th>시술</th><th>시술자</th><th>상태</th><th>액션</th>
