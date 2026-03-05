@@ -124,7 +124,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.63.9";
+const BLISS_V = "2.63.10";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -3262,35 +3262,56 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
 // ═══════════════════════════════════════════
 // RESERVATION LIST
 // ═══════════════════════════════════════════
-function DateRangePicker({ rangeType, setRangeType, startDate, setStartDate, endDate, setEndDate }) {
-  const presets = [
-    ["today","오늘"],["7days","7일"],["month","한달"],["all","전체"],["custom","직접선택"]
-  ];
+function DateRangePicker({ rangeType, setRangeType, startDate, setStartDate, endDate, setEndDate, mode="sales" }) {
+  // mode="res" : 오늘/7일후/한달후/전체/직접
+  // mode="sales": 오늘/전일/이번달/지난달/직접
+  const today = todayStr();
+  const presets = mode==="res"
+    ? [["today","오늘"],["7days","7일"],["month","한달"],["all","전체"],["custom","직접"]]
+    : [["today","오늘"],["prev","전일"],["thismonth","이번달"],["lastmonth","지난달"],["custom","직접"]];
+
   const applyPreset = (type) => {
-    const today = todayStr();
-    const d = new Date();
+    const d = new Date(); const y=d.getFullYear(); const m=d.getMonth();
     if (type==="today") { setStartDate(today); setEndDate(today); }
-    else if (type==="7days") { const s=new Date(); s.setDate(s.getDate()-6); setStartDate(fmtLocal(s)); setEndDate(today); }
-    else if (type==="month") { const s=new Date(); s.setDate(s.getDate()-29); setStartDate(fmtLocal(s)); setEndDate(today); }
+    else if (type==="7days") {
+      if (mode==="res") { const e=new Date(); e.setDate(e.getDate()+6); setStartDate(today); setEndDate(fmtLocal(e)); }
+      else { const s=new Date(); s.setDate(s.getDate()-6); setStartDate(fmtLocal(s)); setEndDate(today); }
+    }
+    else if (type==="month") {
+      if (mode==="res") { const e=new Date(); e.setDate(e.getDate()+29); setStartDate(today); setEndDate(fmtLocal(e)); }
+      else { const s=new Date(); s.setDate(s.getDate()-29); setStartDate(fmtLocal(s)); setEndDate(today); }
+    }
+    else if (type==="prev") { const p=new Date(); p.setDate(p.getDate()-1); const ps=fmtLocal(p); setStartDate(ps); setEndDate(ps); }
+    else if (type==="thismonth") { setStartDate(`${y}-${String(m+1).padStart(2,"0")}-01`); setEndDate(today); }
+    else if (type==="lastmonth") {
+      const lm=m===0?11:m-1; const ly=m===0?y-1:y;
+      const last=new Date(y,m,0);
+      setStartDate(`${ly}-${String(lm+1).padStart(2,"0")}-01`); setEndDate(fmtLocal(last));
+    }
     else if (type==="all") { setStartDate(""); setEndDate(""); }
     setRangeType(type);
   };
+
+  const btnBase = {height:32,padding:"0 11px",fontSize:12,border:"1px solid #ddd",cursor:"pointer",fontFamily:"inherit",transition:"all .15s"};
+  const btnAct  = {...btnBase,background:"#7c7cc8",color:"#fff",borderColor:"#7c7cc8",fontWeight:700};
+  const btnIdle = {...btnBase,background:"#fff",color:"#555",fontWeight:400};
+
   return <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
-    <div style={{display:"flex",border:"1px solid #ddd",borderRadius:7,overflow:"hidden"}}>
-      {presets.map(([k,v])=>(
+    <div style={{display:"flex",borderRadius:7,overflow:"hidden",border:"1px solid #ddd"}}>
+      {presets.map(([k,v],i)=>(
         <button key={k} onClick={()=>applyPreset(k)}
-          style={{padding:"5px 10px",fontSize:12,border:"none",cursor:"pointer",fontFamily:"inherit",
-            background:rangeType===k?"#7c7cc8":"#fff",color:rangeType===k?"#fff":"#555",fontWeight:rangeType===k?700:400}}>
+          style={{...(rangeType===k?btnAct:btnIdle),borderRadius:0,borderLeft:i===0?"none":"1px solid #e0e0e0",borderTop:"none",borderBottom:"none",borderRight:"none"}}>
           {v}
         </button>
       ))}
     </div>
     {rangeType==="custom" && <div style={{display:"flex",alignItems:"center",gap:4}}>
-      <input type="date" className="inp" style={{maxWidth:130,width:"auto",fontSize:12}} value={startDate} onChange={e=>setStartDate(e.target.value)}/>
+      <input type="date" className="inp" style={{maxWidth:128,width:"auto",fontSize:12,height:32,padding:"0 8px"}} value={startDate} onChange={e=>setStartDate(e.target.value)}/>
       <span style={{color:"#aaa",fontSize:12}}>~</span>
-      <input type="date" className="inp" style={{maxWidth:130,width:"auto",fontSize:12}} value={endDate} onChange={e=>setEndDate(e.target.value)}/>
+      <input type="date" className="inp" style={{maxWidth:128,width:"auto",fontSize:12,height:32,padding:"0 8px"}} value={endDate} onChange={e=>setEndDate(e.target.value)}/>
     </div>}
-    {rangeType!=="custom" && rangeType!=="all" && rangeType!=="today" && startDate && <span style={{fontSize:11,color:"#999"}}>{startDate} ~ {endDate}</span>}
+    {rangeType!=="custom" && rangeType!=="all" && rangeType!=="today" && startDate && endDate &&
+      <span style={{fontSize:11,color:"#aaa"}}>{startDate} ~ {endDate}</span>}
   </div>;
 }
 
@@ -3335,7 +3356,7 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage }) {
   return <div>
     <h2 className="page-title">예약 목록</h2>
     <div style={{display:"flex",gap:10,marginBottom:10,flexWrap:"wrap",alignItems:"center"}}>
-      <DateRangePicker rangeType={rangeType} setRangeType={setRangeType} startDate={startDate} setStartDate={setStartDate} endDate={endDate} setEndDate={setEndDate}/>
+      <DateRangePicker rangeType={rangeType} setRangeType={setRangeType} startDate={startDate} setStartDate={setStartDate} endDate={endDate} setEndDate={setEndDate} mode="res"/>
       <select className="inp" style={{maxWidth:140,width:"auto"}} value={vb} onChange={e=>setVb(e.target.value)}>
         <option value="all">전체 매장</option>
         {(data.branches||[]).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
