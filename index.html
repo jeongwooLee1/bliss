@@ -3622,6 +3622,8 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
         {res.length===0?<tr><td colSpan={11} style={{textAlign:"center",color:"#bbb",padding:40,fontSize:13}}>예약이 없습니다</td></tr>:
           res.map(r=>{
             const svc=(data.services||[]).find(s=>s.id===r.serviceId);
+            const svcNames=(r.selectedServices||[]).map(sid=>(data.services||[]).find(s=>s.id===sid)?.name).filter(Boolean);
+            const svcDisplay=svcNames.length>0?svcNames.join(", "):(svc?.name||"-");
             const staff=(data.staff||[]).find(s=>s.id===r.staffId);
             const br=(data.branches||[]).find(b=>b.id===r.bid);
             const g=r.custGender||"";
@@ -3632,7 +3634,7 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
               <td style={{fontSize:11}}>{br?.short}</td>
               <td style={{fontWeight:600}}>{r.custName||"-"}{g?<span style={{marginLeft:4,fontSize:10,color:g==="M"?"#7c7cc8":"#e57373"}}>{g==="M"?"남":"여"}</span>:null}</td>
               <td style={{color:"#7c7cc8",fontSize:12}}>{r.custPhone||"-"}</td>
-              <td style={{fontSize:12}}>{svc?.name||"-"}</td>
+              <td style={{fontSize:12}}>{svcDisplay}</td>
               <td style={{fontSize:12}}>{staff?.dn||"-"}</td>
               <td>{(()=>{
                 const src = r.source||"";
