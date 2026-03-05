@@ -3617,9 +3617,9 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
     })()}
     <div className="card tw">
       <table><thead><tr>
-        <th>날짜</th><th>시간</th><th>매장</th><th>고객</th><th>연락처</th><th>시술</th><th>시술자</th><th>경로</th><th>상태</th><th>액션</th>
+        <th>날짜</th><th>시간</th><th>매장</th><th>고객</th><th>연락처</th><th>시술</th><th>시술자</th><th>경로</th><th style={{color:"#e65100"}}>예약금</th><th>상태</th><th>액션</th>
       </tr></thead><tbody>
-        {res.length===0?<tr><td colSpan={10} style={{textAlign:"center",color:"#bbb",padding:40,fontSize:13}}>예약이 없습니다</td></tr>:
+        {res.length===0?<tr><td colSpan={11} style={{textAlign:"center",color:"#bbb",padding:40,fontSize:13}}>예약이 없습니다</td></tr>:
           res.map(r=>{
             const svc=(data.services||[]).find(s=>s.id===r.serviceId);
             const staff=(data.staff||[]).find(s=>s.id===r.staffId);
@@ -3643,6 +3643,7 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
                 const clr = rs?.color||"#7c7cc8";
                 return <span style={{display:"inline-block",fontSize:10,fontWeight:600,color:clr,background:clr+"18",border:`1px solid ${clr}44`,borderRadius:10,padding:"2px 7px"}}>{src}</span>;
               })()}</td>
+              <td style={{fontSize:11,fontWeight:700,color:"#e65100",textAlign:"right"}}>{(()=>{const m=r.memo||"";const match=m.match(/예약금[:\s]*([0-9,]+)원/);return match?<span style={{background:"#fff3e0",borderRadius:6,padding:"2px 6px"}}>{match[1]}원</span>:<span style={{color:"#ccc"}}>-</span>;})()} </td>
               <td><span style={{fontSize:11,fontWeight:700,color:sc[r.status]||"#999"}}>{STATUS_LABEL[r.status]||r.status}</span></td>
               <td><div style={{display:"flex",gap:4}}>
                 <button title="타임라인에서 열기" onClick={()=>{if(setPendingOpenRes)setPendingOpenRes(r);if(setPage)setPage("timeline");}} style={{width:28,height:28,borderRadius:6,border:"1px solid #e8e8e8",background:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"#7c7cc8",boxShadow:"0 1px 3px rgba(0,0,0,.08)"}}><I name="calendar" size={12}/></button>
