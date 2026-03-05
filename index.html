@@ -124,7 +124,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.63.8";
+const BLISS_V = "2.63.9";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -541,8 +541,8 @@ function App() {
         <div className="page-pad" style={{flex:1,padding:page==="timeline"?"0":"16px 20px 16px",display:"flex",flexDirection:"column",minHeight:0,overflow:"hidden"}}>
           <div className={page==="timeline"?"":"fade-in"} key={page} style={page==="timeline"?{flex:1,display:"flex",flexDirection:"column",minHeight:0}:{overflow:"auto",flex:1,WebkitOverflowScrolling:"touch"}}>
             {page==="timeline" && <Timeline data={data} setData={setData} userBranches={userBranches} viewBranches={viewBranches} isMaster={isMaster} currentUser={currentUser} setPage={setPage} bizId={currentBizId} onMenuClick={()=>setSideOpen(true)} bizName={bizName}/>}
-            {page==="reservations" && <ReservationList data={data} setData={setData} userBranches={userBranches} isMaster={isMaster}/>}
-            {page==="sales" && <SalesPage data={data} setData={setData} userBranches={userBranches} isMaster={isMaster}/>}
+            {page==="reservations" && <ReservationList data={data} setData={setData} userBranches={userBranches} isMaster={isMaster} setPage={setPage}/>}
+            {page==="sales" && <SalesPage data={data} setData={setData} userBranches={userBranches} isMaster={isMaster} setPage={setPage}/>}
             {page==="stats" && <StatsPage data={data} userBranches={userBranches} isMaster={isMaster} role={role}/>}
             {page==="customers" && <CustomersPage data={data} setData={setData} userBranches={userBranches} isMaster={isMaster}/>}
             {page==="users" && <UsersPage data={data} setData={setData} bizId={currentBizId}/>}
@@ -3262,15 +3262,55 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
 // ═══════════════════════════════════════════
 // RESERVATION LIST
 // ═══════════════════════════════════════════
-function ReservationList({ data, setData, userBranches, isMaster }) {
-  const [selDate, setSelDate] = useState(todayStr());
+function DateRangePicker({ rangeType, setRangeType, startDate, setStartDate, endDate, setEndDate }) {
+  const presets = [
+    ["today","오늘"],["7days","7일"],["month","한달"],["all","전체"],["custom","직접선택"]
+  ];
+  const applyPreset = (type) => {
+    const today = todayStr();
+    const d = new Date();
+    if (type==="today") { setStartDate(today); setEndDate(today); }
+    else if (type==="7days") { const s=new Date(); s.setDate(s.getDate()-6); setStartDate(fmtLocal(s)); setEndDate(today); }
+    else if (type==="month") { const s=new Date(); s.setDate(s.getDate()-29); setStartDate(fmtLocal(s)); setEndDate(today); }
+    else if (type==="all") { setStartDate(""); setEndDate(""); }
+    setRangeType(type);
+  };
+  return <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+    <div style={{display:"flex",border:"1px solid #ddd",borderRadius:7,overflow:"hidden"}}>
+      {presets.map(([k,v])=>(
+        <button key={k} onClick={()=>applyPreset(k)}
+          style={{padding:"5px 10px",fontSize:12,border:"none",cursor:"pointer",fontFamily:"inherit",
+            background:rangeType===k?"#7c7cc8":"#fff",color:rangeType===k?"#fff":"#555",fontWeight:rangeType===k?700:400}}>
+          {v}
+        </button>
+      ))}
+    </div>
+    {rangeType==="custom" && <div style={{display:"flex",alignItems:"center",gap:4}}>
+      <input type="date" className="inp" style={{maxWidth:130,width:"auto",fontSize:12}} value={startDate} onChange={e=>setStartDate(e.target.value)}/>
+      <span style={{color:"#aaa",fontSize:12}}>~</span>
+      <input type="date" className="inp" style={{maxWidth:130,width:"auto",fontSize:12}} value={endDate} onChange={e=>setEndDate(e.target.value)}/>
+    </div>}
+    {rangeType!=="custom" && rangeType!=="all" && rangeType!=="today" && startDate && <span style={{fontSize:11,color:"#999"}}>{startDate} ~ {endDate}</span>}
+  </div>;
+}
+
+function ReservationList({ data, setData, userBranches, isMaster, setPage }) {
+  const [rangeType, setRangeType] = useState("today");
+  const [startDate, setStartDate] = useState(todayStr());
+  const [endDate, setEndDate] = useState(todayStr());
   const [vb, setVb] = useState("all");
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [searchAll, setSearchAll] = useState(false);
+
+  const inRange = (date) => {
+    if (rangeType==="all" || (!startDate && !endDate)) return true;
+    if (startDate && endDate) return date >= startDate && date <= endDate;
+    if (startDate) return date >= startDate;
+    return true;
+  };
+
   const res = data.reservations.filter(r => {
     if (r.type !== "reservation") return false;
-    if (!searchAll && r.date !== selDate) return false;
     if (!(vb==="all" ? userBranches.includes(r.bid) : r.bid===vb)) return false;
     if (statusFilter !== "all" && r.status !== statusFilter) return false;
     if (q) {
@@ -3282,21 +3322,20 @@ function ReservationList({ data, setData, userBranches, isMaster }) {
              (svc?.name||"").toLowerCase().includes(sq) ||
              (staff?.dn||"").toLowerCase().includes(sq);
     }
-    return true;
+    return inRange(r.date);
   }).sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time));
-  const changeDate = (off) => { const d = new Date(selDate); d.setDate(d.getDate()+off); setSelDate(fmtLocal(d)); };
+
   const updateStatus = (id, status) => { setData(prev=>({...prev,reservations:prev.reservations.map(r=>r.id===id?{...r,status}:r)})); sb.update("reservations",id,{status}).catch(console.error); };
   const deleteRes = (id) => setData(prev=>({...prev,reservations:prev.reservations.filter(r=>r.id!==id)}));
+
+  const goTimeline = (r) => {
+    if (setPage) setPage("timeline");
+  };
 
   return <div>
     <h2 className="page-title">예약 목록</h2>
     <div style={{display:"flex",gap:10,marginBottom:10,flexWrap:"wrap",alignItems:"center"}}>
-      <div style={{display:"flex",alignItems:"center",gap:4}}>
-        <button className="btn-s btn-sm" onClick={()=>changeDate(-1)} disabled={searchAll}><I name="chevL" size={14}/></button>
-        <input type="date" className="inp" style={{maxWidth:150,width:"auto"}} value={selDate} onChange={e=>setSelDate(e.target.value)} disabled={searchAll}/>
-        <button className="btn-s btn-sm" onClick={()=>changeDate(1)} disabled={searchAll}><I name="chevR" size={14}/></button>
-      </div>
-      <button className="btn-s btn-sm" onClick={()=>setSelDate(todayStr())} disabled={searchAll}>오늘</button>
+      <DateRangePicker rangeType={rangeType} setRangeType={setRangeType} startDate={startDate} setStartDate={setStartDate} endDate={endDate} setEndDate={setEndDate}/>
       <select className="inp" style={{maxWidth:140,width:"auto"}} value={vb} onChange={e=>setVb(e.target.value)}>
         <option value="all">전체 매장</option>
         {(data.branches||[]).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
@@ -3313,20 +3352,16 @@ function ReservationList({ data, setData, userBranches, isMaster }) {
     <div style={{display:"flex",gap:8,marginBottom:14,flexWrap:"wrap",alignItems:"center"}}>
       <div style={{position:"relative",flex:1,minWidth:180}}>
         <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:"#999",fontSize:14}}><I name="search" size={14}/></span>
-        <input className="inp" style={{paddingLeft:32}} placeholder="고객명, 연락처, 시술, 시술자 검색..." value={q} onChange={e=>{setQ(e.target.value); if(e.target.value) setSearchAll(true); else setSearchAll(false);}}/>
-        {q && <button onClick={()=>{setQ("");setSearchAll(false);}} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",color:"#999",fontSize:16}}>×</button>}
+        <input className="inp" style={{paddingLeft:32}} placeholder="고객명, 연락처, 시술, 시술자 검색..." value={q} onChange={e=>setQ(e.target.value)}/>
+        {q && <button onClick={()=>setQ("")} style={{position:"absolute",right:8,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",color:"#999",fontSize:16}}>×</button>}
       </div>
-      <label style={{display:"flex",alignItems:"center",gap:5,fontSize:12,color:"#666",cursor:"pointer",whiteSpace:"nowrap"}}>
-        <input type="checkbox" checked={searchAll} onChange={e=>setSearchAll(e.target.checked)} style={{cursor:"pointer"}}/>
-        전체 기간
-      </label>
       <span style={{fontSize:13,color:"#888"}}>총 {res.length}건</span>
     </div>
     <div className="card tw">
       <table><thead><tr>
-        <th>시간</th><th>매장</th><th>룸</th><th>고객</th><th>성별</th><th>연락처</th><th>시술</th><th>시술자</th><th>상태</th><th>액션</th>
+        <th>날짜</th><th>시간</th><th>매장</th><th>룸</th><th>고객</th><th>성별</th><th>연락처</th><th>시술</th><th>시술자</th><th>상태</th><th>액션</th>
       </tr></thead><tbody>
-        {res.length===0?<tr><td colSpan={10} style={{textAlign:"center",color:"#999",padding:40}}>예약이 없습니다</td></tr>:
+        {res.length===0?<tr><td colSpan={11} style={{textAlign:"center",color:"#999",padding:40}}>예약이 없습니다</td></tr>:
           res.map(r=>{
             const svc = (data.services||[]).find(s=>s.id===r.serviceId);
             const staff = (data.staff||[]).find(s=>s.id===r.staffId);
@@ -3334,6 +3369,7 @@ function ReservationList({ data, setData, userBranches, isMaster }) {
             const room = (data.rooms||[]).find(rm=>rm.id===r.roomId);
             const g = r.custGender || "";
             return <tr key={r.id}>
+              <td style={{fontSize:11,color:"#888"}}>{r.date}</td>
               <td style={{fontWeight:700,color:"#7c7cc8"}}>{r.time}</td>
               <td>{br?.short}</td>
               <td>{room?.name||"-"}</td>
@@ -3342,8 +3378,9 @@ function ReservationList({ data, setData, userBranches, isMaster }) {
               <td style={{color:"#7c7cc8"}}>{r.custPhone||"-"}</td>
               <td>{svc?.name||"-"}</td>
               <td>{staff?.dn||"-"}</td>
-              <td>{(() => { const sc = getStatusClr(); const c = sc[r.status]||"#999"; return <span style={{fontSize:11,fontWeight:700,color:c}}>{STATUS_LABEL[r.status]||r.status}</span>; })()}</td>
+              <td>{(()=>{ const sc=getStatusClr(); const c=sc[r.status]||"#999"; return <span style={{fontSize:11,fontWeight:700,color:c}}>{STATUS_LABEL[r.status]||r.status}</span>; })()}</td>
               <td><div style={{display:"flex",gap:3}}>
+                <button title="타임라인에서 보기" className="btn-sm btn-s" onClick={()=>goTimeline(r)} style={{padding:"4px 8px",background:"#f0f0ff",color:"#7c7cc8",border:"none",borderRadius:6,cursor:"pointer"}}><I name="calendar" size={13}/></button>
                 {r.status==="confirmed"&&<button className="btn-sm" style={{background:"#e8f5f0",color:"#6bab9e",border:"none",borderRadius:6,padding:"4px 8px",cursor:"pointer",fontSize:11}} onClick={()=>updateStatus(r.id,"completed")}><I name="check" size={11}/> 완료</button>}
                 <button className="btn-sm btn-s" onClick={()=>deleteRes(r.id)} style={{padding:"4px 8px"}}><I name="trash" size={13}/></button>
               </div></td>
@@ -3357,13 +3394,21 @@ function ReservationList({ data, setData, userBranches, isMaster }) {
 // ═══════════════════════════════════════════
 // SALES PAGE (시술/제품 분리, 결제수단 세분화)
 // ═══════════════════════════════════════════
-function SalesPage({ data, setData, userBranches, isMaster }) {
-  const [selDate, setSelDate] = useState(todayStr());
+function SalesPage({ data, setData, userBranches, isMaster, setPage }) {
+  const [rangeType, setRangeType] = useState("today");
+  const [startDate, setStartDate] = useState(todayStr());
+  const [endDate, setEndDate] = useState(todayStr());
   const [vb, setVb] = useState("all");
-  const [tab, setTab] = useState("daily");
   const [showModal, setShowModal] = useState(false);
   const [editSale, setEditSale] = useState(null);
   const [q, setQ] = useState("");
+
+  const inRange = (date) => {
+    if (rangeType==="all" || (!startDate && !endDate)) return true;
+    if (startDate && endDate) return date >= startDate && date <= endDate;
+    if (startDate) return date >= startDate;
+    return true;
+  };
 
   const sales = data.sales.filter(s => {
     const brMatch = (vb==="all"?userBranches.includes(s.bid):s.bid===vb);
@@ -3376,9 +3421,7 @@ function SalesPage({ data, setData, userBranches, isMaster }) {
              (s.custNum||"").includes(sq) ||
              (s.memo||"").toLowerCase().includes(sq);
     }
-    if (tab==="daily") return s.date===selDate;
-    if (tab==="prev") { const d=new Date(selDate);d.setDate(d.getDate()-1); return s.date===fmtLocal(d); }
-    return true;
+    return inRange(s.date);
   });
 
   const totals = sales.reduce((a,s)=>({
@@ -3388,7 +3431,6 @@ function SalesPage({ data, setData, userBranches, isMaster }) {
     total:a.total+(s.svcCash+s.svcTransfer+s.svcCard+s.svcPoint+s.prodCash+s.prodTransfer+s.prodCard+s.prodPoint+s.gift)
   }),{svcCash:0,svcTransfer:0,svcCard:0,svcPoint:0,prodCash:0,prodTransfer:0,prodCard:0,prodPoint:0,gift:0,svcTotal:0,prodTotal:0,total:0});
 
-  const changeDate = (off) => { const d = new Date(selDate); d.setDate(d.getDate()+off); setSelDate(fmtLocal(d)); };
   const handleDelete = (id) => { setData(prev=>({...prev,sales:prev.sales.filter(s=>s.id!==id)})); sb.del("sales",id).catch(console.error); };
   const handleSave = (item) => { setData(prev=>({...prev,sales:[...prev.sales,item]})); sb.insert("sales",toDb("sales",item)).catch(console.error); setShowModal(false); };
   const handleEditSave = (item) => {
@@ -3403,20 +3445,9 @@ function SalesPage({ data, setData, userBranches, isMaster }) {
       <h2 className="page-title" style={{marginBottom:0}}>매출 관리</h2>
       <button className="btn-p" onClick={()=>setShowModal(true)}><I name="plus" size={12}/> 매출등록</button>
     </div>
-    {/* Tabs */}
-    <div style={{display:"flex",gap:2,marginBottom:16,background:"#e0e0e0",borderRadius:8,padding:3,width:"fit-content"}}>
-      {[["daily","일매출"],["prev","전일매출"],["all","전체매출"]].map(([k,v])=>(
-        <button key={k} className={tab===k?"btn-p btn-sm":"btn-s btn-sm"} onClick={()=>setTab(k)}>{v}</button>
-      ))}
-    </div>
     {/* Filters */}
     <div style={{display:"flex",gap:10,marginBottom:10,flexWrap:"wrap",alignItems:"center"}}>
-      {tab!=="all"&&!q&&<div style={{display:"flex",alignItems:"center",gap:4}}>
-        <button className="btn-s btn-sm" onClick={()=>changeDate(-1)}><I name="chevL" size={14}/></button>
-        <input type="date" className="inp" style={{maxWidth:150,width:"auto"}} value={selDate} onChange={e=>setSelDate(e.target.value)}/>
-        <button className="btn-s btn-sm" onClick={()=>changeDate(1)}><I name="chevR" size={14}/></button>
-        <button className="btn-s btn-sm" onClick={()=>setSelDate(todayStr())}>오늘</button>
-      </div>}
+      <DateRangePicker rangeType={rangeType} setRangeType={setRangeType} startDate={startDate} setStartDate={setStartDate} endDate={endDate} setEndDate={setEndDate}/>
       <select className="inp" style={{maxWidth:140,width:"auto"}} value={vb} onChange={e=>setVb(e.target.value)}>
         <option value="all">전체 매장</option>
         {(data.branches||[]).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
