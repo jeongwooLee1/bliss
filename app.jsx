@@ -1586,11 +1586,12 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                   const elTop = rect.top - srRect.top + sr.scrollTop;
                   const elLeft = rect.left - srRect.left + sr.scrollLeft;
                   const stickyH = topbarH + headerH;
+                  const stickyW = window.innerWidth <= 768 ? 52 : 88;
                   const visibleH = sr.clientHeight - stickyH;
-                  const visibleW = sr.clientWidth;
+                  const visibleW = sr.clientWidth - stickyW;
                   sr.scrollTo({
                     top: Math.max(0, elTop - stickyH - visibleH / 2 + rect.height / 2),
-                    left: Math.max(0, elLeft - visibleW / 2 + rect.width / 2),
+                    left: Math.max(0, elLeft - stickyW - visibleW / 2 + rect.width / 2),
                     behavior: "smooth"
                   });
                 } else {
