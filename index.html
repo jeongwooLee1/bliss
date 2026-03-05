@@ -124,7 +124,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.63.15";
+const BLISS_V = "2.63.16";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -963,12 +963,14 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
 
   // ReservationList에서 넘어온 예약 자동 오픈
   useEffect(()=>{
-    if (pendingOpenRes) {
+    if (!pendingOpenRes) return;
+    const timer = setTimeout(()=>{
       setSelDate(pendingOpenRes.date || todayStr());
-      setModalData({...pendingOpenRes});
+      setModalData({...pendingOpenRes, readOnly: false});
       setShowModal(true);
       setPendingOpenRes && setPendingOpenRes(null);
-    }
+    }, 80);
+    return ()=>clearTimeout(timer);
   },[pendingOpenRes]);
   const [showQuickBook, setShowQuickBook] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
