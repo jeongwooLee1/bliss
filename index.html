@@ -3262,25 +3262,40 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
 // ═══════════════════════════════════════════
 // RESERVATION LIST
 // ═══════════════════════════════════════════
-function NaverDateSheet({ open, onClose, startDate, endDate, onApply, mode }) {
-  // 네이버 스타일 바텀시트 달력
+function SmartDatePicker({ open, onClose, anchorEl, startDate, endDate, onApply, mode }) {
   const [selStart, setSelStart] = useState(startDate || todayStr());
-  const [selEnd, setSelEnd]     = useState(endDate || todayStr());
-  const [period, setPeriod]     = useState("7days");
-  const [showPeriodMenu, setShowPeriodMenu] = useState(false);
-  const [calMonth, setCalMonth] = useState(() => {
-    const d = new Date(startDate || todayStr()); return {y: d.getFullYear(), m: d.getMonth()};
+  const [selEnd,   setSelEnd]   = useState(endDate   || todayStr());
+  const [period,   setPeriod]   = useState("today");
+  const [months,   setMonths]   = useState(() => {
+    const d = new Date(startDate || todayStr());
+    const d2 = new Date(d.getFullYear(), d.getMonth()+1, 1);
+    return [{y:d.getFullYear(),m:d.getMonth()},{y:d2.getFullYear(),m:d2.getMonth()}];
   });
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [pos, setPos] = useState({top:0,left:0});
 
-  const periods = mode === "res"
-    ? [["1day","일간"],["7days","7일"],["month","한달"],["all","전체"],["custom","직접선택"]]
-    : [["1day","오늘"],["prev","전일"],["thismonth","이번달"],["lastmonth","지난달"],["custom","직접선택"]];
+  useEffect(()=>{
+    const check = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener("resize",check);
+    return ()=>window.removeEventListener("resize",check);
+  },[]);
 
-  const applyPeriod = (key) => {
+  useEffect(()=>{
+    if (!isMobile && anchorEl && open) {
+      const r = anchorEl.getBoundingClientRect();
+      setPos({top: r.bottom + 6, left: r.left});
+    }
+  },[open, isMobile, anchorEl]);
+
+  const presets = mode==="res"
+    ? [["today","오늘"],["7days","7일"],["month","한달"],["all","전체"],["custom","직접"]]
+    : [["today","오늘"],["prev","전일"],["thismonth","이번달"],["lastmonth","지난달"],["custom","직접"]];
+
+  const applyPreset = (key) => {
     const today = todayStr();
     const d = new Date(); const y=d.getFullYear(); const m=d.getMonth();
     let s=today, e=today;
-    if (key==="1day") { s=e=today; }
+    if (key==="today") { s=e=today; }
     else if (key==="prev") { const p=new Date(); p.setDate(p.getDate()-1); s=e=fmtLocal(p); }
     else if (key==="7days") {
       if (mode==="res") { const en=new Date(); en.setDate(en.getDate()+6); e=fmtLocal(en); }
@@ -3297,124 +3312,130 @@ function NaverDateSheet({ open, onClose, startDate, endDate, onApply, mode }) {
       e=fmtLocal(new Date(y,m,0));
     }
     else if (key==="all") { s=""; e=""; }
-    setPeriod(key); setSelStart(s); setSelEnd(e); setShowPeriodMenu(false);
-    if (s) setCalMonth({y:parseInt(s.slice(0,4)),m:parseInt(s.slice(5,7))-1});
+    setPeriod(key); setSelStart(s); setSelEnd(e);
+    if (s) { const sd=new Date(s); const sd2=new Date(sd.getFullYear(),sd.getMonth()+1,1); setMonths([{y:sd.getFullYear(),m:sd.getMonth()},{y:sd2.getFullYear(),m:sd2.getMonth()}]); }
   };
 
-  const periodLabel = periods.find(([k])=>k===period)?.[1] || "7일";
-
-  // 달력 날짜 생성
   const buildCal = (y,m) => {
-    const first = new Date(y,m,1).getDay();
-    const days = new Date(y,m+1,0).getDate();
-    const cells = [];
+    const first=new Date(y,m,1).getDay(); const days=new Date(y,m+1,0).getDate();
+    const cells=[];
     for(let i=0;i<first;i++) cells.push(null);
     for(let i=1;i<=days;i++) cells.push(`${y}-${String(m+1).padStart(2,"0")}-${String(i).padStart(2,"0")}`);
     return cells;
   };
 
-  const cells = buildCal(calMonth.y, calMonth.m);
-  const prevMonth = () => { const d=new Date(calMonth.y,calMonth.m-1,1); setCalMonth({y:d.getFullYear(),m:d.getMonth()}); };
-  const nextMonth = () => { const d=new Date(calMonth.y,calMonth.m+1,1); setCalMonth({y:d.getFullYear(),m:d.getMonth()}); };
-
-  const inSel = (ds) => selStart && selEnd && ds >= selStart && ds <= selEnd;
-  const isStart = (ds) => ds === selStart;
-  const isEnd   = (ds) => ds === selEnd;
+  const prevM = () => { const d=new Date(months[0].y,months[0].m-1,1); const d2=new Date(months[1].y,months[1].m-1,1); setMonths([{y:d.getFullYear(),m:d.getMonth()},{y:d2.getFullYear(),m:d2.getMonth()}]); };
+  const nextM = () => { const d=new Date(months[0].y,months[0].m+1,1); const d2=new Date(months[1].y,months[1].m+1,1); setMonths([{y:d.getFullYear(),m:d.getMonth()},{y:d2.getFullYear(),m:d2.getMonth()}]); };
 
   const handleDayClick = (ds) => {
-    if (period !== "custom") { setPeriod("custom"); }
-    if (!selStart || (selStart && selEnd && ds !== selStart)) {
-      setSelStart(ds); setSelEnd(ds);
-    } else if (ds < selStart) {
-      setSelStart(ds);
-    } else {
-      setSelEnd(ds);
-    }
+    setPeriod("custom");
+    if (!selStart || (selStart && selEnd)) { setSelStart(ds); setSelEnd(ds); }
+    else if (ds < selStart) { setSelStart(ds); }
+    else { setSelEnd(ds); }
   };
 
-  if (!open) return null;
   const DAYS = ["일","월","화","수","목","금","토"];
-  const mStr = `${calMonth.y}.${String(calMonth.m+1).padStart(2,"0")}`;
 
-  return <div style={{position:"fixed",inset:0,zIndex:3000,display:"flex",flexDirection:"column",justifyContent:"flex-end"}} onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
-    <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.45)"}} onClick={onClose}/>
-    <div style={{position:"relative",background:"#fff",borderRadius:"16px 16px 0 0",padding:"0 0 32px",maxHeight:"90vh",overflowY:"auto"}}>
-      {/* 핸들 */}
-      <div style={{display:"flex",justifyContent:"center",padding:"12px 0 4px"}}>
-        <div style={{width:36,height:4,borderRadius:2,background:"#e0e0e0"}}/>
+  const CalGrid = ({y,m}) => {
+    const cells = buildCal(y,m);
+    return <div style={{minWidth:220}}>
+      <div style={{textAlign:"center",fontWeight:700,fontSize:15,color:"#222",marginBottom:8}}>{y}.{String(m+1).padStart(2,"0")}</div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:"2px 0",marginBottom:4}}>
+        {DAYS.map((d,i)=><div key={d} style={{textAlign:"center",fontSize:11,fontWeight:600,color:i===0?"#e53935":i===6?"#1E88E5":"#aaa",padding:"4px 0"}}>{d}</div>)}
       </div>
-      {/* 헤더 */}
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 20px 16px"}}>
-        <div style={{display:"flex",alignItems:"center",gap:8}}>
-          <I name="calendar" size={18} color="#333"/>
-          <span style={{fontSize:17,fontWeight:700,color:"#222"}}>날짜 선택</span>
-        </div>
-        <div style={{display:"flex",gap:8,alignItems:"center"}}>
-          <button onClick={()=>applyPeriod("1day")} style={{height:34,padding:"0 14px",borderRadius:8,border:"1px solid #e0e0e0",background:"#fff",fontSize:13,fontWeight:500,cursor:"pointer",color:"#444",boxShadow:"0 1px 4px rgba(0,0,0,.08)"}}>오늘</button>
-          {/* 기간 드롭다운 */}
-          <div style={{position:"relative"}}>
-            <button onClick={()=>setShowPeriodMenu(v=>!v)}
-              style={{height:34,padding:"0 12px 0 14px",borderRadius:8,border:"1px solid #e0e0e0",background:"#fff",fontSize:13,fontWeight:500,cursor:"pointer",color:"#444",display:"flex",alignItems:"center",gap:4,boxShadow:"0 1px 4px rgba(0,0,0,.08)"}}>
-              {periodLabel} <span style={{fontSize:10,color:"#999"}}>▼</span>
-            </button>
-            {showPeriodMenu && <div style={{position:"absolute",right:0,top:"calc(100% + 6px)",background:"#fff",borderRadius:12,boxShadow:"0 4px 20px rgba(0,0,0,0.15)",minWidth:120,zIndex:100,overflow:"hidden"}}>
-              {periods.map(([k,v])=>(
-                <button key={k} onClick={()=>applyPeriod(k)}
-                  style={{display:"block",width:"100%",padding:"12px 18px",border:"none",background:"none",textAlign:"left",fontSize:14,cursor:"pointer",color:period===k?"#1EC800":"#333",fontWeight:period===k?700:400}}>
-                  {v}
-                </button>
-              ))}
-            </div>}
-          </div>
-        </div>
-      </div>
-      {/* 월 네비 */}
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 20px",marginBottom:12}}>
-        <button onClick={prevMonth} style={{width:32,height:32,border:"none",background:"none",cursor:"pointer",fontSize:18,color:"#555",display:"flex",alignItems:"center",justifyContent:"center"}}>‹</button>
-        <span style={{fontSize:20,fontWeight:700,color:"#222"}}>{mStr}</span>
-        <button onClick={nextMonth} style={{width:32,height:32,border:"none",background:"none",cursor:"pointer",fontSize:18,color:"#555",display:"flex",alignItems:"center",justifyContent:"center"}}>›</button>
-      </div>
-      {/* 요일 헤더 */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",padding:"0 12px",marginBottom:4}}>
-        {DAYS.map((d,i)=>(
-          <div key={d} style={{textAlign:"center",fontSize:12,fontWeight:500,color:i===0?"#e53935":i===6?"#1E88E5":"#666",padding:"4px 0"}}>{d}</div>
-        ))}
-      </div>
-      {/* 날짜 그리드 */}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",padding:"0 12px",gap:"2px 0"}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:"2px 0"}}>
         {cells.map((ds,i)=>{
-          if (!ds) return <div key={i}/>;
-          const today = todayStr();
-          const isToday = ds===today;
-          const isSt = isStart(ds) && selStart;
-          const isEn = isEnd(ds) && selEnd && selEnd!==selStart;
-          const inR = inSel(ds) && selStart !== selEnd;
-          const dow = new Date(ds).getDay();
-          let textColor = dow===0?"#e53935":dow===6?"#1E88E5":"#333";
-          if (isSt || isEn) textColor="#fff";
+          if(!ds) return <div key={i}/>;
+          const today=todayStr();
+          const isToday=ds===today;
+          const isSt=ds===selStart&&selStart;
+          const isEn=ds===selEnd&&selEnd&&selEnd!==selStart;
+          const inR=selStart&&selEnd&&ds>selStart&&ds<selEnd;
+          const dow=new Date(ds).getDay();
+          let tc=dow===0?"#e53935":dow===6?"#1E88E5":"#333";
+          if(isSt||isEn) tc="#fff";
           return <div key={ds} style={{display:"flex",justifyContent:"center",position:"relative",
-            background: inR?"#e8f5e9":"transparent",
-            borderRadius: isSt?"4px 0 0 4px": isEn?"0 4px 4px 0":"0"
-          }}>
+            background:inR?"#eeeefc":"transparent",
+            borderRadius:isSt?"50% 0 0 50%":isEn?"0 50% 50% 0":"0"}}>
             <button onClick={()=>handleDayClick(ds)} style={{
-              width:38,height:38,borderRadius:"50%",border:"none",cursor:"pointer",fontSize:14,fontFamily:"inherit",fontWeight:isToday||isSt||isEn?700:400,
-              background: isSt||isEn?"#1EC800": isToday?"#f0f0f0":"transparent",
-              color: textColor, position:"relative"
-            }}>
+              width:30,height:30,borderRadius:"50%",border:"none",cursor:"pointer",fontSize:12,fontFamily:"inherit",
+              fontWeight:isToday||isSt||isEn?700:400,
+              background:isSt||isEn?"#7c7cc8":isToday?"#f0f0f0":"transparent",
+              color:tc,position:"relative",display:"flex",alignItems:"center",justifyContent:"center"}}>
               {parseInt(ds.slice(8))}
-              {isToday && !(isSt||isEn) && <span style={{position:"absolute",bottom:3,left:"50%",transform:"translateX(-50%)",width:4,height:4,borderRadius:"50%",background:"#1EC800"}}/>}
+              {isToday&&!(isSt||isEn)&&<span style={{position:"absolute",bottom:2,left:"50%",transform:"translateX(-50%)",width:3,height:3,borderRadius:"50%",background:"#7c7cc8"}}/>}
             </button>
           </div>;
         })}
       </div>
-      {/* 선택된 기간 표시 */}
-      {selStart && <div style={{padding:"16px 20px 0",textAlign:"center",color:"#888",fontSize:13}}>
-        {selStart}{selEnd&&selEnd!==selStart?` ~ ${selEnd}`:""}
-      </div>}
-      {/* 버튼 */}
-      <div style={{display:"flex",gap:10,padding:"20px 20px 0"}}>
-        <button onClick={onClose} style={{flex:1,height:48,border:"1.5px solid #ddd",borderRadius:8,background:"#fff",fontSize:15,cursor:"pointer",color:"#555",fontFamily:"inherit",fontWeight:500}}>취소</button>
-        <button onClick={()=>onApply(selStart,selEnd,period)} style={{flex:2,height:48,border:"none",borderRadius:8,background:"#1EC800",fontSize:15,cursor:"pointer",color:"#fff",fontFamily:"inherit",fontWeight:700}}>적용</button>
+    </div>;
+  };
+
+  const doApply = () => { onApply(selStart,selEnd,period); onClose(); };
+
+  if (!open) return null;
+
+  // ── 데스크탑 드롭다운 ──
+  if (!isMobile) {
+    return <div style={{position:"fixed",inset:0,zIndex:3000}} onMouseDown={e=>{if(e.target===e.currentTarget)onClose();}}>
+      <div onMouseDown={e=>e.stopPropagation()} style={{
+        position:"fixed",top:pos.top,left:pos.left,
+        background:"#fff",borderRadius:12,boxShadow:"0 8px 32px rgba(0,0,0,.18)",
+        padding:"16px 20px 14px",zIndex:3001,minWidth:500}}>
+        {/* 프리셋 버튼 */}
+        <div style={{display:"flex",gap:4,marginBottom:14,flexWrap:"wrap"}}>
+          {presets.map(([k,v])=><button key={k} onClick={()=>applyPreset(k)} style={{
+            height:28,padding:"0 12px",borderRadius:6,border:"1px solid",fontSize:12,cursor:"pointer",fontFamily:"inherit",
+            background:period===k?"#7c7cc8":"#f6f6f6",
+            color:period===k?"#fff":"#555",
+            borderColor:period===k?"#7c7cc8":"#e0e0e0",
+            fontWeight:period===k?700:400}}>{v}</button>)}
+          <span style={{marginLeft:"auto",fontSize:12,color:"#aaa",alignSelf:"center"}}>
+            {selStart&&selEnd&&selStart!==selEnd?`${selStart} ~ ${selEnd}`:selStart||"전체"}
+          </span>
+        </div>
+        {/* 월 네비 + 2달 캘린더 */}
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <button onClick={prevM} style={{width:28,height:28,border:"1px solid #e0e0e0",borderRadius:6,background:"#fff",cursor:"pointer",fontSize:16,color:"#666",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>‹</button>
+          <div style={{display:"flex",gap:24,flex:1}}>
+            <CalGrid y={months[0].y} m={months[0].m}/>
+            <div style={{width:1,background:"#f0f0f0",alignSelf:"stretch"}}/>
+            <CalGrid y={months[1].y} m={months[1].m}/>
+          </div>
+          <button onClick={nextM} style={{width:28,height:28,border:"1px solid #e0e0e0",borderRadius:6,background:"#fff",cursor:"pointer",fontSize:16,color:"#666",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>›</button>
+        </div>
+        {/* 하단 버튼 */}
+        <div style={{display:"flex",gap:8,marginTop:14,justifyContent:"flex-end"}}>
+          <button onClick={onClose} style={{height:32,padding:"0 16px",borderRadius:7,border:"1px solid #e0e0e0",background:"#fff",fontSize:13,cursor:"pointer",color:"#666",fontFamily:"inherit"}}>취소</button>
+          <button onClick={doApply} style={{height:32,padding:"0 20px",borderRadius:7,border:"none",background:"#7c7cc8",fontSize:13,cursor:"pointer",color:"#fff",fontFamily:"inherit",fontWeight:700}}>적용</button>
+        </div>
+      </div>
+    </div>;
+  }
+
+  // ── 모바일 바텀시트 ──
+  return <div style={{position:"fixed",inset:0,zIndex:3000,display:"flex",flexDirection:"column",justifyContent:"flex-end"}} onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
+    <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.45)"}} onClick={onClose}/>
+    <div style={{position:"relative",background:"#fff",borderRadius:"16px 16px 0 0",padding:"0 0 32px",maxHeight:"90vh",overflowY:"auto"}}>
+      <div style={{display:"flex",justifyContent:"center",padding:"12px 0 4px"}}><div style={{width:36,height:4,borderRadius:2,background:"#e0e0e0"}}/></div>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 20px 14px"}}>
+        <span style={{fontSize:16,fontWeight:700,color:"#222"}}>날짜 선택</span>
+        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+          {presets.map(([k,v])=><button key={k} onClick={()=>applyPreset(k)} style={{
+            height:30,padding:"0 10px",borderRadius:6,border:"1px solid",fontSize:12,cursor:"pointer",fontFamily:"inherit",
+            background:period===k?"#7c7cc8":"#f6f6f6",color:period===k?"#fff":"#555",borderColor:period===k?"#7c7cc8":"#e0e0e0"}}>{v}</button>)}
+        </div>
+      </div>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 16px",marginBottom:10}}>
+        <button onClick={prevM} style={{width:32,height:32,border:"none",background:"none",cursor:"pointer",fontSize:20,color:"#555"}}>‹</button>
+        <span style={{fontSize:16,fontWeight:700}}>{months[0].y}.{String(months[0].m+1).padStart(2,"0")}</span>
+        <button onClick={nextM} style={{width:32,height:32,border:"none",background:"none",cursor:"pointer",fontSize:20,color:"#555"}}>›</button>
+      </div>
+      <div style={{padding:"0 16px"}}><CalGrid y={months[0].y} m={months[0].m}/></div>
+      {selStart&&<div style={{padding:"14px 20px 0",textAlign:"center",color:"#888",fontSize:13}}>{selStart}{selEnd&&selEnd!==selStart?` ~ ${selEnd}`:""}</div>}
+      <div style={{display:"flex",gap:10,padding:"16px 20px 0"}}>
+        <button onClick={onClose} style={{flex:1,height:46,border:"1.5px solid #ddd",borderRadius:8,background:"#fff",fontSize:14,cursor:"pointer",color:"#555",fontFamily:"inherit"}}>취소</button>
+        <button onClick={doApply} style={{flex:2,height:46,border:"none",borderRadius:8,background:"#7c7cc8",fontSize:14,cursor:"pointer",color:"#fff",fontFamily:"inherit",fontWeight:700}}>적용</button>
       </div>
     </div>
   </div>;
@@ -3422,6 +3443,7 @@ function NaverDateSheet({ open, onClose, startDate, endDate, onApply, mode }) {
 
 function ReservationList({ data, setData, userBranches, isMaster, setPage }) {
   const today = todayStr();
+  const dateAnchorRef = React.useRef(null);
   const [startDate, setStartDate] = useState(today);
   const [endDate, setEndDate] = useState(() => { const d=new Date(); d.setDate(d.getDate()+6); return fmtLocal(d); });
   const [periodKey, setPeriodKey] = useState("7days");
@@ -3464,13 +3486,13 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage }) {
     periodKey==="1day" || startDate===endDate ? fmtShort(startDate) :
     `${fmtShort(startDate)} ~ ${fmtShort(endDate)}`;
 
-  const SS = {height:42,borderRadius:8,border:"1px solid #e0e0e0",background:"#fff",fontSize:14,padding:"0 16px",cursor:"pointer",fontFamily:"inherit",color:"#333",display:"flex",alignItems:"center",gap:6,outline:"none",boxShadow:"0 1px 4px rgba(0,0,0,.08),0 2px 8px rgba(0,0,0,.06)",boxSizing:"border-box"};
+  const SS = {height:38,borderRadius:8,border:"1px solid #e0e0e0",background:"#fff",fontSize:13,padding:"0 14px",cursor:"pointer",fontFamily:"inherit",color:"#333",display:"flex",alignItems:"center",gap:6,outline:"none",boxShadow:"0 1px 4px rgba(0,0,0,.08)",boxSizing:"border-box"};
 
   return <div>
     <h2 className="page-title">예약 목록</h2>
     {/* 필터 바 - 날짜 + 매장 */}
     <div style={{display:"flex",gap:8,marginBottom:10,alignItems:"center",flexWrap:"wrap"}}>
-      <button onClick={()=>setShowSheet(true)} style={{...SS,background:"#f7f7ff",borderColor:"#c5c5f0",color:"#5b5bb8",fontWeight:600,flex:"0 0 auto",minWidth:150}}>
+      <button ref={dateAnchorRef} onClick={()=>setShowSheet(true)} style={{...SS,background:"#f7f7ff",borderColor:"#c5c5f0",color:"#5b5bb8",fontWeight:600,flex:"0 0 auto",minWidth:150}}>
         <I name="calendar" size={15} color="#7c7cc8"/>
         <span>{dateLabel}</span>
         <span style={{fontSize:10,color:"#aaa",marginLeft:"auto"}}>▼</span>
@@ -3481,10 +3503,10 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage }) {
       </select>
     </div>
     {/* 검색 */}
-    <div style={{display:"flex",gap:8,marginBottom:12,alignItems:"center"}}>
+    <div style={{display:"flex",gap:8,marginBottom:8,alignItems:"center"}}>
       <div style={{position:"relative",flex:1}}>
         <span style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",color:"#bbb"}}><I name="search" size={15}/></span>
-        <input style={{width:"100%",height:42,borderRadius:8,border:"1px solid #e0e0e0",paddingLeft:42,paddingRight:36,fontSize:14,outline:"none",boxSizing:"border-box",fontFamily:"inherit",color:"#333",boxShadow:"0 1px 4px rgba(0,0,0,.08),0 2px 8px rgba(0,0,0,.06)"}} placeholder="고객명, 연락처, 시술, 시술자" value={q} onChange={e=>setQ(e.target.value)}/>
+        <input style={{width:"100%",height:38,borderRadius:8,border:"1px solid #e0e0e0",paddingLeft:42,paddingRight:36,fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:"inherit",color:"#333",boxShadow:"0 1px 4px rgba(0,0,0,.08)"}} placeholder="고객명, 연락처, 시술, 시술자" value={q} onChange={e=>setQ(e.target.value)}/>
         {q && <button onClick={()=>setQ("")} style={{position:"absolute",right:14,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",color:"#bbb",fontSize:18,lineHeight:1}}>×</button>}
       </div>
     </div>
@@ -3497,16 +3519,15 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage }) {
         {k:"all", label:"전체"},
         {k:"confirmed", label:"확정"},
         {k:"pending", label:"대기"},
-        {k:"completed", label:"완료"},
         {k:"cancelled", label:"취소"},
         {k:"noshow", label:"노쇼"},
       ];
-      return <div style={{display:"flex",gap:6,marginBottom:14,flexWrap:"wrap"}}>
+      return <div style={{display:"flex",gap:5,marginBottom:10,flexWrap:"wrap"}}>
         {tabs.map(({k,label})=>{
           const active = statusFilter===k;
           const cnt = counts[k]||0;
           return <button key={k} onClick={()=>setStatusFilter(k)} style={{
-            height:34,padding:"0 13px",borderRadius:20,border:"1.5px solid",fontSize:13,fontWeight:active?700:500,cursor:"pointer",fontFamily:"inherit",
+            height:30,padding:"0 11px",borderRadius:20,border:"1.5px solid",fontSize:13,fontWeight:active?700:500,cursor:"pointer",fontFamily:"inherit",
             display:"flex",alignItems:"center",gap:5,transition:"all .15s",
             background: active?"#7c7cc8":"#fff",
             borderColor: active?"#7c7cc8":"#e0e0e0",
@@ -3546,14 +3567,13 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage }) {
               <td><span style={{fontSize:11,fontWeight:700,color:sc[r.status]||"#999"}}>{STATUS_LABEL[r.status]||r.status}</span></td>
               <td><div style={{display:"flex",gap:4}}>
                 <button title="타임라인" onClick={()=>setPage&&setPage("timeline")} style={{width:28,height:28,borderRadius:6,border:"1px solid #e8e8e8",background:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"#7c7cc8",boxShadow:"0 1px 3px rgba(0,0,0,.08)"}}><I name="calendar" size={12}/></button>
-                {r.status==="confirmed"&&<button onClick={()=>updateStatus(r.id,"completed")} style={{height:28,padding:"0 8px",borderRadius:6,border:"none",background:"#e8f5f0",color:"#6bab9e",cursor:"pointer",fontSize:11,fontWeight:600}}>완료</button>}
-                <button onClick={()=>deleteRes(r.id)} style={{width:28,height:28,borderRadius:6,border:"1px solid #ffe0e0",background:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"#e57373",boxShadow:"0 1px 3px rgba(0,0,0,.08)"}}><I name="trash" size={12}/></button>
+<button onClick={()=>deleteRes(r.id)} style={{width:28,height:28,borderRadius:6,border:"1px solid #ffe0e0",background:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"#e57373",boxShadow:"0 1px 3px rgba(0,0,0,.08)"}}><I name="trash" size={12}/></button>
               </div></td>
             </tr>;
           })}
       </tbody></table>
     </div>
-    <NaverDateSheet open={showSheet} onClose={()=>setShowSheet(false)} startDate={startDate} endDate={endDate} mode="res"
+    <SmartDatePicker open={showSheet} onClose={()=>setShowSheet(false)} anchorEl={dateAnchorRef.current} startDate={startDate} endDate={endDate} mode="res"
       onApply={(s,e,p)=>{ setStartDate(s); setEndDate(e); setPeriodKey(p); setShowSheet(false); }}/>
   </div>;
 }
@@ -3563,6 +3583,7 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage }) {
 // SALES PAGE (시술/제품 분리, 결제수단 세분화)
 // ═══════════════════════════════════════════
 function SalesPage({ data, setData, userBranches, isMaster, setPage }) {
+  const dateAnchorRef = React.useRef(null);
   const [startDate, setStartDate] = useState(todayStr());
   const [endDate, setEndDate] = useState(todayStr());
   const [periodKey, setPeriodKey] = useState("1day");
@@ -3615,11 +3636,11 @@ function SalesPage({ data, setData, userBranches, isMaster, setPage }) {
     </div>
     {/* Filters */}
     <div style={{display:"flex",gap:8,marginBottom:10,flexWrap:"wrap",alignItems:"center"}}>
-      {(()=>{ const ss={height:36,borderRadius:8,border:"1.5px solid #e0e0e0",background:"#fff",fontSize:13,padding:"0 14px",cursor:"pointer",fontFamily:"inherit",color:"#444",display:"flex",alignItems:"center",gap:5,outline:"none"};
+      {(()=>{ const ss={height:38,borderRadius:8,border:"1px solid #e0e0e0",background:"#fff",fontSize:13,padding:"0 14px",cursor:"pointer",fontFamily:"inherit",color:"#444",display:"flex",alignItems:"center",gap:5,outline:"none",boxShadow:"0 1px 4px rgba(0,0,0,.08)",boxSizing:"border-box"};
         const fmtShort = (ds) => { if(!ds) return ""; const d=new Date(ds); const dow=["일","월","화","수","목","금","토"][d.getDay()]; return `${String(d.getFullYear()).slice(2)}.${d.getMonth()+1}.${d.getDate()}.${dow}`; };
         const dateLabel = periodKey==="all"?"전체":periodKey==="1day"||startDate===endDate?fmtShort(startDate):`${fmtShort(startDate)} ~ ${fmtShort(endDate)}`;
         return <>
-          <button onClick={()=>setShowSheet(true)} style={{...ss,background:"#f7f7ff",borderColor:"#c5c5f0",color:"#5b5bb8",fontWeight:600,flex:"0 0 auto",minWidth:150}}>
+          <button ref={dateAnchorRef} onClick={()=>setShowSheet(true)} style={{...ss,background:"#f7f7ff",borderColor:"#c5c5f0",color:"#5b5bb8",fontWeight:600,flex:"0 0 auto",minWidth:150}}>
             <I name="calendar" size={15} color="#7c7cc8"/>
             <span>{dateLabel}</span>
             <span style={{fontSize:10,color:"#aaa",marginLeft:"auto"}}>▼</span>
@@ -3634,7 +3655,7 @@ function SalesPage({ data, setData, userBranches, isMaster, setPage }) {
     <div style={{display:"flex",gap:8,marginBottom:14,alignItems:"center"}}>
       <div style={{position:"relative",flex:1}}>
         <span style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",color:"#bbb"}}><I name="search" size={15}/></span>
-        <input style={{width:"100%",height:42,borderRadius:8,border:"1px solid #e0e0e0",paddingLeft:42,paddingRight:36,fontSize:14,outline:"none",boxSizing:"border-box",fontFamily:"inherit",color:"#333",boxShadow:"0 1px 4px rgba(0,0,0,.08),0 2px 8px rgba(0,0,0,.06)"}} placeholder="고객명, 연락처, 매니저, 고객번호, 메모" value={q} onChange={e=>setQ(e.target.value)}/>
+        <input style={{width:"100%",height:38,borderRadius:8,border:"1px solid #e0e0e0",paddingLeft:42,paddingRight:36,fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:"inherit",color:"#333",boxShadow:"0 1px 4px rgba(0,0,0,.08)"}} placeholder="고객명, 연락처, 매니저, 고객번호, 메모" value={q} onChange={e=>setQ(e.target.value)}/>
         {q && <button onClick={()=>setQ("")} style={{position:"absolute",right:14,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",color:"#bbb",fontSize:18,lineHeight:1}}>×</button>}
       </div>
       <span style={{fontSize:13,color:"#999",whiteSpace:"nowrap"}}>{sales.length}건</span>
@@ -3702,7 +3723,7 @@ function SalesPage({ data, setData, userBranches, isMaster, setPage }) {
       branchId={editSale.bid}
       onSubmit={handleEditSave}
       onClose={()=>_mc(()=>setEditSale(null))} data={data} setData={setData} />}
-    <NaverDateSheet open={showSheet} onClose={()=>setShowSheet(false)} startDate={startDate} endDate={endDate} mode="sales"
+    <SmartDatePicker open={showSheet} onClose={()=>setShowSheet(false)} anchorEl={dateAnchorRef.current} startDate={startDate} endDate={endDate} mode="sales"
       onApply={(s,e,p)=>{ setStartDate(s); setEndDate(e); setPeriodKey(p); setShowSheet(false); }}/>
   </div>;
 }
