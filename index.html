@@ -124,7 +124,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.8";
+const BLISS_V = "2.65.9";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -423,6 +423,9 @@ function App() {
     if ((res.selectedTags||[]).length > 0 || (res.selectedServices||[]).length > 0) return; // 이미 태그/시술 있으면 스킵
     const naverText = [res.requestMsg, res.ownerComment].filter(Boolean).join("\n").trim();
     if (!naverText) return;
+    // 무의미한 내용(대화없음 등)만 있으면 스킵 → 신규 오판 방지
+    const meaninglessOnly = /^[\s\-\(\)대화없음]+$/.test(naverText) || naverText === "-대화없음-";
+    if (meaninglessOnly) return;
 
     const d = dataRef.current;
     if (!d) return;
@@ -2530,6 +2533,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
     if (!apiKey) { alert("관리설정 → AI설정에서 Gemini API 키를 등록하세요"); return; }
     const naverText = [f.requestMsg, f.ownerComment].filter(Boolean).join("\n");
     if (!naverText.trim()) { alert("분석할 네이버 예약정보가 없습니다"); return; }
+    if (/^[\s\-\(\)대화없음]+$/.test(naverText.trim())) { alert("대화 내용이 없어 분석할 정보가 없습니다"); return; }
     setAiAnalyzing(true);
     try {
       const tagList = (data?.serviceTags||[]).filter(t=>t.useYn!==false && t.scheduleYn!=="Y")
