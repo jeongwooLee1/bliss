@@ -124,7 +124,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.27";
+const BLISS_V = "2.65.28";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -347,6 +347,19 @@ function App() {
         // Load business info
         const bizList = await sb.get("businesses", `&id=eq.${bizId}`);
         setCurrentBiz(bizList[0] || { name: "매장" });
+        // businesses.memo에서 gemini_key / ai_rules 복원 (localStorage 삭제 후 복구)
+        try {
+          const memo = JSON.parse(bizList[0]?.memo || "{}");
+          if (memo.gemini_key && !localStorage.getItem("bliss_gemini_key")) {
+            localStorage.setItem("bliss_gemini_key", memo.gemini_key);
+            console.log("✅ Gemini key 복원");
+          }
+          const AI_RULES_KEY = "bliss_ai_rules";
+          if (memo.ai_rules?.length && !localStorage.getItem(AI_RULES_KEY)) {
+            localStorage.setItem(AI_RULES_KEY, JSON.stringify(memo.ai_rules));
+            console.log("✅ AI 규칙 복원:", memo.ai_rules.length + "개");
+          }
+        } catch(e) {}
         // Load business data
         const db = await loadAllFromDb(bizId);
         const staff = db.rooms.map(r => ({ id: r.id, dn: r.name, bid: r.branch_id }));
