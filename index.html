@@ -2894,23 +2894,31 @@ ${naverText}
                 <span style={{fontSize:11,fontWeight:700,color:"#2e7d32"}}>✓ {(f.totalPrice||0).toLocaleString()}원</span>
                 {f.npayMethod && <span style={{fontSize:10,color:"#666"}}>({f.npayMethod})</span>}
               </div>}
-              {/* 고객 요청사항 - 시술메뉴/스타일리스트는 강조 표시 */}
+              {/* 고객 요청사항 - 키는 truncate, 고객 답변은 전부 표시 */}
               {f.requestMsg && <div style={{gridColumn:"1/-1",marginTop:2,paddingTop:4,borderTop:"1px solid #C8E6C9"}}>
-                {f.requestMsg.split("\n").map((line,i)=>{
-                  if(line.startsWith("시술메뉴:")) return <div key={i} style={{marginBottom:4}}>
+                {f.requestMsg.split("\n").filter(l=>l.trim()).map((line,i)=>{
+                  const colonIdx = line.indexOf(":");
+                  const key = colonIdx > -1 ? line.slice(0, colonIdx).trim() : null;
+                  const val = colonIdx > -1 ? line.slice(colonIdx+1).trim() : line.trim();
+                  if(key === "시술메뉴") return <div key={i} style={{marginBottom:4}}>
                     <span style={{fontSize:10,color:"#888",display:"block",marginBottom:2}}>네이버 시술메뉴</span>
-                    <span style={{fontSize:11,fontWeight:600,color:"#1B5E20"}}>{line.replace("시술메뉴:","").trim()}</span>
+                    <span style={{fontSize:11,fontWeight:600,color:"#1B5E20"}}>{val}</span>
                   </div>;
-                  if(line.startsWith("스타일리스트:")) return <div key={i} style={{marginBottom:4}}>
+                  if(key === "스타일리스트") return <div key={i} style={{marginBottom:4}}>
                     <span style={{fontSize:10,color:"#888",display:"block",marginBottom:2}}>스타일리스트</span>
-                    <span style={{fontSize:11,fontWeight:600,color:"#333"}}>{line.replace("스타일리스트:","").trim()}</span>
+                    <span style={{fontSize:11,fontWeight:600,color:"#333"}}>{val}</span>
                   </div>;
-                  return null;
+                  if(key) return <div key={i} style={{marginBottom:3,display:"flex",gap:6,alignItems:"flex-start"}}>
+                    {/* 질문(업체 등록): 최대 1줄, overflow 숨김 */}
+                    <span style={{fontSize:10,color:"#888",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:80,flexShrink:0,paddingTop:1}} title={key}>{key}</span>
+                    {/* 고객 답변: 전부 표시 */}
+                    <span style={{fontSize:11,color:"#222",fontWeight:500,lineHeight:1.5,wordBreak:"break-all"}}>{val}</span>
+                  </div>;
+                  // 키 없는 순수 텍스트 (고객 자유입력)
+                  return <div key={i} style={{marginBottom:3}}>
+                    <span style={{fontSize:11,color:"#333",lineHeight:1.5,whiteSpace:"pre-wrap"}}>{val}</span>
+                  </div>;
                 })}
-                {f.requestMsg.split("\n").some(l=>!l.startsWith("시술메뉴:")&&!l.startsWith("스타일리스트:")&&l.trim()) && <>
-                  <span style={{fontSize:10,color:"#888",display:"block",marginBottom:2,marginTop:2}}>고객 요청사항</span>
-                  <span style={{fontSize:11,color:"#333",lineHeight:1.5,whiteSpace:"pre-wrap"}}>{f.requestMsg.split("\n").filter(l=>!l.startsWith("시술메뉴:")&&!l.startsWith("스타일리스트:")).join("\n").trim()}</span>
-                </>}
               </div>}
               {/* 직원 메모 (네이버 파트너 메모) */}
               {f.ownerComment && <div style={{gridColumn:"1/-1",marginTop:2,paddingTop:4,borderTop:"1px solid #C8E6C9"}}>
