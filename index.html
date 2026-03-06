@@ -124,7 +124,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.5";
+const BLISS_V = "2.65.6";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -435,6 +435,9 @@ function App() {
       ? `\n[추가 판단 규칙 - 아래 규칙을 기본 기준보다 우선 적용하세요]\n${customRules.map((r,i)=>`${i+1}. ${r}`).join("\n")}`
       : "";
     const isNew = res.isNewCust;
+    // cust_id가 있으면 (고객DB에 등록된 기존 고객) → 신규 아님
+    const custLinked = !!(res.custId);
+    const effectiveIsNew = custLinked ? false : (res.visitCount === 0 && res.isNewCust);
     const prompt = `당신은 왁싱샵/미용실 예약 정보를 분석하는 AI입니다.
 아래 네이버 예약 고객 정보를 분석하여 적합한 태그와 시술상품을 선택하세요.
 마크다운 없이 순수 JSON만 출력하세요.
@@ -443,7 +446,7 @@ function App() {
 [시술상품 목록] ${svcList}
 
 [기본 판단 기준]
-- 첫방문/신규 고객(is_new_cust=${isNew}, visit_count=${res.visitCount||0}) → "신규" 태그 (visit_count=0 이고 is_new_cust=true 일 때만. visit_count가 1 이상이면 절대 신규 태그 붙이지 말 것)
+- 첫방문/신규 고객(is_new_cust=${effectiveIsNew}, visit_count=${res.visitCount||0}, cust_linked=${custLinked}) → "신규" 태그 (visit_count=0 이고 is_new_cust=true 이고 cust_linked=false 일 때만. visit_count가 1 이상이거나 cust_linked=true 이면 절대 신규 태그 붙이지 말 것)
 - 주차 언급 → "주차" 태그
 - 임산부/산모 → "산모님" 태그
 - 커플룸 요청 → "커플룸" 태그
@@ -2510,6 +2513,8 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
   const [showSvcPicker, setShowSvcPicker] = useState(false);
   // AI 자동분석 상태
   const [aiAnalyzing, setAiAnalyzing] = useState(false);
+  const [naverCustSearch, setNaverCustSearch] = useState("");
+  const [showNaverCustDrop, setShowNaverCustDrop] = useState(false);
 
   // 시간으로 dur 자동 계산
   const calcDur = (startT, endT) => {
@@ -2544,7 +2549,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
 [시술상품 목록] ${svcList}
 
 [기본 판단 기준]
-- 첫방문/신규 고객(is_new_cust=${f.isNewCust}, visit_count=${f.visitCount||0}) → "신규" 태그 (visit_count=0 이고 is_new_cust=true 일 때만. visit_count가 1 이상이면 절대 신규 태그 붙이지 말 것)
+- 첫방문/신규 고객(is_new_cust=${f.isNewCust}, visit_count=${f.visitCount||0}, cust_linked=${!!(f.custId)}) → "신규" 태그 (visit_count=0 이고 is_new_cust=true 이고 cust_linked=false 일 때만. visit_count가 1 이상이거나 cust_linked=true 이면 절대 신규 태그 붙이지 말 것)
 - 주차 언급 → "주차" 태그  
 - 임산부/산모 → "산모님" 태그
 - 커플룸 요청 → "커플룸" 태그
@@ -2953,6 +2958,68 @@ ${naverText}
               {(f.visitCount > 0 || f.noShowCount > 0) && <div style={{gridColumn:"1/-1",display:"flex",gap:10,marginTop:2,paddingTop:4,borderTop:"1px solid #C8E6C9"}}>
                 {f.visitCount > 0 && <span style={{fontSize:10,color:"#555"}}>방문 <strong>{f.visitCount}회</strong></span>}
                 {f.noShowCount > 0 && <span style={{fontSize:10,color:"#c62828"}}>노쇼 <strong>{f.noShowCount}회</strong></span>}
+              </div>}
+              {/* ─── 고객 연동 ─── */}
+              {!isReadOnly && <div style={{gridColumn:"1/-1",marginTop:4,paddingTop:6,borderTop:"1px solid #C8E6C9"}}>
+                {f.custId
+                  ? <div style={{display:"flex",alignItems:"center",gap:6,background:"#E8F5E9",borderRadius:6,padding:"5px 8px"}}>
+                      <span style={{fontSize:10,color:"#2E7D32",fontWeight:700}}>🔗 연동됨</span>
+                      <span style={{fontSize:11,fontWeight:700,color:"#1B5E20"}}>{f.custName}</span>
+                      <span style={{fontSize:10,color:"#555"}}>{f.custPhone}</span>
+                      <button onClick={()=>{
+                        // 연동 해제 - visit_count 기준으로 is_new_cust 재판단
+                        const isNew = (f.visitCount||0) === 0;
+                        set("custId", null); set("isNewCust", isNew);
+                        sb.update("reservations", f.id, toDb("reservations", {custId:null, isNewCust:isNew})).catch(console.error);
+                      }} style={{marginLeft:"auto",fontSize:10,color:"#c62828",border:"1px solid #ffcdd2",background:"#fff",borderRadius:4,padding:"2px 6px",cursor:"pointer"}}>연동 해제</button>
+                    </div>
+                  : <div style={{position:"relative"}}>
+                      <div style={{display:"flex",gap:4,alignItems:"center"}}>
+                        <span style={{fontSize:10,color:"#888",whiteSpace:"nowrap"}}>고객 연동</span>
+                        <input
+                          value={naverCustSearch}
+                          onChange={e=>{
+                            setNaverCustSearch(e.target.value);
+                            setShowNaverCustDrop(e.target.value.length >= 1);
+                          }}
+                          onFocus={()=>naverCustSearch.length>=1 && setShowNaverCustDrop(true)}
+                          onBlur={()=>setTimeout(()=>setShowNaverCustDrop(false),180)}
+                          placeholder="이름 또는 전화번호 검색..."
+                          style={{flex:1,fontSize:11,padding:"4px 8px",border:"1px solid #A5D6A7",borderRadius:5,outline:"none",fontFamily:"inherit"}}
+                        />
+                      </div>
+                      {showNaverCustDrop && (() => {
+                        const q = naverCustSearch.trim();
+                        const results = (data?.customers||[]).filter(c =>
+                          c.name?.includes(q) || (c.phone||"").replace(/-/g,"").includes(q.replace(/-/g,""))
+                        ).slice(0,6);
+                        return results.length > 0 && <div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:999,background:"#fff",border:"1px solid #A5D6A7",borderRadius:6,boxShadow:"0 4px 12px rgba(0,0,0,.12)",marginTop:2,overflow:"hidden"}}>
+                          {results.map(c => <div key={c.id}
+                            onMouseDown={()=>{
+                              // 고객 연동 - DB 업데이트
+                              set("custId", c.id);
+                              set("custName", c.name);
+                              set("custPhone", c.phone);
+                              set("custGender", c.gender||f.custGender);
+                              set("isNewCust", false);
+                              setNaverCustSearch("");
+                              setShowNaverCustDrop(false);
+                              sb.update("reservations", f.id, toDb("reservations", {
+                                custId: c.id, custName: c.name, custPhone: c.phone,
+                                custGender: c.gender||f.custGender, isNewCust: false
+                              })).catch(console.error);
+                            }}
+                            style={{padding:"7px 10px",cursor:"pointer",borderBottom:"1px solid #f0f0f0",display:"flex",gap:8,alignItems:"center"}}
+                            onMouseEnter={e=>e.currentTarget.style.background="#F1F8E9"}
+                            onMouseLeave={e=>e.currentTarget.style.background=""}>
+                            <span style={{fontSize:12,fontWeight:700,color:"#1B5E20"}}>{c.name}</span>
+                            <span style={{fontSize:10,color:"#666"}}>{c.phone}</span>
+                            {c.visits > 0 && <span style={{fontSize:10,color:"#888",marginLeft:"auto"}}>방문 {c.visits}회</span>}
+                          </div>)}
+                        </div>;
+                      })()}
+                    </div>
+                }
               </div>}
             </div>
           </div>}
