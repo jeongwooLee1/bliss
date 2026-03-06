@@ -157,7 +157,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.55";
+const BLISS_V = "2.65.56";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -477,7 +477,7 @@ function App() {
         const parsed = fromDb("reservations", rows);
         setData(prev => {
           if (!prev) return prev;
-          const prevJson = JSON.stringify(prev.reservations.map(r => r.id + "|" + (r._ua||"")));
+          const prevJson = JSON.stringify((prev?.reservations||[]).map(r => r.id + "|" + (r._ua||"")));
           const newJson = JSON.stringify(parsed.map(r => r.id + "|" + (r._ua||"")));
           if (prevJson === newJson) return prev;
           return {...prev, reservations: parsed};
@@ -506,13 +506,13 @@ function App() {
                   return {...prev, reservations: [...prev.reservations, parsed]};
                 }
                 if (ev === "UPDATE" && parsed) {
-                  const before = prev.reservations.find(r => r.id === parsed.id);
+                  const before = (prev?.reservations||[]).find(r => r.id === parsed.id);
                   const isNaver = parsed.source === "naver" || parsed.source === "네이버";
-                  return {...prev, reservations: prev.reservations.map(r => r.id === parsed.id ? {...r, ...parsed} : r)};
+                  return {...prev, reservations: (prev?.reservations||[]).map(r => r.id === parsed.id ? {...r, ...parsed} : r)};
                 }
                 if (ev === "DELETE") {
                   const delId = oldRow.id;
-                  return delId ? {...prev, reservations: prev.reservations.filter(r => r.id !== delId)} : prev;
+                  return delId ? {...prev, reservations: (prev?.reservations||[]).filter(r => r.id !== delId)} : prev;
                 }
               } catch(e) {}
               return prev;
@@ -1346,10 +1346,10 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
     }
     const allItems = [];
     setData(prev => {
-      const exists = prev.reservations.find(r => r.id === item.id);
+      const exists = (prev?.reservations||[]).find(r => r.id === item.id);
       if (exists) {
         sb.update("reservations", item.id, toDb("reservations", item)).catch(console.error);
-        return { ...prev, reservations: prev.reservations.map(r => r.id === item.id ? item : r) };
+        return { ...prev, reservations: (prev?.reservations||[]).map(r => r.id === item.id ? item : r) };
       }
       const items = [item];
       if (item.isSchedule && item.repeat && item.repeat !== "none" && item.repeatUntil) {
@@ -1427,14 +1427,14 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
         res.forEach(r => { if(r.id===sourceId||r.repeatSourceId===sourceId) toDelIds.push(r.id); });
         res = res.filter(r => r.id !== sourceId && r.repeatSourceId !== sourceId);
       }
-      return { ...prev, reservations: res };
+      return { ...prev, reservations: res || [] };
     });
     setTimeout(()=>{ toDelIds.forEach(id=>sb.del("reservations",id).catch(console.error)); }, 0);
     setDeletePopup(null); setShowModal(false); setModalData(null);
   };
 
   const handleDelete = (id) => {
-    setData(prev => ({ ...prev, reservations: prev.reservations.filter(r => r.id !== id) }));
+    setData(prev => ({ ...prev, reservations: (prev?.reservations||[]).filter(r => r.id !== id) }));
     sb.del("reservations", id).catch(console.error);
     setShowModal(false); setModalData(null);
   };
@@ -1491,7 +1491,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
         const snap = dragSnapRef.current;
         const orig = origBlockPos.current;
         if (snap.time !== orig.time || snap.roomId !== orig.roomId) {
-          setData(prev => ({...prev, reservations: prev.reservations.map(r => {
+          setData(prev => ({...prev, reservations: (prev?.reservations||[]).map(r => {
             if (r.id !== block.id) return r;
             const [sh,sm] = snap.time.split(":").map(Number);
             const endMin = sh*60+sm+(r.dur||60);
@@ -1578,7 +1578,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       document.removeEventListener(isTouch ? "touchend" : "mouseup", onResizeUp);
       const finalDur = resizeDurRef.current;
       if (isResizing.current && finalDur !== origDur) {
-        setData(prev => ({...prev, reservations: prev.reservations.map(r => {
+        setData(prev => ({...prev, reservations: (prev?.reservations||[]).map(r => {
           if (r.id !== block.id) return r;
           const [sh,sm] = r.time.split(":").map(Number);
           const endMin = sh*60+sm+finalDur;
@@ -1648,7 +1648,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
     const { type, block, orig } = pendingChange;
     // 원래 위치로 복원
     if (type === "move") {
-      setData(prev => ({...prev, reservations: prev.reservations.map(r => {
+      setData(prev => ({...prev, reservations: (prev?.reservations||[]).map(r => {
         if (r.id !== block.id) return r;
         const [sh,sm] = orig.time.split(":").map(Number);
         const endMin = sh*60+sm+(r.dur||60);
@@ -1657,7 +1657,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       })}));
     }
     if (type === "resize") {
-      setData(prev => ({...prev, reservations: prev.reservations.map(r => {
+      setData(prev => ({...prev, reservations: (prev?.reservations||[]).map(r => {
         if (r.id !== block.id) return r;
         const [sh,sm] = r.time.split(":").map(Number);
         const endMin = sh*60+sm+orig.dur;
@@ -1710,7 +1710,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
     mismatched.forEach(r => {
       sb.update("reservations", r.id, {status: "confirmed"}).then(() => console.log(`Auto-confirmed: ${r.id} (memo has 확정완료)`));
     });
-    setData(prev => ({...prev, reservations: prev.reservations.map(r => mismatched.some(m => m.id === r.id) ? {...r, status: "confirmed"} : r)}));
+    setData(prev => ({...prev, reservations: (prev?.reservations||[]).map(r => mismatched.some(m => m.id === r.id) ? {...r, status: "confirmed"} : r)}));
   }, [data?.reservations?.filter(r => r.status === "pending").length]);
   const now = new Date(nowTick);
   const nowY = (selDate === todayStr() && now.getHours() >= startHour && now.getHours() < endHour) ? timeToY(`${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`) : -1;
@@ -2568,7 +2568,7 @@ ${naverText}
     if (existingSale) {
       // 기존 매출 수정
       const updated = {...saleData, id:existingSale.id, reservationId:f.id};
-      setData(prev => ({ ...prev, sales: prev.sales.map(s=>s.id===existingSale.id ? updated : s) }));
+      setData(prev => ({ ...prev, sales: (prev?.sales||[]).map(s=>s.id===existingSale.id ? updated : s) }));
       sb.update("sales", existingSale.id, toDb("sales", updated)).catch(console.error);
     } else {
       // 신규 매출 등록
@@ -2578,7 +2578,7 @@ ${naverText}
     }
     // 매출 등록 시 예약 상태를 "완료"로 변경
     if (f.id) {
-      setData(prev => ({ ...prev, reservations: prev.reservations.map(r => r.id === f.id ? {...r, status:"completed"} : r) }));
+      setData(prev => ({ ...prev, reservations: (prev?.reservations||[]).map(r => r.id === f.id ? {...r, status:"completed"} : r) }));
       sb.update("reservations", f.id, {status:"completed"}).catch(console.error);
     }
     setShowSaleForm(false);
@@ -3352,7 +3352,7 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
       } else if (cust.id) {
         // 기존 고객 정보 업데이트 (이름, 연락처, 성별, 최근방문)
         const updates = { name: custName, phone: custPhone, gender: gender, lastVisit: todayStr() };
-        setData(prev => ({ ...prev, customers: prev.customers.map(c => c.id === cust.id ? {...c, ...updates, visits: (c.visits||0)+1} : c) }));
+        setData(prev => ({ ...prev, customers: (prev?.customers||[]).map(c => c.id === cust.id ? {...c, ...updates, visits: (c.visits||0)+1} : c) }));
         sb.update("customers", cust.id, toDb("customers", updates)).catch(console.error);
       }
     }
@@ -3839,8 +3839,8 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
     return inRange(r.date);
   }).sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time));
 
-  const updateStatus = (id,status) => { setData(prev=>({...prev,reservations:prev.reservations.map(r=>r.id===id?{...r,status}:r)})); sb.update("reservations",id,{status}).catch(console.error); };
-  const deleteRes = (id) => setData(prev=>({...prev,reservations:prev.reservations.filter(r=>r.id!==id)}));
+  const updateStatus = (id,status) => { setData(prev=>({...prev,reservations:(prev?.reservations||[]).map(r=>r.id===id?{...r,status}:r)})); sb.update("reservations",id,{status}).catch(console.error); };
+  const deleteRes = (id) => setData(prev=>({...prev,reservations:(prev?.reservations||[]).filter(r=>r.id!==id)}));
 
   const fmtShort = (ds) => {
     if (!ds) return "";
@@ -4010,11 +4010,11 @@ function SalesPage({ data, setData, userBranches, isMaster, setPage }) {
     total:a.total+(s.svcCash+s.svcTransfer+s.svcCard+s.svcPoint+s.prodCash+s.prodTransfer+s.prodCard+s.prodPoint+s.gift)
   }),{svcCash:0,svcTransfer:0,svcCard:0,svcPoint:0,prodCash:0,prodTransfer:0,prodCard:0,prodPoint:0,gift:0,svcTotal:0,prodTotal:0,total:0});
 
-  const handleDelete = (id) => { setData(prev=>({...prev,sales:prev.sales.filter(s=>s.id!==id)})); sb.del("sales",id).catch(console.error); };
+  const handleDelete = (id) => { setData(prev=>({...prev,sales:(prev?.sales||[]).filter(s=>s.id!==id)})); sb.del("sales",id).catch(console.error); };
   const handleSave = (item) => { setData(prev=>({...prev,sales:[...prev.sales,item]})); sb.insert("sales",toDb("sales",item)).catch(console.error); setShowModal(false); };
   const handleEditSave = (item) => {
     const finalItem = {...item, id:editSale.id};
-    setData(prev=>({...prev, sales: prev.sales.map(s=>s.id===editSale.id ? finalItem : s)}));
+    setData(prev=>({...prev, sales: (prev?.sales||[]).map(s=>s.id===editSale.id ? finalItem : s)}));
     sb.update("sales",editSale.id,toDb("sales",finalItem)).catch(console.error);
     setEditSale(null);
   };
@@ -4291,8 +4291,8 @@ function CustomersPage({ data, setData, userBranches, isMaster }) {
 
   const handleSave = (item) => {
     setData(prev=>{
-      const ex=prev.customers.find(c=>c.id===item.id);
-      if(ex) { sb.update("customers",item.id,toDb("customers",item)).catch(console.error); return {...prev,customers:prev.customers.map(c=>c.id===item.id?item:c)}; }
+      const ex=(prev?.customers||[]).find(c=>c.id===item.id);
+      if(ex) { sb.update("customers",item.id,toDb("customers",item)).catch(console.error); return {...prev,customers:(prev?.customers||[]).map(c=>c.id===item.id?item:c)}; }
       sb.insert("customers",toDb("customers",item)).catch(console.error);
       return {...prev,customers:[...prev.customers,item]};
     }); setShowModal(false); setEditItem(null);
@@ -5525,7 +5525,7 @@ function AdminNotiSettings({ data, setData }) {
     if(!selBranch) return;
     const updated = {...cfg};
     sb.update("branches", selBranch, {noti_config:JSON.stringify(updated)}).catch(console.error);
-    setData(prev=>({...prev, branches:prev.branches.map(b=>b.id===selBranch?{...b,notiConfig:updated}:b)}));
+    setData(prev=>({...prev, branches:(prev?.branches||[]).map(b=>b.id===selBranch?{...b,notiConfig:updated}:b)}));
     setSaved(true); setTimeout(()=>setSaved(false), 2000);
   };
 
