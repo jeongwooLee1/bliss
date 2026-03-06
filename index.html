@@ -124,7 +124,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.64.6";
+const BLISS_V = "2.64.7";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -2745,9 +2745,9 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
             </div>
           </div>}
 
-          {/* 예약메모 - 네이버 예약은 메모박스 숨김 (정보는 위 네이버 예약정보 박스에 표시) */}
+          {/* 예약메모 - 직원 메모 (네이버 포함 모두 수정 가능) */}
           <div>
-            {!isNaverItem && <textarea className="inp" rows={8} value={f.memo} onChange={e=>set("memo",e.target.value)} style={{resize:"vertical"}} placeholder="예약 관련 메모를 입력하세요"/>}
+            <textarea className="inp" rows={4} value={f.memo} onChange={e=>set("memo",e.target.value)} style={{resize:"vertical"}} placeholder="직원 메모를 입력하세요"/>
             {(() => {
               const isNaverRes = !!(f.reservationId || (f.memo && /네이버/.test(f.memo)));
               if (!isNaverRes) return null;
@@ -2786,7 +2786,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
                   : item?.id
                     ? [...prevLog, `[수정: ${ts}]`]
                     : prevLog;
-                onSave({...f, tsLog: newLog, ...(isNaverItem ? {memo: item?.memo ?? f.memo} : {})});
+                onSave({...f, tsLog: newLog});
               }}>{item?.id?"수정 완료":"등록"}</button>
             {item?.id && <button className="btn-d" style={{padding:"10px 16px"}} onClick={()=>onDeleteRequest?.(item)}>삭제</button>}
             {!isSchedule && f.type === "reservation" && (
