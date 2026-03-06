@@ -124,7 +124,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.21";
+const BLISS_V = "2.65.22";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -420,7 +420,7 @@ function App() {
     const isNaver = res.source === "naver" || res.source === "네이버";
     if (!isNaver) return;
     if (!res.isScrapingDone) return;
-    if (!force && (res.selectedTags||[]).length > 0) return; // 태그가 이미 있으면 스킵 (서비스만 있는 경우는 재분석 허용)
+    
     const naverText = [res.requestMsg, res.ownerComment].filter(Boolean).join("\n").trim();
     if (!naverText) return;
     // 무의미한 내용(대화없음 등)만 있으면 스킵 → 신규 오판 방지
