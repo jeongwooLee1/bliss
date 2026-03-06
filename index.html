@@ -132,7 +132,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.43";
+const BLISS_V = "2.65.44";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -2796,10 +2796,11 @@ ${naverText}
                 <span style={{color:"#cdd0d8",fontSize:13,padding:"0 2px",userSelect:"none"}}>|</span>
                 {/* 지점 */}
                 <I name="mapPin" size={11} color="#b0b6c2"/>
-                <select className="res-room-sel fld-sel" style={{flex:"1 1 0",minWidth:0,maxWidth:160}} value={`${f.roomId}|${f.staffId}`} onChange={e=>{const [r,s]=e.target.value.split("|");set("roomId",r);set("staffId",s)}}>
-                  {branchRooms.map(rm => branchStaff.map(st =>
-                    <option key={rm.id+st.id} value={`${rm.id}|${st.id}`}>[{(data.branches||[]).find(b=>b.id===branchId)?.short}] {rm.name}-{st.dn}</option>
-                  ))}
+                <select className="res-room-sel fld-sel" style={{flex:"1 1 auto",minWidth:100}} value={`${f.roomId}|${f.staffId}`} onChange={e=>{const [r,s]=e.target.value.split("|");set("roomId",r);set("staffId",s)}}>
+                  {branchRooms.map(rm => branchStaff.map(st => {
+                    const br = (data.branches||[]).find(b=>b.id===branchId);
+                    return <option key={rm.id+st.id} value={`${rm.id}|${st.id}`}>{br?.short||br?.name||""} {rm.name} · {st.dn}</option>;
+                  }))}
                 </select>
               </div>
             </div>
@@ -2906,10 +2907,11 @@ ${naverText}
                 <span style={{color:"#cdd0d8",fontSize:13,padding:"0 2px",userSelect:"none"}}>|</span>
                 {/* 지점 */}
                 <I name="mapPin" size={11} color="#b0b6c2"/>
-                <select className="res-room-sel fld-sel" style={{flex:"1 1 0",minWidth:0,maxWidth:160}} value={`${f.roomId}|${f.staffId}`} onChange={e=>{const [r,s]=e.target.value.split("|");set("roomId",r);set("staffId",s)}}>
-                  {branchRooms.map(rm => branchStaff.map(st =>
-                    <option key={rm.id+st.id} value={`${rm.id}|${st.id}`}>[{(data.branches||[]).find(b=>b.id===branchId)?.short}] {rm.name}-{st.dn}</option>
-                  ))}
+                <select className="res-room-sel fld-sel" style={{flex:"1 1 auto",minWidth:100}} value={`${f.roomId}|${f.staffId}`} onChange={e=>{const [r,s]=e.target.value.split("|");set("roomId",r);set("staffId",s)}}>
+                  {branchRooms.map(rm => branchStaff.map(st => {
+                    const br = (data.branches||[]).find(b=>b.id===branchId);
+                    return <option key={rm.id+st.id} value={`${rm.id}|${st.id}`}>{br?.short||br?.name||""} {rm.name} · {st.dn}</option>;
+                  }))}
                 </select>
               </div>
             </div>
