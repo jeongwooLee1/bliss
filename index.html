@@ -124,7 +124,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.66.6";
+const BLISS_V = "2.66.7";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -2655,40 +2655,40 @@ ${naverText}
         borderRadius:12,border:"1px solid #e0e0e0",
         width:"92%",maxWidth:500,margin:"0 auto",
         animation:"modalEnter .35s cubic-bezier(.16,1,.3,1)",
-        boxShadow:"0 20px 50px rgba(0,0,0,.16),0 8px 20px rgba(0,0,0,.10)"}}>
+        boxShadow:"0 8px 40px rgba(0,0,0,.18)"}}>
         {/* ═══ Chrome-style Tabs ═══ */}
         <div style={{display:"flex",alignItems:"flex-end",gap:0,padding:"0",background:"linear-gradient(to bottom,#f8f8f8,#f0f0f0)",borderRadius:"16px 16px 0 0",borderBottom:"1.5px solid var(--gray-200)",overflow:"hidden"}}>
           {/* 예약 탭 */}
           <button onClick={()=>{setIsSchedule(false);setF(p=>({...p,isSchedule:false,selectedTags:[],type:"reservation"}));if(modalRef.current)modalRef.current.scrollTop=0}}
-            style={{flex:1,padding:"14px 16px",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
-              border:"none",borderBottom:isSchedule?"none":"3px solid var(--bliss)",
-              background:isSchedule?"transparent":"#fff",color:isSchedule?"var(--gray-400)":"var(--bliss)",
-              transition:"all var(--tr)",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}>
+            style={{flex:1,padding:"12px 16px",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
+              border:"none",borderBottom:isSchedule?"none":"2px solid #7c7cc8",
+              background:isSchedule?"transparent":"#fff",color:isSchedule?"#999":"#7c7cc8",
+              transition:"all .15s"}}>
             <I name="calendar" size={12}/> 예약
           </button>
           {/* 내부일정 탭 */}
           <button onClick={()=>{setIsSchedule(true);setF(p=>({...p,isSchedule:true,selectedTags:[],type:"reservation"}));if(modalRef.current)modalRef.current.scrollTop=0}}
-            style={{flex:1,padding:"14px 16px",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
-              border:"none",borderBottom:isSchedule?"3px solid #e17055":"none",
-              background:isSchedule?"#fff":"transparent",color:isSchedule?"#e17055":"var(--gray-400)",
-              transition:"all var(--tr)",display:"flex",alignItems:"center",justifyContent:"center",gap:5}}>
+            style={{flex:1,padding:"12px 16px",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
+              border:"none",borderBottom:isSchedule?"2px solid #e17055":"none",
+              background:isSchedule?"#fff":"transparent",color:isSchedule?"#e17055":"#999",
+              transition:"all .15s"}}>
             <I name="clipboard" size={12}/> 내부일정
           </button>
           {/* 닫기 */}
           <button onClick={onClose} style={{padding:"8px 14px",background:"transparent",border:"none",color:"#999",cursor:"pointer",
             fontSize:16,fontFamily:"inherit",borderRadius:4}}
-            onMouseOver={e=>{e.currentTarget.style.color="#f43f5e";e.currentTarget.style.background="#fff1f2"}} onMouseOut={e=>{e.currentTarget.style.color="#9ca3af";e.currentTarget.style.background="transparent"}}><I name="x" size={17}/></button>
+            onMouseOver={e=>e.currentTarget.style.color="#e57373"} onMouseOut={e=>e.currentTarget.style.color="#999"}><I name="x" size={16}/></button>
         </div>
 
         <div style={{padding:"20px 24px"}} className="form-col">
 
           {/* ═══ 네이버 예약 상태 배너 ═══ */}
-          {f.status === "naver_cancelled" && <div style={{background:"#fffbeb",border:"1.5px solid #fbbf24",borderRadius:"var(--r-md)",padding:"10px 14px",marginBottom:4,display:"flex",alignItems:"center",gap:8}}>
+          {f.status === "naver_cancelled" && <div style={{background:"#FFF8E1",border:"1.5px solid #E6A700",borderRadius:6,padding:"8px 12px",marginBottom:12,display:"flex",alignItems:"center",gap:8}}>
             <span style={{fontSize:16}}><I name="alert" size={16} color="#E65100"/></span>
             <span style={{fontSize:13,fontWeight:700,color:"#E6A700"}}>네이버 취소 예약</span>
             {f.reservationId && <span style={{fontSize:11,color:"#999",marginLeft:"auto"}}>#{f.reservationId}</span>}
           </div>}
-          {f.status === "pending" && !(f.memo && f.memo.includes("확정완료")) && <div style={{background:"var(--rose-50)",border:"1.5px solid var(--rose-300)",borderRadius:"var(--r-md)",padding:"10px 14px",marginBottom:4,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",animation:"naverBlink2 1.8s infinite"}}>
+          {f.status === "pending" && !(f.memo && f.memo.includes("확정완료")) && <div style={{background:"#fff1f2",border:"1.5px solid #fda4af",borderRadius:"var(--r-md)",padding:"10px 14px",marginBottom:4,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",animation:"naverBlink2 1.8s infinite"}}>
             <span style={{fontSize:16}}><I name="bell" size={16} color="#E65100"/></span>
             <span style={{fontSize:13,fontWeight:700,color:"#E65100"}}>네이버 확정대기</span>
             <div style={{marginLeft:"auto",display:"flex",gap:6}}>
@@ -2751,11 +2751,10 @@ ${naverText}
                   const hasColor = tag.color && tag.color !== "";
                   const bgClr = hasColor ? tag.color : "#e17055";
                   return <button key={tag.id} onClick={()=>toggleTag(tag.id)}
-                    style={{padding:"5px 10px",fontSize:11,fontWeight:700,borderRadius:"var(--r-sm)",cursor:"pointer",fontFamily:"inherit",transition:"all var(--tr)",
-                      border:sel?"1.5px solid "+bgClr:"1.5px solid var(--gray-200)",
-                      background:sel?bgClr+"22":"#fff",
-                      color:sel?bgClr:"var(--gray-500)",display:"inline-flex",alignItems:"center",gap:3,lineHeight:1.4,
-                      boxShadow:sel?"0 2px 6px "+bgClr+"30":"none"}}>
+                    style={{padding:"3px 8px",fontSize:11,fontWeight:600,borderRadius:3,cursor:"pointer",fontFamily:"inherit",transition:"all .1s",
+                      border:sel?"1px solid "+bgClr:"1px solid #d0d0d0",
+                      background:sel?bgClr+"70":"#e8e8e8",
+                      color:sel?"#333":"#aaa",display:"inline-flex",alignItems:"center",gap:3,lineHeight:1.3}}>
                     {hasColor && <span style={{width:6,height:6,borderRadius:1,background:bgClr,flexShrink:0,opacity:sel?1:0.4}}/>}
                     {tag.name}
                     {tag.dur > 0 && <span style={{fontSize:9,opacity:0.6}}>({tag.dur}분)</span>}
@@ -2843,10 +2842,9 @@ ${naverText}
               const hasGenderDep = (f.selectedServices||[]).some(sid => {const s=SVC_LIST.find(x=>x.id===sid); return s && s.priceF!==s.priceM;});
               return <div>
               <button onClick={()=>setShowSvcPicker(!showSvcPicker)}
-                style={{width:"100%",padding:"11px 14px",fontSize:12,fontWeight:600,borderRadius:"var(--r-md)",cursor:"pointer",fontFamily:"inherit",
-                  border:"1.5px solid var(--bliss)",background:showSvcPicker?"var(--bliss-50)":"#fff",color:"var(--bliss)",
-                  display:"flex",alignItems:"center",justifyContent:"space-between",
-                  boxShadow:showSvcPicker?"inset 0 1px 4px rgba(124,124,200,.1)":"var(--sh-sm)",transition:"all var(--tr)"}}>
+                style={{width:"100%",padding:"8px 12px",fontSize:11,fontWeight:600,borderRadius:6,cursor:"pointer",fontFamily:"inherit",
+                  border:"1px dashed #7c7cc8",background:showSvcPicker?"#7c7cc810":"#fafafa",color:"#7c7cc8",
+                  display:"flex",alignItems:"center",justifyContent:"space-between"}}>
                 <span>{(f.selectedServices||[]).length > 0 ?
                   `${(f.selectedServices||[]).map(sid=>SVC_LIST.find(s=>s.id===sid)?.name).filter(Boolean).join(", ")} (${(f.selectedServices||[]).length}건, ${svcDurTotal}분${!hasGender && hasGenderDep ? "" : ", "+fmt(svcPriceTotal)+"원"})`
                   : "시술 상품을 선택하세요"}</span>
@@ -2875,22 +2873,23 @@ ${naverText}
             })()}
 
             {/* 예약경로 아코디언 */}
-            {!isSchedule && <div className={"acc acc-src"+(openSec.src?" is-open":"")}>
+            {!isSchedule && <div className={"acc acc-src"+(openSec.src?" aopen":"")}>
               <button className="acc-hdr" onClick={()=>togSec("src")}>
                 <span className="acc-label" style={{fontSize:11,fontWeight:700,letterSpacing:".3px",textTransform:"uppercase",display:"flex",alignItems:"center",gap:6}}>
                   예약경로
-                  {f.source && <span style={{fontSize:10,fontWeight:700,background:"#eef2ff",color:"#4338ca",borderRadius:4,padding:"2px 7px",textTransform:"none"}}>{f.source}</span>}
+                  {f.source && <span style={{fontSize:10,background:"#eef2ff",color:"#4338ca",borderRadius:4,padding:"2px 7px",textTransform:"none",fontWeight:700}}>{f.source}</span>}
                 </span>
-                <span className={"acc-chev"+(openSec.src?" open":"")} style={{fontSize:18,lineHeight:1}}>›</span>
+                <span className={"acc-chev"+(openSec.src?" aopen":"")}>›</span>
               </button>
-              <div className={"acc-body"+(openSec.src?" open":" closed")} style={{maxHeight:openSec.src?"600px":"0px"}}>
+              <div className={"acc-body"+(openSec.src?" aopen":"")}>
                 <div className="acc-inner">
                   <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
                     {(data?.resSources||[]).filter(s=>s.useYn!==false).sort((a,b)=>(a.sort||0)-(b.sort||0)).map(src => {
                       const sel = f.source === src.name;
                       const clr = src.color || "#6366f1";
                       return <button key={src.id} onClick={()=>set("source",sel?"":src.name)}
-                        style={{padding:"6px 12px",fontSize:11,fontWeight:700,borderRadius:"var(--r-sm)",cursor:"pointer",fontFamily:"inherit",transition:"all .18s ease",
+                        style={{padding:"6px 12px",fontSize:11,fontWeight:700,borderRadius:"var(--r-sm)",cursor:"pointer",fontFamily:"inherit",
+                          transition:"all .18s ease",
                           border:sel?"1.5px solid "+clr:"1.5px solid var(--gray-200)",
                           background:sel?clr+"18":"#fff",color:sel?clr:"var(--gray-500)",
                           display:"inline-flex",alignItems:"center",gap:5,flexShrink:0,
@@ -2905,16 +2904,16 @@ ${naverText}
             </div>}
 
             {/* 예약태그 아코디언 */}
-            <div className={"acc acc-tags"+(openSec.tags?" is-open":"")}>
+            <div className={"acc acc-tags"+(openSec.tags?" aopen":"")}>
               <button className="acc-hdr" onClick={()=>togSec("tags")}>
                 <span className="acc-label" style={{fontSize:11,fontWeight:700,letterSpacing:".3px",textTransform:"uppercase",display:"flex",alignItems:"center",gap:6}}>
                   예약태그
                   {(tagDurTotal+svcDurTotal) > 0 && <span style={{fontSize:10,fontWeight:700,background:"#fdf2ff",color:"#7c3aed",borderRadius:4,padding:"2px 7px",textTransform:"none"}}>{tagDurTotal+svcDurTotal}분</span>}
                   {(f.selectedTags||[]).length > 0 && <span style={{fontSize:10,fontWeight:700,background:"#ede9fe",color:"#6d28d9",borderRadius:4,padding:"2px 7px",textTransform:"none"}}>{(f.selectedTags||[]).length}개</span>}
                 </span>
-                <span className={"acc-chev"+(openSec.tags?" open":"")} style={{fontSize:18,lineHeight:1}}>›</span>
+                <span className={"acc-chev"+(openSec.tags?" aopen":"")}>›</span>
               </button>
-              <div className={"acc-body"+(openSec.tags?" open":" closed")} style={{maxHeight:openSec.tags?"800px":"0px"}}>
+              <div className={"acc-body"+(openSec.tags?" aopen":"")}>
                 <div className="acc-inner">
                   <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
                     {visibleTags.map(tag => {
@@ -2922,7 +2921,8 @@ ${naverText}
                       const hasColor = tag.color && tag.color !== "";
                       const bgClr = hasColor ? tag.color : "#8b5cf6";
                       return <button key={tag.id} onClick={()=>toggleTag(tag.id)}
-                        style={{padding:"6px 11px",fontSize:11,fontWeight:700,borderRadius:"var(--r-sm)",cursor:"pointer",fontFamily:"inherit",transition:"all .18s ease",
+                        style={{padding:"6px 11px",fontSize:11,fontWeight:700,borderRadius:"var(--r-sm)",cursor:"pointer",fontFamily:"inherit",
+                          transition:"all .18s ease",
                           border:sel?"1.5px solid "+bgClr:"1.5px solid var(--gray-200)",
                           background:sel?bgClr+"18":"#fff",color:sel?bgClr:"var(--gray-500)",
                           display:"inline-flex",alignItems:"center",gap:4,
@@ -2942,7 +2942,7 @@ ${naverText}
           </>}
 
           {/* ═══ 네이버 예약정보 아코디언 ═══ */}
-          {isNaverItem && <div className={"acc acc-naver"+(openSec.naver?" is-open":"")}>
+          {isNaverItem && <div className={"acc acc-naver"+(openSec.naver?" aopen":"")}>
             <button className="acc-hdr" onClick={()=>togSec("naver")}>
               <span className="acc-label" style={{fontSize:11,fontWeight:700,letterSpacing:".3px",textTransform:"uppercase",display:"flex",alignItems:"center",gap:6}}>
                 <I name="naver" size={13}/>
@@ -2952,19 +2952,22 @@ ${naverText}
               </span>
               <div style={{display:"flex",alignItems:"center",gap:6}}>
                 {!isReadOnly && (f.requestMsg || f.ownerComment) && <button
-                  onClick={e=>{e.stopPropagation();handleAiAnalyze();}} disabled={aiAnalyzing}
-                  style={{display:"flex",alignItems:"center",gap:4,padding:"4px 10px",fontSize:11,fontWeight:700,
-                    border:"none",borderRadius:8,cursor:aiAnalyzing?"not-allowed":"pointer",
-                    background:aiAnalyzing?"#e0e0e0":"linear-gradient(135deg,#7c7cc8,#9b72cb)",
-                    color:aiAnalyzing?"#999":"#fff",transition:"all .2s"}}>
-                  {aiAnalyzing ? "⏳ 분석중..." : "✨ AI"}
-                </button>}
-                <span className={"acc-chev"+(openSec.naver?" open":"")} style={{fontSize:18,lineHeight:1}}>›</span>
+                onClick={handleAiAnalyze} disabled={aiAnalyzing}
+                style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:4,padding:"3px 10px",fontSize:11,fontWeight:700,
+                  border:"none",borderRadius:12,cursor:aiAnalyzing?"not-allowed":"pointer",
+                  background:aiAnalyzing?"#e0e0e0":"linear-gradient(135deg,#7c7cc8,#9b72cb)",
+                  color:aiAnalyzing?"#999":"#fff",transition:"all .2s"}}>
+                {aiAnalyzing
+                  ? <><span style={{fontSize:10}}>⏳</span> 분석중...</>
+                  : <><span style={{fontSize:12}}>✨</span> AI 분석</>}
+              </button>}
+                <span className={"acc-chev"+(openSec.naver?" aopen":"")}>›</span>
               </div>
             </button>
-            <div className={"acc-body"+(openSec.naver?" open":" closed")} style={{maxHeight:openSec.naver?"1200px":"0px"}}>
+            <div className={"acc-body"+(openSec.naver?" aopen":"")}>
               <div className="acc-inner">
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"4px 12px"}}>
+
               {/* 예약번호 */}
               {f.reservationId && <div style={{gridColumn:"1/-1",display:"flex",gap:6,alignItems:"center",paddingBottom:4,borderBottom:"1px solid #C8E6C9",marginBottom:2}}>
                 <span style={{fontSize:11,color:"#666",minWidth:60}}>예약번호</span>
@@ -3026,24 +3029,23 @@ ${naverText}
                 {f.visitCount > 0 && <span style={{fontSize:10,color:"#555"}}>방문 <strong>{f.visitCount}회</strong></span>}
                 {f.noShowCount > 0 && <span style={{fontSize:10,color:"#c62828"}}>노쇼 <strong>{f.noShowCount}회</strong></span>}
               </div>}
-            </div>
-          </div
               </div>
             </div>
           </div>}
 
           {/* 예약메모 아코디언 */}
-          <div className={"acc acc-memo"+(openSec.memo?" is-open":"")}>
+          <div className={"acc acc-memo"+(openSec.memo?" aopen":"")}>
             <button className="acc-hdr" onClick={()=>togSec("memo")}>
               <span className="acc-label" style={{fontSize:11,fontWeight:700,letterSpacing:".3px",textTransform:"uppercase",display:"flex",alignItems:"center",gap:6}}>
                 메모
-                {f.memo && !openSec.memo && <span style={{fontSize:10,fontWeight:400,color:"var(--gray-400)",textTransform:"none",maxWidth:150,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.memo.slice(0,30)+(f.memo.length>30?"…":"")}</span>}
-                {f.memo && <span style={{fontSize:8,color:"#d97706",textTransform:"none"}}>●</span>}
+                {f.memo && !openSec.memo && <span style={{fontSize:10,fontWeight:400,color:"var(--gray-400)",textTransform:"none",maxWidth:150,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.memo.length>30?f.memo.slice(0,30)+"…":f.memo}</span>}
+                {f.memo && <span style={{fontSize:8,color:"#d97706"}}>●</span>}
               </span>
-              <span className={"acc-chev"+(openSec.memo?" open":"")} style={{fontSize:18,lineHeight:1}}>›</span>
+              <span className={"acc-chev"+(openSec.memo?" aopen":"")}>›</span>
             </button>
-            <div className={"acc-body"+(openSec.memo?" open":" closed")} style={{maxHeight:openSec.memo?"600px":"0px"}}>
+            <div className={"acc-body"+(openSec.memo?" aopen":"")}>
               <div className="acc-inner">
+
             <textarea className="inp" rows={4} value={f.memo} onChange={e=>set("memo",e.target.value)} style={{resize:"vertical"}} placeholder="직원 메모를 입력하세요"/>
             {(() => {
               const isNaverRes = !!(f.reservationId || (f.memo && /네이버/.test(f.memo)));
@@ -3061,7 +3063,7 @@ ${naverText}
             </div>}
               </div>
             </div>
-          </div>}
+          </div>
 
           {/* Action Buttons - 한 줄 (pinned bottom) */}
         </div>
@@ -3069,14 +3071,12 @@ ${naverText}
             {/* 예약상태 버튼 */}
             {item?.id && !isSchedule && <div style={{display:"flex",gap:4,marginBottom:8}}>
               {STATUS_KEYS.map(k=>{const sc=getStatusClr();const sel=f.status===k;return <button key={k} onClick={()=>set("status",k)}
-                style={{flex:1,padding:"9px 0",borderRadius:"var(--r-sm)",border:sel?`1.5px solid ${sc[k]}`:"1.5px solid var(--gray-200)",
-                  background:sel?sc[k]:"var(--gray-50)",color:sel?"#fff":sc[k],fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",transition:"all var(--tr)",boxShadow:sel?`0 2px 10px ${sc[k]}40`:"none"}}>
+                style={{flex:1,padding:"9px 0",borderRadius:"var(--r-sm)",border:sel?"1.5px solid "+sc[k]:"1.5px solid var(--gray-200)",background:sel?sc[k]:"var(--gray-50)",color:sel?"#fff":sc[k],fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",transition:"all var(--tr)",boxShadow:sel?"0 2px 10px "+sc[k]+"40":"none"}}>
                 {STATUS_LABEL[k]}</button>})}
             </div>}
-            <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
-            <button className="btn-s" style={{padding:"11px 18px",borderRadius:"var(--r-md)"}} onClick={onClose}>닫기</button>
-            {!isReadOnly && <><button className="btn-p" style={{flex:1,justifyContent:"center",padding:"11px 10px",borderRadius:"var(--r-md)",
-              background:isSchedule?"linear-gradient(135deg,#e17055,#c0392b)":"linear-gradient(135deg,var(--bliss),var(--bliss-d))"}} onClick={()=>{
+            <div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+            <button className="btn-s" style={{padding:"10px 16px"}} onClick={onClose}>닫기</button>
+            {!isReadOnly && <><button className="btn-p" style={{flex:1,justifyContent:"center",padding:"11px 10px",borderRadius:"var(--r-md)",background:isSchedule?"linear-gradient(135deg,#e17055,#c0392b)":"linear-gradient(135deg,var(--bliss),var(--bliss-d))"}} onClick={()=>{
                 const now = new Date();
                 const ts = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")} ${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`;
                 const prevLog = f.tsLog || [];
@@ -5500,7 +5500,7 @@ function AdminResSources({ data, setData }) {
 
     <div className="card" style={{padding:12,marginBottom:14}}>
       <div style={{fontSize:10,color:"#888",marginBottom:6}}>미리보기</div>
-      <div style={{display:"flex",flexWrap:"wrap",gap:5,padding:"10px 12px",background:"var(--gray-50)",borderRadius:"var(--r-md)",border:"1.5px solid var(--gray-200)"}}>
+      <div style={{display:"flex",flexWrap:"wrap",gap:4,padding:8,background:"#f8f8f8",borderRadius:8,border:"1px solid #e0e0e0"}}>
         {sources.filter(s=>s.useYn!==false).map(s=>{
           const clr = s.color||"#7c7cc8";
           return <span key={s.id} style={{padding:"4px 8px",fontSize:10,fontWeight:500,borderRadius:4,display:"flex",alignItems:"center",gap:3,
@@ -6148,7 +6148,7 @@ function AdminServiceTags({ data, setData }) {
 
     <div className="card" style={{padding:12,marginBottom:14}}>
       <div style={{fontSize:10,color:"#888",marginBottom:6}}>미리보기</div>
-      <div style={{display:"flex",flexWrap:"wrap",gap:5,padding:"10px 12px",background:"var(--gray-50)",borderRadius:"var(--r-md)",border:"1.5px solid var(--gray-200)"}}>
+      <div style={{display:"flex",flexWrap:"wrap",gap:4,padding:8,background:"#f8f8f8",borderRadius:8,border:"1px solid #e0e0e0"}}>
         {tags.filter(t=>t.useYn!==false).map(t=>{
           const hasClr = t.color && t.color!=="";
           return <span key={t.id} style={{padding:"4px 8px",fontSize:10,fontWeight:500,borderRadius:4,display:"flex",alignItems:"center",gap:3,
@@ -6270,15 +6270,11 @@ const CSS = `
   @supports(height:100dvh){html,body,#root{height:100dvh}}
   :root{
     --bliss:#7c7cc8;--bliss-l:#9898d8;--bliss-d:#6060a8;--bliss-50:#f0f0ff;--bliss-100:#e4e4f8;
-    --rose-50:#fff1f2;--rose-100:#ffe4e6;--rose-300:#fda4af;--rose-400:#fb7185;--rose-500:#f43f5e;
     --gray-50:#f9fafb;--gray-100:#f3f4f6;--gray-200:#e5e7eb;--gray-300:#d1d5db;
     --gray-400:#9ca3af;--gray-500:#6b7280;--gray-700:#374151;--gray-900:#111827;
-    --sh-sm:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.05);
-    --sh-md:0 4px 14px rgba(0,0,0,.10),0 2px 6px rgba(0,0,0,.07);
-    --sh-lg:0 10px 28px rgba(0,0,0,.14),0 4px 10px rgba(0,0,0,.08);
-    --sh-xl:0 20px 50px rgba(0,0,0,.16),0 8px 20px rgba(0,0,0,.10);
-    --r-sm:8px;--r-md:12px;--r-lg:16px;--r-xl:20px;
-    --tr:.18s cubic-bezier(.4,0,.2,1);
+    --sh-sm:0 1px 3px rgba(0,0,0,.08);--sh-md:0 4px 14px rgba(0,0,0,.10);
+    --sh-lg:0 10px 28px rgba(0,0,0,.14);--sh-xl:0 20px 50px rgba(0,0,0,.16);
+    --r-sm:8px;--r-md:12px;--r-xl:20px;--tr:.18s cubic-bezier(.4,0,.2,1);
   }
   *{box-sizing:border-box;margin:0;padding:0}
   input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
@@ -6307,33 +6303,31 @@ const CSS = `
   @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
   @keyframes slideUp{from{opacity:0;transform:scale(.93) translateY(16px)}to{opacity:1;transform:scale(1) translateY(0)}}
   @keyframes modalEnter{from{opacity:0;transform:scale(.95) translateY(20px)}to{opacity:1;transform:scale(1) translateY(0)}}
-  @keyframes naverBlink2{0%,100%{background:var(--rose-50);border-color:var(--rose-300)}50%{background:var(--rose-100);border-color:var(--rose-400)}}
-
-  /* ─── Accordion ─── */
+  @keyframes naverBlink2{0%,100%{background:#fff1f2;border-color:#fda4af}50%{background:#ffe4e6;border-color:#fb7185}}
+  /* Accordion */
   .acc{border-radius:var(--r-md);overflow:hidden;box-shadow:var(--sh-sm);transition:box-shadow .22s ease}
   .acc:hover{box-shadow:var(--sh-md)}
-  .acc-hdr{width:100%;display:flex;align-items:center;justify-content:space-between;padding:11px 14px;cursor:pointer;user-select:none;border:none;background:#fff;font-family:inherit;text-align:left;transition:background .22s ease}
-  .acc-body{overflow:hidden;transition:max-height .38s cubic-bezier(.4,0,.2,1),opacity .28s ease}
-  .acc-body.closed{max-height:0!important;opacity:0}
-  .acc-body.open{opacity:1}
+  .acc-hdr{width:100%;display:flex;align-items:center;justify-content:space-between;padding:11px 14px;cursor:pointer;user-select:none;border:none;background:#fff;font-family:inherit;text-align:left;transition:background .22s}
+  .acc-body{overflow:hidden;transition:max-height .38s cubic-bezier(.4,0,.2,1),opacity .28s ease;max-height:0;opacity:0}
+  .acc-body.aopen{max-height:1400px;opacity:1}
   .acc-inner{padding:0 12px 12px}
-  .acc-chev{flex-shrink:0;transition:transform .32s cubic-bezier(.4,0,.2,1);color:var(--gray-400);display:inline-block}
-  .acc-chev.open{transform:rotate(90deg)}
-  .acc-src.is-open .acc-hdr{background:#eef2ff}
-  .acc-src.is-open .acc-label{color:#4338ca}
-  .acc-src.is-open .acc-chev{color:#4338ca}
+  .acc-chev{display:inline-block;flex-shrink:0;transition:transform .32s cubic-bezier(.4,0,.2,1);color:var(--gray-400);font-size:18px;line-height:1}
+  .acc-chev.aopen{transform:rotate(90deg)}
+  .acc-src.aopen .acc-hdr{background:#eef2ff}
+  .acc-src.aopen .acc-label{color:#4338ca}
+  .acc-src.aopen .acc-chev{color:#4338ca}
   .acc-src .acc-body{background:#f8f9ff}
-  .acc-tags.is-open .acc-hdr{background:#f5f3ff}
-  .acc-tags.is-open .acc-label{color:#6d28d9}
-  .acc-tags.is-open .acc-chev{color:#6d28d9}
+  .acc-tags.aopen .acc-hdr{background:#f5f3ff}
+  .acc-tags.aopen .acc-label{color:#6d28d9}
+  .acc-tags.aopen .acc-chev{color:#6d28d9}
   .acc-tags .acc-body{background:#faf9ff}
-  .acc-naver.is-open .acc-hdr{background:#f0fdf4}
-  .acc-naver.is-open .acc-label{color:#16a34a}
-  .acc-naver.is-open .acc-chev{color:#16a34a}
+  .acc-naver.aopen .acc-hdr{background:#f0fdf4}
+  .acc-naver.aopen .acc-label{color:#16a34a}
+  .acc-naver.aopen .acc-chev{color:#16a34a}
   .acc-naver .acc-body{background:#f7fef9}
-  .acc-memo.is-open .acc-hdr{background:#fffbeb}
-  .acc-memo.is-open .acc-label{color:#d97706}
-  .acc-memo.is-open .acc-chev{color:#d97706}
+  .acc-memo.aopen .acc-hdr{background:#fffbeb}
+  .acc-memo.aopen .acc-label{color:#d97706}
+  .acc-memo.aopen .acc-chev{color:#d97706}
   .acc-memo .acc-body{background:#fffdf4}
   @keyframes bottomSheet{from{transform:translateY(100%)}to{transform:translateY(0)}}
   @keyframes ovFadeIn{from{opacity:0}to{opacity:1}}
@@ -6348,22 +6342,22 @@ const CSS = `
   th{text-align:left;padding:8px 10px;color:#555;font-weight:600;font-size:11px;letter-spacing:.3px;border-bottom:2px solid #e0e0e0;white-space:nowrap;position:sticky;top:0;background:#fff;z-index:1}
   td{padding:7px 10px;border-bottom:1px solid #eee;white-space:nowrap;color:#333}
   tr:hover td{background:var(--bliss-50)}
-  .inp{background:#fff;border:1.5px solid var(--gray-200);color:var(--gray-900);padding:9px 12px;border-radius:var(--r-sm);font-size:13px;width:100%;font-family:inherit;outline:none;transition:border-color var(--tr),box-shadow var(--tr),background var(--tr);box-shadow:var(--sh-sm)}
-  .inp:hover{border-color:var(--gray-300);background:var(--gray-50)}
-  .inp:focus{border-color:var(--bliss);box-shadow:0 0 0 3px rgba(124,124,200,.15),var(--sh-sm);background:#fff}
+  .inp{background:#fff;border:1.5px solid var(--gray-200);color:var(--gray-900);padding:9px 12px;border-radius:var(--r-sm);font-size:13px;width:100%;font-family:inherit;outline:none;transition:border-color var(--tr),box-shadow var(--tr);box-shadow:var(--sh-sm)}
+  .inp:hover{border-color:var(--gray-300)}
+  .inp:focus{border-color:var(--bliss);box-shadow:0 0 0 3px rgba(124,124,200,.15)}
 
   select.inp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;padding-right:26px}
-  .badge{display:inline-flex;align-items:center;padding:3px 8px;border-radius:99px;font-size:10px;font-weight:700;letter-spacing:.2px}
+  .badge{display:inline-flex;align-items:center;padding:2px 7px;border-radius:99px;font-size:10px;font-weight:600}
   .btn-p{background:linear-gradient(135deg,var(--bliss),var(--bliss-d));color:#fff;padding:8px 16px;border-radius:var(--r-sm);border:none;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit;display:inline-flex;align-items:center;gap:5px;transition:all var(--tr);box-shadow:0 2px 8px rgba(124,124,200,.3)}
   .btn-p:hover{background:linear-gradient(135deg,var(--bliss-l),var(--bliss));box-shadow:0 4px 14px rgba(124,124,200,.4);transform:translateY(-1px)}
-  .btn-p:active{transform:scale(.98);box-shadow:var(--sh-sm)}
+  .btn-p:active{transform:scale(.98)}
   .btn-s{background:#fff;color:var(--gray-700);padding:8px 16px;border-radius:var(--r-sm);border:1.5px solid var(--gray-200);cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;display:inline-flex;align-items:center;gap:5px;transition:all var(--tr);box-shadow:var(--sh-sm)}
   .btn-s:hover{background:var(--gray-50);border-color:var(--gray-300);box-shadow:var(--sh-md);transform:translateY(-1px)}
   .btn-s:active{transform:scale(.98)}
   .btn-d{background:#e57373;color:#fff;padding:7px 14px;border-radius:4px;border:none;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;transition:all .15s}
   .btn-d:hover{background:#d32f2f}
   .btn-sm{padding:5px 10px;font-size:11px}
-  .ov{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.45);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:200;display:flex;align-items:center;justify-content:center;padding:16px;animation:ovFadeIn .22s}
+  .ov{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.45);backdrop-filter:blur(6px);z-index:200;display:flex;align-items:center;justify-content:center;padding:16px;animation:ovFadeIn .22s}
   .modal{background:#fff;border-radius:var(--r-xl);border:1px solid var(--gray-200);padding:24px;width:92%;max-width:520px;max-height:88vh;overflow-y:auto;animation:modalEnter .35s cubic-bezier(.16,1,.3,1);box-shadow:var(--sh-xl)}
   .close-btn{background:none;border:none;color:#999;cursor:pointer;font-size:16px;font-family:inherit}
   .form-col{display:flex;flex-direction:column;gap:12px}
