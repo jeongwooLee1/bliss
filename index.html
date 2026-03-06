@@ -43,11 +43,29 @@ const DBMAP = {
 };
 
 // ─── 시스템 보호 태그/경로 (삭제 불가 디폴트) ─────────────────────────────────
-const SYSTEM_TAG_IDS = ["lggzktc9f", "27v4vg5uh"]; // 신규, 예약금완료
-const SYSTEM_SRC_IDS = ["src_igy60s66q"];           // 네이버
-const NAVER_SRC_ID   = "src_igy60s66q";
-const NEW_CUST_TAG_ID_GLOBAL = "lggzktc9f";
-const PREPAID_TAG_ID = "27v4vg5uh";
+// ── 시스템 태그/경로 이름 (ID 대신 이름으로 식별 → DB 재생성/변경에 안전) ──
+const SYSTEM_TAG_NAME_NEW_CUST = "신규";
+const SYSTEM_TAG_NAME_PREPAID  = "예약금완료";
+const SYSTEM_SRC_NAME_NAVER    = "네이버";
+
+// 런타임에 데이터 로드 후 resolveSystemIds()로 채워지는 변수
+let NEW_CUST_TAG_ID_GLOBAL = null;
+let PREPAID_TAG_ID         = null;
+let NAVER_SRC_ID           = null;
+let SYSTEM_TAG_IDS         = [];  // 삭제/보호 대상 시스템 태그 ID 목록
+let SYSTEM_SRC_IDS         = [];  // 삭제/보호 대상 시스템 경로 ID 목록
+
+function resolveSystemIds(tags, sources) {
+  const newCustTag = (tags||[]).find(t => t.name === SYSTEM_TAG_NAME_NEW_CUST && t.scheduleYn !== "Y");
+  const prepaidTag = (tags||[]).find(t => t.name === SYSTEM_TAG_NAME_PREPAID  && t.scheduleYn !== "Y");
+  const naverSrc   = (sources||[]).find(s => s.name === SYSTEM_SRC_NAME_NAVER);
+  NEW_CUST_TAG_ID_GLOBAL = newCustTag?.id || null;
+  PREPAID_TAG_ID         = prepaidTag?.id || null;
+  NAVER_SRC_ID           = naverSrc?.id   || null;
+  SYSTEM_TAG_IDS = [NEW_CUST_TAG_ID_GLOBAL, PREPAID_TAG_ID].filter(Boolean);
+  SYSTEM_SRC_IDS = [NAVER_SRC_ID].filter(Boolean);
+  console.log("[Bliss] 시스템 ID 해석:", { NEW_CUST_TAG_ID_GLOBAL, PREPAID_TAG_ID, NAVER_SRC_ID });
+}
 
 function fromDb(table,rows){const m=DBMAP[table];if(!m)return rows;return rows.map(row=>{const r={};for(const[k,v]of Object.entries(row)){if(k==="created_at"){r.createdAt=v;continue;}const mk=m[k]||k;r[mk]=v;} 
   // Parse JSON string arrays for app_users
@@ -132,7 +150,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.53";
+const BLISS_V = "2.65.54";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -378,6 +396,7 @@ function App() {
           users: db.users, customers: db.customers, reservations: db.reservations, sales: db.sales,
           staff, resSources: db.resSources || [],
         });
+        resolveSystemIds(db.serviceTags, db.resSources);
         setUserBranches(user.role === "owner" ? db.branches.map(b=>b.id) : (user.branches || []));
         setViewBranches(user.viewBranches || []);
         // page is already restored from sessionStorage("bliss_page") via useState initializer
@@ -408,6 +427,7 @@ function App() {
         users: db.users, customers: db.customers, reservations: db.reservations, sales: db.sales,
         staff, resSources: db.resSources || [],
       });
+      resolveSystemIds(db.serviceTags, db.resSources);
       setRole("owner"); // super acts as owner inside a business
       setUserBranches(db.branches.map(b => b.id));
       setViewBranches([]);
@@ -2477,7 +2497,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
       const customRulesBlock = customRules.length > 0
         ? `\n[추가 판단 규칙 - 아래 규칙을 기본 기준보다 우선 적용하세요]\n${customRules.map((r,i)=>`${i+1}. ${r}`).join("\n")}`
         : "";
-      const NEW_CUST_TAG_ID = "lggzktc9f";
+      const NEW_CUST_TAG_ID = NEW_CUST_TAG_ID_GLOBAL;
       const custLinked = !!(f.custId) || !!(data?.customers||[]).find(c=>(c.phone||"").replace(/-/g,"") === (f.custPhone||"").replace(/-/g,""));
       const effectiveIsNew = custLinked ? false : (f.visitCount === 0);
       const prompt = `당신은 왁싱샵/미용실 예약 정보를 분석하는 AI입니다.
