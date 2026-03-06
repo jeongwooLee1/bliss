@@ -41,6 +41,14 @@ const DBMAP = {
   branches:{business_id:"businessId",use_yn:"useYn",naver_email:"naverEmail",naver_biz_id:"naverBizId",naver_col_count:"naverColCount",noti_config:"notiConfig"},
   reservation_sources:{business_id:"businessId",use_yn:"useYn"},
 };
+
+// ─── 시스템 보호 태그/경로 (삭제 불가 디폴트) ─────────────────────────────────
+const SYSTEM_TAG_IDS = ["lggzktc9f", "27v4vg5uh"]; // 신규, 예약금완료
+const SYSTEM_SRC_IDS = ["src_igy60s66q"];           // 네이버
+const NAVER_SRC_ID   = "src_igy60s66q";
+const NEW_CUST_TAG_ID_GLOBAL = "lggzktc9f";
+const PREPAID_TAG_ID = "27v4vg5uh";
+
 function fromDb(table,rows){const m=DBMAP[table];if(!m)return rows;return rows.map(row=>{const r={};for(const[k,v]of Object.entries(row)){if(k==="created_at"){r.createdAt=v;continue;}const mk=m[k]||k;r[mk]=v;} 
   // Parse JSON string arrays for app_users
   if(table==="app_users"){try{if(typeof r.branches==="string")r.branches=JSON.parse(r.branches);}catch(e){r.branches=[];}try{if(typeof r.viewBranches==="string")r.viewBranches=JSON.parse(r.viewBranches);}catch(e){r.viewBranches=[];}if(!Array.isArray(r.branches))r.branches=[];if(!Array.isArray(r.viewBranches))r.viewBranches=[];}
@@ -124,7 +132,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.30";
+const BLISS_V = "2.65.31";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -471,7 +479,7 @@ function App() {
 - 커플룸 요청 → "커플룸" 태그
 - 남자 관리사 요청 → "남자선생님" 태그
 - 시술메뉴 내용으로 적합한 시술상품 선택
-- "신규" 태그(${NEW_CUST_TAG_ID})는 선택하지 마세요. 신규 여부는 시스템이 별도 판단합니다.${customRulesBlock}
+- "신규" 태그(${NEW_CUST_TAG_ID})와 "예약금완료" 태그는 선택하지 마세요. 이 태그들은 시스템이 자동 처리합니다.${customRulesBlock}
 
 [예약 기본 정보]
 - 고객명: ${res.custName||"미상"}
@@ -496,10 +504,12 @@ ${naverText}
       const txt = d2.candidates?.[0]?.content?.parts?.[0]?.text || "";
       const parsed = JSON.parse(txt.replace(/```json|```/g,"").trim());
       // AI가 혹시 신규 태그를 붙였어도 제거 (코드가 직접 판단)
-      let newTags = (parsed.matchedTagIds || []).filter(id => id !== NEW_CUST_TAG_ID);
+      let newTags = (parsed.matchedTagIds || []).filter(id => !SYSTEM_TAG_IDS.includes(id));
       const newSvcs = parsed.matchedServiceIds || [];
       // 신규 여부: visit_count=0, is_new_cust=true, cust_linked=false 일 때만
       if (effectiveIsNew) newTags = [...newTags, NEW_CUST_TAG_ID];
+      // 예약금완료 자동 처리
+      if (res.isPrepaid && res.totalPrice > 0 && !newTags.includes(PREPAID_TAG_ID)) newTags = [...newTags, PREPAID_TAG_ID];
       if (newTags.length === 0 && newSvcs.length === 0) return;
       // dur 계산
       const tagSum = newTags.reduce((s,tid)=>{const t=(d.serviceTags||[]).find(x=>x.id===tid);return s+(t?.dur||0);},0);
@@ -2636,7 +2646,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
 - 커플룸 요청 → "커플룸" 태그
 - 남자 관리사 요청 → "남자선생님" 태그
 - 시술메뉴 내용으로 적합한 시술상품 선택
-- "신규" 태그(${NEW_CUST_TAG_ID})는 선택하지 마세요. 신규 여부는 시스템이 별도 판단합니다.${customRulesBlock}
+- "신규" 태그(${NEW_CUST_TAG_ID})와 "예약금완료" 태그는 선택하지 마세요. 이 태그들은 시스템이 자동 처리합니다.${customRulesBlock}
 
 [예약 기본 정보]
 - 고객명: ${f.custName||"미상"}
@@ -2660,8 +2670,10 @@ ${naverText}
       const txt = d2.candidates?.[0]?.content?.parts?.[0]?.text || "";
       const parsed = JSON.parse(txt.replace(/```json|```/g,"").trim());
       // AI 결과에서 신규 태그 제거 후 코드가 직접 판단
-      let newTags = (parsed.matchedTagIds || []).filter(id => id !== NEW_CUST_TAG_ID);
+      let newTags = (parsed.matchedTagIds || []).filter(id => !SYSTEM_TAG_IDS.includes(id));
       if (effectiveIsNew) newTags = [...newTags, NEW_CUST_TAG_ID];
+      // 예약금완료 자동 처리: isPrepaid=true이면 태그 추가
+      if (f.isPrepaid && f.totalPrice > 0 && !newTags.includes(PREPAID_TAG_ID)) newTags = [...newTags, PREPAID_TAG_ID];
       const newSvcs = parsed.matchedServiceIds || [];
       setF(p => {
         const tagSum = newTags.reduce((s,tid)=>{const t=(data?.serviceTags||[]).find(x=>x.id===tid);return s+(t?.dur||0);},0);
@@ -5469,6 +5481,7 @@ function AdminResSources({ data, setData }) {
   const bulkDelete = () => {
     if (selected.size === 0) return;
     if (!window.confirm(selected.size + "개 경로를 삭제하시겠습니까?")) return;
+    if ([...selected].some(id => SYSTEM_SRC_IDS.includes(id))) { alert("네이버 예약경로는 시스템 기본값으로 삭제할 수 없습니다."); return; }
     selected.forEach(id => sb.del("reservation_sources", id).catch(console.error));
     syncSources(sources.filter(s => !selected.has(s.id)).map((s,i) => ({...s, sort:i})));
     setSelected(new Set());
@@ -5559,7 +5572,7 @@ function AdminResSources({ data, setData }) {
         </tr>;
         return <tr key={src.id} ref={drag.rowRef(i)} draggable onDragStart={()=>drag.onDragStart(i)} onDragEnter={()=>drag.onDragEnter(i)} onDragEnd={drag.onDragEnd} onDragOver={e=>e.preventDefault()}
           style={{opacity:src.useYn===false?0.45:1,background:drag.touchOverIdx===i?"#ede8ff":undefined}}>
-          <td><input type="checkbox" checked={selected.has(src.id)} onChange={()=>toggleOne(src.id)}/></td>
+          <td>{SYSTEM_SRC_IDS.includes(src.id)?<span title="기본 경로" style={{color:"#ccc",fontSize:10}}>🔒</span>:<input type="checkbox" checked={selected.has(src.id)} onChange={()=>toggleOne(src.id)}/>}</td>
           <td><DragHandle onTouchStart={drag.onTouchStart(i)}/></td>
           <td style={{color:"#999"}}>{i+1}</td>
           <td style={{fontWeight:600,fontSize:12}}>
@@ -5577,7 +5590,7 @@ function AdminResSources({ data, setData }) {
           <td style={{textAlign:"center",color:"#bbb",fontSize:10}}>{i+1}</td>
           <td style={{textAlign:"center"}}><div style={{display:"flex",gap:3,justifyContent:"center"}}>
             <button onClick={()=>startEdit(src)} style={{background:"none",border:"none",cursor:"pointer",color:"#7c7cc8",fontSize:12}}><I name="edit" size={13}/></button>
-            {delConfirm===src.id
+            {SYSTEM_SRC_IDS.includes(src.id) ? <span title="삭제 불가" style={{color:"#e0e0e0",fontSize:12}}><I name="trash" size={13}/></span> : delConfirm===src.id
               ? <><button className="btn-d btn-sm" onClick={()=>deleteSource(src.id)} style={{padding:"1px 5px",fontSize:9}}>확인</button><button className="btn-s btn-sm" onClick={()=>setDelConfirm(null)} style={{padding:"1px 4px",fontSize:9}}>취소</button></>
               : <button onClick={()=>setDelConfirm(src.id)} style={{background:"none",border:"none",cursor:"pointer",color:"#e57373",fontSize:12}}><I name="trash" size={13}/></button>}
           </div></td>
@@ -6206,6 +6219,8 @@ function AdminServiceTags({ data, setData }) {
   const bulkDelete = () => {
     if (selected.size === 0) return;
     if (!window.confirm(selected.size + "개 태그를 삭제하시겠습니까?")) return;
+    const protectedSelected = [...selected].filter(id => SYSTEM_TAG_IDS.includes(id));
+    if (protectedSelected.length > 0) { alert("신규, 예약금완료 태그는 시스템 태그로 삭제할 수 없습니다."); return; }
     selected.forEach(id => sb.del("service_tags", id).catch(console.error));
     syncTags(tags.filter(t => !selected.has(t.id)).map((t,i) => ({...t, sort:i})));
     setSelected(new Set());
@@ -6312,7 +6327,7 @@ function AdminServiceTags({ data, setData }) {
         </tr>;
         return <tr key={tag.id} ref={drag.rowRef(i)} draggable onDragStart={()=>drag.onDragStart(i)} onDragEnter={()=>drag.onDragEnter(i)} onDragEnd={drag.onDragEnd} onDragOver={e=>e.preventDefault()}
           style={{opacity:tag.useYn===false?0.45:1,background:drag.touchOverIdx===i?"#ede8ff":undefined}}>
-          <td><input type="checkbox" checked={selected.has(tag.id)} onChange={()=>toggleOne(tag.id)}/></td>
+          <td>{SYSTEM_TAG_IDS.includes(tag.id)?<span title="시스템 태그" style={{color:"#ccc",fontSize:10}}>🔒</span>:<input type="checkbox" checked={selected.has(tag.id)} onChange={()=>toggleOne(tag.id)}/>}</td>
           <td><DragHandle onTouchStart={drag.onTouchStart(i)}/></td>
           <td style={{color:"#999"}}>{i+1}</td>
           <td style={{fontWeight:600,fontSize:12}}>
@@ -6330,7 +6345,7 @@ function AdminServiceTags({ data, setData }) {
           <td style={{textAlign:"center",color:"#bbb",fontSize:10}}>{i+1}</td>
           <td style={{textAlign:"center"}}><div style={{display:"flex",gap:3,justifyContent:"center"}}>
             <button onClick={()=>startEdit(tag)} style={{background:"none",border:"none",cursor:"pointer",color:"#7c7cc8",fontSize:12}}><I name="edit" size={13}/></button>
-            {delConfirm===tag.id
+            {SYSTEM_TAG_IDS.includes(tag.id) ? <span title="삭제 불가" style={{color:"#e0e0e0",fontSize:12}}><I name="trash" size={13}/></span> : delConfirm===tag.id
               ? <><button className="btn-d btn-sm" onClick={()=>deleteTag(tag.id)} style={{padding:"1px 5px",fontSize:9}}>확인</button><button className="btn-s btn-sm" onClick={()=>setDelConfirm(null)} style={{padding:"1px 4px",fontSize:9}}>취소</button></>
               : <button onClick={()=>setDelConfirm(tag.id)} style={{background:"none",border:"none",cursor:"pointer",color:"#e57373",fontSize:12}}><I name="trash" size={13}/></button>}
           </div></td>
