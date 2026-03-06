@@ -157,7 +157,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.56";
+const BLISS_V = "2.65.57";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -616,13 +616,22 @@ function App() {
 class ErrorBoundary extends React.Component {
   constructor(props) { super(props); this.state = { error: null }; }
   static getDerivedStateFromError(e) { return { error: e }; }
-  componentDidCatch(e, info) { console.error("[Bliss ErrorBoundary]", e, info); }
+  componentDidCatch(e, info) {
+    console.error("[Bliss] ERROR:", e.message);
+    console.error("[Bliss] STACK:", e.stack);
+    console.error("[Bliss] COMPONENT:", info.componentStack);
+    this.setState({ errorInfo: info });
+  }
   render() {
     if (this.state.error) {
-      return <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"100vh",background:"#fafafa",fontFamily:"sans-serif"}}>
+      const stack = this.state.error?.stack || "";
+      const component = this.state.errorInfo?.componentStack || "";
+      return <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"100vh",background:"#fafafa",fontFamily:"sans-serif",padding:24}}>
         <div style={{fontSize:32,marginBottom:16}}>⚠️</div>
         <div style={{fontSize:18,fontWeight:700,color:"#333",marginBottom:8}}>화면을 불러오지 못했습니다</div>
-        <div style={{fontSize:13,color:"#888",marginBottom:24}}>오류: {this.state.error.message}</div>
+        <div style={{fontSize:13,color:"#c00",marginBottom:8,fontFamily:"monospace",maxWidth:600,wordBreak:"break-all"}}>{this.state.error.message}</div>
+        <pre style={{fontSize:10,color:"#888",maxWidth:700,maxHeight:180,overflow:"auto",background:"#f0f0f0",padding:8,borderRadius:6,marginBottom:16,textAlign:"left"}}>{stack.slice(0,1500)}</pre>
+        <pre style={{fontSize:10,color:"#aaa",maxWidth:700,maxHeight:100,overflow:"auto",background:"#f5f5f5",padding:8,borderRadius:6,marginBottom:20,textAlign:"left"}}>{component.slice(0,500)}</pre>
         <button onClick={()=>window.location.reload()} style={{padding:"10px 24px",background:"#7c7cc8",color:"#fff",border:"none",borderRadius:8,fontSize:14,cursor:"pointer",fontWeight:600}}>
           새로고침
         </button>
@@ -668,10 +677,10 @@ function SuperDashboard({ superData, setSuperData, currentUser, onLogout, onEnte
         if (curMem) await sb.del("business_group_members", curMem.id);
         const gm = { id:"gm_"+uid(), group_id:bizForm.groupId, business_id:biz.id };
         await sb.insert("business_group_members", gm);
-        setSuperData(p => ({...p, businesses:p.businesses.map(b=>b.id===biz.id?biz:b), groupMembers:[...p.groupMembers.filter(m=>m.business_id!==biz.id), gm]}));
+        setSuperData(p => ({...p, businesses:p.businesses.map(b=>b.id===biz.id?biz:b), groupMembers:[...(p?.groupMembers||[]).filter(m=>m.business_id!==biz.id), gm]}));
       } else if (!bizForm.groupId && curMem) {
         await sb.del("business_group_members", curMem.id);
-        setSuperData(p => ({...p, businesses:p.businesses.map(b=>b.id===biz.id?biz:b), groupMembers:p.groupMembers.filter(m=>m.business_id!==biz.id)}));
+        setSuperData(p => ({...p, businesses:p.businesses.map(b=>b.id===biz.id?biz:b), groupMembers:(p?.groupMembers||[]).filter(m=>m.business_id!==biz.id)}));
       } else {
         setSuperData(p => ({...p, businesses:p.businesses.map(b=>b.id===biz.id?biz:b)}));
       }
@@ -681,7 +690,7 @@ function SuperDashboard({ superData, setSuperData, currentUser, onLogout, onEnte
   const deleteBiz = async (id) => {
     if (!confirm("이 사업자를 삭제하시겠습니까? 모든 데이터가 삭제됩니다.")) return;
     await sb.del("businesses", id);
-    setSuperData(p => ({...p, businesses:p.businesses.filter(b=>b.id!==id)}));
+    setSuperData(p => ({...p, businesses:(p?.businesses||[]).filter(b=>b.id!==id)}));
   };
   const seedBizTemplates = async (bizId) => {
     const prefix = bizId.replace("biz_","");
@@ -839,7 +848,7 @@ function SuperUsers({ users, businesses, superData, setSuperData }) {
   const remove = async (id) => {
     if(!window.confirm("이 사용자를 삭제하시겠습니까?")) return;
     await sb.del("app_users", id).catch(console.error);
-    setSuperData(p=>({...p, users:p.users.filter(u=>u.id!==id)}));
+    setSuperData(p=>({...p, users:(p?.users||[]).filter(u=>u.id!==id)}));
   };
 
   const roleLabel = (r) => r==="super"?"슈퍼":r==="owner"?"대표":"직원";
@@ -1122,7 +1131,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       return added.length > 0 ? [...filtered, ...added] : filtered.length !== prev.length ? filtered : prev;
     });
   }, [allBranchList.length]);
-  const toggleView = (bid) => setViewBids(prev => prev.includes(bid) ? prev.filter(x=>x!==bid) : [...prev, bid]);
+  const toggleView = (bid) => setViewBids(prev => (prev||[]).includes(bid) ? (prev||[]).filter(x=>x!==bid) : [...(prev||[]), bid]);
   const canEdit = (bid) => isMaster || userBranches.includes(bid);
 
   const branchesToShow = allBranchList.filter(b => viewBids.includes(b.id) && (isMaster || accessibleBids.includes(b.id)));
@@ -1847,7 +1856,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                     const isReadOnly = !canEdit(b.id);
                     return <div key={b.id} onClick={()=>{
                       if(sel && viewBids.length <= 1) return; // 최소 1개
-                      setViewBids(prev => sel ? prev.filter(id=>id!==b.id) : [...prev, b.id]);
+                      setViewBids(prev => sel ? (prev||[]).filter(id=>id!==b.id) : [...(prev||[]), b.id]);
                     }}
                       style={{padding:"6px 10px",borderRadius:6,cursor:"pointer",display:"flex",alignItems:"center",gap:6,
                         background:sel?"#7c7cc808":"transparent",transition:"background .1s"}}>
@@ -2432,7 +2441,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
   // 태그 선택 → 기본 5분 + 태그 소요시간 합산 → 종료시간 자동 계산
   const toggleTag = (tagId) => {
     setF(p => {
-      const newTags = p.selectedTags.includes(tagId) ? p.selectedTags.filter(t=>t!==tagId) : [...p.selectedTags, tagId];
+      const newTags = (p.selectedTags||[]).includes(tagId) ? (p.selectedTags||[]).filter(t=>t!==tagId) : [...(p.selectedTags||[]), tagId];
       const tagSum = newTags.reduce((sum, tid) => {
         const tag = tags.find(t => t.id === tid);
         return sum + (tag?.dur || 0);
@@ -2461,7 +2470,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
   // 시술 선택 토글
   const toggleService = (svcId) => {
     setF(p => {
-      const newSvcs = p.selectedServices?.includes(svcId) ? p.selectedServices.filter(s=>s!==svcId) : [...(p.selectedServices||[]), svcId];
+      const newSvcs = p.selectedServices?.includes(svcId) ? (p.selectedServices||[]).filter(s=>s!==svcId) : [...(p.selectedServices||[]), svcId];
       const svcSum = newSvcs.reduce((sum, sid) => sum + (SVC_LIST.find(s=>s.id===sid)?.dur||0), 0);
       const tagSum = (p.selectedTags||[]).reduce((sum, tid) => sum + (tags.find(t=>t.id===tid)?.dur||0), 0);
       const dur = (svcSum + tagSum) || itemDur;
@@ -4923,7 +4932,7 @@ function AdminWorkers({ data, setData }) {
     if (selected.size === 0) return;
     if (!window.confirm(selected.size + "명 담당자를 삭제하시겠습니까?")) return;
     selected.forEach(id => sb.del("rooms", id).catch(console.error));
-    setData(p => ({...p, rooms: p.rooms.filter(r => !selected.has(r.id))}));
+    setData(p => ({...p, rooms: (p?.rooms||[]).filter(r => !selected.has(r.id))}));
     setSelected(new Set());
   };
 
@@ -4941,7 +4950,7 @@ function AdminWorkers({ data, setData }) {
     setEditId(null);
   };
   const deleteRoom = (id) => {
-    setData(p=>({...p, rooms:p.rooms.filter(r=>r.id!==id)}));
+    setData(p=>({...p, rooms:(p?.rooms||[]).filter(r=>r.id!==id)}));
     sb.del("rooms", id).catch(console.error); setDelId(null);
   };
 
