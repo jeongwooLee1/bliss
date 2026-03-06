@@ -132,7 +132,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.35";
+const BLISS_V = "2.65.36";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -2942,8 +2942,7 @@ ${naverText}
                         <span style={{fontSize:13,color:price===null?"#ccc":"#ef5350",fontWeight:600,width:55,textAlign:"right"}}>{price===null?"성별?":price>0?fmt(price):"-"}</span>
                       </div>;
                     })}
-              </div>
-              </div>{/* maxHeight scroll div */}
+              </div>{/* maxHeight scroll */}
               </div>{/* tags-acc-body */}
               </div>{/* tags-acc */}
             </div>;
