@@ -132,7 +132,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.42";
+const BLISS_V = "2.65.43";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -2781,32 +2781,26 @@ ${naverText}
           {/* ═══ 내부일정 모드 ═══ */}
           {isSchedule && <>
             <div>
-              <div className="res-time-row" style={{display:"flex",gap:8,alignItems:"center",flexWrap:"nowrap",justifyContent:"flex-start"}}>
-                {/* 날짜+시간 통합 한 필드 — 내용 크기에 맞게 */}
-                <div className="fld-datetime"
-                  onMouseOver={e=>e.currentTarget.style.boxShadow="0 6px 22px rgba(60,100,220,.28)"}
-                  onMouseOut={e=>e.currentTarget.style.boxShadow="0 2px 10px rgba(60,100,220,.10)"}>
-                  <DatePick value={f.date} onChange={v=>set("date",v)}/>
-                  <span style={{color:"#a0b8d0",fontSize:12,padding:"0 4px",userSelect:"none",fontWeight:400}}>|</span>
-                  <select className="fld-sel" value={f.time} onChange={e=>{const nt=e.target.value;set("time",nt);set("endTime",addMin(nt,f.dur))}}>
-                    {TIMES.filter(t=>{const h=parseInt(t);return h>=8&&h<=21}).map(t=><option key={t} value={t}>{t}</option>)}
-                  </select>
-                  <span style={{color:"#7090b0",fontSize:12,padding:"0 3px",userSelect:"none",fontWeight:400}}>~</span>
-                  <select className="fld-sel" value={f.endTime} onChange={e=>{set("endTime",e.target.value);set("dur",calcDur(f.time,e.target.value))}}>
-                    {TIMES.filter(t=>{const h=parseInt(t);return h>=8&&h<=22}).map(t=><option key={t} value={t}>{t}</option>)}
-                  </select>
-                </div>
-                {/* 지점 — 내용 크기에 맞게 */}
-                <div className="fld-datetime"
-                  onMouseOver={e=>e.currentTarget.style.boxShadow="0 6px 22px rgba(60,100,220,.28)"}
-                  onMouseOut={e=>e.currentTarget.style.boxShadow="0 2px 10px rgba(60,100,220,.10)"}>
-                  <I name="mapPin" size={12} color="#88a8cc"/>
-                  <select className="res-room-sel fld-sel" value={`${f.roomId}|${f.staffId}`} onChange={e=>{const [r,s]=e.target.value.split("|");set("roomId",r);set("staffId",s)}}>
-                    {branchRooms.map(rm => branchStaff.map(st =>
-                      <option key={rm.id+st.id} value={`${rm.id}|${st.id}`}>[{(data.branches||[]).find(b=>b.id===branchId)?.short}] {rm.name}-{st.dn}</option>
-                    ))}
-                  </select>
-                </div>
+              <div className="fld-datetime" style={{width:"100%",gap:6}}>
+                {/* 날짜 */}
+                <DatePick value={f.date} onChange={v=>set("date",v)}/>
+                <span style={{color:"#cdd0d8",fontSize:13,padding:"0 2px",userSelect:"none"}}>|</span>
+                {/* 시간 */}
+                <select className="fld-sel" value={f.time} onChange={e=>{const nt=e.target.value;set("time",nt);set("endTime",addMin(nt,f.dur))}}>
+                  {TIMES.filter(t=>{const h=parseInt(t);return h>=8&&h<=21}).map(t=><option key={t} value={t}>{t}</option>)}
+                </select>
+                <span style={{color:"#b0b6c2",fontSize:12,userSelect:"none"}}>~</span>
+                <select className="fld-sel" value={f.endTime} onChange={e=>{set("endTime",e.target.value);set("dur",calcDur(f.time,e.target.value))}}>
+                  {TIMES.filter(t=>{const h=parseInt(t);return h>=8&&h<=22}).map(t=><option key={t} value={t}>{t}</option>)}
+                </select>
+                <span style={{color:"#cdd0d8",fontSize:13,padding:"0 2px",userSelect:"none"}}>|</span>
+                {/* 지점 */}
+                <I name="mapPin" size={11} color="#b0b6c2"/>
+                <select className="res-room-sel fld-sel" style={{flex:"1 1 0",minWidth:0,maxWidth:160}} value={`${f.roomId}|${f.staffId}`} onChange={e=>{const [r,s]=e.target.value.split("|");set("roomId",r);set("staffId",s)}}>
+                  {branchRooms.map(rm => branchStaff.map(st =>
+                    <option key={rm.id+st.id} value={`${rm.id}|${st.id}`}>[{(data.branches||[]).find(b=>b.id===branchId)?.short}] {rm.name}-{st.dn}</option>
+                  ))}
+                </select>
               </div>
             </div>
             {/* 반복 설정 */}
@@ -2897,32 +2891,26 @@ ${naverText}
 
             {/* 예약기간 + 장소/담당자 */}
             <div>
-              <div className="res-time-row" style={{display:"flex",gap:8,alignItems:"center",flexWrap:"nowrap",justifyContent:"flex-start"}}>
-                {/* 날짜+시간 통합 한 필드 — 내용 크기에 맞게 */}
-                <div className="fld-datetime"
-                  onMouseOver={e=>e.currentTarget.style.boxShadow="0 6px 22px rgba(60,100,220,.28)"}
-                  onMouseOut={e=>e.currentTarget.style.boxShadow="0 2px 10px rgba(60,100,220,.10)"}>
-                  <DatePick value={f.date} onChange={v=>set("date",v)}/>
-                  <span style={{color:"#a0b8d0",fontSize:12,padding:"0 4px",userSelect:"none",fontWeight:400}}>|</span>
-                  <select className="fld-sel" value={f.time} onChange={e=>{const nt=e.target.value;set("time",nt);set("endTime",addMin(nt,f.dur))}}>
-                    {TIMES.filter(t=>{const h=parseInt(t);return h>=8&&h<=21}).map(t=><option key={t} value={t}>{t}</option>)}
-                  </select>
-                  <span style={{color:"#7090b0",fontSize:12,padding:"0 3px",userSelect:"none",fontWeight:400}}>~</span>
-                  <select className="fld-sel" value={f.endTime} onChange={e=>{set("endTime",e.target.value);set("dur",calcDur(f.time,e.target.value))}}>
-                    {TIMES.filter(t=>{const h=parseInt(t);return h>=8&&h<=22}).map(t=><option key={t} value={t}>{t}</option>)}
-                  </select>
-                </div>
-                {/* 지점 — 내용 크기에 맞게 */}
-                <div className="fld-datetime"
-                  onMouseOver={e=>e.currentTarget.style.boxShadow="0 6px 22px rgba(60,100,220,.28)"}
-                  onMouseOut={e=>e.currentTarget.style.boxShadow="0 2px 10px rgba(60,100,220,.10)"}>
-                  <I name="mapPin" size={12} color="#88a8cc"/>
-                  <select className="res-room-sel fld-sel" value={`${f.roomId}|${f.staffId}`} onChange={e=>{const [r,s]=e.target.value.split("|");set("roomId",r);set("staffId",s)}}>
-                    {branchRooms.map(rm => branchStaff.map(st =>
-                      <option key={rm.id+st.id} value={`${rm.id}|${st.id}`}>[{(data.branches||[]).find(b=>b.id===branchId)?.short}] {rm.name}-{st.dn}</option>
-                    ))}
-                  </select>
-                </div>
+              <div className="fld-datetime" style={{width:"100%",gap:6}}>
+                {/* 날짜 */}
+                <DatePick value={f.date} onChange={v=>set("date",v)}/>
+                <span style={{color:"#cdd0d8",fontSize:13,padding:"0 2px",userSelect:"none"}}>|</span>
+                {/* 시간 */}
+                <select className="fld-sel" value={f.time} onChange={e=>{const nt=e.target.value;set("time",nt);set("endTime",addMin(nt,f.dur))}}>
+                  {TIMES.filter(t=>{const h=parseInt(t);return h>=8&&h<=21}).map(t=><option key={t} value={t}>{t}</option>)}
+                </select>
+                <span style={{color:"#b0b6c2",fontSize:12,userSelect:"none"}}>~</span>
+                <select className="fld-sel" value={f.endTime} onChange={e=>{set("endTime",e.target.value);set("dur",calcDur(f.time,e.target.value))}}>
+                  {TIMES.filter(t=>{const h=parseInt(t);return h>=8&&h<=22}).map(t=><option key={t} value={t}>{t}</option>)}
+                </select>
+                <span style={{color:"#cdd0d8",fontSize:13,padding:"0 2px",userSelect:"none"}}>|</span>
+                {/* 지점 */}
+                <I name="mapPin" size={11} color="#b0b6c2"/>
+                <select className="res-room-sel fld-sel" style={{flex:"1 1 0",minWidth:0,maxWidth:160}} value={`${f.roomId}|${f.staffId}`} onChange={e=>{const [r,s]=e.target.value.split("|");set("roomId",r);set("staffId",s)}}>
+                  {branchRooms.map(rm => branchStaff.map(st =>
+                    <option key={rm.id+st.id} value={`${rm.id}|${st.id}`}>[{(data.branches||[]).find(b=>b.id===branchId)?.short}] {rm.name}-{st.dn}</option>
+                  ))}
+                </select>
               </div>
             </div>
 
