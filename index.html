@@ -124,7 +124,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.18";
+const BLISS_V = "2.65.19";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -730,7 +730,7 @@ ${naverText}
             {page==="stats" && <StatsPage data={data} userBranches={userBranches} isMaster={isMaster} role={role}/>}
             {page==="customers" && <CustomersPage data={data} setData={setData} userBranches={userBranches} isMaster={isMaster}/>}
             {page==="users" && <UsersPage data={data} setData={setData} bizId={currentBizId}/>}
-            {page==="admin" && <AdminPage data={data} setData={setData} bizId={currentBizId}/>}
+            {page==="admin" && <AdminPage data={data} setData={setData} bizId={currentBizId} autoAiAnalyze={autoAiAnalyze}/>}
           </div>
         </div>
       </main>
@@ -4644,7 +4644,7 @@ function UserEditRow({ init, regBranches, allBranches, onSave, onCancel, isNew }
 // ═══════════════════════════════════════════
 // ADMIN
 // ═══════════════════════════════════════════
-function AdminPage({ data, setData, bizId }) {
+function AdminPage({ data, setData, bizId, autoAiAnalyze }) {
   const [tab, setTabRaw] = useState(() => {
     try { const t = sessionStorage.getItem("bliss_adminTab"); console.log("[SESSION] adminTab restore:", t); return t || "places"; } catch(e){ return "places"; }
   });
