@@ -124,7 +124,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.15";
+const BLISS_V = "2.65.16";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -592,9 +592,20 @@ ${naverText}
                 }
                 if (ev === "UPDATE" && parsed) {
                   const before = prev.reservations.find(r => r.id === parsed.id);
-                  // 스크래핑 완료로 바뀐 순간 (is_scraping_done false→true) 자동 AI 분석
-                  if (parsed.isScrapingDone && !before?.isScrapingDone) {
-                    setTimeout(() => autoAiAnalyze(parsed), 500);
+                  const isNaver = parsed.source === "naver" || parsed.source === "네이버";
+                  if (isNaver && parsed.isScrapingDone) {
+                    // 1) isScrapingDone이 새로 true가 된 경우
+                    if (!before?.isScrapingDone) {
+                      setTimeout(() => autoAiAnalyze(parsed), 500);
+                    }
+                    // 2) ownerComment 또는 requestMsg가 변경된 경우 (고객 추가 메시지)
+                    else if (before && (
+                      (parsed.ownerComment || "") !== (before.ownerComment || "") ||
+                      (parsed.requestMsg || "") !== (before.requestMsg || "")
+                    )) {
+                      console.log("🔄 [RT] 네이버 메시지 변경 감지 - 재분석:", parsed.custName);
+                      setTimeout(() => autoAiAnalyze(parsed, true), 500);
+                    }
                   }
                   return {...prev, reservations: prev.reservations.map(r => r.id === parsed.id ? {...r, ...parsed} : r)};
                 }
