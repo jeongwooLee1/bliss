@@ -157,7 +157,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.57";
+const BLISS_V = "2.65.58";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -502,8 +502,8 @@ function App() {
               try {
                 const parsed = row.id ? fromDb("reservations", [row])[0] : null;
                 if (ev === "INSERT" && parsed) {
-                  if (prev.reservations.some(r => r.id === parsed.id)) return prev;
-                  return {...prev, reservations: [...prev.reservations, parsed]};
+                  if ((prev?.reservations||[]).some(r => r.id === parsed.id)) return prev;
+                  return {...prev, reservations: [...(prev?.reservations||[]), parsed]};
                 }
                 if (ev === "UPDATE" && parsed) {
                   const before = (prev?.reservations||[]).find(r => r.id === parsed.id);
@@ -6065,7 +6065,7 @@ function QuickBookModal({ onClose, onParsed, data }) {
 // ─── 서비스태그관리 ───
 function AdminServiceTags({ data, setData }) {
   const [tags, setTags] = useState(()=>[...(data?.serviceTags || [])].sort((a,b)=>a.sort-b.sort));
-  useEffect(() => { setData(p => ({...p, serviceTags: tags})); }, [tags]);
+  useEffect(() => { setData(p => p ? {...p, serviceTags: tags} : p); }, [tags]);
 
   const TAB_LABELS = { reservation: BLOCK_LABELS.reservation || "예약", schedule: "내부일정" };
   const [activeTab, setActiveTab] = useState("reservation");
@@ -6094,7 +6094,7 @@ function AdminServiceTags({ data, setData }) {
     const reordered = [...previewTags];
     const [moved] = reordered.splice(di, 1);
     reordered.splice(oi, 0, moved);
-    const otherTags = tags.filter(t => isScheduleTab ? t.scheduleYn !== "Y" : t.scheduleYn === "Y");
+    const otherTags = (tags||[]).filter(t => isScheduleTab ? t.scheduleYn !== "Y" : t.scheduleYn === "Y");
     const unusedTabs = tabTags.filter(t=>t.useYn===false);
     const newTabOrder = [...reordered, ...unusedTabs];
     const allSorted = [...newTabOrder, ...otherTags].map((t,i)=>({...t,sort:i}));
@@ -6103,13 +6103,13 @@ function AdminServiceTags({ data, setData }) {
   };
 
   const isScheduleTab = activeTab === "schedule";
-  const tabTags = tags.filter(t => isScheduleTab ? t.scheduleYn === "Y" : t.scheduleYn !== "Y");
+  const tabTags = (tags||[]).filter(t => isScheduleTab ? t.scheduleYn === "Y" : t.scheduleYn !== "Y");
 
-  const syncTags = (updated) => { setTags(updated); if(setData) setData(prev=>({...prev,serviceTags:updated})); };
+  const syncTags = (updated) => { setTags(updated); if(setData) setData(prev=>prev ? {...prev,serviceTags:updated} : prev); };
   const [localTabTags, setLocalTabTags] = useState([]);
   useEffect(() => { setLocalTabTags(tabTags); }, [activeTab, tags]);
   const drag = useDragSort(localTabTags, setLocalTabTags, "sort", (reordered) => {
-    const otherTags = tags.filter(t => isScheduleTab ? t.scheduleYn !== "Y" : t.scheduleYn === "Y");
+    const otherTags = (tags||[]).filter(t => isScheduleTab ? t.scheduleYn !== "Y" : t.scheduleYn === "Y");
     const allSorted = [...reordered, ...otherTags].map((t,i)=>({...t,sort:i}));
     syncTags(allSorted);
     reordered.forEach((s,i) => sb.update("service_tags", s.id, {sort: i}).catch(console.error));
@@ -6147,7 +6147,7 @@ function AdminServiceTags({ data, setData }) {
     if (protectedSelected.length > 0) { alert("신규, 예약금완료 태그는 시스템 태그로 삭제할 수 없습니다."); return; }
     if (!window.confirm(selected.size + "개 태그를 삭제하시겠습니까?\n삭제된 태그는 복구할 수 없습니다.")) return;
     selected.forEach(id => sb.del("service_tags", id).catch(console.error));
-    syncTags(tags.filter(t => !selected.has(t.id)).map((t,i) => ({...t, sort:i})));
+    syncTags((tags||[]).filter(t => !selected.has(t.id)).map((t,i) => ({...t, sort:i})));
     setSelected(new Set());
   };
 
@@ -6180,7 +6180,7 @@ function AdminServiceTags({ data, setData }) {
   };
   const deleteTag = (id) => {
     if (SYSTEM_TAG_IDS.includes(id)) { alert("시스템 태그는 삭제할 수 없습니다."); return; }
-    syncTags(tags.filter(t=>t.id!==id).map((t,i)=>({...t,sort:i})));
+    syncTags((tags||[]).filter(t=>t.id!==id).map((t,i)=>({...t,sort:i})));
     sb.del("service_tags", id).catch(console.error);
     setDelConfirm(null);
   };
@@ -6207,7 +6207,7 @@ function AdminServiceTags({ data, setData }) {
       {Object.entries(TAB_LABELS).map(([key, label]) => (
         <button key={key} className={activeTab===key?"btn-p btn-sm":"btn-s btn-sm"}
           onClick={()=>{setActiveTab(key);setSelected(new Set());setShowAdd(false);}}>
-          {label}태그 <span style={{fontSize:10,opacity:.7}}>({(key==="schedule"?tags.filter(t=>t.scheduleYn==="Y"):tags.filter(t=>t.scheduleYn!=="Y")).length})</span>
+          {label}태그 <span style={{fontSize:10,opacity:.7}}>({(key==="schedule"?(tags||[]).filter(t=>t.scheduleYn==="Y"):(tags||[]).filter(t=>t.scheduleYn!=="Y")).length})</span>
         </button>
       ))}
     </div>
