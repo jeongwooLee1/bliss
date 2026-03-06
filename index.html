@@ -509,7 +509,7 @@ ${naverText}
       // 신규 여부: visit_count=0, is_new_cust=true, cust_linked=false 일 때만
       if (effectiveIsNew) newTags = [...newTags, NEW_CUST_TAG_ID];
       // 예약금완료 자동 처리
-      if (res.isPrepaid && res.totalPrice > 0 && !newTags.includes(PREPAID_TAG_ID)) newTags = [...newTags, PREPAID_TAG_ID];
+      if (res.isPrepaid && !newTags.includes(PREPAID_TAG_ID)) newTags = [...newTags, PREPAID_TAG_ID];
       if (newTags.length === 0 && newSvcs.length === 0) return;
       // dur 계산
       const tagSum = newTags.reduce((s,tid)=>{const t=(d.serviceTags||[]).find(x=>x.id===tid);return s+(t?.dur||0);},0);
@@ -2672,8 +2672,8 @@ ${naverText}
       // AI 결과에서 신규 태그 제거 후 코드가 직접 판단
       let newTags = (parsed.matchedTagIds || []).filter(id => !SYSTEM_TAG_IDS.includes(id));
       if (effectiveIsNew) newTags = [...newTags, NEW_CUST_TAG_ID];
-      // 예약금완료 자동 처리: isPrepaid=true이면 태그 추가
-      if (f.isPrepaid && f.totalPrice > 0 && !newTags.includes(PREPAID_TAG_ID)) newTags = [...newTags, PREPAID_TAG_ID];
+      // 예약금완료 자동 처리: isPrepaid=true이면 태그 추가 (totalPrice 무관)
+      if (f.isPrepaid && !newTags.includes(PREPAID_TAG_ID)) newTags = [...newTags, PREPAID_TAG_ID];
       const newSvcs = parsed.matchedServiceIds || [];
       setF(p => {
         const tagSum = newTags.reduce((s,tid)=>{const t=(data?.serviceTags||[]).find(x=>x.id===tid);return s+(t?.dur||0);},0);
@@ -3144,8 +3144,8 @@ ${naverText}
                 // 신규 고객 태그
                 if (f.isNewCust && !autoTags.includes(NEW_CUST_TAG_ID_GLOBAL)) autoTags = [...autoTags, NEW_CUST_TAG_ID_GLOBAL];
                 if (!f.isNewCust) autoTags = autoTags.filter(id => id !== NEW_CUST_TAG_ID_GLOBAL);
-                // 예약금완료 태그
-                if (f.isPrepaid && (f.totalPrice||0) > 0 && !autoTags.includes(PREPAID_TAG_ID)) autoTags = [...autoTags, PREPAID_TAG_ID];
+                // 예약금완료 태그 — isPrepaid만으로 판단 (totalPrice 유무 무관)
+                if (f.isPrepaid && !autoTags.includes(PREPAID_TAG_ID)) autoTags = [...autoTags, PREPAID_TAG_ID];
                 if (!f.isPrepaid && autoTags.includes(PREPAID_TAG_ID)) autoTags = autoTags.filter(id => id !== PREPAID_TAG_ID);
                 onSave({...f, tsLog: newLog, selectedTags: autoTags});
               }}>{item?.id?"수정 완료":"등록"}</button>
