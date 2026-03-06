@@ -132,7 +132,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.44";
+const BLISS_V = "2.65.45";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -2799,7 +2799,9 @@ ${naverText}
                 <select className="res-room-sel fld-sel" style={{flex:"1 1 auto",minWidth:100}} value={`${f.roomId}|${f.staffId}`} onChange={e=>{const [r,s]=e.target.value.split("|");set("roomId",r);set("staffId",s)}}>
                   {branchRooms.map(rm => branchStaff.map(st => {
                     const br = (data.branches||[]).find(b=>b.id===branchId);
-                    return <option key={rm.id+st.id} value={`${rm.id}|${st.id}`}>{br?.short||br?.name||""} {rm.name} · {st.dn}</option>;
+                    const brName = br?.short||br?.name||"";
+                    const label = `${brName}${rm.name}${st.dn && st.dn!==rm.name ? " · "+st.dn : ""}`;
+                    return <option key={rm.id+st.id} value={`${rm.id}|${st.id}`}>{label}</option>;
                   }))}
                 </select>
               </div>
@@ -2910,7 +2912,9 @@ ${naverText}
                 <select className="res-room-sel fld-sel" style={{flex:"1 1 auto",minWidth:100}} value={`${f.roomId}|${f.staffId}`} onChange={e=>{const [r,s]=e.target.value.split("|");set("roomId",r);set("staffId",s)}}>
                   {branchRooms.map(rm => branchStaff.map(st => {
                     const br = (data.branches||[]).find(b=>b.id===branchId);
-                    return <option key={rm.id+st.id} value={`${rm.id}|${st.id}`}>{br?.short||br?.name||""} {rm.name} · {st.dn}</option>;
+                    const brName = br?.short||br?.name||"";
+                    const label = `${brName}${rm.name}${st.dn && st.dn!==rm.name ? " · "+st.dn : ""}`;
+                    return <option key={rm.id+st.id} value={`${rm.id}|${st.id}`}>{label}</option>;
                   }))}
                 </select>
               </div>
