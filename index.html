@@ -32,7 +32,7 @@ const sb = {
 };
 // snake_case <-> camelCase column mapping per table
 const DBMAP = {
-  reservations:{business_id:"businessId",room_id:"roomId",cust_id:"custId",cust_name:"custName",cust_phone:"custPhone",cust_gender:"custGender",staff_id:"staffId",service_id:"serviceId",is_schedule:"isSchedule",is_new_cust:"isNewCust",selected_tags:"selectedTags",selected_services:"selectedServices",repeat_group_id:"repeatSourceId",repeat_until:"repeatUntil",reservation_id:"reservationId",updated_at:"_ua",source:"source",request_msg:"requestMsg",owner_comment:"ownerComment",is_prepaid:"isPrepaid",npay_method:"npayMethod",total_price:"totalPrice",visit_count:"visitCount",no_show_count:"noShowCount",is_scraping_done:"isScrapingDone"},
+  reservations:{business_id:"businessId",room_id:"roomId",cust_id:"custId",cust_name:"custName",cust_phone:"custPhone",cust_gender:"custGender",staff_id:"staffId",service_id:"serviceId",is_schedule:"isSchedule",is_new_cust:"isNewCust",selected_tags:"selectedTags",selected_services:"selectedServices",repeat_group_id:"repeatSourceId",repeat_until:"repeatUntil",reservation_id:"reservationId",updated_at:"_ua",source:"source",request_msg:"requestMsg",owner_comment:"ownerComment",is_prepaid:"isPrepaid",npay_method:"npayMethod",total_price:"totalPrice",visit_count:"visitCount",no_show_count:"noShowCount",is_scraping_done:"isScrapingDone",naver_reg_dt:"naverRegDt",naver_confirmed_dt:"naverConfirmedDt",naver_cancelled_dt:"naverCancelledDt"},
   sales:{business_id:"businessId",cust_id:"custId",cust_name:"custName",cust_phone:"custPhone",cust_gender:"custGender",cust_num:"custNum",staff_id:"staffId",staff_name:"staffName",service_id:"serviceId",service_name:"serviceName",product_id:"productId",product_name:"productName",svc_cash:"svcCash",svc_transfer:"svcTransfer",svc_card:"svcCard",svc_point:"svcPoint",prod_cash:"prodCash",prod_transfer:"prodTransfer",prod_card:"prodCard",prod_point:"prodPoint",order_num:"orderNum",reservation_id:"reservationId"},
   customers:{business_id:"businessId",last_visit:"lastVisit",cust_num:"custNum"},
   service_tags:{business_id:"businessId",schedule_yn:"scheduleYn",use_yn:"useYn"},
@@ -54,7 +54,7 @@ function fromDb(table,rows){const m=DBMAP[table];if(!m)return rows;return rows.m
   return r;});}
 // Valid DB columns per table (to filter out extra JS fields)
 const DB_COLS={
-  reservations:["id","business_id","bid","room_id","cust_id","cust_name","cust_phone","cust_gender","staff_id","service_id","date","time","dur","status","memo","type","is_schedule","is_new_cust","selected_tags","selected_services","repeat","repeat_until","repeat_group_id","reservation_id","updated_at","source","request_msg","owner_comment","is_prepaid","npay_method","total_price","visit_count","no_show_count","is_scraping_done"],
+  reservations:["id","business_id","bid","room_id","cust_id","cust_name","cust_phone","cust_gender","staff_id","service_id","date","time","dur","status","memo","type","is_schedule","is_new_cust","selected_tags","selected_services","repeat","repeat_until","repeat_group_id","reservation_id","updated_at","source","request_msg","owner_comment","is_prepaid","npay_method","total_price","visit_count","no_show_count","is_scraping_done","naver_reg_dt","naver_confirmed_dt","naver_cancelled_dt"],
   sales:["id","business_id","bid","cust_id","cust_name","cust_phone","cust_gender","cust_num","staff_id","staff_name","date","service_id","service_name","product_id","product_name","svc_cash","svc_transfer","svc_card","svc_point","prod_cash","prod_transfer","prod_card","prod_point","gift","order_num","memo","reservation_id"],
   customers:["id","business_id","bid","name","phone","gender","visits","last_visit","memo","cust_num"],
   service_tags:["id","business_id","name","dur","schedule_yn","color","use_yn","sort"],
@@ -124,7 +124,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.63.18";
+const BLISS_V = "2.64.0";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -2700,6 +2700,37 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
 
           </>}
 
+          {/* ═══ 네이버 예약정보 (읽기전용) ═══ */}
+          {isNaverItem && <div style={{background:"#F1F8E9",border:"1.5px solid #A5D6A7",borderRadius:8,padding:"10px 14px",marginBottom:8}}>
+            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
+              <I name="naver" size={14}/>
+              <span style={{fontSize:12,fontWeight:700,color:"#2E7D32"}}>네이버 예약정보</span>
+              <span style={{fontSize:10,color:"#999",marginLeft:4}}>(수정 불가)</span>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"4px 12px"}}>
+              {f.reservationId && <div style={{gridColumn:"1/-1",display:"flex",gap:6,alignItems:"center",paddingBottom:4,borderBottom:"1px solid #C8E6C9",marginBottom:2}}>
+                <span style={{fontSize:11,color:"#666",minWidth:60}}>예약번호</span>
+                <span style={{fontSize:12,fontWeight:700,color:"#1B5E20",letterSpacing:0.5}}>#{f.reservationId}</span>
+              </div>}
+              {f.naverRegDt && <div style={{display:"flex",flexDirection:"column",gap:1}}>
+                <span style={{fontSize:10,color:"#888"}}>신청일시</span>
+                <span style={{fontSize:11,fontWeight:600,color:"#333"}}>{f.naverRegDt}</span>
+              </div>}
+              {f.naverConfirmedDt && <div style={{display:"flex",flexDirection:"column",gap:1}}>
+                <span style={{fontSize:10,color:"#888"}}>확정일시</span>
+                <span style={{fontSize:11,fontWeight:600,color:"#2E7D32"}}>{f.naverConfirmedDt}</span>
+              </div>}
+              {f.naverCancelledDt && <div style={{display:"flex",flexDirection:"column",gap:1,gridColumn:"1/-1"}}>
+                <span style={{fontSize:10,color:"#888"}}>취소일시</span>
+                <span style={{fontSize:11,fontWeight:600,color:"#c62828"}}>{f.naverCancelledDt}</span>
+              </div>}
+              {(f.visitCount > 0 || f.noShowCount > 0) && <div style={{gridColumn:"1/-1",display:"flex",gap:10,marginTop:2,paddingTop:4,borderTop:"1px solid #C8E6C9"}}>
+                {f.visitCount > 0 && <span style={{fontSize:10,color:"#555"}}>방문 <strong>{f.visitCount}회</strong></span>}
+                {f.noShowCount > 0 && <span style={{fontSize:10,color:"#c62828"}}>노쇼 <strong>{f.noShowCount}회</strong></span>}
+              </div>}
+            </div>
+          </div>}
+
           {/* 예약메모 */}
           <div>
             <textarea className="inp" rows={8} value={f.memo} onChange={e=>set("memo",e.target.value)} style={{resize:"vertical"}} placeholder="예약 관련 메모를 입력하세요"/>
@@ -3397,11 +3428,18 @@ function SmartDatePicker({ open, onClose, anchorEl, startDate, endDate, onApply,
   const prevM = () => { const d=new Date(months[0].y,months[0].m-1,1); const d2=new Date(months[1].y,months[1].m-1,1); setMonths([{y:d.getFullYear(),m:d.getMonth()},{y:d2.getFullYear(),m:d2.getMonth()}]); };
   const nextM = () => { const d=new Date(months[0].y,months[0].m+1,1); const d2=new Date(months[1].y,months[1].m+1,1); setMonths([{y:d.getFullYear(),m:d.getMonth()},{y:d2.getFullYear(),m:d2.getMonth()}]); };
 
+  const [pickingEnd, setPickingEnd] = useState(false);
+
   const handleDayClick = (ds) => {
     setPeriod("custom");
-    if (!selStart || (selStart && selEnd)) { setSelStart(ds); setSelEnd(ds); }
-    else if (ds < selStart) { setSelStart(ds); }
-    else { setSelEnd(ds); }
+    if (!pickingEnd) {
+      setSelStart(ds); setSelEnd(ds);
+      setPickingEnd(true);
+    } else {
+      if (ds < selStart) { setSelStart(ds); setSelEnd(selStart); }
+      else { setSelEnd(ds); }
+      setPickingEnd(false);
+    }
   };
 
   const DAYS = ["일","월","화","수","목","금","토"];
@@ -3652,12 +3690,12 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
                 const clr = rs?.color||"#7c7cc8";
                 return <span style={{display:"inline-block",fontSize:10,fontWeight:600,color:clr,background:clr+"18",border:`1px solid ${clr}44`,borderRadius:10,padding:"2px 7px"}}>{src}</span>;
               })()}</td>
-              <td style={{fontSize:11,fontWeight:700,color:"#e65100",textAlign:"right"}}>{(()=>{
+              <td style={{fontSize:11,fontWeight:700,color:"#e65100",textAlign:"center"}}>{(()=>{
+  if(!r.isPrepaid) return <span style={{color:"#ccc"}}>-</span>;
   const amt = r.totalPrice||0;
   if(!amt) return <span style={{color:"#ccc"}}>-</span>;
   const fmtAmt = amt.toLocaleString()+"원";
-  if(r.isPrepaid) return <span style={{background:"#e8f5e9",color:"#2e7d32",borderRadius:6,padding:"2px 6px",fontSize:10}} title={"선불결제: "+(r.npayMethod||"네이버페이")}>✓{fmtAmt}</span>;
-  return <span style={{background:"#fff3e0",borderRadius:6,padding:"2px 6px"}}>{fmtAmt}</span>;
+  return <span style={{background:"#e8f5e9",color:"#2e7d32",borderRadius:6,padding:"2px 6px",fontSize:10}} title={"선불결제: "+(r.npayMethod||"네이버페이")}>✓{fmtAmt}</span>;
 })()} </td>
               <td><span style={{fontSize:11,fontWeight:700,color:sc[r.status]||"#999"}}>{STATUS_LABEL[r.status]||r.status}</span></td>
               <td><div style={{display:"flex",gap:4}}>
