@@ -124,7 +124,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.64.7";
+const BLISS_V = "2.64.8";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -2736,6 +2736,11 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
               {f.requestMsg && <div style={{gridColumn:"1/-1",marginTop:2,paddingTop:4,borderTop:"1px solid #C8E6C9"}}>
                 <span style={{fontSize:10,color:"#888",display:"block",marginBottom:2}}>고객 요청사항</span>
                 <span style={{fontSize:11,color:"#333",lineHeight:1.5,whiteSpace:"pre-wrap"}}>{f.requestMsg}</span>
+              </div>}
+              {/* 직원 메모 (네이버 파트너 메모) */}
+              {f.ownerComment && <div style={{gridColumn:"1/-1",marginTop:2,paddingTop:4,borderTop:"1px solid #C8E6C9"}}>
+                <span style={{fontSize:10,color:"#888",display:"block",marginBottom:2}}>직원 메모</span>
+                <span style={{fontSize:11,color:"#333",lineHeight:1.5,whiteSpace:"pre-wrap"}}>{f.ownerComment}</span>
               </div>}
               {/* 방문/노쇼 이력 */}
               {(f.visitCount > 0 || f.noShowCount > 0) && <div style={{gridColumn:"1/-1",display:"flex",gap:10,marginTop:2,paddingTop:4,borderTop:"1px solid #C8E6C9"}}>
