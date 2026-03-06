@@ -124,7 +124,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.64.0";
+const BLISS_V = "2.64.1";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -1109,7 +1109,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   });
   const isNaverRes = (r) => !!r.reservationId;
   
-  const blocks = data.reservations.filter(r => r.date === selDate && branchesToShow.some(b=>b.id===r.bid));
+  const blocks = data.reservations.filter(r => r.date === selDate && r.status !== "naver_cancelled" && branchesToShow.some(b=>b.id===r.bid));
 
   // ── 네이버 예약 자동배치: 빈 담당자(왼쪽부터) 배분 ──
   const toMin = (t) => { const [h,m] = (t||"10:00").split(":").map(Number); return h*60+m; };
@@ -3574,6 +3574,8 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
     // 네이버 예약은 스크래핑 완료(이름+연락처+날짜 확보)된 것만 표시
     const isNaver = (r.source==="naver"||r.source==="네이버");
     if (isNaver && !r.isScrapingDone) return false;
+    // naver_cancelled는 별도 필터 선택 시에만 표시 (기본 all에서 제외)
+    if (statusFilter === "all" && r.status === "naver_cancelled") return false;
     if (statusFilter !== "all" && r.status !== statusFilter) return false;
     if (q) {
       const sq = q.toLowerCase();
@@ -3624,7 +3626,9 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
     {/* 상태 필터 - 네이버 스타일 pill */}
     {(()=>{
       const allRes = data.reservations.filter(r=>r.type==="reservation"&&(vb==="all"?userBranches.includes(r.bid):r.bid===vb)&&inRange(r.date));
-      const counts = {all:allRes.length, confirmed:0, pending:0, completed:0, cancelled:0, noshow:0};
+      // 전체 카운트에서 naver_cancelled 제외
+      const activeRes = allRes.filter(r => r.status !== "naver_cancelled");
+      const counts = {all: activeRes.length, confirmed:0, pending:0, completed:0, cancelled:0, noshow:0, naver_cancelled:0};
       allRes.forEach(r=>{ if(counts[r.status]!==undefined) counts[r.status]++; });
       const tabs = [
         {k:"all", label:"전체"},
@@ -3632,6 +3636,7 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
         {k:"pending", label:"대기"},
         {k:"cancelled", label:"취소"},
         {k:"noshow", label:"노쇼"},
+        {k:"naver_cancelled", label:"네이버취소"},
       ];
       return <div style={{display:"flex",gap:5,marginBottom:10,flexWrap:"wrap"}}>
         {tabs.map(({k,label})=>{
@@ -3640,10 +3645,10 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
           return <button key={k} onClick={()=>setStatusFilter(k)} style={{
             height:30,padding:"0 11px",borderRadius:20,border:"1.5px solid",fontSize:13,fontWeight:active?700:500,cursor:"pointer",fontFamily:"inherit",
             display:"flex",alignItems:"center",gap:5,transition:"all .15s",
-            background: active?"#7c7cc8":"#fff",
-            borderColor: active?"#7c7cc8":"#e0e0e0",
-            color: active?"#fff":"#555",
-            boxShadow: active?"0 2px 8px rgba(124,124,200,.3)":"0 1px 3px rgba(0,0,0,.08)",
+            background: active?(k==="naver_cancelled"?"#E6A700":"#7c7cc8"):"#fff",
+            borderColor: active?(k==="naver_cancelled"?"#E6A700":"#7c7cc8"):(k==="naver_cancelled"?"#E6A70044":"#e0e0e0"),
+            color: active?"#fff":(k==="naver_cancelled"?"#E6A700":"#555"),
+            boxShadow: active?"0 2px 8px rgba(0,0,0,.2)":"0 1px 3px rgba(0,0,0,.08)",
           }}>
             <span>{label}</span>
             <span style={{
