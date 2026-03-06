@@ -124,7 +124,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.9";
+const BLISS_V = "2.65.10";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -444,6 +444,7 @@ function App() {
           (c.phone||"").replace(/-/g,"") === (res.custPhone||"").replace(/-/g,""))
       : null;
     const effectiveIsNew = (custLinked || phoneMatch) ? false : (res.visitCount === 0 && res.isNewCust);
+    const NEW_CUST_TAG_ID = "lggzktc9f"; // 신규 태그 - AI가 아닌 코드가 직접 판단
     const prompt = `당신은 왁싱샵/미용실 예약 정보를 분석하는 AI입니다.
 아래 네이버 예약 고객 정보를 분석하여 적합한 태그와 시술상품을 선택하세요.
 마크다운 없이 순수 JSON만 출력하세요.
@@ -452,12 +453,12 @@ function App() {
 [시술상품 목록] ${svcList}
 
 [기본 판단 기준]
-- 첫방문/신규 고객(is_new_cust=${effectiveIsNew}, visit_count=${res.visitCount||0}, cust_linked=${custLinked}) → "신규" 태그 (visit_count=0 이고 is_new_cust=true 이고 cust_linked=false 일 때만. visit_count가 1 이상이거나 cust_linked=true 이면 절대 신규 태그 붙이지 말 것)
 - 주차 언급 → "주차" 태그
 - 임산부/산모 → "산모님" 태그
 - 커플룸 요청 → "커플룸" 태그
 - 남자 관리사 요청 → "남자선생님" 태그
-- 시술메뉴 내용으로 적합한 시술상품 선택${customRulesBlock}
+- 시술메뉴 내용으로 적합한 시술상품 선택
+- "신규" 태그(${NEW_CUST_TAG_ID})는 선택하지 마세요. 신규 여부는 시스템이 별도 판단합니다.${customRulesBlock}
 
 [네이버 예약 정보]
 ${naverText}
@@ -473,8 +474,11 @@ ${naverText}
       const d2 = await r.json();
       const txt = d2.candidates?.[0]?.content?.parts?.[0]?.text || "";
       const parsed = JSON.parse(txt.replace(/```json|```/g,"").trim());
-      const newTags = parsed.matchedTagIds || [];
+      // AI가 혹시 신규 태그를 붙였어도 제거 (코드가 직접 판단)
+      let newTags = (parsed.matchedTagIds || []).filter(id => id !== NEW_CUST_TAG_ID);
       const newSvcs = parsed.matchedServiceIds || [];
+      // 신규 여부: visit_count=0, is_new_cust=true, cust_linked=false 일 때만
+      if (effectiveIsNew) newTags = [...newTags, NEW_CUST_TAG_ID];
       if (newTags.length === 0 && newSvcs.length === 0) return;
       // dur 계산
       const tagSum = newTags.reduce((s,tid)=>{const t=(d.serviceTags||[]).find(x=>x.id===tid);return s+(t?.dur||0);},0);
@@ -2546,6 +2550,9 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
       const customRulesBlock = customRules.length > 0
         ? `\n[추가 판단 규칙 - 아래 규칙을 기본 기준보다 우선 적용하세요]\n${customRules.map((r,i)=>`${i+1}. ${r}`).join("\n")}`
         : "";
+      const NEW_CUST_TAG_ID = "lggzktc9f";
+      const custLinked = !!(f.custId) || !!(data?.customers||[]).find(c=>(c.phone||"").replace(/-/g,"") === (f.custPhone||"").replace(/-/g,""));
+      const effectiveIsNew = custLinked ? false : (f.visitCount === 0 && f.isNewCust);
       const prompt = `당신은 왁싱샵/미용실 예약 정보를 분석하는 AI입니다.
 아래 네이버 예약 고객 정보를 분석하여 적합한 태그와 시술상품을 선택하세요.
 마크다운 없이 순수 JSON만 출력하세요.
@@ -2554,12 +2561,12 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
 [시술상품 목록] ${svcList}
 
 [기본 판단 기준]
-- 첫방문/신규 고객(is_new_cust=${f.isNewCust}, visit_count=${f.visitCount||0}, cust_linked=${!!(f.custId) || !!(data?.customers||[]).find(c=>(c.phone||"").replace(/-/g,"")===(f.custPhone||"").replace(/-/g,""))}) → "신규" 태그 (visit_count=0 이고 is_new_cust=true 이고 cust_linked=false 일 때만. visit_count가 1 이상이거나 cust_linked=true 이면 절대 신규 태그 붙이지 말 것)
-- 주차 언급 → "주차" 태그  
+- 주차 언급 → "주차" 태그
 - 임산부/산모 → "산모님" 태그
 - 커플룸 요청 → "커플룸" 태그
 - 남자 관리사 요청 → "남자선생님" 태그
-- 시술메뉴 내용으로 적합한 시술상품 선택${customRulesBlock}
+- 시술메뉴 내용으로 적합한 시술상품 선택
+- "신규" 태그(${NEW_CUST_TAG_ID})는 선택하지 마세요. 신규 여부는 시스템이 별도 판단합니다.${customRulesBlock}
 
 [네이버 예약 정보]
 ${naverText}
@@ -2574,7 +2581,9 @@ ${naverText}
       const d2 = await r.json();
       const txt = d2.candidates?.[0]?.content?.parts?.[0]?.text || "";
       const parsed = JSON.parse(txt.replace(/```json|```/g,"").trim());
-      const newTags = parsed.matchedTagIds || [];
+      // AI 결과에서 신규 태그 제거 후 코드가 직접 판단
+      let newTags = (parsed.matchedTagIds || []).filter(id => id !== NEW_CUST_TAG_ID);
+      if (effectiveIsNew) newTags = [...newTags, NEW_CUST_TAG_ID];
       const newSvcs = parsed.matchedServiceIds || [];
       setF(p => {
         const tagSum = newTags.reduce((s,tid)=>{const t=(data?.serviceTags||[]).find(x=>x.id===tid);return s+(t?.dur||0);},0);
