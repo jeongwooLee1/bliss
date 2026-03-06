@@ -124,7 +124,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.28";
+const BLISS_V = "2.65.29";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -5787,19 +5787,24 @@ function AdminAISettings({ data, autoAiAnalyze, sb, bizId }) {
   const [rules, setRules] = useState(()=>{
     try { return JSON.parse(localStorage.getItem(AI_RULES_KEY)||"[]"); } catch{ return []; }
   });
-  // 로컬 비어있으면 Supabase에서 복원 (캐시 삭제 후 복구)
+  // 마운트 시 Supabase에서 gemini_key + ai_rules 복원 (localStorage 삭제 후 복구)
   useEffect(() => {
-    const local = localStorage.getItem(AI_RULES_KEY);
-    if (local && local !== "[]") return;
     if (!bizId) return;
     fetch(`${SB_URL}/rest/v1/businesses?id=eq.${bizId}&select=memo`, { headers: sbHeaders })
       .then(r => r.json()).then(rows => {
         try {
           const memo = JSON.parse(rows[0]?.memo || "{}");
+          // gemini_key 복원 (화면 state + localStorage 모두)
+          if (memo.gemini_key) {
+            setApiKey(memo.gemini_key);
+            localStorage.setItem("bliss_gemini_key", memo.gemini_key);
+            console.log("✅ Gemini key 복원");
+          }
+          // ai_rules 복원
           if (memo.ai_rules?.length) {
             setRules(memo.ai_rules);
             localStorage.setItem(AI_RULES_KEY, JSON.stringify(memo.ai_rules));
-            console.log("✅ AI 규칙 Supabase 복원:", memo.ai_rules.length + "개");
+            console.log("✅ AI 규칙 복원:", memo.ai_rules.length + "개");
           }
         } catch(e) {}
       }).catch(()=>{});
