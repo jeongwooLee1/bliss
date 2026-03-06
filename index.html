@@ -124,7 +124,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.66.4";
+const BLISS_V = "2.66.5";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -2876,89 +2876,101 @@ ${naverText}
             })()}
 
             {/* 예약경로 - 아코디언 */}
-            {!isSchedule && <div>
-              <button className={`acc-hdr${openSec.src?" open":""}`} onClick={()=>toggleSec("src")} style={{width:"100%"}}>
-                <span style={{fontSize:11,fontWeight:700,color:openSec.src?"var(--bliss)":"var(--gray-500)",letterSpacing:".3px",textTransform:"uppercase",display:"flex",alignItems:"center",gap:6}}>
+            {!isSchedule && (() => { const open=openSec.src; return <div className="acc-src">
+              <button className={`acc-hdr${open?" acc-open":""}`} onClick={()=>toggleSec("src")} style={{width:"100%"}}>
+                <span className="acc-label" style={{fontSize:11,fontWeight:700,letterSpacing:".3px",textTransform:"uppercase",display:"flex",alignItems:"center",gap:6,color:"var(--gray-500)"}}>
                   예약경로
-                  {f.source && <span style={{fontSize:10,fontWeight:700,background:"var(--bliss-50)",color:"var(--bliss)",borderRadius:4,padding:"1px 6px",textTransform:"none"}}>{f.source}</span>}
+                  {f.source && <span style={{fontSize:10,fontWeight:700,background:"#eef2ff",color:"#4338ca",borderRadius:4,padding:"2px 7px",textTransform:"none"}}>{f.source}</span>}
                 </span>
-                <svg className={`acc-chev${openSec.src?" open":""}`} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                <svg className={`acc-chev${open?" acc-open":""}`} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>
               </button>
-              {openSec.src && <div className="acc-body">
-                <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-                  {(data?.resSources||[]).filter(s=>s.useYn!==false).sort((a,b)=>(a.sort||0)-(b.sort||0)).map(src => {
-                    const sel = f.source === src.name;
-                    const clr = src.color || "#7c7cc8";
-                    return <button key={src.id} onClick={()=>set("source",sel?"":src.name)}
-                      style={{padding:"5px 11px",fontSize:11,fontWeight:700,borderRadius:"var(--r-sm)",cursor:"pointer",fontFamily:"inherit",transition:"all var(--tr)",
-                        border:sel?`1.5px solid ${clr}`:`1.5px solid var(--gray-200)`,
-                        background:sel?clr+"22":"#fff",color:sel?clr:"var(--gray-500)",display:"inline-flex",alignItems:"center",gap:4,lineHeight:1.4,flexShrink:0,
-                        boxShadow:sel?`0 2px 8px ${clr}30`:`var(--sh-sm)`}}>
-                      <span style={{width:6,height:6,borderRadius:1,background:clr,flexShrink:0,opacity:sel?1:0.4}}/>
-                      {src.name}
-                    </button>;
-                  })}
-                </div>
-              </div>}
-            </div>}
+              <div className={`acc-body-box acc-wrap ${open?"acc-open":"acc-closed"}`}>
+                <div className="acc-inner"><div className="acc-inner-pad" style={{paddingTop:10}}>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                    {(data?.resSources||[]).filter(s=>s.useYn!==false).sort((a,b)=>(a.sort||0)-(b.sort||0)).map(src => {
+                      const sel = f.source === src.name;
+                      const clr = src.color || "#6366f1";
+                      return <button key={src.id} onClick={()=>set("source",sel?"":src.name)}
+                        style={{padding:"6px 12px",fontSize:11,fontWeight:700,borderRadius:"var(--r-sm)",cursor:"pointer",fontFamily:"inherit",
+                          transition:"all .18s cubic-bezier(.4,0,.2,1)",
+                          border:sel?`1.5px solid ${clr}`:`1.5px solid var(--gray-200)`,
+                          background:sel?clr+"18":"#fff",color:sel?clr:"var(--gray-500)",
+                          display:"inline-flex",alignItems:"center",gap:5,lineHeight:1.4,flexShrink:0,
+                          boxShadow:sel?`0 2px 10px ${clr}35`:`var(--sh-sm)`}}
+                        onMouseOver={e=>{if(!sel){e.currentTarget.style.transform="translateY(-1px)";e.currentTarget.style.boxShadow="0 4px 12px rgba(0,0,0,.12)"}}}
+                        onMouseOut={e=>{e.currentTarget.style.transform="none";e.currentTarget.style.boxShadow=sel?`0 2px 10px ${clr}35`:`var(--sh-sm)`}}>
+                        <span style={{width:7,height:7,borderRadius:2,background:clr,flexShrink:0,opacity:sel?1:0.35,transition:"opacity .18s"}}/>
+                        {src.name}
+                      </button>;
+                    })}
+                  </div>
+                </div></div>
+              </div>
+            </div>; })()}
 
             {/* 예약태그 - 아코디언 */}
-            <div>
-              <button className={`acc-hdr${openSec.tags?" open":""}`} onClick={()=>toggleSec("tags")} style={{width:"100%"}}>
-                <span style={{fontSize:11,fontWeight:700,color:openSec.tags?"var(--bliss)":"var(--gray-500)",letterSpacing:".3px",textTransform:"uppercase",display:"flex",alignItems:"center",gap:6}}>
+            {(()=>{ const open=openSec.tags; return <div className="acc-tags">
+              <button className={`acc-hdr${open?" acc-open":""}`} onClick={()=>toggleSec("tags")} style={{width:"100%"}}>
+                <span className="acc-label" style={{fontSize:11,fontWeight:700,letterSpacing:".3px",textTransform:"uppercase",display:"flex",alignItems:"center",gap:6,color:"var(--gray-500)"}}>
                   예약태그
-                  {(tagDurTotal+svcDurTotal) > 0 && <span style={{fontSize:10,fontWeight:700,background:"#fff1f2",color:"#f43f5e",borderRadius:4,padding:"1px 6px",textTransform:"none"}}>{tagDurTotal+svcDurTotal}분</span>}
-                  {(f.selectedTags||[]).length > 0 && <span style={{fontSize:10,fontWeight:700,background:"var(--bliss-50)",color:"var(--bliss)",borderRadius:4,padding:"1px 6px",textTransform:"none"}}>{(f.selectedTags||[]).length}개</span>}
+                  {(tagDurTotal+svcDurTotal) > 0 && <span style={{fontSize:10,fontWeight:700,background:"#fdf2ff",color:"#7c3aed",borderRadius:4,padding:"2px 7px",textTransform:"none"}}>{tagDurTotal+svcDurTotal}분</span>}
+                  {(f.selectedTags||[]).length > 0 && <span style={{fontSize:10,fontWeight:700,background:"#ede9fe",color:"#6d28d9",borderRadius:4,padding:"2px 7px",textTransform:"none"}}>{(f.selectedTags||[]).length}개</span>}
                 </span>
-                <svg className={`acc-chev${openSec.tags?" open":""}`} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                <svg className={`acc-chev${open?" acc-open":""}`} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>
               </button>
-              {openSec.tags && <div className="acc-body">
-                <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
-                  {visibleTags.map(tag => {
-                    const sel = f.selectedTags?.includes(tag.id);
-                    const hasColor = tag.color && tag.color !== "";
-                    const bgClr = hasColor ? tag.color : "#7c7cc8";
-                    return <button key={tag.id} onClick={()=>toggleTag(tag.id)}
-                      style={{padding:"5px 10px",fontSize:11,fontWeight:700,borderRadius:"var(--r-sm)",cursor:"pointer",fontFamily:"inherit",transition:"all var(--tr)",
-                        border:sel?"1.5px solid "+bgClr:"1.5px solid var(--gray-200)",
-                        background:sel?bgClr+"22":"#fff",
-                        color:sel?bgClr:"var(--gray-500)",display:"inline-flex",alignItems:"center",gap:3,lineHeight:1.4,
-                        boxShadow:sel?"0 2px 6px "+bgClr+"30":"none"}}>
-                      {hasColor && <span style={{width:6,height:6,borderRadius:1,background:bgClr,flexShrink:0,opacity:sel?1:0.4}}/>}
-                      {tag.name}
-                      {tag.dur > 0 && <span style={{fontSize:9,opacity:0.6}}>({tag.dur}분)</span>}
-                    </button>;
-                  })}
-                </div>
-                {(f.selectedTags||[]).length > 0 && tagDurTotal>0 && <div style={{marginTop:6,fontSize:11,color:"#f43f5e",fontWeight:700,textAlign:"right"}}>합산 {tagDurTotal}분</div>}
-              </div>}
-            </div>
+              <div className={`acc-body-box acc-wrap ${open?"acc-open":"acc-closed"}`}>
+                <div className="acc-inner"><div className="acc-inner-pad" style={{paddingTop:10}}>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                    {visibleTags.map(tag => {
+                      const sel = f.selectedTags?.includes(tag.id);
+                      const hasColor = tag.color && tag.color !== "";
+                      const bgClr = hasColor ? tag.color : "#8b5cf6";
+                      return <button key={tag.id} onClick={()=>toggleTag(tag.id)}
+                        style={{padding:"6px 11px",fontSize:11,fontWeight:700,borderRadius:"var(--r-sm)",cursor:"pointer",fontFamily:"inherit",
+                          transition:"all .18s cubic-bezier(.4,0,.2,1)",
+                          border:sel?"1.5px solid "+bgClr:"1.5px solid var(--gray-200)",
+                          background:sel?bgClr+"18":"#fff",
+                          color:sel?bgClr:"var(--gray-500)",display:"inline-flex",alignItems:"center",gap:4,lineHeight:1.4,
+                          boxShadow:sel?"0 2px 8px "+bgClr+"30":"var(--sh-sm)"}}
+                        onMouseOver={e=>{e.currentTarget.style.transform="scale(1.04)";e.currentTarget.style.boxShadow=sel?"0 4px 12px "+bgClr+"40":"0 4px 10px rgba(0,0,0,.10)"}}
+                        onMouseOut={e=>{e.currentTarget.style.transform="scale(1)";e.currentTarget.style.boxShadow=sel?"0 2px 8px "+bgClr+"30":"var(--sh-sm)"}}>
+                        {hasColor && <span style={{width:7,height:7,borderRadius:2,background:bgClr,flexShrink:0,opacity:sel?1:0.35}}/>}
+                        {tag.name}
+                        {tag.dur > 0 && <span style={{fontSize:9,opacity:0.65,marginLeft:1}}>({tag.dur}분)</span>}
+                      </button>;
+                    })}
+                  </div>
+                  {(f.selectedTags||[]).length > 0 && tagDurTotal>0 && <div style={{marginTop:8,fontSize:11,color:"#7c3aed",fontWeight:700,textAlign:"right"}}>합산 {tagDurTotal}분</div>}
+                </div></div>
+              </div>
+            </div>; })()}
 
 
           </>}
 
           {/* ═══ 네이버 예약정보 (아코디언) ═══ */}
-          {isNaverItem && <div>
-            <button className={`acc-hdr${openSec.naver?" open":""}`} onClick={()=>toggleSec("naver")} style={{width:"100%",background:openSec.naver?"linear-gradient(135deg,#f0fdf4,#ecfdf5)":"#fff",borderColor:openSec.naver?"#86efac":"var(--gray-200)"}}>
-              <span style={{fontSize:11,fontWeight:700,color:openSec.naver?"#16a34a":"var(--gray-500)",letterSpacing:".3px",textTransform:"uppercase",display:"flex",alignItems:"center",gap:6}}>
+          {isNaverItem && (()=>{ const open=openSec.naver; return <div className="acc-naver">
+            <button className={`acc-hdr${open?" acc-open":""}`} onClick={()=>toggleSec("naver")} style={{width:"100%"}}>
+              <span className="acc-label" style={{fontSize:11,fontWeight:700,letterSpacing:".3px",textTransform:"uppercase",display:"flex",alignItems:"center",gap:6,color:"var(--gray-500)"}}>
                 <I name="naver" size={13}/>
                 네이버 예약정보
-                {f.reservationId && <span style={{fontSize:10,fontWeight:600,background:"#dcfce7",color:"#15803d",borderRadius:4,padding:"1px 6px",textTransform:"none",fontFamily:"monospace"}}>#{f.reservationId}</span>}
-                {f.isPrepaid && (f.totalPrice||0)>0 && <span style={{fontSize:10,fontWeight:700,background:"#dcfce7",color:"#15803d",borderRadius:4,padding:"1px 6px",textTransform:"none"}}>✓ {(f.totalPrice||0).toLocaleString()}원</span>}
+                {f.reservationId && <span style={{fontSize:10,fontWeight:600,background:"#dcfce7",color:"#15803d",borderRadius:4,padding:"2px 7px",textTransform:"none",fontFamily:"monospace"}}>#{f.reservationId}</span>}
+                {f.isPrepaid && (f.totalPrice||0)>0 && <span style={{fontSize:10,fontWeight:700,background:"#dcfce7",color:"#15803d",borderRadius:4,padding:"2px 7px",textTransform:"none"}}>✓ {(f.totalPrice||0).toLocaleString()}원</span>}
               </span>
               <div style={{display:"flex",alignItems:"center",gap:6}}>
                 {!isReadOnly && (f.requestMsg || f.ownerComment) && <button
                   onClick={e=>{e.stopPropagation();handleAiAnalyze();}} disabled={aiAnalyzing}
-                  style={{display:"flex",alignItems:"center",gap:4,padding:"3px 9px",fontSize:11,fontWeight:700,
+                  style={{display:"flex",alignItems:"center",gap:4,padding:"4px 10px",fontSize:11,fontWeight:700,
                     border:"none",borderRadius:8,cursor:aiAnalyzing?"not-allowed":"pointer",
                     background:aiAnalyzing?"#e0e0e0":"linear-gradient(135deg,#7c7cc8,#9b72cb)",
-                    color:aiAnalyzing?"#999":"#fff",transition:"all .2s"}}>
+                    color:aiAnalyzing?"#999":"#fff",transition:"all .2s",boxShadow:aiAnalyzing?"none":"0 2px 8px rgba(124,124,200,.3)"}}>
                   {aiAnalyzing ? <><span style={{fontSize:10}}>⏳</span> 분석중...</> : <><span style={{fontSize:12}}>✨</span> AI</>}
                 </button>}
-                <svg className={`acc-chev${openSec.naver?" open":""}`} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                <svg className={`acc-chev${open?" acc-open":""}`} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>
               </div>
             </button>
-            {openSec.naver && <div className="acc-body" style={{background:"linear-gradient(135deg,#f0fdf4,#f7fef7)",borderColor:"#86efac"}}>
+            <div className={`acc-body-box acc-wrap ${open?"acc-open":"acc-closed"}`}>
+            <div className="acc-inner"><div className="acc-inner-pad" style={{paddingTop:10}}>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"4px 12px"}}>
               {/* 예약번호 */}
               {f.reservationId && <div style={{gridColumn:"1/-1",display:"flex",gap:6,alignItems:"center",paddingBottom:4,borderBottom:"1px solid #C8E6C9",marginBottom:2}}>
@@ -3022,20 +3034,23 @@ ${naverText}
                 {f.noShowCount > 0 && <span style={{fontSize:10,color:"#c62828"}}>노쇼 <strong>{f.noShowCount}회</strong></span>}
               </div>}
             </div>
-            </div>}
-          </div>}
+            </div></div>
+            </div>
+          </div>; })()}
 
           {/* 예약메모 - 아코디언 */}
-          <div>
-            <button className={`acc-hdr${openSec.memo?" open":""}`} onClick={()=>toggleSec("memo")} style={{width:"100%"}}>
-              <span style={{fontSize:11,fontWeight:700,color:openSec.memo?"var(--bliss)":"var(--gray-500)",letterSpacing:".3px",textTransform:"uppercase",display:"flex",alignItems:"center",gap:6}}>
+          {(()=>{ const open=openSec.memo; return <div className="acc-memo">
+            <button className={`acc-hdr${open?" acc-open":""}`} onClick={()=>toggleSec("memo")} style={{width:"100%"}}>
+              <span className="acc-label" style={{fontSize:11,fontWeight:700,letterSpacing:".3px",textTransform:"uppercase",display:"flex",alignItems:"center",gap:6,color:"var(--gray-500)"}}>
                 메모
-                {f.memo && !openSec.memo && <span style={{fontSize:10,fontWeight:400,color:"var(--gray-400)",textTransform:"none",maxWidth:160,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.memo.slice(0,30)}{f.memo.length>30?"…":""}</span>}
+                {f.memo && !open && <span style={{fontSize:10,fontWeight:400,color:"var(--gray-400)",textTransform:"none",maxWidth:160,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.memo.slice(0,30)}{f.memo.length>30?"…":""}</span>}
+                {f.memo && <span style={{fontSize:10,fontWeight:700,background:"#fffbeb",color:"#d97706",borderRadius:4,padding:"2px 7px",textTransform:"none"}}>●</span>}
               </span>
-              <svg className={`acc-chev${openSec.memo?" open":""}`} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+              <svg className={`acc-chev${open?" acc-open":""}`} width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="6 9 12 15 18 9"/></svg>
             </button>
-            {openSec.memo && <div className="acc-body">
-            <textarea className="inp" rows={4} value={f.memo} onChange={e=>set("memo",e.target.value)} style={{resize:"vertical",border:"1px solid var(--gray-200)"}} placeholder="직원 메모를 입력하세요"/>
+            <div className={`acc-body-box acc-wrap ${open?"acc-open":"acc-closed"}`}>
+            <div className="acc-inner"><div className="acc-inner-pad" style={{paddingTop:10}}>
+            <textarea className="inp" rows={4} value={f.memo} onChange={e=>set("memo",e.target.value)} style={{resize:"vertical"}} placeholder="직원 메모를 입력하세요"/>
             {(() => {
               const isNaverRes = !!(f.reservationId || (f.memo && /네이버/.test(f.memo)));
               if (!isNaverRes) return null;
@@ -3050,8 +3065,9 @@ ${naverText}
             {(f.tsLog?.length > 0) && <div style={{marginTop:4,fontSize:10,color:"#999",lineHeight:1.6}}>
               {f.tsLog.map((ts,i)=><div key={i}>{ts}</div>)}
             </div>}
-            </div>}
-          </div>
+            </div></div>
+            </div>
+          </div>; })()}
 
           {/* Action Buttons - 한 줄 (pinned bottom) */}
         </div>
@@ -3641,8 +3657,9 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
                       background:primaryPay.prod===k?"#f5f5f5":"#fff"}}/>}
                 </div>)}
               </div>
-            </div>}
-          </div>}
+            </div></div>
+            </div>
+          </div>; })()}
           {grandTotal > 0 && <div style={{fontSize:9,color:"#bbb",marginTop:6}}>결제수단 버튼 클릭 → 전액 입력 / 추가 수단 클릭 → 금액 입력 시 첫 수단에서 차감</div>}
         </div>
 
@@ -6298,13 +6315,56 @@ const CSS = `
   @keyframes slideUp{from{opacity:0;transform:scale(.93) translateY(16px)}to{opacity:1;transform:scale(1) translateY(0)}}
   @keyframes modalEnter{from{opacity:0;transform:scale(.95) translateY(20px)}to{opacity:1;transform:scale(1) translateY(0)}}
   @keyframes naverBlink2{0%,100%{background:var(--rose-50);border-color:var(--rose-300)}50%{background:var(--rose-100);border-color:var(--rose-400)}}
-  @keyframes accOpen{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
-  .acc-hdr{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border-radius:var(--r-sm);cursor:pointer;user-select:none;border:1.5px solid var(--gray-200);background:#fff;transition:all var(--tr)}
-  .acc-hdr:hover{background:var(--gray-50);border-color:var(--gray-300)}
-  .acc-hdr.open{border-radius:var(--r-sm) var(--r-sm) 0 0;border-bottom-color:transparent;background:var(--bliss-50);border-color:var(--bliss-100)}
-  .acc-body{border:1.5px solid var(--bliss-100);border-top:none;border-radius:0 0 var(--r-sm) var(--r-sm);padding:10px 12px;background:#fff;animation:accOpen .2s ease}
-  .acc-chev{transition:transform .25s cubic-bezier(.4,0,.2,1);color:var(--gray-400)}
-  .acc-chev.open{transform:rotate(180deg);color:var(--bliss)}
+  /* ── Accordion (grid-template-rows smooth transition) ── */
+  .acc-wrap{display:grid;transition:grid-template-rows .32s cubic-bezier(.4,0,.2,1)}
+  .acc-wrap.acc-open{grid-template-rows:1fr}
+  .acc-wrap.acc-closed{grid-template-rows:0fr}
+  .acc-inner{min-height:0;overflow:hidden}
+  .acc-inner-pad{padding:0 12px 12px}
+
+  /* header */
+  .acc-hdr{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:11px 14px;border-radius:var(--r-md);cursor:pointer;user-select:none;
+    border:1.5px solid var(--gray-200);background:#fff;
+    transition:all .22s cubic-bezier(.4,0,.2,1);
+    box-shadow:var(--sh-sm);
+  }
+  .acc-hdr:hover{transform:translateY(-1px);box-shadow:var(--sh-md)}
+  .acc-hdr:active{transform:translateY(0);box-shadow:var(--sh-sm)}
+  .acc-hdr.acc-open{border-bottom-left-radius:0;border-bottom-right-radius:0;border-bottom-color:transparent;box-shadow:0 4px 14px rgba(0,0,0,.08)}
+
+  /* bottom box */
+  .acc-body-box{
+    border:1.5px solid var(--gray-200);border-top:none;
+    border-bottom-left-radius:var(--r-md);border-bottom-right-radius:var(--r-md);
+    background:#fff;
+  }
+
+  /* chevron */
+  .acc-chev{transition:transform .32s cubic-bezier(.4,0,.2,1);flex-shrink:0}
+  .acc-chev.acc-open{transform:rotate(180deg)}
+
+  /* per-section color themes */
+  .acc-src .acc-hdr.acc-open{background:#eef2ff;border-color:#c7d2fe}
+  .acc-src .acc-hdr.acc-open .acc-label{color:#4338ca}
+  .acc-src .acc-chev.acc-open{color:#4338ca}
+  .acc-src .acc-body-box{border-color:#c7d2fe;background:#f8f9ff}
+
+  .acc-tags .acc-hdr.acc-open{background:var(--purple-50,#f5f3ff);border-color:#ddd6fe}
+  .acc-tags .acc-hdr.acc-open .acc-label{color:#6d28d9}
+  .acc-tags .acc-chev.acc-open{color:#6d28d9}
+  .acc-tags .acc-body-box{border-color:#ddd6fe;background:#faf9ff}
+
+  .acc-naver .acc-hdr.acc-open{background:#f0fdf4;border-color:#86efac}
+  .acc-naver .acc-hdr.acc-open .acc-label{color:#16a34a}
+  .acc-naver .acc-chev.acc-open{color:#16a34a}
+  .acc-naver .acc-body-box{border-color:#86efac;background:#f7fef9}
+
+  .acc-memo .acc-hdr.acc-open{background:#fffbeb;border-color:#fde68a}
+  .acc-memo .acc-hdr.acc-open .acc-label{color:#d97706}
+  .acc-memo .acc-chev.acc-open{color:#d97706}
+  .acc-memo .acc-body-box{border-color:#fde68a;background:#fffdf4}
   @keyframes bottomSheet{from{transform:translateY(100%)}to{transform:translateY(0)}}
   @keyframes ovFadeIn{from{opacity:0}to{opacity:1}}
   @keyframes slideIn{from{transform:translateX(-100%)}to{transform:translateX(0)}}
