@@ -124,7 +124,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.7";
+const BLISS_V = "2.65.8";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -2924,12 +2924,13 @@ ${naverText}
                 <span style={{fontSize:11,fontWeight:700,color:"#2e7d32"}}>✓ {(f.totalPrice||0).toLocaleString()}원</span>
                 {f.npayMethod && <span style={{fontSize:10,color:"#666"}}>({f.npayMethod})</span>}
               </div>}
-              {/* 고객 요청사항 - 키는 truncate, 고객 답변은 전부 표시 */}
+              {/* 고객 요청사항 - 답변 먼저, 질문은 truncate */}
               {f.requestMsg && <div style={{gridColumn:"1/-1",marginTop:2,paddingTop:4,borderTop:"1px solid #C8E6C9"}}>
                 {f.requestMsg.split("\n").filter(l=>l.trim()).map((line,i)=>{
-                  const colonIdx = line.indexOf(":");
-                  const key = colonIdx > -1 ? line.slice(0, colonIdx).trim() : null;
-                  const val = colonIdx > -1 ? line.slice(colonIdx+1).trim() : line.trim();
+                  // 마지막 ": " 기준으로 분리 (질문 안에 콜론이 있어도 올바르게 분리)
+                  const lastColonIdx = line.lastIndexOf(": ");
+                  const key = lastColonIdx > -1 ? line.slice(0, lastColonIdx).trim() : null;
+                  const val = lastColonIdx > -1 ? line.slice(lastColonIdx+2).trim() : line.trim();
                   if(key === "시술메뉴") return <div key={i} style={{marginBottom:4}}>
                     <span style={{fontSize:10,color:"#888",display:"block",marginBottom:2}}>네이버 시술메뉴</span>
                     <span style={{fontSize:11,fontWeight:600,color:"#1B5E20"}}>{val}</span>
@@ -2938,11 +2939,11 @@ ${naverText}
                     <span style={{fontSize:10,color:"#888",display:"block",marginBottom:2}}>스타일리스트</span>
                     <span style={{fontSize:11,fontWeight:600,color:"#333"}}>{val}</span>
                   </div>;
-                  if(key) return <div key={i} style={{marginBottom:3,display:"flex",gap:6,alignItems:"flex-start"}}>
-                    {/* 질문(업체 등록): 최대 1줄, overflow 숨김 */}
-                    <span style={{fontSize:10,color:"#888",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",maxWidth:80,flexShrink:0,paddingTop:1}} title={key}>{key}</span>
-                    {/* 고객 답변: 전부 표시 */}
-                    <span style={{fontSize:11,color:"#222",fontWeight:500,lineHeight:1.5,wordBreak:"break-all"}}>{val}</span>
+                  if(key) return <div key={i} style={{marginBottom:3}}>
+                    {/* 답변 먼저 크게 */}
+                    <span style={{fontSize:11,color:"#222",fontWeight:600,lineHeight:1.5,wordBreak:"break-word",display:"block"}}>{val}</span>
+                    {/* 질문(업체 안내문): 1줄 truncate, 흐리게 */}
+                    <span style={{fontSize:9,color:"#aaa",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",display:"block",maxWidth:"100%"}} title={key}>{key}</span>
                   </div>;
                   // 키 없는 순수 텍스트 (고객 자유입력)
                   return <div key={i} style={{marginBottom:3}}>
