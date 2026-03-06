@@ -132,7 +132,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.49";
+const BLISS_V = "2.65.50";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -2000,7 +2000,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                           <div style={{display:"flex",alignItems:"center",gap:3,overflow:"hidden",whiteSpace:"nowrap"}}>
                             {isNaverCancelled && <span style={{fontSize:Math.max(6,blockFs-2),padding:"1px 3px",borderRadius:2,background:"#E6A700",color:"#fff",fontWeight:700,lineHeight:1,flexShrink:0}}>네이버취소</span>}
                             {isNaverPending && <span style={{fontSize:Math.max(6,blockFs-2),padding:"1px 3px",borderRadius:2,background:"#FF9800",color:"#fff",fontWeight:700,lineHeight:1,flexShrink:0,animation:"pendingBlink 1.5s infinite"}}>확정대기</span>}
-                            {block.isNewCust && <span style={{fontSize:Math.max(6,blockFs-2),padding:"1px 3px",borderRadius:2,background:"#e57373",color:"#fff",fontWeight:700,lineHeight:1,flexShrink:0}}>신규</span>}
+
                             <span style={{fontWeight:600,color:isNaverCancelled?"#999":"#333",overflow:"hidden",textOverflow:"ellipsis",textDecoration:isNaverCancelled?"line-through":"none"}}>{block.custGender && <span style={{color:block.custGender==="M"?"#4a7cc8":"#e57373"}}>{block.custGender==="M"?"남":"여"}</span>} {block.custName}</span>
                           </div>
                           {block.selectedTags?.length>0 && <div style={{display:"flex",flexWrap:"wrap",gap:2,marginTop:1}}>
@@ -2472,7 +2472,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
 - 커플룸 요청 → "커플룸" 태그
 - 남자 관리사 요청 → "남자선생님" 태그
 - 시술메뉴 내용으로 적합한 시술상품 선택
-- "신규" 태그(${NEW_CUST_TAG_ID})와 "예약금완료" 태그는 선택하지 마세요. 이 태그들은 시스템이 자동 처리합니다.${customRulesBlock}
+- "예약금완료" 태그는 선택하지 마세요. 이 태그는 시스템이 자동 처리합니다.${customRulesBlock}
 
 [예약 기본 정보]
 - 고객명: ${f.custName||"미상"}
@@ -2966,9 +2966,6 @@ ${naverText}
                     : prevLog;
                 // 저장 직전 자동 태그 처리
                 let autoTags = [...(f.selectedTags || [])];
-                // 신규 고객 태그
-                if (f.isNewCust && !autoTags.includes(NEW_CUST_TAG_ID_GLOBAL)) autoTags = [...autoTags, NEW_CUST_TAG_ID_GLOBAL];
-                if (!f.isNewCust) autoTags = autoTags.filter(id => id !== NEW_CUST_TAG_ID_GLOBAL);
                 // 예약금완료 태그 — isPrepaid만으로 판단 (totalPrice 유무 무관)
                 if (f.isPrepaid && !autoTags.includes(PREPAID_TAG_ID)) autoTags = [...autoTags, PREPAID_TAG_ID];
                 if (!f.isPrepaid && autoTags.includes(PREPAID_TAG_ID)) autoTags = autoTags.filter(id => id !== PREPAID_TAG_ID);
@@ -6030,7 +6027,7 @@ function AdminServiceTags({ data, setData }) {
   const syncTags = (updated) => { setTags(updated); if(setData) setData(prev=>({...prev,serviceTags:updated})); };
   // drag: tabTags 기반 재정렬 → 전체 tags 동기화
   const [localTabTags, setLocalTabTags] = useState([]);
-  useEffect(() => { setLocalTabTags(tabTags); }, [activeTab, tags.length]);
+  useEffect(() => { setLocalTabTags(tabTags); }, [activeTab, tags]);
   const drag = useDragSort(localTabTags, setLocalTabTags, "sort", (reordered) => {
     const otherTags = tags.filter(t => isScheduleTab ? t.scheduleYn !== "Y" : t.scheduleYn === "Y");
     const allSorted = [...reordered, ...otherTags].map((t,i)=>({...t,sort:i}));
