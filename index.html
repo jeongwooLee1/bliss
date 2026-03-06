@@ -124,7 +124,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.64.4";
+const BLISS_V = "2.64.5";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -2705,13 +2705,15 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
             <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
               <I name="naver" size={14}/>
               <span style={{fontSize:12,fontWeight:700,color:"#2E7D32"}}>네이버 예약정보</span>
-              <span style={{fontSize:10,color:"#999",marginLeft:4}}>(수정 불가)</span>
+              <span style={{fontSize:10,color:"#aaa",marginLeft:4}}>(수정 불가)</span>
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"4px 12px"}}>
+              {/* 예약번호 */}
               {f.reservationId && <div style={{gridColumn:"1/-1",display:"flex",gap:6,alignItems:"center",paddingBottom:4,borderBottom:"1px solid #C8E6C9",marginBottom:2}}>
                 <span style={{fontSize:11,color:"#666",minWidth:60}}>예약번호</span>
                 <span style={{fontSize:12,fontWeight:700,color:"#1B5E20",letterSpacing:0.5}}>#{f.reservationId}</span>
               </div>}
+              {/* 신청/확정/취소 일시 */}
               {f.naverRegDt && <div style={{display:"flex",flexDirection:"column",gap:1}}>
                 <span style={{fontSize:10,color:"#888"}}>신청</span>
                 <span style={{fontSize:11,fontWeight:600,color:"#333"}}>{(()=>{const d=new Date(f.naverRegDt);return isNaN(d)?f.naverRegDt:`${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;})()}</span>
@@ -2724,6 +2726,18 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
                 <span style={{fontSize:10,color:"#888"}}>취소</span>
                 <span style={{fontSize:11,fontWeight:600,color:"#c62828"}}>{(()=>{const d=new Date(f.naverCancelledDt);return isNaN(d)?f.naverCancelledDt:`${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;})()}</span>
               </div>}
+              {/* 결제정보 */}
+              {f.isPrepaid && (f.totalPrice||0) > 0 && <div style={{gridColumn:"1/-1",display:"flex",gap:6,alignItems:"center",marginTop:2,paddingTop:4,borderTop:"1px solid #C8E6C9"}}>
+                <span style={{fontSize:10,color:"#888",minWidth:40}}>결제</span>
+                <span style={{fontSize:11,fontWeight:700,color:"#2e7d32"}}>✓ {(f.totalPrice||0).toLocaleString()}원</span>
+                {f.npayMethod && <span style={{fontSize:10,color:"#666"}}>({f.npayMethod})</span>}
+              </div>}
+              {/* 고객 요청사항 */}
+              {f.requestMsg && <div style={{gridColumn:"1/-1",marginTop:2,paddingTop:4,borderTop:"1px solid #C8E6C9"}}>
+                <span style={{fontSize:10,color:"#888",display:"block",marginBottom:2}}>고객 요청사항</span>
+                <span style={{fontSize:11,color:"#333",lineHeight:1.5,whiteSpace:"pre-wrap"}}>{f.requestMsg}</span>
+              </div>}
+              {/* 방문/노쇼 이력 */}
               {(f.visitCount > 0 || f.noShowCount > 0) && <div style={{gridColumn:"1/-1",display:"flex",gap:10,marginTop:2,paddingTop:4,borderTop:"1px solid #C8E6C9"}}>
                 {f.visitCount > 0 && <span style={{fontSize:10,color:"#555"}}>방문 <strong>{f.visitCount}회</strong></span>}
                 {f.noShowCount > 0 && <span style={{fontSize:10,color:"#c62828"}}>노쇼 <strong>{f.noShowCount}회</strong></span>}
@@ -2731,9 +2745,12 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
             </div>
           </div>}
 
-          {/* 예약메모 */}
+          {/* 예약메모 - 네이버 예약은 읽기전용 */}
           <div>
-            <textarea className="inp" rows={8} value={f.memo} onChange={e=>set("memo",e.target.value)} style={{resize:"vertical"}} placeholder="예약 관련 메모를 입력하세요"/>
+            {isNaverItem
+              ? <div style={{background:"#f5f5f5",border:"1px solid #e0e0e0",borderRadius:6,padding:"8px 10px",fontSize:12,color:"#555",lineHeight:1.6,minHeight:60,whiteSpace:"pre-wrap",userSelect:"text",cursor:"default"}}>{f.memo||<span style={{color:"#bbb"}}>메모 없음</span>}</div>
+              : <textarea className="inp" rows={8} value={f.memo} onChange={e=>set("memo",e.target.value)} style={{resize:"vertical"}} placeholder="예약 관련 메모를 입력하세요"/>
+            }
             {(() => {
               const isNaverRes = !!(f.reservationId || (f.memo && /네이버/.test(f.memo)));
               if (!isNaverRes) return null;
@@ -2772,7 +2789,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
                   : item?.id
                     ? [...prevLog, `[수정: ${ts}]`]
                     : prevLog;
-                onSave({...f, tsLog: newLog});
+                onSave({...f, tsLog: newLog, ...(isNaverItem ? {memo: item?.memo ?? f.memo} : {})});
               }}>{item?.id?"수정 완료":"등록"}</button>
             {item?.id && <button className="btn-d" style={{padding:"10px 16px"}} onClick={()=>onDeleteRequest?.(item)}>삭제</button>}
             {!isSchedule && f.type === "reservation" && (
