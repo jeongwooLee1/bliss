@@ -443,7 +443,7 @@ function App() {
 [시술상품 목록] ${svcList}
 
 [기본 판단 기준]
-- 첫방문/신규 고객(is_new_cust=${isNew}) → "신규" 태그
+- 첫방문/신규 고객(is_new_cust=${isNew}, visit_count=${res.visitCount||0}) → "신규" 태그 (visit_count가 0이고 is_new_cust=true일 때만)
 - 주차 언급 → "주차" 태그
 - 임산부/산모 → "산모님" 태그
 - 커플룸 요청 → "커플룸" 태그
@@ -2520,7 +2520,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
 [시술상품 목록] ${svcList}
 
 [기본 판단 기준]
-- 첫방문/신규 고객(is_new_cust=${f.isNewCust}) → "신규" 태그
+- 첫방문/신규 고객(is_new_cust=${f.isNewCust}, visit_count=${f.visitCount||0}) → "신규" 태그 (visit_count가 0이고 is_new_cust=true일 때만)
 - 주차 언급 → "주차" 태그  
 - 임산부/산모 → "산모님" 태그
 - 커플룸 요청 → "커플룸" 태그
