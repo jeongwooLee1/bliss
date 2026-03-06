@@ -237,6 +237,8 @@ function App() {
   const [currentBizId, setCurrentBizId] = useState(null);
   const [currentBiz, setCurrentBiz] = useState(null);
   const [data, setData] = useState(null);
+  const dataRef = useRef(null); // 항상 최신 data를 참조 (클로저 문제 방지)
+  useEffect(() => { dataRef.current = data; }, [data]);
   const [superData, setSuperData] = useState(null);
   const [role, setRole] = useState("staff");
   const [userBranches, setUserBranches] = useState([]);
@@ -410,6 +412,77 @@ function App() {
     return () => { document.removeEventListener("copy", prevent); document.removeEventListener("cut", prevent); };
   }, []);
 
+  // ─── 네이버 예약 자동 AI 분석 ───
+  // 스크래핑 완료된 네이버 예약 중 tags/services가 비어있는 경우 자동 분석 후 DB 저장
+  const autoAiAnalyze = useCallback(async (res) => {
+    const apiKey = localStorage.getItem("bliss_gemini_key") || "";
+    if (!apiKey) return;
+    const isNaver = res.source === "naver" || res.source === "네이버";
+    if (!isNaver) return;
+    if (!res.isScrapingDone) return;
+    if ((res.selectedTags||[]).length > 0 || (res.selectedServices||[]).length > 0) return; // 이미 태그/시술 있으면 스킵
+    const naverText = [res.requestMsg, res.ownerComment].filter(Boolean).join("\n").trim();
+    if (!naverText) return;
+
+    const d = dataRef.current;
+    if (!d) return;
+    const tagList = (d.serviceTags||[]).filter(t=>t.useYn!==false && t.scheduleYn!=="Y")
+      .map(t=>`"${t.id}":"${t.name}"`).join(", ");
+    const svcList = (d.services||[]).filter(s=>s.useYn!==false)
+      .map(s=>`"${s.id}":"${s.name}"`).join(", ");
+    const customRules = (() => { try { return JSON.parse(localStorage.getItem("bliss_ai_rules")||"[]"); } catch{ return []; } })();
+    const customRulesBlock = customRules.length > 0
+      ? `\n[추가 판단 규칙 - 아래 규칙을 기본 기준보다 우선 적용하세요]\n${customRules.map((r,i)=>`${i+1}. ${r}`).join("\n")}`
+      : "";
+    const isNew = res.isNewCust;
+    const prompt = `당신은 왁싱샵/미용실 예약 정보를 분석하는 AI입니다.
+아래 네이버 예약 고객 정보를 분석하여 적합한 태그와 시술상품을 선택하세요.
+마크다운 없이 순수 JSON만 출력하세요.
+
+[태그 목록] ${tagList}
+[시술상품 목록] ${svcList}
+
+[기본 판단 기준]
+- 첫방문/신규 고객(is_new_cust=${isNew}) → "신규" 태그
+- 주차 언급 → "주차" 태그
+- 임산부/산모 → "산모님" 태그
+- 커플룸 요청 → "커플룸" 태그
+- 남자 관리사 요청 → "남자선생님" 태그
+- 시술메뉴 내용으로 적합한 시술상품 선택${customRulesBlock}
+
+[네이버 예약 정보]
+${naverText}
+
+응답 형식:
+{"matchedTagIds":["태그id1","태그id2"],"matchedServiceIds":["시술id1"],"reason":"선택 이유 한줄"}`;
+    try {
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({contents:[{parts:[{text:prompt}]}], generationConfig:{temperature:0}})
+      });
+      if (!r.ok) return;
+      const d2 = await r.json();
+      const txt = d2.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      const parsed = JSON.parse(txt.replace(/```json|```/g,"").trim());
+      const newTags = parsed.matchedTagIds || [];
+      const newSvcs = parsed.matchedServiceIds || [];
+      if (newTags.length === 0 && newSvcs.length === 0) return;
+      // dur 계산
+      const tagSum = newTags.reduce((s,tid)=>{const t=(d.serviceTags||[]).find(x=>x.id===tid);return s+(t?.dur||0);},0);
+      const svcSum = newSvcs.reduce((s,sid)=>{const sv=(d.services||[]).find(x=>x.id===sid);return s+(sv?.dur||0);},0);
+      const dur = (tagSum+svcSum) || res.dur || 60;
+      // DB 저장
+      await sb.update("reservations", res.id, toDb("reservations", {
+        selectedTags: newTags, selectedServices: newSvcs, dur
+      }));
+      // 로컬 state 반영
+      setData(prev => prev ? {...prev, reservations: prev.reservations.map(rv =>
+        rv.id === res.id ? {...rv, selectedTags:newTags, selectedServices:newSvcs, dur} : rv
+      )} : prev);
+      console.log(`✅ AI 자동분석 [${res.custName}] tags:${newTags.length} svcs:${newSvcs.length} reason:${parsed.reason||""}`);
+    } catch(e) { console.warn("AI 자동분석 실패:", res.custName, e.message); }
+  }, []);
+
   // ─── 예약 실시간 동기화 ───
   useEffect(() => {
     if (phase !== "app" || !currentBizId) return;
@@ -426,7 +499,15 @@ function App() {
           if (!prev) return prev;
           const prevJson = JSON.stringify(prev.reservations.map(r => r.id + "|" + (r._ua||"")));
           const newJson = JSON.stringify(parsed.map(r => r.id + "|" + (r._ua||"")));
-          return prevJson !== newJson ? {...prev, reservations: parsed} : prev;
+          if (prevJson === newJson) return prev;
+          // 새로 스크래핑 완료된 예약 자동 AI 분석
+          parsed.forEach(r => {
+            const before = prev.reservations.find(b => b.id === r.id);
+            if (r.isScrapingDone && (!before || !before.isScrapingDone)) {
+              setTimeout(() => autoAiAnalyze(r), 500);
+            }
+          });
+          return {...prev, reservations: parsed};
         });
       } catch(e) { console.log("Poll error:", e); }
     };
@@ -449,9 +530,16 @@ function App() {
                 const parsed = row.id ? fromDb("reservations", [row])[0] : null;
                 if (ev === "INSERT" && parsed) {
                   if (prev.reservations.some(r => r.id === parsed.id)) return prev;
+                  // 새 예약 - 스크래핑 완료 & 태그 없으면 자동 AI 분석
+                  setTimeout(() => autoAiAnalyze(parsed), 500);
                   return {...prev, reservations: [...prev.reservations, parsed]};
                 }
                 if (ev === "UPDATE" && parsed) {
+                  const before = prev.reservations.find(r => r.id === parsed.id);
+                  // 스크래핑 완료로 바뀐 순간 (is_scraping_done false→true) 자동 AI 분석
+                  if (parsed.isScrapingDone && !before?.isScrapingDone) {
+                    setTimeout(() => autoAiAnalyze(parsed), 500);
+                  }
                   return {...prev, reservations: prev.reservations.map(r => r.id === parsed.id ? {...r, ...parsed} : r)};
                 }
                 if (ev === "DELETE") {
@@ -2432,7 +2520,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
 [시술상품 목록] ${svcList}
 
 [기본 판단 기준]
-- 첫방문/신규 고객 → "신규" 태그
+- 첫방문/신규 고객(is_new_cust=${f.isNewCust}) → "신규" 태그
 - 주차 언급 → "주차" 태그  
 - 임산부/산모 → "산모님" 태그
 - 커플룸 요청 → "커플룸" 태그
