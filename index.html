@@ -124,7 +124,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.26";
+const BLISS_V = "2.65.27";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -3028,10 +3028,9 @@ ${naverText}
                     <span style={{fontSize:11,fontWeight:600,color:"#333"}}>{val}</span>
                   </div>;
                   if(key) return <div key={i} style={{marginBottom:3}}>
-                    {/* 답변 먼저 크게 */}
-                    <span style={{fontSize:11,color:"#222",fontWeight:600,lineHeight:1.5,wordBreak:"break-word",display:"block"}}>{val}</span>
-                    {/* 질문(업체 안내문): 1줄 truncate, 흐리게 */}
+                    {/* 질문 먼저 흐리게, 답변은 아래 크게 */}
                     <span style={{fontSize:9,color:"#aaa",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",display:"block",maxWidth:"100%"}} title={key}>{key}</span>
+                    <span style={{fontSize:11,color:"#222",fontWeight:600,lineHeight:1.5,wordBreak:"break-word",display:"block"}}>{val}</span>
                   </div>;
                   // 키 없는 순수 텍스트 (고객 자유입력)
                   return <div key={i} style={{marginBottom:3}}>
