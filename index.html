@@ -132,7 +132,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.52";
+const BLISS_V = "2.65.53";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -583,6 +583,27 @@ function App() {
       </main>
     </div>
   );
+}
+
+
+class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { error: null }; }
+  static getDerivedStateFromError(e) { return { error: e }; }
+  componentDidCatch(e, info) { console.error("[Bliss ErrorBoundary]", e, info); }
+  render() {
+    if (this.state.error) {
+      return <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"100vh",background:"#fafafa",fontFamily:"sans-serif"}}>
+        <div style={{fontSize:32,marginBottom:16}}>⚠️</div>
+        <div style={{fontSize:18,fontWeight:700,color:"#333",marginBottom:8}}>화면을 불러오지 못했습니다</div>
+        <div style={{fontSize:13,color:"#888",marginBottom:24}}>오류: {this.state.error.message}</div>
+        <button onClick={()=>window.location.reload()} style={{padding:"10px 24px",background:"#7c7cc8",color:"#fff",border:"none",borderRadius:8,fontSize:14,cursor:"pointer",fontWeight:600}}>
+          새로고침
+        </button>
+        <div style={{marginTop:12,fontSize:11,color:"#bbb"}}>문제가 계속되면 Ctrl+Shift+R (강제 새로고침)</div>
+      </div>;
+    }
+    return this.props.children;
+  }
 }
 
 function Loading({msg}) { return <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"100vh",background:"#f8f8f8",color:"#888",fontFamily:"'Pretendard',sans-serif",gap:12}}><div style={{fontSize:24}}><I name="loader" size={24} color="#7c7cc8"/></div><div>{msg||"로딩 중..."}</div></div>; }
@@ -6534,6 +6555,6 @@ const CSS = `
   }
 `;
 
-ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(ErrorBoundary, null, React.createElement(App)));
 </script></body></html>
 
