@@ -3696,11 +3696,10 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
                 return <span style={{display:"inline-block",fontSize:10,fontWeight:600,color:clr,background:clr+"18",border:`1px solid ${clr}44`,borderRadius:10,padding:"2px 7px"}}>{src}</span>;
               })()}</td>
               <td style={{fontSize:11,fontWeight:700,color:"#e65100",textAlign:"center"}}>{(()=>{
+  if(!r.isPrepaid) return <span style={{color:"#ccc"}}>-</span>;
   const amt = r.totalPrice||0;
   if(!amt) return <span style={{color:"#ccc"}}>-</span>;
-  const fmtAmt = amt.toLocaleString()+"원";
-  if(r.isPrepaid) return <span style={{background:"#e8f5e9",color:"#2e7d32",borderRadius:6,padding:"2px 6px",fontSize:10}} title={"선불결제: "+(r.npayMethod||"네이버페이")}>✓{fmtAmt}</span>;
-  return <span style={{background:"#fff3e0",color:"#e65100",borderRadius:6,padding:"2px 6px",fontSize:10}}>₩{fmtAmt}</span>;
+  return <span style={{background:"#e8f5e9",color:"#2e7d32",borderRadius:6,padding:"2px 6px",fontSize:10}} title={"선불결제: "+(r.npayMethod||"네이버페이")}>✓{amt.toLocaleString()}원</span>;
 })()} </td>
               <td><span style={{fontSize:11,fontWeight:700,color:sc[r.status]||"#999"}}>{STATUS_LABEL[r.status]||r.status}</span></td>
               <td><div style={{display:"flex",gap:4}}>
