@@ -124,7 +124,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.64.5";
+const BLISS_V = "2.64.6";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -849,7 +849,7 @@ function Login({ users, onLogin }) {
           <div style={{fontSize:10,color:"#bbb",textAlign:"center",marginTop:4}}>
             슈퍼관리자: admin / 1234 · 업체대표: master / 1234
           </div>
-          <div style={{fontSize:10,color:"#bbb",textAlign:"center",marginTop:8}}>v{BLISS_V}</div>
+          <div style={{fontSize:10,color:"#bbb",textAlign:"center",marginTop:8}}>v{BLISS_V}</div><div style={{fontSize:20,color:"#ff0000",textAlign:"center",fontWeight:900,marginTop:4}}>v{BLISS_V}</div>
         </div>
       </div>
     </div>
@@ -889,7 +889,7 @@ function Sidebar({ nav, page, setPage, role, branchNames, onLogout, bizName="", 
     <div style={{padding:12,borderTop:"1px solid #e0e0e0",display:"flex",flexDirection:"column",gap:6}}>
       {isSuper && <button onClick={onBackToSuper} style={{width:"100%",padding:"8px 14px",borderRadius:4,border:"1px solid #7c7cc8",background:"#7c7cc810",color:"#7c7cc8",cursor:"pointer",fontSize:12,fontWeight:600,fontFamily:"inherit",textAlign:"center"}}><I name="arrowL" size={14}/> 관리자 대시보드</button>}
       <button onClick={onLogout} style={{width:"100%",padding:"8px 14px",borderRadius:4,border:"1px solid #d0d0d0",background:"#fff",color:"#888",cursor:"pointer",fontSize:12,fontWeight:600,fontFamily:"inherit",textAlign:"center"}}>로그아웃</button>
-      <div style={{fontSize:10,color:"#bbb",textAlign:"center",marginTop:2}}>v{BLISS_V}</div>
+      <div style={{fontSize:10,color:"#bbb",textAlign:"center",marginTop:2}}>v{BLISS_V}</div><div style={{fontSize:20,color:"#ff0000",textAlign:"center",fontWeight:900,marginTop:4}}>v{BLISS_V}</div>
     </div>
   </>;
 }
@@ -2745,12 +2745,9 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
             </div>
           </div>}
 
-          {/* 예약메모 - 네이버 예약은 읽기전용 */}
+          {/* 예약메모 - 네이버 예약은 메모박스 숨김 (정보는 위 네이버 예약정보 박스에 표시) */}
           <div>
-            {isNaverItem
-              ? <div style={{background:"#f5f5f5",border:"1px solid #e0e0e0",borderRadius:6,padding:"8px 10px",fontSize:12,color:"#555",lineHeight:1.6,minHeight:60,whiteSpace:"pre-wrap",userSelect:"text",cursor:"default"}}>{f.memo||<span style={{color:"#bbb"}}>메모 없음</span>}</div>
-              : <textarea className="inp" rows={8} value={f.memo} onChange={e=>set("memo",e.target.value)} style={{resize:"vertical"}} placeholder="예약 관련 메모를 입력하세요"/>
-            }
+            {!isNaverItem && <textarea className="inp" rows={8} value={f.memo} onChange={e=>set("memo",e.target.value)} style={{resize:"vertical"}} placeholder="예약 관련 메모를 입력하세요"/>}
             {(() => {
               const isNaverRes = !!(f.reservationId || (f.memo && /네이버/.test(f.memo)));
               if (!isNaverRes) return null;
