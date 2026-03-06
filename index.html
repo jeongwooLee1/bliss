@@ -124,7 +124,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.29";
+const BLISS_V = "2.65.30";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -890,7 +890,7 @@ function SuperDashboard({ superData, setSuperData, currentUser, onLogout, onEnte
                   </div>
                 </div>
               </FLD>
-              <FLD label="메모"><input className="inp" style={{width:"100%",maxWidth:160}} value={bizForm.memo||""} onChange={e=>setBizForm({...bizForm,memo:e.target.value})} placeholder="메모"/></FLD>
+              <FLD label="메모"><input className="inp" style={{width:"100%",maxWidth:160}} value={ (() => { try { const m=JSON.parse(bizForm.memo||"{}"); return m.gemini_key ? "" : (bizForm.memo||""); } catch { return bizForm.memo||""; } })() } onChange={e=>{ try { const m=JSON.parse(bizForm.memo||"{}"); if(m.gemini_key){setBizForm({...bizForm,memo:JSON.stringify({...m,_note:e.target.value})});}else{setBizForm({...bizForm,memo:e.target.value});} } catch { setBizForm({...bizForm,memo:e.target.value}); } }} placeholder="메모"/></FLD>
               <button className="btn-p" onClick={saveBiz}>{bizForm.id?"저장":"추가"}</button>
               <button className="btn-s" onClick={()=>setBizForm(null)}>취소</button>
             </div>
@@ -909,7 +909,7 @@ function SuperDashboard({ superData, setSuperData, currentUser, onLogout, onEnte
                   <td style={{fontSize:12,color:"#888"}}>{b.phone||"-"}</td>
                   <td>{grps.length>0 ? <span style={{fontSize:10,color:"#5cb5c5",background:"#5cb5c520",padding:"2px 8px",borderRadius:8}}>{grps.join(", ")}</span> : <span style={{color:"#ccc"}}>-</span>}</td>
                   <td style={{color:"#888"}}>{bizUsers.length}명</td>
-                  <td style={{fontSize:12,color:"#888"}}>{b.memo||"-"}</td>
+                  <td style={{fontSize:12,color:"#888"}}>{ (() => { try { const m=JSON.parse(b.memo||"{}"); return m.gemini_key ? <span style={{color:"#ccc",fontStyle:"italic"}}>설정값</span> : (b.memo||"-"); } catch { return b.memo||"-"; } })() }</td>
                   <td style={{display:"flex",gap:4}}>
                     <button className="btn-p" style={{padding:"4px 10px",fontSize:11}} onClick={()=>onEnterBiz(b.id)}>접속</button>
                     <button className="btn-s" style={{padding:"4px 10px",fontSize:11}} onClick={()=>startEditBiz(b)}>수정</button>
