@@ -4665,7 +4665,7 @@ function AdminPage({ data, setData, bizId, autoAiAnalyze }) {
     {tab==="svctags" && <AdminServiceTags data={data} setData={setData}/>}
     {tab==="ressrc" && <AdminResSources data={data} setData={setData}/>}
     {tab==="notiSettings" && <AdminNotiSettings data={data} setData={setData}/>}
-    {tab==="aisettings" && <AdminAISettings data={data} autoAiAnalyze={autoAiAnalyze} sb={sb} bizId={currentBizId}/>}
+    {tab==="aisettings" && <AdminAISettings data={data} autoAiAnalyze={autoAiAnalyze} sb={sb} bizId={bizId}/>}
   </div>;
 }
 
