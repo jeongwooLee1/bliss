@@ -124,7 +124,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.10";
+const BLISS_V = "2.65.11";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -443,7 +443,7 @@ function App() {
       ? (dataRef.current?.customers||[]).find(c =>
           (c.phone||"").replace(/-/g,"") === (res.custPhone||"").replace(/-/g,""))
       : null;
-    const effectiveIsNew = (custLinked || phoneMatch) ? false : (res.visitCount === 0 && res.isNewCust);
+    const effectiveIsNew = (custLinked || phoneMatch) ? false : (res.visitCount === 0);
     const NEW_CUST_TAG_ID = "lggzktc9f"; // 신규 태그 - AI가 아닌 코드가 직접 판단
     const prompt = `당신은 왁싱샵/미용실 예약 정보를 분석하는 AI입니다.
 아래 네이버 예약 고객 정보를 분석하여 적합한 태그와 시술상품을 선택하세요.
@@ -2552,7 +2552,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
         : "";
       const NEW_CUST_TAG_ID = "lggzktc9f";
       const custLinked = !!(f.custId) || !!(data?.customers||[]).find(c=>(c.phone||"").replace(/-/g,"") === (f.custPhone||"").replace(/-/g,""));
-      const effectiveIsNew = custLinked ? false : (f.visitCount === 0 && f.isNewCust);
+      const effectiveIsNew = custLinked ? false : (f.visitCount === 0);
       const prompt = `당신은 왁싱샵/미용실 예약 정보를 분석하는 AI입니다.
 아래 네이버 예약 고객 정보를 분석하여 적합한 태그와 시술상품을 선택하세요.
 마크다운 없이 순수 JSON만 출력하세요.
