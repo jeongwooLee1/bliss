@@ -132,7 +132,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.46";
+const BLISS_V = "2.65.47";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -433,122 +433,7 @@ function App() {
     return () => { document.removeEventListener("copy", prevent); document.removeEventListener("cut", prevent); };
   }, []);
 
-  // ─── 네이버 예약 자동 AI 분석 ───
-  // 스크래핑 완료된 네이버 예약 중 tags/services가 비어있는 경우 자동 분석 후 DB 저장
-  const autoAiAnalyze = useCallback(async (res, force=false) => {
-    const apiKey = localStorage.getItem("bliss_gemini_key") || "";
-    if (!apiKey) return;
-    const isNaver = res.source === "naver" || res.source === "네이버";
-    if (!isNaver) return;
-    if (!res.isScrapingDone) return;
-    
-    const naverText = [res.requestMsg, res.ownerComment].filter(Boolean).join("\n").trim();
-    if (!naverText) return;
-    // 무의미한 내용(대화없음 등)만 있으면 스킵 → 신규 오판 방지
-    const meaninglessOnly = /^[\s\-\(\)대화없음]+$/.test(naverText) || naverText === "-대화없음-";
-    if (meaninglessOnly) return;
 
-    const d = dataRef.current;
-    if (!d) return;
-    const tagList = (d.serviceTags||[]).filter(t=>t.useYn!==false && t.scheduleYn!=="Y")
-      .map(t=>`"${t.id}":"${t.name}"`).join(", ");
-    const svcList = (d.services||[]).filter(s=>s.useYn!==false)
-      .map(s=>`"${s.id}":"${s.name}"`).join(", ");
-    const customRules = (() => { try { return JSON.parse(localStorage.getItem("bliss_ai_rules")||"[]"); } catch{ return []; } })();
-    const customRulesBlock = customRules.length > 0
-      ? `\n[추가 판단 규칙 - 아래 규칙을 기본 기준보다 우선 적용하세요]\n${customRules.map((r,i)=>`${i+1}. ${r}`).join("\n")}`
-      : "";
-    // cust_id가 있거나 전화번호로 customers에서 찾히면 기존 고객 → 신규 아님
-    const custLinked = !!(res.custId);
-    const phoneMatch = !custLinked && res.custPhone
-      ? (dataRef.current?.customers||[]).find(c =>
-          (c.phone||"").replace(/-/g,"") === (res.custPhone||"").replace(/-/g,""))
-      : null;
-    const effectiveIsNew = (custLinked || phoneMatch) ? false : (res.visitCount === 0);
-    const NEW_CUST_TAG_ID = "lggzktc9f"; // 신규 태그 - AI가 아닌 코드가 직접 판단
-    const prompt = `당신은 왁싱샵/미용실 예약 정보를 분석하는 AI입니다.
-아래 네이버 예약 고객 정보를 분석하여 적합한 태그와 시술상품을 선택하세요.
-마크다운 없이 순수 JSON만 출력하세요.
-
-[태그 목록] ${tagList}
-[시술상품 목록] ${svcList}
-
-[기본 판단 기준]
-- 주차 언급 → "주차" 태그
-- 임산부/산모 → "산모님" 태그
-- 커플룸 요청 → "커플룸" 태그
-- 남자 관리사 요청 → "남자선생님" 태그
-- 시술메뉴 내용으로 적합한 시술상품 선택
-- "신규" 태그(${NEW_CUST_TAG_ID})와 "예약금완료" 태그는 선택하지 마세요. 이 태그들은 시스템이 자동 처리합니다.${customRulesBlock}
-
-[예약 기본 정보]
-- 고객명: ${res.custName||"미상"}
-- 연락처: ${res.custPhone||"미상"}
-- 방문횟수: ${res.visitCount||0}회
-- 예약일시: ${res.date||""} ${res.time||""}
-- 시술메뉴(네이버): ${(res.selectedServices||[]).length > 0 ? (res.selectedServices||[]).map(id=>{const s=(d.services||[]).find(x=>x.id===id);return s?s.name:id;}).join(", ") : "미선택"}
-- customers DB 등록 여부: ${custLinked||phoneMatch ? "등록된 고객" : "미등록"}
-
-[고객 요청 / 업체 메모]
-${naverText}
-
-응답 형식:
-{"matchedTagIds":["태그id1","태그id2"],"matchedServiceIds":["시술id1"],"reason":"선택 이유 한줄"}`;
-    try {
-      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
-        method:"POST", headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({contents:[{parts:[{text:prompt}]}], generationConfig:{temperature:0}})
-      });
-      if (!r.ok) return;
-      const d2 = await r.json();
-      const txt = d2.candidates?.[0]?.content?.parts?.[0]?.text || "";
-      const parsed = JSON.parse(txt.replace(/```json|```/g,"").trim());
-      // AI가 혹시 신규 태그를 붙였어도 제거 (코드가 직접 판단)
-      let newTags = (parsed.matchedTagIds || []).filter(id => !SYSTEM_TAG_IDS.includes(id));
-      const newSvcs = parsed.matchedServiceIds || [];
-      // 신규 여부: visit_count=0, is_new_cust=true, cust_linked=false 일 때만
-      if (effectiveIsNew) newTags = [...newTags, NEW_CUST_TAG_ID];
-      // 예약금완료 자동 처리
-      if (res.isPrepaid && !newTags.includes(PREPAID_TAG_ID)) newTags = [...newTags, PREPAID_TAG_ID];
-      if (newTags.length === 0 && newSvcs.length === 0) return;
-      // dur 계산
-      const tagSum = newTags.reduce((s,tid)=>{const t=(d.serviceTags||[]).find(x=>x.id===tid);return s+(t?.dur||0);},0);
-      const svcSum = newSvcs.reduce((s,sid)=>{const sv=(d.services||[]).find(x=>x.id===sid);return s+(sv?.dur||0);},0);
-      const dur = (tagSum+svcSum) || res.dur || 60;
-      // DB 저장
-      await sb.update("reservations", res.id, toDb("reservations", {
-        selectedTags: newTags, selectedServices: newSvcs, dur
-      }));
-      // 로컬 state 반영
-      setData(prev => prev ? {...prev, reservations: prev.reservations.map(rv =>
-        rv.id === res.id ? {...rv, selectedTags:newTags, selectedServices:newSvcs, dur} : rv
-      )} : prev);
-      console.log(`✅ AI 자동분석 [${res.custName}] tags:${newTags.length} svcs:${newSvcs.length} reason:${parsed.reason||""}`);
-    } catch(e) { console.warn("AI 자동분석 실패:", res.custName, e.message); }
-  }, []);
-
-  // ─── 앱 로드 시 미분석 네이버 예약 일괄 자동분석 ───
-  useEffect(() => {
-    if (phase !== "app" || !data) return;
-    const apiKey = localStorage.getItem("bliss_gemini_key") || "";
-    if (!apiKey) return;
-    // isScrapingDone=true, 네이버 예약, tags/services 모두 비어있는 것
-    const pending = (data.reservations || []).filter(r => {
-      const isNaver = r.source === "naver" || r.source === "네이버";
-      return isNaver && r.isScrapingDone
-        && (r.selectedTags || []).length === 0
-        && r.status !== "naver_cancelled";
-    });
-    if (pending.length === 0) return;
-    console.log(`🔄 미분석 네이버 예약 ${pending.length}건 자동분석 시작`);
-    // 순차 처리 (API 부하 방지 - 1초 간격)
-    let idx = 0;
-    const next = () => {
-      if (idx >= pending.length) { console.log("✅ 일괄 자동분석 완료"); return; }
-      autoAiAnalyze(pending[idx++]).finally(() => setTimeout(next, 1200));
-    };
-    next();
-  }, [phase, data?.reservations?.length]);
 
 
   // ─── 예약 실시간 동기화 ───
@@ -568,24 +453,6 @@ ${naverText}
           const prevJson = JSON.stringify(prev.reservations.map(r => r.id + "|" + (r._ua||"")));
           const newJson = JSON.stringify(parsed.map(r => r.id + "|" + (r._ua||"")));
           if (prevJson === newJson) return prev;
-          // 새로 스크래핑 완료된 예약 자동 AI 분석
-          parsed.forEach(r => {
-            const before = prev.reservations.find(b => b.id === r.id);
-            const isNaver = r.source === "naver" || r.source === "네이버";
-            if (!isNaver || !r.isScrapingDone) return;
-            // 1) isScrapingDone이 새로 true가 된 경우 (최초 스크래핑)
-            if (!before || !before.isScrapingDone) {
-              setTimeout(() => autoAiAnalyze(r), 500);
-            }
-            // 2) ownerComment 또는 requestMsg가 변경된 경우 (고객 추가 메시지) → force 재분석
-            else if (before && (
-              (r.ownerComment || "") !== (before.ownerComment || "") ||
-              (r.requestMsg || "") !== (before.requestMsg || "")
-            )) {
-              console.log("🔄 네이버 메시지 변경 감지 - 재분석:", r.custName);
-              setTimeout(() => autoAiAnalyze(r, true), 500);
-            }
-          });
           return {...prev, reservations: parsed};
         });
       } catch(e) { console.log("Poll error:", e); }
@@ -609,27 +476,11 @@ ${naverText}
                 const parsed = row.id ? fromDb("reservations", [row])[0] : null;
                 if (ev === "INSERT" && parsed) {
                   if (prev.reservations.some(r => r.id === parsed.id)) return prev;
-                  // 새 예약 - 스크래핑 완료 → 자동 AI 분석 (force=true: 서비스 있어도 태그 분석)
-                  setTimeout(() => autoAiAnalyze(parsed, true), 500);
                   return {...prev, reservations: [...prev.reservations, parsed]};
                 }
                 if (ev === "UPDATE" && parsed) {
                   const before = prev.reservations.find(r => r.id === parsed.id);
                   const isNaver = parsed.source === "naver" || parsed.source === "네이버";
-                  if (isNaver && parsed.isScrapingDone) {
-                    // 1) isScrapingDone이 새로 true가 된 경우
-                    if (!before?.isScrapingDone) {
-                      setTimeout(() => autoAiAnalyze(parsed), 500);
-                    }
-                    // 2) ownerComment 또는 requestMsg가 변경된 경우 (고객 추가 메시지)
-                    else if (before && (
-                      (parsed.ownerComment || "") !== (before.ownerComment || "") ||
-                      (parsed.requestMsg || "") !== (before.requestMsg || "")
-                    )) {
-                      console.log("🔄 [RT] 네이버 메시지 변경 감지 - 재분석:", parsed.custName);
-                      setTimeout(() => autoAiAnalyze(parsed, true), 500);
-                    }
-                  }
                   return {...prev, reservations: prev.reservations.map(r => r.id === parsed.id ? {...r, ...parsed} : r)};
                 }
                 if (ev === "DELETE") {
@@ -666,31 +517,6 @@ ${naverText}
     };
   }, [phase, currentBizId]);
 
-  // ── 앱 로드 후 미분석 네이버 예약 백필 ──────────────────────────────────────
-  // 앱이 닫혀있는 동안 스크래핑된 예약들은 Realtime 이벤트를 못 받아 AI 분석 누락됨
-  // 최초 1회만: isScrapingDone=true + selectedTags=[] + naverText 있는 예약 순차 분석
-  const initialAiBackfillDone = useRef(false);
-  useEffect(() => {
-    if (phase !== "app" || !data || initialAiBackfillDone.current) return;
-    const apiKey = localStorage.getItem("bliss_gemini_key") || "";
-    if (!apiKey) return;
-
-    const unanalyzed = (data.reservations || []).filter(r => {
-      const isNaver = r.source === "naver" || r.source === "네이버";
-      if (!isNaver || !r.isScrapingDone) return false;
-      if ((r.selectedTags || []).length > 0) return false; // 이미 태그 있음
-      const txt = [(r.requestMsg || ""), (r.ownerComment || "")].join("\n").trim();
-      return txt.length > 0;
-    });
-
-    if (unanalyzed.length === 0) return;
-    initialAiBackfillDone.current = true;
-    console.log(`🤖 [백필] 미분석 예약 ${unanalyzed.length}건 순차 분석 시작`);
-
-    unanalyzed.forEach((res, i) => {
-      setTimeout(() => autoAiAnalyze(res, true), i * 1500);
-    });
-  }, [phase, data, autoAiAnalyze]);
 
   const handleBackToSuper = async () => {
     try{const s=JSON.parse(sessionStorage.getItem("bliss_session")||"{}");delete s.bizId;sessionStorage.setItem("bliss_session",JSON.stringify(s));}catch(e){}
@@ -751,7 +577,7 @@ ${naverText}
             {page==="stats" && <StatsPage data={data} userBranches={userBranches} isMaster={isMaster} role={role}/>}
             {page==="customers" && <CustomersPage data={data} setData={setData} userBranches={userBranches} isMaster={isMaster}/>}
             {page==="users" && <UsersPage data={data} setData={setData} bizId={currentBizId}/>}
-            {page==="admin" && <AdminPage data={data} setData={setData} bizId={currentBizId} autoAiAnalyze={autoAiAnalyze}/>}
+            {page==="admin" && <AdminPage data={data} setData={setData} bizId={currentBizId} />}
           </div>
         </div>
       </main>
@@ -4696,7 +4522,7 @@ function UserEditRow({ init, regBranches, allBranches, onSave, onCancel, isNew }
 // ═══════════════════════════════════════════
 // ADMIN
 // ═══════════════════════════════════════════
-function AdminPage({ data, setData, bizId, autoAiAnalyze }) {
+function AdminPage({ data, setData, bizId }) {
   const [tab, setTabRaw] = useState(() => {
     try { const t = sessionStorage.getItem("bliss_adminTab"); console.log("[SESSION] adminTab restore:", t); return t || "places"; } catch(e){ return "places"; }
   });
@@ -4719,7 +4545,7 @@ function AdminPage({ data, setData, bizId, autoAiAnalyze }) {
     {tab==="svctags" && <AdminServiceTags data={data} setData={setData}/>}
     {tab==="ressrc" && <AdminResSources data={data} setData={setData}/>}
     {tab==="notiSettings" && <AdminNotiSettings data={data} setData={setData}/>}
-    {tab==="aisettings" && <AdminAISettings data={data} autoAiAnalyze={autoAiAnalyze} sb={sb} bizId={bizId}/>}
+    {tab==="aisettings" && <AdminAISettings data={data}  sb={sb} bizId={bizId}/>}
   </div>;
 }
 
@@ -5793,40 +5619,12 @@ function AdminNotiSettings({ data, setData }) {
 
 // ─── AI설정 ───
 const AI_RULES_KEY = "bliss_ai_rules";
-function AdminAISettings({ data, autoAiAnalyze, sb, bizId }) {
+function AdminAISettings({ data, sb, bizId }) {
   const [apiKey, setApiKey] = useState(()=>localStorage.getItem("bliss_gemini_key")||"");
   const [saved, setSaved] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState(null);
-  const [bulkRunning, setBulkRunning] = useState(false);
-  const [bulkStatus, setBulkStatus] = useState(null);
 
-  const runBulkAnalyze = async () => {
-    if (!apiKey.trim()) { alert("API 키를 먼저 저장하세요"); return; }
-    if (!data?.reservations) { alert("예약 데이터가 없습니다"); return; }
-    const targets = (data.reservations || []).filter(r => {
-      const isNaver = r.source === "naver" || r.source === "네이버";
-      return isNaver && r.isScrapingDone && r.status !== "naver_cancelled"
-        && ([r.requestMsg, r.ownerComment].filter(Boolean).join("").trim().length > 0);
-    });
-    if (targets.length === 0) { alert("분석할 네이버 예약이 없습니다"); return; }
-    if (!window.confirm(targets.length + "건의 네이버 예약을 강제 재분석합니다. 계속하시겠습니까?")) return;
-    setBulkRunning(true);
-    setBulkStatus({total: targets.length, done: 0, fail: 0});
-    let done = 0; let fail = 0;
-    for (const res of targets) {
-      try {
-        await autoAiAnalyze(res, true);
-        done++;
-      } catch(e) {
-        fail++;
-      }
-      setBulkStatus({total: targets.length, done, fail});
-      await new Promise(r => setTimeout(r, 1500));
-    }
-    setBulkRunning(false);
-    setBulkStatus({total: targets.length, done, fail, complete: true});
-  };
   const [rules, setRules] = useState(()=>{
     try { return JSON.parse(localStorage.getItem(AI_RULES_KEY)||"[]"); } catch{ return []; }
   });
@@ -5976,26 +5774,7 @@ function AdminAISettings({ data, autoAiAnalyze, sb, bizId }) {
     </div>
 
     <div className="card" style={{padding:20,maxWidth:500,marginTop:16}}>
-      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
-        <span style={{fontSize:13,fontWeight:700,color:"#333"}}>전체 네이버 예약 일괄 재분석</span>
-      </div>
-      <div style={{fontSize:11,color:"#888",marginBottom:12,lineHeight:1.6}}>
-        기존 예약 포함 모든 네이버 예약을 강제로 AI 분석합니다.<br/>
-        이미 태그/시술이 있어도 재분석하여 덮어씁니다.
-      </div>
-      <button onClick={runBulkAnalyze} disabled={bulkRunning}
-        style={{padding:"9px 20px",fontSize:12,fontWeight:700,background:bulkRunning?"#e0e0e0":"linear-gradient(135deg,#7c7cc8,#9b72cb)",color:bulkRunning?"#999":"#fff",border:"none",borderRadius:8,cursor:bulkRunning?"not-allowed":"pointer",fontFamily:"inherit"}}>
-        {bulkRunning ? "분석 중..." : "✨ 전체 일괄 재분석"}
-      </button>
-      {bulkStatus && <div style={{marginTop:10,fontSize:12,fontWeight:600,color:bulkStatus.complete?"#22c55e":"#7c7cc8"}}>
-        {bulkStatus.complete
-          ? "✅ 완료! "+bulkStatus.done+"건 성공" + (bulkStatus.fail>0?" / "+bulkStatus.fail+"건 실패":"")
-          : bulkStatus.done+"/"+bulkStatus.total+"건 처리 중..."}
-      </div>}
-    </div>
-
-    <div className="card" style={{padding:20,maxWidth:500,marginTop:16}}>
-      <div style={{fontSize:13,fontWeight:700,marginBottom:8,color:"#333"}}>사용 안내</div>
+      <div style={{fontSize:13,fontWeight:700,marginBottom:8,color:"#333"}}>사용 안내</div>>사용 안내</div>
       <div style={{fontSize:11,color:"#666",lineHeight:1.8}}>
         타임라인 상단의 <span style={{background:"#ede9fe",color:"#7c7cc8",padding:"2px 6px",borderRadius:4,fontWeight:700,fontSize:10}}>✨ AI Book</span> 버튼으로 사용합니다.<br/>
         • <strong>텍스트</strong>: 카톡 메시지 붙여넣기 또는 직접 입력<br/>
@@ -6704,3 +6483,4 @@ const CSS = `
 
 ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
 </script></body></html>
+
