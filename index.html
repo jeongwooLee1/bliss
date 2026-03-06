@@ -2780,24 +2780,26 @@ ${naverText}
           {isSchedule && <>
             <div>
               <div className="res-time-row" style={{display:"flex",gap:8,alignItems:"center",flexWrap:"nowrap",justifyContent:"flex-start"}}>
-                {/* 날짜+시간 통합 한 필드 */}
-                <div className="fld-datetime">
-                  <DatePick value={f.date} onChange={v=>set("date",v)} style={{background:"transparent",boxShadow:"none"}}/>
-                  <span style={{color:"#a0b8d0",fontSize:13,flexShrink:0,padding:"0 2px",userSelect:"none"}}>|</span>
-                  <select value={f.time} onChange={e=>{const nt=e.target.value;set("time",nt);set("endTime",addMin(nt,f.dur))}}>
+                {/* 날짜+시간 통합 한 필드 — 내용 크기에 맞게 */}
+                <div className="fld-datetime"
+                  onMouseOver={e=>e.currentTarget.style.boxShadow="0 6px 22px rgba(60,100,220,.28)"}
+                  onMouseOut={e=>e.currentTarget.style.boxShadow="0 2px 10px rgba(60,100,220,.10)"}>
+                  <DatePick value={f.date} onChange={v=>set("date",v)}/>
+                  <span style={{color:"#a0b8d0",fontSize:12,padding:"0 4px",userSelect:"none",fontWeight:400}}>|</span>
+                  <select className="fld-sel" value={f.time} onChange={e=>{const nt=e.target.value;set("time",nt);set("endTime",addMin(nt,f.dur))}}>
                     {TIMES.filter(t=>{const h=parseInt(t);return h>=8&&h<=21}).map(t=><option key={t} value={t}>{t}</option>)}
                   </select>
-                  <span style={{color:"#7090b0",fontSize:13,flexShrink:0,userSelect:"none"}}>~</span>
-                  <select value={f.endTime} onChange={e=>{set("endTime",e.target.value);set("dur",calcDur(f.time,e.target.value))}}>
+                  <span style={{color:"#7090b0",fontSize:12,padding:"0 3px",userSelect:"none",fontWeight:400}}>~</span>
+                  <select className="fld-sel" value={f.endTime} onChange={e=>{set("endTime",e.target.value);set("dur",calcDur(f.time,e.target.value))}}>
                     {TIMES.filter(t=>{const h=parseInt(t);return h>=8&&h<=22}).map(t=><option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
-                {/* 지점 */}
-                <div className="fld-datetime" style={{cursor:"default"}}
+                {/* 지점 — 내용 크기에 맞게 */}
+                <div className="fld-datetime"
                   onMouseOver={e=>e.currentTarget.style.boxShadow="0 6px 22px rgba(60,100,220,.28)"}
                   onMouseOut={e=>e.currentTarget.style.boxShadow="0 2px 10px rgba(60,100,220,.10)"}>
-                  <select className="res-room-sel" style={{background:"transparent",border:"none",fontSize:13,fontWeight:700,cursor:"pointer",outline:"none",fontFamily:"inherit",color:"#333",padding:"0 2px"}}
-                    value={`${f.roomId}|${f.staffId}`} onChange={e=>{const [r,s]=e.target.value.split("|");set("roomId",r);set("staffId",s)}}>
+                  <I name="mapPin" size={12} color="#88a8cc"/>
+                  <select className="res-room-sel fld-sel" value={`${f.roomId}|${f.staffId}`} onChange={e=>{const [r,s]=e.target.value.split("|");set("roomId",r);set("staffId",s)}}>
                     {branchRooms.map(rm => branchStaff.map(st =>
                       <option key={rm.id+st.id} value={`${rm.id}|${st.id}`}>[{(data.branches||[]).find(b=>b.id===branchId)?.short}] {rm.name}-{st.dn}</option>
                     ))}
@@ -2894,24 +2896,26 @@ ${naverText}
             {/* 예약기간 + 장소/담당자 */}
             <div>
               <div className="res-time-row" style={{display:"flex",gap:8,alignItems:"center",flexWrap:"nowrap",justifyContent:"flex-start"}}>
-                {/* 날짜+시간 통합 한 필드 */}
-                <div className="fld-datetime">
-                  <DatePick value={f.date} onChange={v=>set("date",v)} style={{background:"transparent",boxShadow:"none"}}/>
-                  <span style={{color:"#a0b8d0",fontSize:13,flexShrink:0,padding:"0 2px",userSelect:"none"}}>|</span>
-                  <select value={f.time} onChange={e=>{const nt=e.target.value;set("time",nt);set("endTime",addMin(nt,f.dur))}}>
+                {/* 날짜+시간 통합 한 필드 — 내용 크기에 맞게 */}
+                <div className="fld-datetime"
+                  onMouseOver={e=>e.currentTarget.style.boxShadow="0 6px 22px rgba(60,100,220,.28)"}
+                  onMouseOut={e=>e.currentTarget.style.boxShadow="0 2px 10px rgba(60,100,220,.10)"}>
+                  <DatePick value={f.date} onChange={v=>set("date",v)}/>
+                  <span style={{color:"#a0b8d0",fontSize:12,padding:"0 4px",userSelect:"none",fontWeight:400}}>|</span>
+                  <select className="fld-sel" value={f.time} onChange={e=>{const nt=e.target.value;set("time",nt);set("endTime",addMin(nt,f.dur))}}>
                     {TIMES.filter(t=>{const h=parseInt(t);return h>=8&&h<=21}).map(t=><option key={t} value={t}>{t}</option>)}
                   </select>
-                  <span style={{color:"#7090b0",fontSize:13,flexShrink:0,userSelect:"none"}}>~</span>
-                  <select value={f.endTime} onChange={e=>{set("endTime",e.target.value);set("dur",calcDur(f.time,e.target.value))}}>
+                  <span style={{color:"#7090b0",fontSize:12,padding:"0 3px",userSelect:"none",fontWeight:400}}>~</span>
+                  <select className="fld-sel" value={f.endTime} onChange={e=>{set("endTime",e.target.value);set("dur",calcDur(f.time,e.target.value))}}>
                     {TIMES.filter(t=>{const h=parseInt(t);return h>=8&&h<=22}).map(t=><option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
-                {/* 지점 */}
-                <div className="fld-datetime" style={{cursor:"default"}}
+                {/* 지점 — 내용 크기에 맞게 */}
+                <div className="fld-datetime"
                   onMouseOver={e=>e.currentTarget.style.boxShadow="0 6px 22px rgba(60,100,220,.28)"}
                   onMouseOut={e=>e.currentTarget.style.boxShadow="0 2px 10px rgba(60,100,220,.10)"}>
-                  <select className="res-room-sel" style={{background:"transparent",border:"none",fontSize:13,fontWeight:700,cursor:"pointer",outline:"none",fontFamily:"inherit",color:"#333",padding:"0 2px"}}
-                    value={`${f.roomId}|${f.staffId}`} onChange={e=>{const [r,s]=e.target.value.split("|");set("roomId",r);set("staffId",s)}}>
+                  <I name="mapPin" size={12} color="#88a8cc"/>
+                  <select className="res-room-sel fld-sel" value={`${f.roomId}|${f.staffId}`} onChange={e=>{const [r,s]=e.target.value.split("|");set("roomId",r);set("staffId",s)}}>
                     {branchRooms.map(rm => branchStaff.map(st =>
                       <option key={rm.id+st.id} value={`${rm.id}|${st.id}`}>[{(data.branches||[]).find(b=>b.id===branchId)?.short}] {rm.name}-{st.dn}</option>
                     ))}
@@ -6438,14 +6442,14 @@ function DatePick({ value, onChange, style, min }) {
     const d = new Date(Number(p[0]), Number(p[1])-1, Number(p[2]));
     const dow = d.getDay();
     const clr = dow===0?"#e55":dow===6?"#47f":"#888";
-    return <>{p[1]}.{p[2]}<span style={{color:clr,fontWeight:700,marginLeft:2}}>({DAYS[dow]})</span></>;
+    return <>{p[1]}.{p[2]}<span style={{color:clr,fontWeight:800,marginLeft:2}}>({DAYS[dow]})</span></>;
   };
-  return <div style={{position:"relative",display:"inline-flex",...style}}>
-    <div style={{width:"100%",fontSize:13,padding:"0 2px",textAlign:"left",whiteSpace:"nowrap",pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center",gap:4,background:"transparent",fontFamily:"inherit",fontWeight:700,color:"#333"}}>
-      <I name="calPick" size={12} color="#88a8cc"/>{fmt(value)}</div>
+  return <label style={{position:"relative",display:"inline-flex",alignItems:"center",gap:4,cursor:"pointer",...style}}>
+    <I name="calPick" size={12} color="#88a8cc"/>
+    <span style={{fontSize:13,fontWeight:700,whiteSpace:"nowrap",pointerEvents:"none",color:"#333",fontFamily:"inherit"}}>{fmt(value)}</span>
     <input type="date" value={value} onChange={e=>onChange(e.target.value)} min={min}
       style={{position:"absolute",inset:0,opacity:0,width:"100%",height:"100%",cursor:"pointer",fontSize:16}}/>
-  </div>;
+  </label>;
 }
 function FLD({ label, children }) {
   return <div><label style={{fontSize:12,fontWeight:600,color:"#777",marginBottom:5,display:"block"}}>{label}</label>{children}</div>;
@@ -6529,7 +6533,10 @@ const CSS = `
   .inp-memo{background:#eeeef8 !important;border:none !important;outline:none !important;box-shadow:0 2px 10px rgba(80,80,160,.07) !important;border-radius:10px !important;transition:box-shadow .2s !important}
   .inp-memo:hover{box-shadow:0 6px 22px rgba(80,80,160,.22) !important}
   /* ── 날짜+시간 통합 필드 ── */
-  .fld-datetime{background:#e0f0ff;border-radius:10px;padding:0 16px;min-height:40px;display:inline-flex;align-items:center;justify-content:flex-start;gap:6px;flex:0 0 auto;box-shadow:0 2px 10px rgba(60,100,220,.10);transition:box-shadow .2s}
+  /* ── 날짜+시간 / 지점 통합 필드 ── */
+  .fld-datetime{background:#e0f0ff;border-radius:10px;padding:0 14px;height:40px;display:inline-flex;align-items:center;justify-content:flex-start;gap:4px;flex:0 0 auto;box-shadow:0 2px 10px rgba(60,100,220,.10);transition:box-shadow .2s}
+  .fld-sel{background:transparent;border:none;font-size:13px;font-weight:700;font-family:inherit;color:#333;cursor:pointer;outline:none;padding:0 2px;appearance:none;-webkit-appearance:none}
+  .fld-sel:focus{outline:none}
   .fld-datetime:hover{box-shadow:0 6px 22px rgba(60,100,220,.28) !important}
   .fld-datetime select{background:transparent;border:none;font-size:13px;font-weight:700;text-align:center;cursor:pointer;outline:none;font-family:inherit;color:#333;padding:0 2px}
   .modal-res button:not(:disabled):hover{transform:scale(1.045);box-shadow:0 3px 10px rgba(0,0,0,.13)}
