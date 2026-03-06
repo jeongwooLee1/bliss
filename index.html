@@ -132,7 +132,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.50";
+const BLISS_V = "2.65.51";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -2827,11 +2827,13 @@ ${naverText}
                     const sel = f.selectedTags?.includes(tag.id);
                     const hasColor = tag.color && tag.color !== "";
                     const bgClr = hasColor ? tag.color : "#7c7cc8";
+                    const txtClr = (() => { const h=bgClr.replace("#",""); const r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16); return (0.299*r+0.587*g+0.114*b)/255>0.55?"#333":"#fff"; })();
                     return <button key={tag.id} onClick={()=>toggleTag(tag.id)}
                       className="tag-pill"
-                      style={{background:sel?bgClr:bgClr+"28",
-                        color:sel?"#fff":bgClr,
-                        fontWeight:sel?600:500}}>
+                      style={{background:sel?bgClr:bgClr+"22",
+                        color:sel?txtClr:bgClr,
+                        border:"none",
+                        fontWeight:sel?700:500}}>
                       {tag.name}
                       {tag.dur > 0 && <span style={{fontSize:12,opacity:0.75}}>{tag.dur}′</span>}
                     </button>;
@@ -6008,11 +6010,8 @@ function AdminServiceTags({ data, setData }) {
   const [tags, setTags] = useState(()=>[...(data?.serviceTags || [])].sort((a,b)=>a.sort-b.sort));
   useEffect(() => { setData(p => ({...p, serviceTags: tags})); }, [tags]);
 
-  // 탭: "reservation" = 예약태그, "schedule" = 내부일정태그
-  // 탭 이름은 예약모달 탭과 동일하게
   const TAB_LABELS = { reservation: BLOCK_LABELS.reservation || "예약", schedule: "내부일정" };
   const [activeTab, setActiveTab] = useState("reservation");
-
   const [showAdd, setShowAdd] = useState(false);
   const [newTag, setNewTag] = useState({ name:"", dur:0, color:"" });
   const [editId, setEditId] = useState(null);
@@ -6020,12 +6019,14 @@ function AdminServiceTags({ data, setData }) {
   const [delConfirm, setDelConfirm] = useState(null);
   const [selected, setSelected] = useState(new Set());
 
-  // 현재 탭 기준 태그 목록 (scheduleYn: Y=내부일정, N=예약)
+  // 미리보기 드래그 상태
+  const [prevDragIdx, setPrevDragIdx] = useState(null);
+  const [prevOverIdx, setPrevOverIdx] = useState(null);
+
   const isScheduleTab = activeTab === "schedule";
   const tabTags = tags.filter(t => isScheduleTab ? t.scheduleYn === "Y" : t.scheduleYn !== "Y");
 
   const syncTags = (updated) => { setTags(updated); if(setData) setData(prev=>({...prev,serviceTags:updated})); };
-  // drag: tabTags 기반 재정렬 → 전체 tags 동기화
   const [localTabTags, setLocalTabTags] = useState([]);
   useEffect(() => { setLocalTabTags(tabTags); }, [activeTab, tags]);
   const drag = useDragSort(localTabTags, setLocalTabTags, "sort", (reordered) => {
@@ -6034,6 +6035,28 @@ function AdminServiceTags({ data, setData }) {
     syncTags(allSorted);
     reordered.forEach((s,i) => sb.update("service_tags", s.id, {sort: i}).catch(console.error));
   });
+
+  // 배경색 → 대비색(흰/검) 자동 계산
+  const getContrastColor = (hex) => {
+    if (!hex || hex.length < 4) return "#333";
+    const h = hex.replace("#","");
+    const r = parseInt(h.length===3?h[0]+h[0]:h.slice(0,2),16);
+    const g = parseInt(h.length===3?h[1]+h[1]:h.slice(2,4),16);
+    const b = parseInt(h.length===3?h[2]+h[2]:h.slice(4,6),16);
+    return (0.299*r + 0.587*g + 0.114*b) / 255 > 0.55 ? "#333" : "#fff";
+  };
+
+  // 태그 pill 스타일 (채우기, 테두리 없음)
+  const tagPillStyle = (color, useYn) => {
+    const bg = color || "#7c7cc8";
+    return {
+      padding:"4px 10px", borderRadius:20, border:"none",
+      background: useYn===false ? "#d0d0d0" : bg,
+      color: useYn===false ? "#999" : getContrastColor(bg),
+      fontSize:11, fontWeight:600, display:"inline-flex", alignItems:"center", gap:3,
+      opacity: useYn===false ? 0.5 : 1,
+    };
+  };
 
   const allChecked = tabTags.length > 0 && tabTags.every(t => selected.has(t.id));
   const toggleAll = () => { if (allChecked) setSelected(new Set()); else setSelected(new Set(tabTags.map(t => t.id))); };
@@ -6055,8 +6078,7 @@ function AdminServiceTags({ data, setData }) {
   const addTag = () => {
     if(!newTag.name.trim()) return;
     const t = {id:uid(), name:newTag.name.trim(), dur:Number(newTag.dur)||0,
-      scheduleYn: isScheduleTab ? "Y" : "N",
-      color:newTag.color, useYn:true, sort:tags.length};
+      scheduleYn: isScheduleTab ? "Y" : "N", color:newTag.color, useYn:true, sort:tags.length};
     syncTags([...tags, t]);
     sb.insert("service_tags", tagToDb(t)).catch(console.error);
     setNewTag({name:"",dur:0,color:""});
@@ -6084,8 +6106,30 @@ function AdminServiceTags({ data, setData }) {
     setDelConfirm(null);
   };
 
-  const inpS = {padding:"4px 6px",fontSize:11,background:"#f8f0f0",border:"1px solid #d0d0d0"};
+  // 미리보기 드래그앤드롭
+  const previewTags = tabTags.filter(t=>t.useYn!==false);
+  const onPrevDragStart = (i) => setPrevDragIdx(i);
+  const onPrevDragEnter = (i) => setPrevOverIdx(i);
+  const onPrevDragEnd = () => {
+    if (prevDragIdx === null || prevOverIdx === null || prevDragIdx === prevOverIdx) {
+      setPrevDragIdx(null); setPrevOverIdx(null); return;
+    }
+    // previewTags 기준 재정렬
+    const reordered = [...previewTags];
+    const [moved] = reordered.splice(prevDragIdx, 1);
+    reordered.splice(prevOverIdx, 0, moved);
+    // 전체 tags에 순서 반영
+    const otherTags = tags.filter(t => isScheduleTab ? t.scheduleYn !== "Y" : t.scheduleYn === "Y");
+    const usedTags = reordered;
+    const unusedTabs = tabTags.filter(t=>t.useYn===false);
+    const newTabOrder = [...usedTabs, ...unusedTabs];
+    const allSorted = [...newTabOrder, ...otherTags].map((t,i)=>({...t,sort:i}));
+    syncTags(allSorted);
+    newTabOrder.forEach((t,i) => sb.update("service_tags", t.id, {sort:i}).catch(console.error));
+    setPrevDragIdx(null); setPrevOverIdx(null);
+  };
 
+  const inpS = {padding:"4px 6px",fontSize:11,background:"#f8f0f0",border:"1px solid #d0d0d0"};
   const downloadXl = () => XL.download(tabTags.map((t,i)=>({태그명:t.name, 소요분:t.dur, 색상:t.color||"", 사용:t.useYn!==false?"Y":"N"})), isScheduleTab?"내부일정태그.xlsx":"예약태그.xlsx", "태그", ["태그명","소요분","색상","사용"]);
   const uploadXl = async (e) => {
     const file = e.target.files[0]; if(!file) return;
@@ -6115,25 +6159,37 @@ function AdminServiceTags({ data, setData }) {
       <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"flex-end"}}>
         <FLD label="태그명"><input className="inp" style={{width:160,...inpS}} value={newTag.name} onChange={e=>setNewTag(p=>({...p,name:e.target.value}))} placeholder="태그명" onKeyDown={e=>e.key==="Enter"&&addTag()}/></FLD>
         <FLD label="소요(분)"><input className="inp" type="number" style={{width:80,...inpS}} value={newTag.dur} onChange={e=>setNewTag(p=>({...p,dur:e.target.value}))}/></FLD>
-        <FLD label="색상"><div style={{display:"flex",alignItems:"center",gap:3}}>
-          <input type="color" value={newTag.color||"#e0e0e0"} onChange={e=>setNewTag(p=>({...p,color:e.target.value}))} style={{width:22,height:22,border:"none",cursor:"pointer"}}/>
-          <EyeDrop onPick={c=>setNewTag(p=>({...p,color:c}))} size={22}/>
-          <input className="inp" style={{width:75,...inpS,fontFamily:"monospace",fontSize:9}} value={newTag.color} onChange={e=>setNewTag(p=>({...p,color:e.target.value}))} placeholder="#000000"/>
-        </div></FLD>
+        <FLD label="색상">
+          <div style={{display:"flex",alignItems:"center",gap:6}}>
+            <input type="color" value={newTag.color||"#7c7cc8"} onChange={e=>setNewTag(p=>({...p,color:e.target.value}))} style={{width:28,height:28,border:"none",borderRadius:6,cursor:"pointer",padding:0}}/>
+            <EyeDrop onPick={c=>setNewTag(p=>({...p,color:c}))} size={22}/>
+            <input className="inp" style={{width:75,...inpS,fontFamily:"monospace",fontSize:9}} value={newTag.color} onChange={e=>setNewTag(p=>({...p,color:e.target.value}))} placeholder="#7c7cc8"/>
+            {newTag.color && <span style={{...tagPillStyle(newTag.color,true),fontSize:10,pointerEvents:"none"}}>{newTag.name||"미리보기"}</span>}
+          </div>
+        </FLD>
         <button className="btn-p btn-sm" onClick={addTag} style={{padding:"6px 18px"}}>추가 ({TAB_LABELS[activeTab]}태그)</button>
       </div>
     </div>}
 
+    {/* 미리보기 — 드래그앤드롭 순서 변경 가능 */}
     <div className="card" style={{padding:12,marginBottom:14}}>
-      <div style={{fontSize:10,color:"#888",marginBottom:6}}>미리보기</div>
-      <div style={{display:"flex",flexWrap:"wrap",gap:4,padding:8,background:"#f8f8f8",borderRadius:8,border:"1px solid #e0e0e0"}}>
-        {tabTags.filter(t=>t.useYn!==false).map(t=>{
-          const hasClr = t.color && t.color!=="";
-          return <span key={t.id} style={{padding:"4px 8px",fontSize:10,fontWeight:500,borderRadius:4,display:"flex",alignItems:"center",gap:3,
-            border:"1px solid "+(hasClr?t.color+"80":"#d0d0d0"),color:hasClr?t.color:"#7c7cc8",background:hasClr?t.color+"15":"transparent"}}>
-            {t.name}{t.dur>0&&<span style={{fontSize:8,opacity:.6}}>({t.dur}분)</span>}
-          </span>;
-        })}
+      <div style={{fontSize:10,color:"#888",marginBottom:6}}>미리보기 <span style={{color:"#bbb",fontSize:9}}>(드래그로 순서 변경)</span></div>
+      <div style={{display:"flex",flexWrap:"wrap",gap:6,padding:8,background:"#f8f8f8",borderRadius:8,minHeight:36}} onDragOver={e=>e.preventDefault()}>
+        {previewTags.map((t,i)=>(
+          <span key={t.id}
+            draggable
+            onDragStart={()=>onPrevDragStart(i)}
+            onDragEnter={()=>onPrevDragEnter(i)}
+            onDragEnd={onPrevDragEnd}
+            onDragOver={e=>e.preventDefault()}
+            style={{...tagPillStyle(t.color,t.useYn),cursor:"grab",
+              outline: prevOverIdx===i && prevDragIdx!==i ? "2px dashed #7c7cc8" : "none",
+              opacity: prevDragIdx===i ? 0.4 : 1,
+              transition:"opacity .15s"}}>
+            {t.name}{t.dur>0&&<span style={{fontSize:8,opacity:.7}}>({t.dur}분)</span>}
+          </span>
+        ))}
+        {previewTags.length===0 && <span style={{color:"#bbb",fontSize:11}}>태그를 추가하세요</span>}
       </div>
     </div>
 
@@ -6154,10 +6210,11 @@ function AdminServiceTags({ data, setData }) {
           <td><DragHandle onTouchStart={drag.onTouchStart(i)}/></td><td style={{color:"#999"}}>{i+1}</td>
           <td><input className="inp" value={editData.name} onChange={e=>setEditData(p=>({...p,name:e.target.value}))} style={{width:"100%",...inpS}}/></td>
           <td><input className="inp" type="number" value={editData.dur} onChange={e=>setEditData(p=>({...p,dur:Number(e.target.value)||0}))} style={{width:50,...inpS}}/></td>
-          <td><div style={{display:"flex",alignItems:"center",gap:2}}>
-            <input type="color" value={editData.color||"#e0e0e0"} onChange={e=>setEditData(p=>({...p,color:e.target.value}))} style={{width:20,height:18,border:"none",cursor:"pointer"}}/>
+          <td><div style={{display:"flex",alignItems:"center",gap:3}}>
+            <input type="color" value={editData.color||"#7c7cc8"} onChange={e=>setEditData(p=>({...p,color:e.target.value}))} style={{width:24,height:24,border:"none",borderRadius:4,cursor:"pointer",padding:0}}/>
             <EyeDrop onPick={c=>setEditData(p=>({...p,color:c}))} size={20}/>
             <input className="inp" style={{width:60,...inpS,fontFamily:"monospace",fontSize:9}} value={editData.color||""} onChange={e=>setEditData(p=>({...p,color:e.target.value}))}/>
+            {editData.color && <span style={{...tagPillStyle(editData.color,true),fontSize:9,pointerEvents:"none"}}>{editData.name||"미리"}</span>}
           </div></td>
           <td style={{textAlign:"center"}}><select className="inp" style={{width:55,...inpS}} value={editData.useYn===false?"N":"Y"} onChange={e=>setEditData(p=>({...p,useYn:e.target.value==="Y"}))}><option value="Y">사용</option><option value="N">미사용</option></select></td>
           <td style={{textAlign:"center",color:"#bbb",fontSize:10}}>{i+1}</td>
@@ -6172,11 +6229,11 @@ function AdminServiceTags({ data, setData }) {
           <td><DragHandle onTouchStart={drag.onTouchStart(i)}/></td>
           <td style={{color:"#999"}}>{i+1}</td>
           <td style={{fontWeight:600,fontSize:12}}>
-            <span style={{padding:"2px 6px",borderRadius:4,border:"1px solid "+(tag.color||"#d0d0d0")+"50",background:tag.color?tag.color+"12":"transparent",color:tag.color||"#333"}}>{tag.name}</span>
+            <span style={tagPillStyle(tag.color,tag.useYn)}>{tag.name}</span>
           </td>
           <td style={{textAlign:"center",fontSize:11,color:tag.dur>0?"#ef5350":"#d0d0d0",fontWeight:tag.dur>0?600:400}}>{tag.dur>0?tag.dur+"분":"-"}</td>
           <td style={{textAlign:"center"}}>{tag.color?<div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>
-            <div style={{width:24,height:16,borderRadius:3,background:tag.color,border:"1px solid #d0d0d080"}}/>
+            <div style={{width:28,height:18,borderRadius:4,background:tag.color}}/>
             <span style={{fontSize:8,color:"#888",fontFamily:"monospace"}}>{tag.color}</span>
           </div>:<span style={{color:"#bbb",fontSize:10}}>—</span>}</td>
           <td style={{textAlign:"center"}}><button onClick={()=>toggleUse(tag.id)}
