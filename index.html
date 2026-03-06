@@ -2396,12 +2396,70 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
 
   // 시술 선택 패널 열기
   const [showSvcPicker, setShowSvcPicker] = useState(false);
+  // AI 자동분석 상태
+  const [aiAnalyzing, setAiAnalyzing] = useState(false);
 
   // 시간으로 dur 자동 계산
   const calcDur = (startT, endT) => {
     const [sh,sm] = startT.split(":").map(Number);
     const [eh,em] = endT.split(":").map(Number);
     return (eh*60+em) - (sh*60+sm);
+  };
+
+  // ── AI 자동분석: 네이버 request_msg → 시술상품 + 예약태그 자동 선택 ──
+  const handleAiAnalyze = async () => {
+    const apiKey = localStorage.getItem("bliss_gemini_key") || "";
+    if (!apiKey) { alert("관리설정 → AI설정에서 Gemini API 키를 등록하세요"); return; }
+    const naverText = [f.requestMsg, f.ownerComment].filter(Boolean).join("\n");
+    if (!naverText.trim()) { alert("분석할 네이버 예약정보가 없습니다"); return; }
+    setAiAnalyzing(true);
+    try {
+      const tagList = (data?.serviceTags||[]).filter(t=>t.useYn!==false && t.scheduleYn!=="Y")
+        .map(t=>`"${t.id}":"${t.name}"`).join(", ");
+      const svcList = (data?.services||[]).filter(s=>s.useYn!==false)
+        .map(s=>`"${s.id}":"${s.name}"`).join(", ");
+      const prompt = `당신은 왁싱샵/미용실 예약 정보를 분석하는 AI입니다.
+아래 네이버 예약 고객 정보를 분석하여 적합한 태그와 시술상품을 선택하세요.
+마크다운 없이 순수 JSON만 출력하세요.
+
+[태그 목록] ${tagList}
+[시술상품 목록] ${svcList}
+
+[판단 기준 예시]
+- 첫방문/신규 고객 → "신규" 태그
+- 주차 언급 → "주차" 태그  
+- 임산부/산모 → "산모님" 태그
+- 커플룸 요청 → "커플룸" 태그
+- 남자 관리사 요청 → "남자선생님" 태그
+- 시술메뉴 내용으로 적합한 시술상품 선택
+
+[네이버 예약 정보]
+${naverText}
+
+응답 형식:
+{"matchedTagIds":["태그id1","태그id2"],"matchedServiceIds":["시술id1"],"reason":"선택 이유 한줄"}`;
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({contents:[{parts:[{text:prompt}]}], generationConfig:{temperature:0}})
+      });
+      if (!r.ok) throw new Error("API: "+(await r.text()).slice(0,120));
+      const d2 = await r.json();
+      const txt = d2.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      const parsed = JSON.parse(txt.replace(/```json|```/g,"").trim());
+      const newTags = parsed.matchedTagIds || [];
+      const newSvcs = parsed.matchedServiceIds || [];
+      setF(p => {
+        const tagSum = newTags.reduce((s,tid)=>{const t=(data?.serviceTags||[]).find(x=>x.id===tid);return s+(t?.dur||0);},0);
+        const svcSum = newSvcs.reduce((s,sid)=>{const sv=(data?.services||[]).find(x=>x.id===sid);return s+(sv?.dur||0);},0);
+        const dur = (tagSum+svcSum) || p.dur || itemDur;
+        const [sh,sm] = p.time.split(":").map(Number);
+        const endMin = sh*60+sm+dur;
+        const endTime = `${String(Math.min(22,Math.floor(endMin/60))).padStart(2,"0")}:${String(endMin%60).padStart(2,"0")}`;
+        return {...p, selectedTags:newTags, selectedServices:newSvcs, dur, endTime};
+      });
+      if (parsed.reason) alert(`✅ AI 분석 완료\n${parsed.reason}`);
+    } catch(e) { alert("AI 분석 실패: "+e.message); }
+    setAiAnalyzing(false);
   };
 
   const handleSaleSubmit = (saleData) => {
@@ -2706,6 +2764,16 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
               <I name="naver" size={14}/>
               <span style={{fontSize:12,fontWeight:700,color:"#2E7D32"}}>네이버 예약정보</span>
               <span style={{fontSize:10,color:"#aaa",marginLeft:4}}>(수정 불가)</span>
+              {!isReadOnly && (f.requestMsg || f.ownerComment) && <button
+                onClick={handleAiAnalyze} disabled={aiAnalyzing}
+                style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:4,padding:"3px 10px",fontSize:11,fontWeight:700,
+                  border:"none",borderRadius:12,cursor:aiAnalyzing?"not-allowed":"pointer",
+                  background:aiAnalyzing?"#e0e0e0":"linear-gradient(135deg,#7c7cc8,#9b72cb)",
+                  color:aiAnalyzing?"#999":"#fff",transition:"all .2s"}}>
+                {aiAnalyzing
+                  ? <><span style={{fontSize:10}}>⏳</span> 분석중...</>
+                  : <><span style={{fontSize:12}}>✨</span> AI 분석</>}
+              </button>}
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"4px 12px"}}>
               {/* 예약번호 */}
