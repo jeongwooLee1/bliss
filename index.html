@@ -56,15 +56,22 @@ let SYSTEM_TAG_IDS         = [];  // 삭제/보호 대상 시스템 태그 ID �
 let SYSTEM_SRC_IDS         = [];  // 삭제/보호 대상 시스템 경로 ID 목록
 
 function resolveSystemIds(tags, sources) {
-  const newCustTag = (tags||[]).find(t => t.name === SYSTEM_TAG_NAME_NEW_CUST && t.scheduleYn !== "Y");
-  const prepaidTag = (tags||[]).find(t => t.name === SYSTEM_TAG_NAME_PREPAID  && t.scheduleYn !== "Y");
-  const naverSrc   = (sources||[]).find(s => s.name === SYSTEM_SRC_NAME_NAVER);
-  NEW_CUST_TAG_ID_GLOBAL = newCustTag?.id || null;
-  PREPAID_TAG_ID         = prepaidTag?.id || null;
-  NAVER_SRC_ID           = naverSrc?.id   || null;
-  SYSTEM_TAG_IDS = [NEW_CUST_TAG_ID_GLOBAL, PREPAID_TAG_ID].filter(Boolean);
-  SYSTEM_SRC_IDS = [NAVER_SRC_ID].filter(Boolean);
-  console.log("[Bliss] 시스템 ID 해석:", { NEW_CUST_TAG_ID_GLOBAL, PREPAID_TAG_ID, NAVER_SRC_ID });
+  try {
+    const tagList = Array.isArray(tags) ? tags : [];
+    const srcList = Array.isArray(sources) ? sources : [];
+    const newCustTag = tagList.find(t => t.name === SYSTEM_TAG_NAME_NEW_CUST && t.scheduleYn !== "Y");
+    const prepaidTag = tagList.find(t => t.name === SYSTEM_TAG_NAME_PREPAID  && t.scheduleYn !== "Y");
+    const naverSrc   = srcList.find(s => s.name === SYSTEM_SRC_NAME_NAVER);
+    NEW_CUST_TAG_ID_GLOBAL = newCustTag?.id || null;
+    PREPAID_TAG_ID         = prepaidTag?.id || null;
+    NAVER_SRC_ID           = naverSrc?.id   || null;
+    SYSTEM_TAG_IDS = [NEW_CUST_TAG_ID_GLOBAL, PREPAID_TAG_ID].filter(Boolean);
+    SYSTEM_SRC_IDS = [NAVER_SRC_ID].filter(Boolean);
+    console.log("[Bliss] 시스템 ID 해석:", { NEW_CUST_TAG_ID_GLOBAL, PREPAID_TAG_ID, NAVER_SRC_ID });
+  } catch(e) {
+    console.error("[Bliss] resolveSystemIds 오류:", e);
+    SYSTEM_TAG_IDS = []; SYSTEM_SRC_IDS = [];
+  }
 }
 
 function fromDb(table,rows){const m=DBMAP[table];if(!m)return rows;return rows.map(row=>{const r={};for(const[k,v]of Object.entries(row)){if(k==="created_at"){r.createdAt=v;continue;}const mk=m[k]||k;r[mk]=v;} 
@@ -150,7 +157,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.54";
+const BLISS_V = "2.65.55";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -389,6 +396,7 @@ function App() {
         // Load business data
         const db = await loadAllFromDb(bizId);
         const staff = db.rooms.map(r => ({ id: r.id, dn: r.name, bid: r.branch_id }));
+        resolveSystemIds(db.serviceTags, db.resSources);
         setData({
           branches: db.branches, rooms: db.rooms, services: db.services, products: db.products,
           categories: db.cats, serviceTags: db.serviceTags,
@@ -396,7 +404,6 @@ function App() {
           users: db.users, customers: db.customers, reservations: db.reservations, sales: db.sales,
           staff, resSources: db.resSources || [],
         });
-        resolveSystemIds(db.serviceTags, db.resSources);
         setUserBranches(user.role === "owner" ? db.branches.map(b=>b.id) : (user.branches || []));
         setViewBranches(user.viewBranches || []);
         // page is already restored from sessionStorage("bliss_page") via useState initializer
@@ -420,6 +427,7 @@ function App() {
       setActiveBiz(bizId);
       const db = await loadAllFromDb(bizId);
       const staff = db.rooms.map(r => ({ id: r.id, dn: r.name, bid: r.branch_id }));
+      resolveSystemIds(db.serviceTags, db.resSources);
       setData({
         branches: db.branches, rooms: db.rooms, services: db.services, products: db.products,
         categories: db.cats, serviceTags: db.serviceTags,
@@ -427,7 +435,6 @@ function App() {
         users: db.users, customers: db.customers, reservations: db.reservations, sales: db.sales,
         staff, resSources: db.resSources || [],
       });
-      resolveSystemIds(db.serviceTags, db.resSources);
       setRole("owner"); // super acts as owner inside a business
       setUserBranches(db.branches.map(b => b.id));
       setViewBranches([]);
@@ -1180,7 +1187,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   });
   const isNaverRes = (r) => !!r.reservationId;
   
-  const blocks = data.reservations.filter(r => r.date === selDate && r.status !== "naver_cancelled" && branchesToShow.some(b=>b.id===r.bid));
+  const blocks = (data?.reservations||[]).filter(r => r.date === selDate && r.status !== "naver_cancelled" && branchesToShow.some(b=>b.id===r.bid));
 
   // ── 네이버 예약 자동배치: 빈 담당자(왼쪽부터) 배분 ──
   const toMin = (t) => { const [h,m] = (t||"10:00").split(":").map(Number); return h*60+m; };
@@ -1627,11 +1634,11 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
     const { type, block, data: d } = pendingChange;
     // 이미 미리보기로 state에 반영됨 → DB만 저장
     if (type === "move") {
-      const r = data.reservations.find(r => r.id === block.id);
+      const r = (data?.reservations||[]).find(r => r.id === block.id);
       if (r) sb.update("reservations", block.id, toDb("reservations", r)).catch(console.error);
     }
     if (type === "resize") {
-      const r = data.reservations.find(r => r.id === block.id);
+      const r = (data?.reservations||[]).find(r => r.id === block.id);
       if (r) sb.update("reservations", block.id, toDb("reservations", r)).catch(console.error);
     }
     setPendingChange(null);
@@ -1698,7 +1705,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   // Auto-fix: memo에 "확정완료"가 있는데 status가 pending인 예약 자동 confirmed 처리
   useEffect(() => {
     if (!data?.reservations) return;
-    const mismatched = data.reservations.filter(r => r.status === "pending" && r.memo && r.memo.includes("확정완료"));
+    const mismatched = (data?.reservations||[]).filter(r => r.status === "pending" && r.memo && r.memo.includes("확정완료"));
     if (mismatched.length === 0) return;
     mismatched.forEach(r => {
       sb.update("reservations", r.id, {status: "confirmed"}).then(() => console.log(`Auto-confirmed: ${r.id} (memo has 확정완료)`));
@@ -1717,7 +1724,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
     <div style={{display:"flex",flexDirection:"column",flex:1,minHeight:0}}>
       {/* Pending Reservations Alert - OUTSIDE scroll, always visible */}
       {(() => {
-        const pendingList = data.reservations.filter(r => r.status === "pending" && branchesToShow.some(b => b.id === r.bid) && !(r.memo && r.memo.includes("확정완료")));
+        const pendingList = (data?.reservations||[]).filter(r => r.status === "pending" && branchesToShow.some(b => b.id === r.bid) && !(r.memo && r.memo.includes("확정완료")));
         if (pendingList.length === 0) return null;
         return <div style={{background:"#FFF3E0",borderBottom:"1px solid #FFB74D",padding:"6px 12px",display:"flex",alignItems:"center",gap:8,flexShrink:0,cursor:"pointer",animation:"pendingBlink 2s infinite",width:"100%",boxSizing:"border-box"}}
           onClick={()=>{
@@ -3814,7 +3821,7 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
     return true;
   };
 
-  const res = data.reservations.filter(r => {
+  const res = (data?.reservations||[]).filter(r => {
     if (r.type !== "reservation") return false;
     if (!(vb==="all" ? userBranches.includes(r.bid) : r.bid===vb)) return false;
     // 네이버 예약은 스크래핑 완료(이름+연락처+날짜 확보)된 것만 표시
@@ -3871,7 +3878,7 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
     </div>
     {/* 상태 필터 - 네이버 스타일 pill */}
     {(()=>{
-      const allRes = data.reservations.filter(r=>r.type==="reservation"&&(vb==="all"?userBranches.includes(r.bid):r.bid===vb)&&inRange(r.date));
+      const allRes = (data?.reservations||[]).filter(r=>r.type==="reservation"&&(vb==="all"?userBranches.includes(r.bid):r.bid===vb)&&inRange(r.date));
       // 전체 카운트에서 naver_cancelled 제외
       const activeRes = allRes.filter(r => r.status !== "naver_cancelled");
       const counts = {all: activeRes.length, confirmed:0, pending:0, completed:0, cancelled:0, noshow:0, naver_cancelled:0};
@@ -3982,7 +3989,7 @@ function SalesPage({ data, setData, userBranches, isMaster, setPage }) {
     return true;
   };
 
-  const sales = data.sales.filter(s => {
+  const sales = (data?.sales||[]).filter(s => {
     const brMatch = (vb==="all"?userBranches.includes(s.bid):s.bid===vb);
     if (!brMatch) return false;
     if (q) {
@@ -4122,7 +4129,7 @@ function StatsPage({ data, userBranches, isMaster, role }) {
   const end = new Date(), start = new Date();
   start.setDate(start.getDate() - parseInt(period));
   
-  const filtered = data.sales.filter(s => {
+  const filtered = (data?.sales||[]).filter(s => {
     const d = new Date(s.date);
     return d >= start && d <= end && ((vb==="all"?userBranches.includes(s.bid):s.bid===vb));
   });
@@ -4165,7 +4172,7 @@ function StatsPage({ data, userBranches, isMaster, role }) {
   for (let i = 6; i >= 0; i--) {
     const d = new Date(); d.setDate(d.getDate()-i);
     const ds = fmtLocal(d);
-    const dayData = data.sales.filter(s=>s.date===ds && ((vb==="all"?userBranches.includes(s.bid):s.bid===vb)));
+    const dayData = (data?.sales||[]).filter(s=>s.date===ds && ((vb==="all"?userBranches.includes(s.bid):s.bid===vb)));
     const svc = dayData.reduce((a,s)=>a+s.svcCash+s.svcTransfer+s.svcCard+s.svcPoint,0);
     const prod = dayData.reduce((a,s)=>a+s.prodCash+s.prodTransfer+s.prodCard+s.prodPoint,0);
     chartDays.push({label:`${d.getMonth()+1}/${d.getDate()}`,svc,prod,total:svc+prod});
@@ -4276,7 +4283,7 @@ function CustomersPage({ data, setData, userBranches, isMaster }) {
   const [editItem, setEditItem] = useState(null);
   const [detailCust, setDetailCust] = useState(null);
 
-  const custs = data.customers.filter(c => {
+  const custs = (data?.customers||[]).filter(c => {
     const bm = (vb==="all"?userBranches.includes(c.bid):c.bid===vb);
     const sm = !q||c.name.includes(q)||c.phone.includes(q)||(c.memo||"").includes(q);
     return bm&&sm;
