@@ -124,7 +124,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.66.1";
+const BLISS_V = "2.66.2";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -2392,6 +2392,8 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
   const branchRooms = (data.rooms||[]).filter(r=>r.branch_id===branchId);
   const branchStaff = (data.staff||[]).filter(s=>s.bid===branchId);
   const [showSaleForm, setShowSaleForm] = useState(false);
+  const [accordion, setAccordion] = useState({ source:false, tags:true, naver:true, memo:false });
+  const toggleAcc = (k) => setAccordion(p => ({...p, [k]:!p[k]}));
   const [isSchedule, setIsSchedule] = useState(item?.isSchedule || false);
   const modalRef = useRef(null);
   const tags = (data?.serviceTags || []).slice().sort((a,b)=>a.sort-b.sort);
@@ -6235,6 +6237,25 @@ function DatePick({ value, onChange, style, min }) {
       style={{position:"absolute",inset:0,opacity:0,width:"100%",height:"100%",cursor:"pointer",fontSize:16}}/>
   </div>;
 }
+function AccSection({ label, open, onToggle, accent, children, badge }) {
+  const clr = accent || "var(--bliss)";
+  return <div style={{borderRadius:"var(--radius-md)",border:"1.5px solid var(--gray-200)",overflow:"hidden"}}>
+    <button onClick={onToggle} style={{
+      width:"100%",display:"flex",alignItems:"center",gap:8,
+      padding:"11px 14px",
+      background:open?"var(--bliss-50)":"var(--gray-50)",
+      border:"none",cursor:"pointer",fontFamily:"inherit",
+      borderBottom:open?"1.5px solid var(--gray-200)":"none",
+      transition:"background var(--transition)"}}>
+      <span style={{width:4,height:16,borderRadius:2,background:clr,flexShrink:0}}/>
+      <span style={{flex:1,fontSize:12,fontWeight:700,color:"var(--gray-700)",textAlign:"left"}}>{label}</span>
+      {badge && <span style={{fontSize:10,fontWeight:700,color:clr,background:clr+"18",padding:"2px 7px",borderRadius:99}}>{badge}</span>}
+      <span style={{fontSize:11,color:"var(--gray-400)",display:"inline-block",transform:open?"rotate(180deg)":"rotate(0deg)",transition:"transform .25s cubic-bezier(.4,0,.2,1)"}}>▾</span>
+    </button>
+    {open && <div style={{padding:"12px 14px",animation:"accordionOpen .2s ease"}}>{children}</div>}
+  </div>;
+}
+
 function FLD({ label, children, accent }) {
   return <div>
     <label style={{fontSize:11,fontWeight:700,color:accent||"var(--gray-500)",marginBottom:6,display:"flex",alignItems:"center",gap:4,letterSpacing:".4px",textTransform:"uppercase"}}>
