@@ -124,7 +124,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.17";
+const BLISS_V = "2.65.18";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -527,6 +527,34 @@ ${naverText}
     };
     next();
   }, [phase, data?.reservations?.length]);
+
+  // ── URL ?bulkAi=1 파라미터 감지 → 전체 강제 재분석 ──
+  useEffect(() => {
+    if (phase !== "app" || !data) return;
+    const p = new URLSearchParams(window.location.search);
+    if (p.get("bulkAi") !== "1") return;
+    const apiKey = localStorage.getItem("bliss_gemini_key") || "";
+    if (!apiKey) return;
+    const targets = (data.reservations || []).filter(r => {
+      const isNaver = r.source === "naver" || r.source === "네이버";
+      const hasMsg = !!([r.requestMsg, r.ownerComment].filter(Boolean).join("").trim());
+      return isNaver && r.isScrapingDone && r.status !== "naver_cancelled" && hasMsg;
+    });
+    if (targets.length === 0) { console.log("✅ bulkAi: 분석 대상 없음"); return; }
+    console.log("🚀 bulkAi 시작: " + targets.length + "건");
+    // URL에서 파라미터 제거 (중복 실행 방지)
+    const url = new URL(window.location.href);
+    url.searchParams.delete("bulkAi");
+    window.history.replaceState({}, "", url);
+    let idx = 0;
+    const next = () => {
+      if (idx >= targets.length) { console.log("✅ bulkAi 완료: " + targets.length + "건"); return; }
+      const r = targets[idx++];
+      console.log("🔄 bulkAi [" + idx + "/" + targets.length + "] " + r.custName);
+      autoAiAnalyze(r, true).finally(() => setTimeout(next, 1500));
+    };
+    setTimeout(next, 1000);
+  }, [phase, data]);
 
   // ─── 예약 실시간 동기화 ───
   useEffect(() => {
