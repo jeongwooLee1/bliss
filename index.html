@@ -132,7 +132,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.45";
+const BLISS_V = "2.65.46";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -3139,7 +3139,15 @@ ${naverText}
                   : item?.id
                     ? [...prevLog, `[수정: ${ts}]`]
                     : prevLog;
-                onSave({...f, tsLog: newLog});
+                // 저장 직전 자동 태그 처리
+                let autoTags = [...(f.selectedTags || [])];
+                // 신규 고객 태그
+                if (f.isNewCust && !autoTags.includes(NEW_CUST_TAG_ID_GLOBAL)) autoTags = [...autoTags, NEW_CUST_TAG_ID_GLOBAL];
+                if (!f.isNewCust) autoTags = autoTags.filter(id => id !== NEW_CUST_TAG_ID_GLOBAL);
+                // 예약금완료 태그
+                if (f.isPrepaid && (f.totalPrice||0) > 0 && !autoTags.includes(PREPAID_TAG_ID)) autoTags = [...autoTags, PREPAID_TAG_ID];
+                if (!f.isPrepaid && autoTags.includes(PREPAID_TAG_ID)) autoTags = autoTags.filter(id => id !== PREPAID_TAG_ID);
+                onSave({...f, tsLog: newLog, selectedTags: autoTags});
               }}>{item?.id?"수정 완료":"등록"}</button>
             {item?.id && <button className="btn-d" style={{padding:"10px 18px"}} onClick={()=>onDeleteRequest?.(item)}>삭제</button>}
             {!isSchedule && f.type === "reservation" && (
