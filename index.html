@@ -124,7 +124,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.66.0";
+const BLISS_V = "2.66.1";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -2890,8 +2890,9 @@ ${naverText}
             })()}
 
             {/* 예약경로 */}
-            {!isSchedule && <FLD label="예약경로">
-              <div style={{display:"flex",flexWrap:"wrap",gap:6,padding:"10px 12px",background:"var(--gray-50)",borderRadius:"var(--radius-md)",border:"1.5px solid var(--gray-200)"}}>
+            {!isSchedule && <AccSection label="예약경로" open={accordion.source} onToggle={()=>toggleAcc("source")} accent="#7c7cc8"
+              badge={f.source||null}>
+              <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
                 {(data?.resSources||[]).filter(s=>s.useYn!==false).sort((a,b)=>(a.sort||0)-(b.sort||0)).map(src => {
                   const sel = f.source === src.name;
                   const clr = src.color || "var(--bliss)";
@@ -2907,11 +2908,14 @@ ${naverText}
                   </button>;
                 })}
               </div>
-            </FLD>}
+            </AccSection>}
 
             {/* 예약태그 */}
-            <FLD label={`예약태그${(tagDurTotal+svcDurTotal) > 0 ? ` — 소요시간: ${tagDurTotal+svcDurTotal}분` : ""}`}>
-              <div style={{display:"flex",flexWrap:"wrap",gap:5,padding:"10px 12px",background:"var(--gray-50)",borderRadius:"var(--radius-md)",border:"1.5px solid var(--gray-200)"}}>
+            <AccSection
+              label={`예약태그${(tagDurTotal+svcDurTotal) > 0 ? ` — ${tagDurTotal+svcDurTotal}분` : ""}`}
+              open={accordion.tags} onToggle={()=>toggleAcc("tags")} accent="var(--bliss)"
+              badge={(f.selectedTags||[]).length > 0 ? `${(f.selectedTags||[]).length}개 선택` : null}>
+              <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
                 {visibleTags.map(tag => {
                   const sel = f.selectedTags?.includes(tag.id);
                   const hasColor = tag.color && tag.color !== "";
@@ -2929,8 +2933,8 @@ ${naverText}
                   </button>;
                 })}
               </div>
-              {(f.selectedTags||[]).length > 0 && tagDurTotal>0 && <div style={{marginTop:5,fontSize:11,color:"var(--rose-500)",fontWeight:700,textAlign:"right"}}>합산 {tagDurTotal}분</div>}
-            </FLD>
+              {(f.selectedTags||[]).length > 0 && tagDurTotal>0 && <div style={{marginTop:6,fontSize:11,color:"var(--rose-500)",fontWeight:700,textAlign:"right"}}>합산 {tagDurTotal}분</div>}
+            </AccSection>
 
 
           </>}
@@ -3015,11 +3019,13 @@ ${naverText}
                 {f.noShowCount > 0 && <span style={{fontSize:10,color:"#c62828"}}>노쇼 <strong>{f.noShowCount}회</strong></span>}
               </div>}
             </div>
-          </div>}
+            </div>
+          </AccSection>}
 
           {/* 예약메모 - 직원 메모 (네이버 포함 모두 수정 가능) */}
-          <div>
-            <textarea className="inp" rows={4} value={f.memo} onChange={e=>set("memo",e.target.value)} style={{resize:"vertical"}} placeholder="직원 메모를 입력하세요"/>
+          <AccSection label="직원 메모" open={accordion.memo} onToggle={()=>toggleAcc("memo")} accent="#f59e0b"
+            badge={f.memo ? "있음" : null}>
+            <textarea className="inp" rows={3} value={f.memo} onChange={e=>set("memo",e.target.value)} style={{resize:"vertical"}} placeholder="직원 메모를 입력하세요"/>
             {(() => {
               const isNaverRes = !!(f.reservationId || (f.memo && /네이버/.test(f.memo)));
               if (!isNaverRes) return null;
@@ -3034,7 +3040,7 @@ ${naverText}
             {(f.tsLog?.length > 0) && <div style={{marginTop:4,fontSize:10,color:"#999",lineHeight:1.6}}>
               {f.tsLog.map((ts,i)=><div key={i}>{ts}</div>)}
             </div>}
-          </div>
+          </AccSection>
 
           {/* Action Buttons - 한 줄 (pinned bottom) */}
         </div>
