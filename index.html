@@ -32,7 +32,7 @@ const sb = {
 };
 // snake_case <-> camelCase column mapping per table
 const DBMAP = {
-  reservations:{business_id:"businessId",room_id:"roomId",cust_id:"custId",cust_name:"custName",cust_phone:"custPhone",cust_gender:"custGender",staff_id:"staffId",service_id:"serviceId",is_schedule:"isSchedule",is_new_cust:"isNewCust",selected_tags:"selectedTags",selected_services:"selectedServices",repeat_group_id:"repeatSourceId",repeat_until:"repeatUntil",reservation_id:"reservationId",updated_at:"_ua",source:"source"},
+  reservations:{business_id:"businessId",room_id:"roomId",cust_id:"custId",cust_name:"custName",cust_phone:"custPhone",cust_gender:"custGender",staff_id:"staffId",service_id:"serviceId",is_schedule:"isSchedule",is_new_cust:"isNewCust",selected_tags:"selectedTags",selected_services:"selectedServices",repeat_group_id:"repeatSourceId",repeat_until:"repeatUntil",reservation_id:"reservationId",updated_at:"_ua",source:"source",request_msg:"requestMsg",owner_comment:"ownerComment",is_prepaid:"isPrepaid",npay_method:"npayMethod",total_price:"totalPrice",visit_count:"visitCount",no_show_count:"noShowCount",is_scraping_done:"isScrapingDone"},
   sales:{business_id:"businessId",cust_id:"custId",cust_name:"custName",cust_phone:"custPhone",cust_gender:"custGender",cust_num:"custNum",staff_id:"staffId",staff_name:"staffName",service_id:"serviceId",service_name:"serviceName",product_id:"productId",product_name:"productName",svc_cash:"svcCash",svc_transfer:"svcTransfer",svc_card:"svcCard",svc_point:"svcPoint",prod_cash:"prodCash",prod_transfer:"prodTransfer",prod_card:"prodCard",prod_point:"prodPoint",order_num:"orderNum",reservation_id:"reservationId"},
   customers:{business_id:"businessId",last_visit:"lastVisit",cust_num:"custNum"},
   service_tags:{business_id:"businessId",schedule_yn:"scheduleYn",use_yn:"useYn"},
@@ -54,7 +54,7 @@ function fromDb(table,rows){const m=DBMAP[table];if(!m)return rows;return rows.m
   return r;});}
 // Valid DB columns per table (to filter out extra JS fields)
 const DB_COLS={
-  reservations:["id","business_id","bid","room_id","cust_id","cust_name","cust_phone","cust_gender","staff_id","service_id","date","time","dur","status","memo","type","is_schedule","is_new_cust","selected_tags","selected_services","repeat","repeat_until","repeat_group_id","reservation_id","updated_at","source"],
+  reservations:["id","business_id","bid","room_id","cust_id","cust_name","cust_phone","cust_gender","staff_id","service_id","date","time","dur","status","memo","type","is_schedule","is_new_cust","selected_tags","selected_services","repeat","repeat_until","repeat_group_id","reservation_id","updated_at","source","request_msg","owner_comment","is_prepaid","npay_method","total_price","visit_count","no_show_count","is_scraping_done"],
   sales:["id","business_id","bid","cust_id","cust_name","cust_phone","cust_gender","cust_num","staff_id","staff_name","date","service_id","service_name","product_id","product_name","svc_cash","svc_transfer","svc_card","svc_point","prod_cash","prod_transfer","prod_card","prod_point","gift","order_num","memo","reservation_id"],
   customers:["id","business_id","bid","name","phone","gender","visits","last_visit","memo","cust_num"],
   service_tags:["id","business_id","name","dur","schedule_yn","color","use_yn","sort"],
@@ -3533,6 +3533,9 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
   const res = data.reservations.filter(r => {
     if (r.type !== "reservation") return false;
     if (!(vb==="all" ? userBranches.includes(r.bid) : r.bid===vb)) return false;
+    // 네이버 예약은 스크래핑 완료(이름+연락처+날짜 확보)된 것만 표시
+    const isNaver = (r.source==="naver"||r.source==="네이버");
+    if (isNaver && !r.isScrapingDone) return false;
     if (statusFilter !== "all" && r.status !== statusFilter) return false;
     if (q) {
       const sq = q.toLowerCase();
@@ -3617,9 +3620,9 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
     })()}
     <div className="card tw">
       <table><thead><tr>
-        <th>날짜</th><th>시간</th><th>매장</th><th>고객</th><th>연락처</th><th>시술</th><th>시술자</th><th>요청사항</th><th>경로</th><th style={{color:"#e65100"}}>예약금</th><th>상태</th><th>액션</th>
+        <th>날짜</th><th>시간</th><th>매장</th><th>고객</th><th>연락처</th><th>시술</th><th>시술자</th><th>요청사항</th><th>직원메모</th><th>경로</th><th style={{color:"#e65100"}}>예약금</th><th>상태</th><th>액션</th>
       </tr></thead><tbody>
-        {res.length===0?<tr><td colSpan={12} style={{textAlign:"center",color:"#bbb",padding:40,fontSize:13}}>예약이 없습니다</td></tr>:
+        {res.length===0?<tr><td colSpan={13} style={{textAlign:"center",color:"#bbb",padding:40,fontSize:13}}>예약이 없습니다</td></tr>:
           res.map(r=>{
             const svc=(data.services||[]).find(s=>s.id===r.serviceId);
             const svcNames=(r.selectedServices||[]).map(sid=>(data.services||[]).find(s=>s.id===sid)?.name).filter(Boolean);
@@ -3638,7 +3641,8 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
               <td style={{color:"#7c7cc8",fontSize:12}}>{r.custPhone||"-"}</td>
               <td style={{fontSize:12}}>{svcDisplay}</td>
               <td style={{fontSize:12}}>{staff?.dn||"-"}</td>
-              <td style={{fontSize:11,color:"#666",maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{reqText||<span style={{color:"#ccc"}}>-</span>}</td>
+              <td style={{fontSize:11,color:"#666",maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={r.requestMsg||""}>{r.requestMsg||<span style={{color:"#ccc"}}>-</span>}</td>
+              <td style={{fontSize:11,color:"#888",maxWidth:100,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={r.ownerComment||""}>{r.ownerComment||<span style={{color:"#ccc"}}>-</span>}</td>
               <td>{(()=>{
                 const src = r.source||"";
                 if(!src) return <span style={{color:"#ccc",fontSize:11}}>-</span>;
@@ -3648,7 +3652,13 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
                 const clr = rs?.color||"#7c7cc8";
                 return <span style={{display:"inline-block",fontSize:10,fontWeight:600,color:clr,background:clr+"18",border:`1px solid ${clr}44`,borderRadius:10,padding:"2px 7px"}}>{src}</span>;
               })()}</td>
-              <td style={{fontSize:11,fontWeight:700,color:"#e65100",textAlign:"right"}}>{(()=>{const m=r.memo||"";const match=m.match(/예약금[:\s]*([0-9,]+)원/);return match?<span style={{background:"#fff3e0",borderRadius:6,padding:"2px 6px"}}>{match[1]}원</span>:<span style={{color:"#ccc"}}>-</span>;})()} </td>
+              <td style={{fontSize:11,fontWeight:700,color:"#e65100",textAlign:"right"}}>{(()=>{
+  const amt = r.totalPrice||0;
+  if(!amt) return <span style={{color:"#ccc"}}>-</span>;
+  const fmtAmt = amt.toLocaleString()+"원";
+  if(r.isPrepaid) return <span style={{background:"#e8f5e9",color:"#2e7d32",borderRadius:6,padding:"2px 6px",fontSize:10}} title={"선불결제: "+(r.npayMethod||"네이버페이")}>✓{fmtAmt}</span>;
+  return <span style={{background:"#fff3e0",borderRadius:6,padding:"2px 6px"}}>{fmtAmt}</span>;
+})()} </td>
               <td><span style={{fontSize:11,fontWeight:700,color:sc[r.status]||"#999"}}>{STATUS_LABEL[r.status]||r.status}</span></td>
               <td><div style={{display:"flex",gap:4}}>
                 <button title="타임라인에서 열기" onClick={()=>{if(setPendingOpenRes)setPendingOpenRes(r);if(setPage)setPage("timeline");}} style={{width:28,height:28,borderRadius:6,border:"1px solid #e8e8e8",background:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"#7c7cc8",boxShadow:"0 1px 3px rgba(0,0,0,.08)"}}><I name="calendar" size={12}/></button>
