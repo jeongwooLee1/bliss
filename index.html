@@ -6283,10 +6283,12 @@ const CSS = `
   .modal-res .inp{
     background:#f5f6f8;border:1.5px solid transparent;border-radius:8px;
     color:#222;font-size:13.5px;padding:9px 12px;width:100%;
-    font-family:inherit;outline:none;transition:border-color .15s,background .15s;
-    box-sizing:border-box;min-height:40px
+    font-family:inherit;outline:none;transition:border-color .15s,background .15s,box-shadow .15s;
+    box-sizing:border-box;min-height:40px;
+    box-shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04)
   }
-  .modal-res .inp:focus{background:#fff;border-color:#7c7cc8}
+  .modal-res .inp:hover{box-shadow:0 2px 8px rgba(0,0,0,.09)}
+  .modal-res .inp:focus{background:#fff;border-color:#7c7cc8;box-shadow:0 0 0 3px rgba(124,124,200,.12),0 2px 8px rgba(0,0,0,.07)}
   .modal-res .inp::placeholder{color:#b0b4c0}
   .modal-res select.inp{cursor:pointer}
 
@@ -6295,9 +6297,10 @@ const CSS = `
     display:inline-flex;align-items:center;gap:4px;
     background:#f5f6f8;border:1.5px solid transparent;border-radius:8px;
     padding:0 12px;height:40px;cursor:default;
-    transition:border-color .15s,background .15s
+    transition:border-color .15s,background .15s,box-shadow .15s;
+    box-shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04)
   }
-  .fld-datetime:hover{background:#f0f1f4;border-color:#d4d6e0}
+  .fld-datetime:hover{background:#f0f1f4;border-color:#d4d6e0;box-shadow:0 2px 8px rgba(0,0,0,.09)}
   .fld-sel{
     background:transparent;border:none;font-size:13.5px;font-weight:500;
     font-family:inherit;color:#222;cursor:pointer;outline:none;
@@ -6312,9 +6315,10 @@ const CSS = `
   /* 섹션 카드 — 아코디언 */
   .tags-acc{
     background:#f5f6f8;border:1.5px solid transparent;
-    border-radius:10px;overflow:hidden;transition:border-color .18s,box-shadow .18s
+    border-radius:10px;overflow:hidden;transition:border-color .18s,box-shadow .18s;
+    box-shadow:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04)
   }
-  .tags-acc:hover{border-color:#d4d6e0;box-shadow:0 2px 12px rgba(0,0,0,.06)}
+  .tags-acc:hover{border-color:#d4d6e0;box-shadow:0 3px 12px rgba(0,0,0,.09)}
   .tags-acc-hdr{
     width:100%;display:flex;align-items:center;justify-content:space-between;
     padding:10px 14px;cursor:pointer;border:none;background:transparent;
