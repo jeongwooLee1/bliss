@@ -4665,7 +4665,7 @@ function AdminPage({ data, setData, bizId, autoAiAnalyze }) {
     {tab==="svctags" && <AdminServiceTags data={data} setData={setData}/>}
     {tab==="ressrc" && <AdminResSources data={data} setData={setData}/>}
     {tab==="notiSettings" && <AdminNotiSettings data={data} setData={setData}/>}
-    {tab==="aisettings" && <AdminAISettings data={data} autoAiAnalyze={autoAiAnalyze}/>}
+    {tab==="aisettings" && <AdminAISettings data={data} autoAiAnalyze={autoAiAnalyze} sb={sb} bizId={currentBizId}/>}
   </div>;
 }
 
@@ -5738,7 +5738,7 @@ function AdminNotiSettings({ data, setData }) {
 
 // ─── AI설정 ───
 const AI_RULES_KEY = "bliss_ai_rules";
-function AdminAISettings({ data, autoAiAnalyze }) {
+function AdminAISettings({ data, autoAiAnalyze, sb, bizId }) {
   const [apiKey, setApiKey] = useState(()=>localStorage.getItem("bliss_gemini_key")||"");
   const [saved, setSaved] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -5779,8 +5779,25 @@ function AdminAISettings({ data, autoAiAnalyze }) {
   const [editIdx, setEditIdx] = useState(null);
   const [editVal, setEditVal] = useState("");
 
-  const save = () => {
-    localStorage.setItem("bliss_gemini_key", apiKey.trim());
+  const save = async () => {
+    const trimmed = apiKey.trim();
+    localStorage.setItem("bliss_gemini_key", trimmed);
+    // 서버(bliss_naver.py)가 읽을 수 있도록 Supabase businesses.memo에도 저장
+    if (bizId) {
+      try {
+        const r = await fetch(`${SB_URL}/rest/v1/businesses?id=eq.${bizId}&select=memo`, { headers: sbHeaders });
+        const rows = await r.json();
+        let memo = {};
+        try { memo = JSON.parse((rows[0]?.memo) || "{}"); } catch { memo = {}; }
+        memo.gemini_key = trimmed;
+        await fetch(`${SB_URL}/rest/v1/businesses?id=eq.${bizId}`, {
+          method: "PATCH",
+          headers: { ...sbHeaders, "Prefer": "return=minimal" },
+          body: JSON.stringify({ memo: JSON.stringify(memo) })
+        });
+        console.log("✅ Gemini key Supabase 동기화 완료");
+      } catch(e) { console.warn("Supabase gemini_key 저장 실패:", e); }
+    }
     setSaved(true); setTimeout(()=>setSaved(false), 2000);
   };
 
