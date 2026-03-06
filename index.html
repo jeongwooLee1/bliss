@@ -124,7 +124,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.12";
+const BLISS_V = "2.65.13";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -3212,10 +3212,16 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
     (reservation?.memo && /네이버/.test(reservation.memo))
   );
   const [naverPrepaid, setNaverPrepaid] = useState(() => {
-    if (!reservation?.memo) return 0;
-    // 패턴: "예약금 33,000원", "예약금33000", "예약금 33000원"
-    const m = reservation.memo.match(/예약금\s*:?\s*([0-9,]+)\s*원?/);
-    return m ? Number(m[1].replace(/,/g, "")) || 0 : 0;
+    // is_prepaid=true이면 total_price가 예약금
+    if (reservation?.isPrepaid && (reservation?.totalPrice || 0) > 0) {
+      return reservation.totalPrice;
+    }
+    // fallback: memo에 예약금 텍스트가 있는 경우 (레거시)
+    if (reservation?.memo) {
+      const m = reservation.memo.match(/예약금\s*:?\s*([0-9,]+)\s*원?/);
+      if (m) return Number(m[1].replace(/,/g, "")) || 0;
+    }
+    return 0;
   });
 
   // 고객 상태 (예약에서 넘어오면 자동 기입, 매출관리에서 열면 검색)
