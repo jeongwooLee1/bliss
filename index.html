@@ -124,7 +124,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.14";
+const BLISS_V = "2.65.15";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -414,13 +414,13 @@ function App() {
 
   // ─── 네이버 예약 자동 AI 분석 ───
   // 스크래핑 완료된 네이버 예약 중 tags/services가 비어있는 경우 자동 분석 후 DB 저장
-  const autoAiAnalyze = useCallback(async (res) => {
+  const autoAiAnalyze = useCallback(async (res, force=false) => {
     const apiKey = localStorage.getItem("bliss_gemini_key") || "";
     if (!apiKey) return;
     const isNaver = res.source === "naver" || res.source === "네이버";
     if (!isNaver) return;
     if (!res.isScrapingDone) return;
-    if ((res.selectedTags||[]).length > 0 || (res.selectedServices||[]).length > 0) return; // 이미 태그/시술 있으면 스킵
+    if (!force && ((res.selectedTags||[]).length > 0 || (res.selectedServices||[]).length > 0)) return; // 이미 태그/시술 있으면 스킵 (force시 재분석)
     const naverText = [res.requestMsg, res.ownerComment].filter(Boolean).join("\n").trim();
     if (!naverText) return;
     // 무의미한 내용(대화없음 등)만 있으면 스킵 → 신규 오판 방지
@@ -548,8 +548,19 @@ ${naverText}
           // 새로 스크래핑 완료된 예약 자동 AI 분석
           parsed.forEach(r => {
             const before = prev.reservations.find(b => b.id === r.id);
-            if (r.isScrapingDone && (!before || !before.isScrapingDone)) {
+            const isNaver = r.source === "naver" || r.source === "네이버";
+            if (!isNaver || !r.isScrapingDone) return;
+            // 1) isScrapingDone이 새로 true가 된 경우 (최초 스크래핑)
+            if (!before || !before.isScrapingDone) {
               setTimeout(() => autoAiAnalyze(r), 500);
+            }
+            // 2) ownerComment 또는 requestMsg가 변경된 경우 (고객 추가 메시지) → force 재분석
+            else if (before && (
+              (r.ownerComment || "") !== (before.ownerComment || "") ||
+              (r.requestMsg || "") !== (before.requestMsg || "")
+            )) {
+              console.log("🔄 네이버 메시지 변경 감지 - 재분석:", r.custName);
+              setTimeout(() => autoAiAnalyze(r, true), 500);
             }
           });
           return {...prev, reservations: parsed};
