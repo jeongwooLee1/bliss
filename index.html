@@ -124,7 +124,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.4";
+const BLISS_V = "2.65.5";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -443,7 +443,7 @@ function App() {
 [시술상품 목록] ${svcList}
 
 [기본 판단 기준]
-- 첫방문/신규 고객(is_new_cust=${isNew}, visit_count=${res.visitCount||0}) → "신규" 태그 (visit_count가 0이고 is_new_cust=true일 때만)
+- 첫방문/신규 고객(is_new_cust=${isNew}, visit_count=${res.visitCount||0}) → "신규" 태그 (visit_count=0 이고 is_new_cust=true 일 때만. visit_count가 1 이상이면 절대 신규 태그 붙이지 말 것)
 - 주차 언급 → "주차" 태그
 - 임산부/산모 → "산모님" 태그
 - 커플룸 요청 → "커플룸" 태그
@@ -482,6 +482,30 @@ ${naverText}
       console.log(`✅ AI 자동분석 [${res.custName}] tags:${newTags.length} svcs:${newSvcs.length} reason:${parsed.reason||""}`);
     } catch(e) { console.warn("AI 자동분석 실패:", res.custName, e.message); }
   }, []);
+
+  // ─── 앱 로드 시 미분석 네이버 예약 일괄 자동분석 ───
+  useEffect(() => {
+    if (phase !== "app" || !data) return;
+    const apiKey = localStorage.getItem("bliss_gemini_key") || "";
+    if (!apiKey) return;
+    // isScrapingDone=true, 네이버 예약, tags/services 모두 비어있는 것
+    const pending = (data.reservations || []).filter(r => {
+      const isNaver = r.source === "naver" || r.source === "네이버";
+      return isNaver && r.isScrapingDone
+        && (r.selectedTags || []).length === 0
+        && (r.selectedServices || []).length === 0
+        && r.status !== "naver_cancelled";
+    });
+    if (pending.length === 0) return;
+    console.log(`🔄 미분석 네이버 예약 ${pending.length}건 자동분석 시작`);
+    // 순차 처리 (API 부하 방지 - 1초 간격)
+    let idx = 0;
+    const next = () => {
+      if (idx >= pending.length) { console.log("✅ 일괄 자동분석 완료"); return; }
+      autoAiAnalyze(pending[idx++]).finally(() => setTimeout(next, 1200));
+    };
+    next();
+  }, [phase, data?.reservations?.length]);
 
   // ─── 예약 실시간 동기화 ───
   useEffect(() => {
@@ -2520,7 +2544,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
 [시술상품 목록] ${svcList}
 
 [기본 판단 기준]
-- 첫방문/신규 고객(is_new_cust=${f.isNewCust}, visit_count=${f.visitCount||0}) → "신규" 태그 (visit_count가 0이고 is_new_cust=true일 때만)
+- 첫방문/신규 고객(is_new_cust=${f.isNewCust}, visit_count=${f.visitCount||0}) → "신규" 태그 (visit_count=0 이고 is_new_cust=true 일 때만. visit_count가 1 이상이면 절대 신규 태그 붙이지 말 것)
 - 주차 언급 → "주차" 태그  
 - 임산부/산모 → "산모님" 태그
 - 커플룸 요청 → "커플룸" 태그
