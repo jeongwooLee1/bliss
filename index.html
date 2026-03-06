@@ -132,7 +132,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.31";
+const BLISS_V = "2.65.32";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -2831,7 +2831,7 @@ ${naverText}
                     {tag.name}
                     {tag.dur > 0 && <span style={{fontSize:9,opacity:0.6}}>({tag.dur}분)</span>}
                   </button>;
-                }) : <span style={{fontSize:11,color:"#999",padding:8}}>서비스태그관리에서 내부일정(Y) 항목을 등록하세요</span>}
+                }) : <span style={{fontSize:11,color:"#999",padding:8}}>태그관리에서 내부일정태그를 등록하세요</span>}
               </div>
               {(f.selectedTags||[]).length > 0 && tagDurTotal>0 && <div style={{marginTop:4,fontSize:10,color:"#e17055",fontWeight:700,textAlign:"right"}}>합산 {tagDurTotal}분</div>}
             </FLD>
@@ -4678,7 +4678,7 @@ function AdminPage({ data, setData, bizId, autoAiAnalyze }) {
   return <div>
     <h2 className="page-title">관리 설정</h2>
     <div style={{display:"flex",gap:2,marginBottom:16,background:"#e0e0e0",borderRadius:8,padding:3,width:"fit-content",flexWrap:"wrap"}}>
-      {[["places","예약장소관리"],["workers","담당자관리"],["saleitems","시술상품관리"],["prodmgmt","제품관리"],["svctags","서비스태그관리"],["ressrc","예약경로관리"],["notiSettings","알림톡설정"],["aisettings","AI설정"]].map(([k,v])=>(
+      {[["places","예약장소관리"],["workers","담당자관리"],["saleitems","시술상품관리"],["prodmgmt","제품관리"],["svctags","태그관리"],["ressrc","예약경로관리"],["notiSettings","알림톡설정"],["aisettings","AI설정"]].map(([k,v])=>(
         <button key={k} className={tab===k?"btn-p btn-sm":"btn-s btn-sm"} onClick={()=>setTab(k)}>{v}</button>
       ))}
     </div>
@@ -6202,64 +6202,91 @@ function QuickBookModal({ onClose, onParsed, data }) {
 function AdminServiceTags({ data, setData }) {
   const [tags, setTags] = useState(()=>[...(data?.serviceTags || [])].sort((a,b)=>a.sort-b.sort));
   useEffect(() => { setData(p => ({...p, serviceTags: tags})); }, [tags]);
+
+  // 탭: "reservation" = 예약태그, "schedule" = 내부일정태그
+  // 탭 이름은 예약모달 탭과 동일하게
+  const TAB_LABELS = { reservation: BLOCK_LABELS.reservation || "예약", schedule: "내부일정" };
+  const [activeTab, setActiveTab] = useState("reservation");
+
   const [showAdd, setShowAdd] = useState(false);
-  const [newTag, setNewTag] = useState({ name:"", dur:0, scheduleYn:"N", color:"" });
+  const [newTag, setNewTag] = useState({ name:"", dur:0, color:"" });
   const [editId, setEditId] = useState(null);
   const [editData, setEditData] = useState({});
   const [delConfirm, setDelConfirm] = useState(null);
   const [selected, setSelected] = useState(new Set());
+
+  // 현재 탭 기준 태그 목록 (scheduleYn: Y=내부일정, N=예약)
+  const isScheduleTab = activeTab === "schedule";
+  const tabTags = tags.filter(t => isScheduleTab ? t.scheduleYn === "Y" : t.scheduleYn !== "Y");
+
   const syncTags = (updated) => { setTags(updated); if(setData) setData(prev=>({...prev,serviceTags:updated})); };
-  const drag = useDragSort(tags, syncTags, "sort", (reordered) => {
-    reordered.forEach(s => sb.update("service_tags", s.id, {sort: s.sort}).catch(console.error));
+  // drag: tabTags 기반 재정렬 → 전체 tags 동기화
+  const [localTabTags, setLocalTabTags] = useState([]);
+  useEffect(() => { setLocalTabTags(tabTags); }, [activeTab, tags.length]);
+  const drag = useDragSort(localTabTags, setLocalTabTags, "sort", (reordered) => {
+    const otherTags = tags.filter(t => isScheduleTab ? t.scheduleYn !== "Y" : t.scheduleYn === "Y");
+    const allSorted = [...reordered, ...otherTags].map((t,i)=>({...t,sort:i}));
+    syncTags(allSorted);
+    reordered.forEach((s,i) => sb.update("service_tags", s.id, {sort: i}).catch(console.error));
   });
 
-  const allChecked = tags.length > 0 && tags.every(t => selected.has(t.id));
-  const toggleAll = () => { if (allChecked) setSelected(new Set()); else setSelected(new Set(tags.map(t => t.id))); };
+  const allChecked = tabTags.length > 0 && tabTags.every(t => selected.has(t.id));
+  const toggleAll = () => { if (allChecked) setSelected(new Set()); else setSelected(new Set(tabTags.map(t => t.id))); };
   const toggleOne = (id) => setSelected(prev => { const s = new Set(prev); s.has(id)?s.delete(id):s.add(id); return s; });
+
   const bulkDelete = () => {
     if (selected.size === 0) return;
-    if (!window.confirm(selected.size + "개 태그를 삭제하시겠습니까?")) return;
     const protectedSelected = [...selected].filter(id => SYSTEM_TAG_IDS.includes(id));
     if (protectedSelected.length > 0) { alert("신규, 예약금완료 태그는 시스템 태그로 삭제할 수 없습니다."); return; }
+    if (!window.confirm(selected.size + "개 태그를 삭제하시겠습니까?\n삭제된 태그는 복구할 수 없습니다.")) return;
     selected.forEach(id => sb.del("service_tags", id).catch(console.error));
     syncTags(tags.filter(t => !selected.has(t.id)).map((t,i) => ({...t, sort:i})));
     setSelected(new Set());
   };
 
-  const tagToDb = (t) => ({id:t.id, business_id:_activeBizId, name:t.name, dur:t.dur||0, schedule_yn:t.scheduleYn==="Y"||t.scheduleYn===true, color:t.color||"", use_yn:t.useYn!==false, sort:t.sort||0});
+  const tagToDb = (t) => ({id:t.id, business_id:_activeBizId, name:t.name, dur:t.dur||0,
+    schedule_yn: t.scheduleYn==="Y"?"Y":"N", color:t.color||"", use_yn:t.useYn!==false, sort:t.sort||0});
 
   const addTag = () => {
     if(!newTag.name.trim()) return;
-    const t = {id:uid(), name:newTag.name.trim(), dur:Number(newTag.dur)||0, scheduleYn:newTag.scheduleYn, color:newTag.color, useYn:true, sort:tags.length};
+    const t = {id:uid(), name:newTag.name.trim(), dur:Number(newTag.dur)||0,
+      scheduleYn: isScheduleTab ? "Y" : "N",
+      color:newTag.color, useYn:true, sort:tags.length};
     syncTags([...tags, t]);
     sb.insert("service_tags", tagToDb(t)).catch(console.error);
-    setNewTag({name:"",dur:0,scheduleYn:"N",color:""}); setShowAdd(false);
+    setNewTag({name:"",dur:0,color:""});
+    setShowAdd(false);
   };
-  const deleteTag = (id) => { 
-    syncTags(tags.filter(t=>t.id!==id).map((t,i)=>({...t,sort:i}))); 
-    sb.del("service_tags", id).catch(console.error);
-    setDelConfirm(null); 
-  };
+
   const startEdit = (tag) => { setEditId(tag.id); setEditData({...tag}); };
-  const saveEdit = () => { 
-    syncTags(tags.map(t=>t.id===editId?{...editData}:t)); 
-    sb.update("service_tags", editId, {name:editData.name, dur:editData.dur||0, schedule_yn:editData.scheduleYn==="Y"||editData.scheduleYn===true, color:editData.color||"", use_yn:editData.useYn!==false, sort:editData.sort||0}).catch(console.error);
-    setEditId(null); 
+  const saveEdit = () => {
+    syncTags(tags.map(t=>t.id===editId?{...editData}:t));
+    sb.update("service_tags", editId, {name:editData.name, dur:editData.dur||0,
+      schedule_yn:editData.scheduleYn==="Y"||editData.scheduleYn===true?"Y":"N",
+      color:editData.color||"", use_yn:editData.useYn!==false, sort:editData.sort||0}).catch(console.error);
+    setEditId(null);
   };
-  const toggleUse = (id) => { 
+  const toggleUse = (id) => {
     const tag = tags.find(t=>t.id===id);
     const newUse = tag?.useYn===false;
-    syncTags(tags.map(t=>t.id===id?{...t,useYn:!t.useYn}:t)); 
+    syncTags(tags.map(t=>t.id===id?{...t,useYn:!t.useYn}:t));
     sb.update("service_tags", id, {use_yn:newUse}).catch(console.error);
+  };
+  const deleteTag = (id) => {
+    if (SYSTEM_TAG_IDS.includes(id)) { alert("시스템 태그는 삭제할 수 없습니다."); return; }
+    syncTags(tags.filter(t=>t.id!==id).map((t,i)=>({...t,sort:i})));
+    sb.del("service_tags", id).catch(console.error);
+    setDelConfirm(null);
   };
 
   const inpS = {padding:"4px 6px",fontSize:11,background:"#f8f0f0",border:"1px solid #d0d0d0"};
 
-  const downloadXl = () => XL.download(tags.map((t,i)=>({태그명:t.name, 소요분:t.dur, 내부일정:t.scheduleYn, 색상:t.color||"", 사용:t.useYn!==false?"Y":"N"})), "서비스태그.xlsx", "태그", ["태그명","소요분","내부일정","색상","사용"]);
+  const downloadXl = () => XL.download(tabTags.map((t,i)=>({태그명:t.name, 소요분:t.dur, 색상:t.color||"", 사용:t.useYn!==false?"Y":"N"})), isScheduleTab?"내부일정태그.xlsx":"예약태그.xlsx", "태그", ["태그명","소요분","색상","사용"]);
   const uploadXl = async (e) => {
     const file = e.target.files[0]; if(!file) return;
     const rows = await XL.readFile(file);
-    const newTags = rows.map(r=>({id:uid(), name:r["태그명"]||r["name"]||"", dur:Number(r["소요분"]||r["dur"])||0, scheduleYn:r["내부일정"]||"N", color:r["색상"]||"", useYn:(r["사용"]||"Y")!=="N", sort:tags.length})).filter(r=>r.name);
+    const newTags = rows.map(r=>({id:uid(), name:r["태그명"]||r["name"]||"", dur:Number(r["소요분"]||r["dur"])||0,
+      scheduleYn: isScheduleTab?"Y":"N", color:r["색상"]||"", useYn:(r["사용"]||"Y")!=="N", sort:tags.length})).filter(r=>r.name);
     if(newTags.length && window.confirm(newTags.length+"개 태그를 추가하시겠습니까?")) {
       syncTags([...tags,...newTags]);
       newTags.forEach(t=>sb.insert("service_tags", tagToDb(t)).catch(console.error));
@@ -6267,26 +6294,35 @@ function AdminServiceTags({ data, setData }) {
   };
 
   return <div>
-    <AdminHeader title="서비스 태그 관리" count={tags.length} onAdd={()=>setShowAdd(!showAdd)} addLabel={showAdd?"취소":<><I name="plus" size={12}/> 태그 추가</>} onDownload={downloadXl} onUpload={uploadXl}/>
+    <AdminHeader title="태그 관리" count={tags.length} onAdd={()=>setShowAdd(!showAdd)} addLabel={showAdd?"취소":<><I name="plus" size={12}/> 태그 추가</>} onDownload={downloadXl} onUpload={uploadXl}/>
+
+    {/* 탭 버튼 */}
+    <div style={{display:"flex",gap:2,marginBottom:12,background:"#e0e0e0",borderRadius:8,padding:3,width:"fit-content"}}>
+      {Object.entries(TAB_LABELS).map(([key, label]) => (
+        <button key={key} className={activeTab===key?"btn-p btn-sm":"btn-s btn-sm"}
+          onClick={()=>{setActiveTab(key);setSelected(new Set());setShowAdd(false);}}>
+          {label}태그 <span style={{fontSize:10,opacity:.7}}>({(key==="schedule"?tags.filter(t=>t.scheduleYn==="Y"):tags.filter(t=>t.scheduleYn!=="Y")).length})</span>
+        </button>
+      ))}
+    </div>
 
     {showAdd && <div className="card" style={{padding:14,marginBottom:14}}>
       <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"flex-end"}}>
         <FLD label="태그명"><input className="inp" style={{width:160,...inpS}} value={newTag.name} onChange={e=>setNewTag(p=>({...p,name:e.target.value}))} placeholder="태그명" onKeyDown={e=>e.key==="Enter"&&addTag()}/></FLD>
         <FLD label="소요(분)"><input className="inp" type="number" style={{width:80,...inpS}} value={newTag.dur} onChange={e=>setNewTag(p=>({...p,dur:e.target.value}))}/></FLD>
-        <FLD label="내부일정"><select className="inp" style={{width:55,...inpS}} value={newTag.scheduleYn} onChange={e=>setNewTag(p=>({...p,scheduleYn:e.target.value}))}><option value="N">N</option><option value="Y">Y</option></select></FLD>
         <FLD label="색상"><div style={{display:"flex",alignItems:"center",gap:3}}>
           <input type="color" value={newTag.color||"#e0e0e0"} onChange={e=>setNewTag(p=>({...p,color:e.target.value}))} style={{width:22,height:22,border:"none",cursor:"pointer"}}/>
           <EyeDrop onPick={c=>setNewTag(p=>({...p,color:c}))} size={22}/>
           <input className="inp" style={{width:75,...inpS,fontFamily:"monospace",fontSize:9}} value={newTag.color} onChange={e=>setNewTag(p=>({...p,color:e.target.value}))} placeholder="#000000"/>
         </div></FLD>
-        <button className="btn-p btn-sm" onClick={addTag} style={{padding:"6px 18px"}}>추가</button>
+        <button className="btn-p btn-sm" onClick={addTag} style={{padding:"6px 18px"}}>추가 ({TAB_LABELS[activeTab]}태그)</button>
       </div>
     </div>}
 
     <div className="card" style={{padding:12,marginBottom:14}}>
       <div style={{fontSize:10,color:"#888",marginBottom:6}}>미리보기</div>
       <div style={{display:"flex",flexWrap:"wrap",gap:4,padding:8,background:"#f8f8f8",borderRadius:8,border:"1px solid #e0e0e0"}}>
-        {tags.filter(t=>t.useYn!==false).map(t=>{
+        {tabTags.filter(t=>t.useYn!==false).map(t=>{
           const hasClr = t.color && t.color!=="";
           return <span key={t.id} style={{padding:"4px 8px",fontSize:10,fontWeight:500,borderRadius:4,display:"flex",alignItems:"center",gap:3,
             border:"1px solid "+(hasClr?t.color+"80":"#d0d0d0"),color:hasClr?t.color:"#7c7cc8",background:hasClr?t.color+"15":"transparent"}}>
@@ -6298,43 +6334,42 @@ function AdminServiceTags({ data, setData }) {
 
     {selected.size > 0 && <div style={{marginBottom:8}}><button className="btn-d btn-sm" onClick={bulkDelete} style={{fontSize:10,padding:"4px 12px"}}><I name="trash" size={12}/> 선택 삭제 ({selected.size})</button></div>}
 
-    <div className="tw admin-tw" style={{maxHeight:"calc(100vh - 400px)",overflow:"auto"}}>
+    <div className="tw admin-tw" style={{maxHeight:"calc(100vh - 420px)",overflow:"auto"}}>
       <table><thead><tr>
         <th style={{width:30}}><input type="checkbox" checked={allChecked} onChange={toggleAll}/></th>
         <th style={{width:22}}></th><th style={{width:25}}>No</th><th>태그명</th>
-        <th style={{width:55,textAlign:"center"}}>소요</th><th style={{width:45,textAlign:"center"}}>기타</th>
+        <th style={{width:55,textAlign:"center"}}>소요</th>
         <th style={{width:80,textAlign:"center"}}>색상</th><th style={{width:55,textAlign:"center"}}>사용</th>
         <th style={{width:35,textAlign:"center"}}>순서</th><th style={{width:65,textAlign:"center"}}>관리</th>
       </tr></thead><tbody>
-      {tags.map((tag,i) => {
-        const isEdit = editId===tag.id;
-        if (isEdit) return <tr key={tag.id} ref={drag.rowRef(i)} style={{background:"#f5f5ff"}}>
-          <td><input type="checkbox" checked={selected.has(tag.id)} onChange={()=>toggleOne(tag.id)}/></td>
+      {(localTabTags.length > 0 ? localTabTags : tabTags).map((tag,i) => {
+        const isSys = SYSTEM_TAG_IDS.includes(tag.id);
+        if(editId===tag.id) return <tr key={tag.id} ref={drag.rowRef(i)} style={{background:"#f5f5ff"}}>
+          <td>{isSys?<span style={{color:"#ccc",fontSize:10}}>🔒</span>:<input type="checkbox" checked={selected.has(tag.id)} onChange={()=>toggleOne(tag.id)}/>}</td>
           <td><DragHandle onTouchStart={drag.onTouchStart(i)}/></td><td style={{color:"#999"}}>{i+1}</td>
           <td><input className="inp" value={editData.name} onChange={e=>setEditData(p=>({...p,name:e.target.value}))} style={{width:"100%",...inpS}}/></td>
-          <td><input className="inp" type="number" value={editData.dur} onChange={e=>setEditData(p=>({...p,dur:Number(e.target.value)||0}))} style={{width:50,...inpS,textAlign:"center"}}/></td>
-          <td><select className="inp" value={editData.scheduleYn} onChange={e=>setEditData(p=>({...p,scheduleYn:e.target.value}))} style={{width:45,...inpS}}><option value="N">N</option><option value="Y">Y</option></select></td>
+          <td><input className="inp" type="number" value={editData.dur} onChange={e=>setEditData(p=>({...p,dur:Number(e.target.value)||0}))} style={{width:50,...inpS}}/></td>
           <td><div style={{display:"flex",alignItems:"center",gap:2}}>
             <input type="color" value={editData.color||"#e0e0e0"} onChange={e=>setEditData(p=>({...p,color:e.target.value}))} style={{width:20,height:18,border:"none",cursor:"pointer"}}/>
             <EyeDrop onPick={c=>setEditData(p=>({...p,color:c}))} size={20}/>
-            <input className="inp" value={editData.color||""} onChange={e=>setEditData(p=>({...p,color:e.target.value}))} style={{width:55,...inpS,fontFamily:"monospace",fontSize:8}}/>
+            <input className="inp" style={{width:60,...inpS,fontFamily:"monospace",fontSize:9}} value={editData.color||""} onChange={e=>setEditData(p=>({...p,color:e.target.value}))}/>
           </div></td>
-          <td></td><td></td>
+          <td style={{textAlign:"center"}}><select className="inp" style={{width:55,...inpS}} value={editData.useYn===false?"N":"Y"} onChange={e=>setEditData(p=>({...p,useYn:e.target.value==="Y"}))}><option value="Y">사용</option><option value="N">미사용</option></select></td>
+          <td style={{textAlign:"center",color:"#bbb",fontSize:10}}>{i+1}</td>
           <td style={{textAlign:"center"}}><div style={{display:"flex",gap:3,justifyContent:"center"}}>
             <button className="btn-p btn-sm" onClick={saveEdit} style={{padding:"1px 6px",fontSize:9}}>저장</button>
-            <button className="btn-s btn-sm" onClick={()=>setEditId(null)} style={{padding:"1px 5px",fontSize:9}}>취소</button>
+            <button className="btn-s btn-sm" onClick={()=>setEditId(null)} style={{padding:"1px 4px",fontSize:9}}>취소</button>
           </div></td>
         </tr>;
         return <tr key={tag.id} ref={drag.rowRef(i)} draggable onDragStart={()=>drag.onDragStart(i)} onDragEnter={()=>drag.onDragEnter(i)} onDragEnd={drag.onDragEnd} onDragOver={e=>e.preventDefault()}
           style={{opacity:tag.useYn===false?0.45:1,background:drag.touchOverIdx===i?"#ede8ff":undefined}}>
-          <td>{SYSTEM_TAG_IDS.includes(tag.id)?<span title="시스템 태그" style={{color:"#ccc",fontSize:10}}>🔒</span>:<input type="checkbox" checked={selected.has(tag.id)} onChange={()=>toggleOne(tag.id)}/>}</td>
+          <td>{isSys?<span title="시스템 태그" style={{color:"#ccc",fontSize:10}}>🔒</span>:<input type="checkbox" checked={selected.has(tag.id)} onChange={()=>toggleOne(tag.id)}/>}</td>
           <td><DragHandle onTouchStart={drag.onTouchStart(i)}/></td>
           <td style={{color:"#999"}}>{i+1}</td>
           <td style={{fontWeight:600,fontSize:12}}>
             <span style={{padding:"2px 6px",borderRadius:4,border:"1px solid "+(tag.color||"#d0d0d0")+"50",background:tag.color?tag.color+"12":"transparent",color:tag.color||"#333"}}>{tag.name}</span>
           </td>
           <td style={{textAlign:"center",fontSize:11,color:tag.dur>0?"#ef5350":"#d0d0d0",fontWeight:tag.dur>0?600:400}}>{tag.dur>0?tag.dur+"분":"-"}</td>
-          <td style={{textAlign:"center",fontSize:10,color:tag.scheduleYn==="Y"?"#ef5350":"#d0d0d0"}}>{tag.scheduleYn}</td>
           <td style={{textAlign:"center"}}>{tag.color?<div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>
             <div style={{width:24,height:16,borderRadius:3,background:tag.color,border:"1px solid #d0d0d080"}}/>
             <span style={{fontSize:8,color:"#888",fontFamily:"monospace"}}>{tag.color}</span>
@@ -6345,17 +6380,18 @@ function AdminServiceTags({ data, setData }) {
           <td style={{textAlign:"center",color:"#bbb",fontSize:10}}>{i+1}</td>
           <td style={{textAlign:"center"}}><div style={{display:"flex",gap:3,justifyContent:"center"}}>
             <button onClick={()=>startEdit(tag)} style={{background:"none",border:"none",cursor:"pointer",color:"#7c7cc8",fontSize:12}}><I name="edit" size={13}/></button>
-            {SYSTEM_TAG_IDS.includes(tag.id) ? <span title="삭제 불가" style={{color:"#e0e0e0",fontSize:12}}><I name="trash" size={13}/></span> : delConfirm===tag.id
+            {isSys ? <span title="삭제 불가" style={{color:"#e0e0e0",fontSize:12}}><I name="trash" size={13}/></span> : delConfirm===tag.id
               ? <><button className="btn-d btn-sm" onClick={()=>deleteTag(tag.id)} style={{padding:"1px 5px",fontSize:9}}>확인</button><button className="btn-s btn-sm" onClick={()=>setDelConfirm(null)} style={{padding:"1px 4px",fontSize:9}}>취소</button></>
               : <button onClick={()=>setDelConfirm(tag.id)} style={{background:"none",border:"none",cursor:"pointer",color:"#e57373",fontSize:12}}><I name="trash" size={13}/></button>}
           </div></td>
         </tr>;
-      })}</tbody></table>
+      })}
+      </tbody></table>
     </div>
   </div>;
 }
 
-// ─── Shared ───
+
 function EyeDrop({ onPick, size=20 }) {
   const supported = typeof window !== "undefined" && "EyeDropper" in window;
   if (!supported) return null;
