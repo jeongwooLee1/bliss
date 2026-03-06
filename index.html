@@ -643,6 +643,32 @@ ${naverText}
     };
   }, [phase, currentBizId]);
 
+  // ── 앱 로드 후 미분석 네이버 예약 백필 ──────────────────────────────────────
+  // 앱이 닫혀있는 동안 스크래핑된 예약들은 Realtime 이벤트를 못 받아 AI 분석 누락됨
+  // 최초 1회만: isScrapingDone=true + selectedTags=[] + naverText 있는 예약 순차 분석
+  const initialAiBackfillDone = useRef(false);
+  useEffect(() => {
+    if (phase !== "app" || !data || initialAiBackfillDone.current) return;
+    const apiKey = localStorage.getItem("bliss_gemini_key") || "";
+    if (!apiKey) return;
+
+    const unanalyzed = (data.reservations || []).filter(r => {
+      const isNaver = r.source === "naver" || r.source === "네이버";
+      if (!isNaver || !r.isScrapingDone) return false;
+      if ((r.selectedTags || []).length > 0) return false; // 이미 태그 있음
+      const txt = [(r.requestMsg || ""), (r.ownerComment || "")].join("\n").trim();
+      return txt.length > 0;
+    });
+
+    if (unanalyzed.length === 0) return;
+    initialAiBackfillDone.current = true;
+    console.log(`🤖 [백필] 미분석 예약 ${unanalyzed.length}건 순차 분석 시작`);
+
+    unanalyzed.forEach((res, i) => {
+      setTimeout(() => autoAiAnalyze(res, true), i * 1500);
+    });
+  }, [phase, data, autoAiAnalyze]);
+
   const handleBackToSuper = async () => {
     try{const s=JSON.parse(sessionStorage.getItem("bliss_session")||"{}");delete s.bizId;sessionStorage.setItem("bliss_session",JSON.stringify(s));}catch(e){}
     setLoadMsg("관리자 데이터 로딩 중...");
