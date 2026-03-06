@@ -124,7 +124,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.64.1";
+const BLISS_V = "2.64.2";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -2713,16 +2713,16 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
                 <span style={{fontSize:12,fontWeight:700,color:"#1B5E20",letterSpacing:0.5}}>#{f.reservationId}</span>
               </div>}
               {f.naverRegDt && <div style={{display:"flex",flexDirection:"column",gap:1}}>
-                <span style={{fontSize:10,color:"#888"}}>신청일시</span>
-                <span style={{fontSize:11,fontWeight:600,color:"#333"}}>{f.naverRegDt}</span>
+                <span style={{fontSize:10,color:"#888"}}>신청</span>
+                <span style={{fontSize:11,fontWeight:600,color:"#333"}}>{(()=>{const d=new Date(f.naverRegDt);return isNaN(d)?f.naverRegDt:`${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;})()}</span>
               </div>}
               {f.naverConfirmedDt && <div style={{display:"flex",flexDirection:"column",gap:1}}>
-                <span style={{fontSize:10,color:"#888"}}>확정일시</span>
-                <span style={{fontSize:11,fontWeight:600,color:"#2E7D32"}}>{f.naverConfirmedDt}</span>
+                <span style={{fontSize:10,color:"#888"}}>확정</span>
+                <span style={{fontSize:11,fontWeight:600,color:"#2E7D32"}}>{(()=>{const d=new Date(f.naverConfirmedDt);return isNaN(d)?f.naverConfirmedDt:`${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;})()}</span>
               </div>}
               {f.naverCancelledDt && <div style={{display:"flex",flexDirection:"column",gap:1,gridColumn:"1/-1"}}>
-                <span style={{fontSize:10,color:"#888"}}>취소일시</span>
-                <span style={{fontSize:11,fontWeight:600,color:"#c62828"}}>{f.naverCancelledDt}</span>
+                <span style={{fontSize:10,color:"#888"}}>취소</span>
+                <span style={{fontSize:11,fontWeight:600,color:"#c62828"}}>{(()=>{const d=new Date(f.naverCancelledDt);return isNaN(d)?f.naverCancelledDt:`${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;})()}</span>
               </div>}
               {(f.visitCount > 0 || f.noShowCount > 0) && <div style={{gridColumn:"1/-1",display:"flex",gap:10,marginTop:2,paddingTop:4,borderTop:"1px solid #C8E6C9"}}>
                 {f.visitCount > 0 && <span style={{fontSize:10,color:"#555"}}>방문 <strong>{f.visitCount}회</strong></span>}
@@ -3696,11 +3696,11 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
                 return <span style={{display:"inline-block",fontSize:10,fontWeight:600,color:clr,background:clr+"18",border:`1px solid ${clr}44`,borderRadius:10,padding:"2px 7px"}}>{src}</span>;
               })()}</td>
               <td style={{fontSize:11,fontWeight:700,color:"#e65100",textAlign:"center"}}>{(()=>{
-  if(!r.isPrepaid) return <span style={{color:"#ccc"}}>-</span>;
   const amt = r.totalPrice||0;
   if(!amt) return <span style={{color:"#ccc"}}>-</span>;
   const fmtAmt = amt.toLocaleString()+"원";
-  return <span style={{background:"#e8f5e9",color:"#2e7d32",borderRadius:6,padding:"2px 6px",fontSize:10}} title={"선불결제: "+(r.npayMethod||"네이버페이")}>✓{fmtAmt}</span>;
+  if(r.isPrepaid) return <span style={{background:"#e8f5e9",color:"#2e7d32",borderRadius:6,padding:"2px 6px",fontSize:10}} title={"선불결제: "+(r.npayMethod||"네이버페이")}>✓{fmtAmt}</span>;
+  return <span style={{background:"#fff3e0",color:"#e65100",borderRadius:6,padding:"2px 6px",fontSize:10}}>₩{fmtAmt}</span>;
 })()} </td>
               <td><span style={{fontSize:11,fontWeight:700,color:sc[r.status]||"#999"}}>{STATUS_LABEL[r.status]||r.status}</span></td>
               <td><div style={{display:"flex",gap:4}}>
