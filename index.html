@@ -132,7 +132,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.51";
+const BLISS_V = "2.65.52";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -6019,9 +6019,31 @@ function AdminServiceTags({ data, setData }) {
   const [delConfirm, setDelConfirm] = useState(null);
   const [selected, setSelected] = useState(new Set());
 
-  // 미리보기 드래그 상태
-  const [prevDragIdx, setPrevDragIdx] = useState(null);
-  const [prevOverIdx, setPrevOverIdx] = useState(null);
+  // 미리보기 드래그앤드롭 - ref로 관리해야 stale closure 방지
+  const prevDragIdxRef = useRef(null);
+  const prevOverIdxRef = useRef(null);
+  const [prevDragOver, setPrevDragOver] = useState(null); // 시각적 하이라이트용만 state
+
+  const previewTags = tabTags.filter(t=>t.useYn!==false);
+  const onPrevDragStart = (i) => { prevDragIdxRef.current = i; };
+  const onPrevDragEnter = (i) => { prevOverIdxRef.current = i; setPrevDragOver(i); };
+  const onPrevDragEnd = () => {
+    const di = prevDragIdxRef.current;
+    const oi = prevOverIdxRef.current;
+    setPrevDragOver(null);
+    prevDragIdxRef.current = null;
+    prevOverIdxRef.current = null;
+    if (di === null || oi === null || di === oi) return;
+    const reordered = [...previewTags];
+    const [moved] = reordered.splice(di, 1);
+    reordered.splice(oi, 0, moved);
+    const otherTags = tags.filter(t => isScheduleTab ? t.scheduleYn !== "Y" : t.scheduleYn === "Y");
+    const unusedTabs = tabTags.filter(t=>t.useYn===false);
+    const newTabOrder = [...reordered, ...unusedTabs];
+    const allSorted = [...newTabOrder, ...otherTags].map((t,i)=>({...t,sort:i}));
+    syncTags(allSorted);
+    newTabOrder.forEach((t,i) => sb.update("service_tags", t.id, {sort:i}).catch(console.error));
+  };
 
   const isScheduleTab = activeTab === "schedule";
   const tabTags = tags.filter(t => isScheduleTab ? t.scheduleYn === "Y" : t.scheduleYn !== "Y");
@@ -6106,28 +6128,6 @@ function AdminServiceTags({ data, setData }) {
     setDelConfirm(null);
   };
 
-  // 미리보기 드래그앤드롭
-  const previewTags = tabTags.filter(t=>t.useYn!==false);
-  const onPrevDragStart = (i) => setPrevDragIdx(i);
-  const onPrevDragEnter = (i) => setPrevOverIdx(i);
-  const onPrevDragEnd = () => {
-    if (prevDragIdx === null || prevOverIdx === null || prevDragIdx === prevOverIdx) {
-      setPrevDragIdx(null); setPrevOverIdx(null); return;
-    }
-    // previewTags 기준 재정렬
-    const reordered = [...previewTags];
-    const [moved] = reordered.splice(prevDragIdx, 1);
-    reordered.splice(prevOverIdx, 0, moved);
-    // 전체 tags에 순서 반영
-    const otherTags = tags.filter(t => isScheduleTab ? t.scheduleYn !== "Y" : t.scheduleYn === "Y");
-    const usedTags = reordered;
-    const unusedTabs = tabTags.filter(t=>t.useYn===false);
-    const newTabOrder = [...usedTabs, ...unusedTabs];
-    const allSorted = [...newTabOrder, ...otherTags].map((t,i)=>({...t,sort:i}));
-    syncTags(allSorted);
-    newTabOrder.forEach((t,i) => sb.update("service_tags", t.id, {sort:i}).catch(console.error));
-    setPrevDragIdx(null); setPrevOverIdx(null);
-  };
 
   const inpS = {padding:"4px 6px",fontSize:11,background:"#f8f0f0",border:"1px solid #d0d0d0"};
   const downloadXl = () => XL.download(tabTags.map((t,i)=>({태그명:t.name, 소요분:t.dur, 색상:t.color||"", 사용:t.useYn!==false?"Y":"N"})), isScheduleTab?"내부일정태그.xlsx":"예약태그.xlsx", "태그", ["태그명","소요분","색상","사용"]);
@@ -6183,8 +6183,8 @@ function AdminServiceTags({ data, setData }) {
             onDragEnd={onPrevDragEnd}
             onDragOver={e=>e.preventDefault()}
             style={{...tagPillStyle(t.color,t.useYn),cursor:"grab",
-              outline: prevOverIdx===i && prevDragIdx!==i ? "2px dashed #7c7cc8" : "none",
-              opacity: prevDragIdx===i ? 0.4 : 1,
+              outline: prevDragOver===i ? "2px dashed #7c7cc8" : "none",
+              opacity: 1,
               transition:"opacity .15s"}}>
             {t.name}{t.dur>0&&<span style={{fontSize:8,opacity:.7}}>({t.dur}분)</span>}
           </span>
