@@ -124,7 +124,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.66.9";
+const BLISS_V = "2.66.10";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -2945,7 +2945,14 @@ ${naverText}
                 {f.isPrepaid && (f.totalPrice||0)>0 && <span style={{fontSize:10,fontWeight:700,background:"#dcfce7",color:"#15803d",borderRadius:4,padding:"2px 7px",textTransform:"none"}}>{"&#x2713; "+(f.totalPrice||0).toLocaleString()+"원"}</span>}
               </span>
               <div style={{display:"flex",alignItems:"center",gap:6}}>
-  
+                {!isReadOnly && (f.requestMsg || f.ownerComment) && <button
+                  onClick={e=>{e.stopPropagation();handleAiAnalyze();}} disabled={aiAnalyzing}
+                  style={{display:"flex",alignItems:"center",gap:4,padding:"4px 10px",fontSize:11,fontWeight:700,
+                    border:"none",borderRadius:12,cursor:aiAnalyzing?"not-allowed":"pointer",
+                    background:aiAnalyzing?"#e0e0e0":"linear-gradient(135deg,#7c7cc8,#9b72cb)",
+                    color:aiAnalyzing?"#999":"#fff",transition:"all .2s"}}>
+                  {aiAnalyzing ? <><span style={{fontSize:10}}>⏳</span> 분석중...</> : <><span style={{fontSize:12}}>✨</span> AI 분석</>}
+                </button>}
                 <span className={"acc-chev"+(openSec.naver?" aopen":"")}>&#x203a;</span>
               </div>
             </button>
