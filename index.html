@@ -2817,7 +2817,6 @@ ${naverText}
               <div className={"tags-acc-hdr"+(tagsOpen?" open":"")} onClick={()=>setTagsOpen(p=>!p)}>
                 <span style={{fontSize:13,fontWeight:600,color:"#444",display:"flex",alignItems:"center",gap:6}}>
                   예약태그
-                  {(tagDurTotal+svcDurTotal) > 0 && <span style={{fontSize:12,fontWeight:600,color:"#7c7cc8",background:"#ededf8",borderRadius:4,padding:"1px 7px"}}>{tagDurTotal+svcDurTotal}분</span>}
                   {(f.selectedTags||[]).length > 0 && <span style={{fontSize:12,fontWeight:600,color:"#7c7cc8",background:"#ededf8",borderRadius:4,padding:"1px 7px"}}>{(f.selectedTags||[]).length}개 선택</span>}
                 </span>
                 <span className={"tags-acc-chev"+(tagsOpen?" open":"")}>▾</span>
