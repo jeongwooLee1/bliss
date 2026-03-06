@@ -124,7 +124,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.16";
+const BLISS_V = "2.65.17";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -4639,7 +4639,7 @@ function AdminPage({ data, setData, bizId }) {
     {tab==="svctags" && <AdminServiceTags data={data} setData={setData}/>}
     {tab==="ressrc" && <AdminResSources data={data} setData={setData}/>}
     {tab==="notiSettings" && <AdminNotiSettings data={data} setData={setData}/>}
-    {tab==="aisettings" && <AdminAISettings/>}
+    {tab==="aisettings" && <AdminAISettings data={data} autoAiAnalyze={autoAiAnalyze}/>}
   </div>;
 }
 
@@ -5712,11 +5712,40 @@ function AdminNotiSettings({ data, setData }) {
 
 // ─── AI설정 ───
 const AI_RULES_KEY = "bliss_ai_rules";
-function AdminAISettings() {
+function AdminAISettings({ data, autoAiAnalyze }) {
   const [apiKey, setApiKey] = useState(()=>localStorage.getItem("bliss_gemini_key")||"");
   const [saved, setSaved] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState(null);
+  const [bulkRunning, setBulkRunning] = useState(false);
+  const [bulkStatus, setBulkStatus] = useState(null);
+
+  const runBulkAnalyze = async () => {
+    if (!apiKey.trim()) { alert("API 키를 먼저 저장하세요"); return; }
+    if (!data?.reservations) { alert("예약 데이터가 없습니다"); return; }
+    const targets = (data.reservations || []).filter(r => {
+      const isNaver = r.source === "naver" || r.source === "네이버";
+      return isNaver && r.isScrapingDone && r.status !== "naver_cancelled"
+        && ([r.requestMsg, r.ownerComment].filter(Boolean).join("").trim().length > 0);
+    });
+    if (targets.length === 0) { alert("분석할 네이버 예약이 없습니다"); return; }
+    if (!window.confirm(targets.length + "건의 네이버 예약을 강제 재분석합니다. 계속하시겠습니까?")) return;
+    setBulkRunning(true);
+    setBulkStatus({total: targets.length, done: 0, fail: 0});
+    let done = 0; let fail = 0;
+    for (const res of targets) {
+      try {
+        await autoAiAnalyze(res, true);
+        done++;
+      } catch(e) {
+        fail++;
+      }
+      setBulkStatus({total: targets.length, done, fail});
+      await new Promise(r => setTimeout(r, 1500));
+    }
+    setBulkRunning(false);
+    setBulkStatus({total: targets.length, done, fail, complete: true});
+  };
   const [rules, setRules] = useState(()=>{
     try { return JSON.parse(localStorage.getItem(AI_RULES_KEY)||"[]"); } catch{ return []; }
   });
@@ -5809,6 +5838,25 @@ function AdminAISettings() {
         <button onClick={addRule}
           style={{padding:"8px 16px",fontSize:12,fontWeight:700,background:"#7c7cc8",color:"#fff",border:"none",borderRadius:8,cursor:"pointer",flexShrink:0}}>추가</button>
       </div>
+    </div>
+
+    <div className="card" style={{padding:20,maxWidth:500,marginTop:16}}>
+      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
+        <span style={{fontSize:13,fontWeight:700,color:"#333"}}>전체 네이버 예약 일괄 재분석</span>
+      </div>
+      <div style={{fontSize:11,color:"#888",marginBottom:12,lineHeight:1.6}}>
+        기존 예약 포함 모든 네이버 예약을 강제로 AI 분석합니다.<br/>
+        이미 태그/시술이 있어도 재분석하여 덮어씁니다.
+      </div>
+      <button onClick={runBulkAnalyze} disabled={bulkRunning}
+        style={{padding:"9px 20px",fontSize:12,fontWeight:700,background:bulkRunning?"#e0e0e0":"linear-gradient(135deg,#7c7cc8,#9b72cb)",color:bulkRunning?"#999":"#fff",border:"none",borderRadius:8,cursor:bulkRunning?"not-allowed":"pointer",fontFamily:"inherit"}}>
+        {bulkRunning ? "분석 중..." : "✨ 전체 일괄 재분석"}
+      </button>
+      {bulkStatus && <div style={{marginTop:10,fontSize:12,fontWeight:600,color:bulkStatus.complete?"#22c55e":"#7c7cc8"}}>
+        {bulkStatus.complete
+          ? "✅ 완료! "+bulkStatus.done+"건 성공" + (bulkStatus.fail>0?" / "+bulkStatus.fail+"건 실패":"")
+          : bulkStatus.done+"/"+bulkStatus.total+"건 처리 중..."}
+      </div>}
     </div>
 
     <div className="card" style={{padding:20,maxWidth:500,marginTop:16}}>
