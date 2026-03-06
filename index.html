@@ -124,7 +124,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.66.10";
+const BLISS_V = "2.66.11";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -2937,7 +2937,7 @@ ${naverText}
 
           {/* ═══ 네이버 예약정보 아코디언 ═══ */}
           {isNaverItem && <div className={"acc acc-naver"+(openSec.naver?" aopen":"")}>
-            <button className="acc-hdr" onClick={()=>togSec("naver")}>
+            <div className="acc-hdr" onClick={()=>togSec("naver")} role="button" tabIndex={0}>
               <span className="acc-label" style={{fontSize:11,fontWeight:700,letterSpacing:".3px",textTransform:"uppercase",display:"flex",alignItems:"center",gap:6}}>
                 <I name="naver" size={13}/>
                 네이버 예약정보
@@ -2955,7 +2955,7 @@ ${naverText}
                 </button>}
                 <span className={"acc-chev"+(openSec.naver?" aopen":"")}>&#x203a;</span>
               </div>
-            </button>
+            </div>
             <div className={"acc-body"+(openSec.naver?" aopen":"")}>
               <div className="acc-inner">
             <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
