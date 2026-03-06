@@ -132,7 +132,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.39";
+const BLISS_V = "2.65.40";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -2779,21 +2779,24 @@ ${naverText}
           {/* ═══ 내부일정 모드 ═══ */}
           {isSchedule && <>
             <div>
-              <div className="res-time-row" style={{display:"flex",gap:6,alignItems:"stretch",flexWrap:"nowrap",overflowX:"auto"}}> 
-                {/* 날짜 - 폭 70% 축소 */}
-                <DatePick value={f.date} onChange={v=>set("date",v)} style={{flex:"0 0 auto",width:88,background:"#d5eaff",borderRadius:10,minHeight:40,boxShadow:"0 2px 10px rgba(60,100,220,.12)"}}/>
-                {/* 시간: 한 필드 [  08:00 ~ 09:00  ] */}
-                <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:4,background:"#d5eaff",borderRadius:10,padding:"0 14px",minHeight:40,flex:"1 1 0",boxShadow:"0 2px 10px rgba(60,100,220,.12)"}}>
-                  <select className="inp" style={{flex:"none",width:72,fontSize:13,padding:"4px 2px",background:"transparent",border:"none",minHeight:36,fontWeight:700,textAlign:"center"}} value={f.time} onChange={e=>{const nt=e.target.value;set("time",nt);set("endTime",addMin(nt,f.dur))}}>
+              <div className="res-time-row" style={{display:"flex",gap:6,alignItems:"stretch",flexWrap:"nowrap",overflowX:"auto"}}>
+                {/* 날짜+시간 통합 한 필드 */}
+                <div className="fld-datetime">
+                  <DatePick value={f.date} onChange={v=>set("date",v)} style={{background:"transparent",minHeight:36,flex:"0 0 auto",boxShadow:"none"}}/>
+                  <span style={{color:"#a0b8d0",fontSize:13,flexShrink:0,padding:"0 4px"}}>|</span>
+                  <select value={f.time} onChange={e=>{const nt=e.target.value;set("time",nt);set("endTime",addMin(nt,f.dur))}}>
                     {TIMES.filter(t=>{const h=parseInt(t);return h>=8&&h<=21}).map(t=><option key={t} value={t}>{t}</option>)}
                   </select>
-                  <span style={{color:"#7090b0",fontSize:14,fontWeight:400,flexShrink:0,letterSpacing:1}}>~</span>
-                  <select className="inp" style={{flex:"none",width:72,fontSize:13,padding:"4px 2px",background:"transparent",border:"none",minHeight:36,fontWeight:700,textAlign:"center"}} value={f.endTime} onChange={e=>{set("endTime",e.target.value);set("dur",calcDur(f.time,e.target.value))}}>
+                  <span style={{color:"#7090b0",fontSize:13,flexShrink:0,padding:"0 2px"}}>~</span>
+                  <select value={f.endTime} onChange={e=>{set("endTime",e.target.value);set("dur",calcDur(f.time,e.target.value))}}>
                     {TIMES.filter(t=>{const h=parseInt(t);return h>=8&&h<=22}).map(t=><option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
                 {/* 지점 */}
-                <select className="inp res-room-sel" style={{flex:"0 0 auto",width:"22%",fontSize:12,padding:"4px 6px",background:"#d5eaff",border:"none",minHeight:40,borderRadius:10,boxShadow:"0 2px 10px rgba(60,100,220,.12)"}} value={`${f.roomId}|${f.staffId}`} onChange={e=>{const [r,s]=e.target.value.split("|");set("roomId",r);set("staffId",s)}}>
+                <select className="inp res-room-sel" style={{flex:"0 0 auto",width:"22%",fontSize:12,padding:"4px 8px",background:"#e0f0ff",border:"none",minHeight:40,borderRadius:10,boxShadow:"0 2px 10px rgba(60,100,220,.10)",transition:"box-shadow .2s"}}
+                  onMouseOver={e=>e.currentTarget.style.boxShadow="0 6px 22px rgba(60,100,220,.28)"}
+                  onMouseOut={e=>e.currentTarget.style.boxShadow="0 2px 10px rgba(60,100,220,.10)"}
+                  value={`${f.roomId}|${f.staffId}`} onChange={e=>{const [r,s]=e.target.value.split("|");set("roomId",r);set("staffId",s)}}>
                   {branchRooms.map(rm => branchStaff.map(st =>
                     <option key={rm.id+st.id} value={`${rm.id}|${st.id}`}>[{(data.branches||[]).find(b=>b.id===branchId)?.short}] {rm.name}-{st.dn}</option>
                   ))}
@@ -2888,21 +2891,24 @@ ${naverText}
 
             {/* 예약기간 + 장소/담당자 */}
             <div>
-              <div className="res-time-row" style={{display:"flex",gap:6,alignItems:"stretch",flexWrap:"nowrap",overflowX:"auto"}}> 
-                {/* 날짜 - 폭 70% 축소 */}
-                <DatePick value={f.date} onChange={v=>set("date",v)} style={{flex:"0 0 auto",width:88,background:"#d5eaff",borderRadius:10,minHeight:40,boxShadow:"0 2px 10px rgba(60,100,220,.12)"}}/>
-                {/* 시간: 한 필드 [  08:00 ~ 09:00  ] */}
-                <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:4,background:"#d5eaff",borderRadius:10,padding:"0 14px",minHeight:40,flex:"1 1 0",boxShadow:"0 2px 10px rgba(60,100,220,.12)"}}>
-                  <select className="inp" style={{flex:"none",width:72,fontSize:13,padding:"4px 2px",background:"transparent",border:"none",minHeight:36,fontWeight:700,textAlign:"center"}} value={f.time} onChange={e=>{const nt=e.target.value;set("time",nt);set("endTime",addMin(nt,f.dur))}}>
+              <div className="res-time-row" style={{display:"flex",gap:6,alignItems:"stretch",flexWrap:"nowrap",overflowX:"auto"}}>
+                {/* 날짜+시간 통합 한 필드 */}
+                <div className="fld-datetime">
+                  <DatePick value={f.date} onChange={v=>set("date",v)} style={{background:"transparent",minHeight:36,flex:"0 0 auto",boxShadow:"none"}}/>
+                  <span style={{color:"#a0b8d0",fontSize:13,flexShrink:0,padding:"0 4px"}}>|</span>
+                  <select value={f.time} onChange={e=>{const nt=e.target.value;set("time",nt);set("endTime",addMin(nt,f.dur))}}>
                     {TIMES.filter(t=>{const h=parseInt(t);return h>=8&&h<=21}).map(t=><option key={t} value={t}>{t}</option>)}
                   </select>
-                  <span style={{color:"#7090b0",fontSize:14,fontWeight:400,flexShrink:0,letterSpacing:1}}>~</span>
-                  <select className="inp" style={{flex:"none",width:72,fontSize:13,padding:"4px 2px",background:"transparent",border:"none",minHeight:36,fontWeight:700,textAlign:"center"}} value={f.endTime} onChange={e=>{set("endTime",e.target.value);set("dur",calcDur(f.time,e.target.value))}}>
+                  <span style={{color:"#7090b0",fontSize:13,flexShrink:0,padding:"0 2px"}}>~</span>
+                  <select value={f.endTime} onChange={e=>{set("endTime",e.target.value);set("dur",calcDur(f.time,e.target.value))}}>
                     {TIMES.filter(t=>{const h=parseInt(t);return h>=8&&h<=22}).map(t=><option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
                 {/* 지점 */}
-                <select className="inp res-room-sel" style={{flex:"0 0 auto",width:"22%",fontSize:12,padding:"4px 6px",background:"#d5eaff",border:"none",minHeight:40,borderRadius:10,boxShadow:"0 2px 10px rgba(60,100,220,.12)"}} value={`${f.roomId}|${f.staffId}`} onChange={e=>{const [r,s]=e.target.value.split("|");set("roomId",r);set("staffId",s)}}>
+                <select className="inp res-room-sel" style={{flex:"0 0 auto",width:"22%",fontSize:12,padding:"4px 8px",background:"#e0f0ff",border:"none",minHeight:40,borderRadius:10,boxShadow:"0 2px 10px rgba(60,100,220,.10)",transition:"box-shadow .2s"}}
+                  onMouseOver={e=>e.currentTarget.style.boxShadow="0 6px 22px rgba(60,100,220,.28)"}
+                  onMouseOut={e=>e.currentTarget.style.boxShadow="0 2px 10px rgba(60,100,220,.10)"}
+                  value={`${f.roomId}|${f.staffId}`} onChange={e=>{const [r,s]=e.target.value.split("|");set("roomId",r);set("staffId",s)}}>
                   {branchRooms.map(rm => branchStaff.map(st =>
                     <option key={rm.id+st.id} value={`${rm.id}|${st.id}`}>[{(data.branches||[]).find(b=>b.id===branchId)?.short}] {rm.name}-{st.dn}</option>
                   ))}
@@ -2926,7 +2932,7 @@ ${naverText}
                 <span style={{fontSize:13,fontWeight:600,color:"#555",display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
                   시술상품
                   {(f.selectedServices||[]).length > 0
-                    ? <span style={{color:"#7c7cc8",fontWeight:700}}>{(f.selectedServices||[]).map(sid=>SVC_LIST.find(s=>s.id===sid)?.name).filter(Boolean).join(", ")} <span style={{background:"#f0f0ff",borderRadius:3,padding:"1px 6px",fontSize:13}}>{svcDurTotal}분{!hasGender&&hasGenderDep?"":" / "+fmt(svcPriceTotal)+"원"}</span></span>
+                    ? <span style={{color:"#7c7cc8",fontWeight:700}}>{(f.selectedServices||[]).map(sid=>SVC_LIST.find(s=>s.id===sid)?.name).filter(Boolean).join(", ")} <span style={{background:"rgba(140,80,220,.12)",borderRadius:3,padding:"1px 6px",fontSize:13}}>{svcDurTotal}분{!hasGender&&hasGenderDep?"":" / "+fmt(svcPriceTotal)+"원"}</span></span>
                     : <span style={{color:"#aaa",fontWeight:400}}>선택하세요</span>}
                 </span>
                 <span className={"tags-acc-chev"+(showSvcPicker?" open":"")}>▾</span>
@@ -2966,7 +2972,7 @@ ${naverText}
                   return <button key={src.id} onClick={()=>set("source",sel?"":src.name)}
                     style={{padding:"6px 12px",fontSize:13,fontWeight:600,borderRadius:6,cursor:"pointer",fontFamily:"inherit",transition:"transform .12s cubic-bezier(.34,1.56,.64,1),background .1s",
                       border:sel?`1.5px solid ${clr}`:"none",
-                      background:sel?clr+"70":"#e8e8e8",color:sel?"#333":"#aaa",display:"inline-flex",alignItems:"center",gap:3,lineHeight:1.3,flexShrink:0}}>
+                      background:sel?clr+"30":"rgba(0,0,0,.04)",color:sel?"#333":"#aaa",display:"inline-flex",alignItems:"center",gap:3,lineHeight:1.3,flexShrink:0}}>
                     <span style={{width:6,height:6,borderRadius:1,background:clr,flexShrink:0,opacity:sel?1:0.4}}/>
                     {src.name}
                   </button>;
@@ -6499,21 +6505,29 @@ const CSS = `
   .modal-res .btn-p,.modal-res .btn-s,.modal-res .btn-d{min-height:38px;padding:7px 18px;font-size:13px}
   /* ── 탭 hover: 텍스트만, 박스 모션 없음 ── */
   .res-tab-btn:hover{transform:none !important;box-shadow:none !important;font-size:14.5px !important;font-weight:900 !important}
-  /* ── 아코디언 색상 (30% 진하게, 그림자) ── */
-  .acc-svc{background:#d8f5e8;border:none;box-shadow:0 2px 10px rgba(60,180,110,.13)}
-  .acc-svc .tags-acc-hdr{background:#d8f5e8}
-  .acc-src{background:#fef5c8;border:none;box-shadow:0 2px 10px rgba(200,160,0,.10)}
+  /* ── 아코디언 색상 (15% 연하게, 그림자+hover) ── */
+  .acc-svc{background:#e3f8ef;border:none;box-shadow:0 2px 10px rgba(60,180,110,.10);transition:box-shadow .2s}
+  .acc-svc:hover{box-shadow:0 6px 22px rgba(60,180,110,.28) !important}
+  .acc-svc .tags-acc-hdr{background:#e3f8ef}
+  .acc-src{background:#fef9d8;border:none;box-shadow:0 2px 10px rgba(200,160,0,.09);transition:box-shadow .2s}
+  .acc-src:hover{box-shadow:0 6px 22px rgba(200,160,0,.28) !important}
   .acc-src-inner{display:flex;flex-wrap:wrap;gap:5px;padding:10px 14px}
-  .acc-tag{background:#ecdeff;border:none;box-shadow:0 2px 10px rgba(140,80,220,.10)}
-  .acc-tag .tags-acc-hdr{background:#ecdeff}
-  .acc-tag .tags-acc-hdr.open{background:#e0ccff}
-  /* ── 입력 필드 색상 (30% 진하게, 그림자) ── */
-  .inp-search{background:#dde6ff !important;border:none !important;outline:none !important;box-shadow:0 2px 10px rgba(80,100,220,.10) !important;border-radius:10px !important}
-  .inp-cust{background:#ffd8ea !important;border:none !important;outline:none !important;box-shadow:0 2px 10px rgba(220,80,120,.10) !important;border-radius:10px !important}
-  .inp-date{background:#d5eaff !important;border:none !important;outline:none !important}
-  .inp-memo{background:#e8e8f4 !important;border:none !important;outline:none !important;box-shadow:0 2px 10px rgba(80,80,160,.08) !important;border-radius:10px !important}
-  /* ── 필드 그림자 공통 ── */
-  .fld-shadow{box-shadow:0 2px 10px rgba(80,80,160,.09)}
+  .acc-tag{background:#f2e9ff;border:none;box-shadow:0 2px 10px rgba(140,80,220,.09);transition:box-shadow .2s}
+  .acc-tag:hover{box-shadow:0 6px 22px rgba(140,80,220,.28) !important}
+  .acc-tag .tags-acc-hdr{background:#f2e9ff}
+  .acc-tag .tags-acc-hdr.open{background:#f2e9ff}
+  /* ── 입력 필드 색상 (15% 연하게, 그림자+hover) ── */
+  .inp-search{background:#e5ecff !important;border:none !important;outline:none !important;box-shadow:0 2px 10px rgba(80,100,220,.09) !important;border-radius:10px !important;transition:box-shadow .2s !important}
+  .inp-search:hover{box-shadow:0 6px 22px rgba(80,100,220,.26) !important}
+  .inp-cust{background:#ffe3f0 !important;border:none !important;outline:none !important;box-shadow:0 2px 10px rgba(220,80,120,.09) !important;border-radius:10px !important;transition:box-shadow .2s !important}
+  .inp-cust:hover{box-shadow:0 6px 22px rgba(220,80,120,.26) !important}
+  .inp-date{background:#e0f0ff !important;border:none !important;outline:none !important;border-radius:10px !important}
+  .inp-memo{background:#eeeef8 !important;border:none !important;outline:none !important;box-shadow:0 2px 10px rgba(80,80,160,.07) !important;border-radius:10px !important;transition:box-shadow .2s !important}
+  .inp-memo:hover{box-shadow:0 6px 22px rgba(80,80,160,.22) !important}
+  /* ── 날짜+시간 통합 필드 hover ── */
+  .fld-datetime{background:#e0f0ff;border-radius:10px;padding:0 14px;min-height:40px;display:flex;align-items:center;justify-content:center;gap:6px;flex:1 1 0;box-shadow:0 2px 10px rgba(60,100,220,.10);transition:box-shadow .2s}
+  .fld-datetime:hover{box-shadow:0 6px 22px rgba(60,100,220,.28) !important}
+  .fld-datetime select{background:transparent;border:none;font-size:13px;font-weight:700;text-align:center;cursor:pointer;outline:none;font-family:inherit}
   .modal-res button:not(:disabled):hover{transform:scale(1.045);box-shadow:0 3px 10px rgba(0,0,0,.13)}
   .modal-res button:not(:disabled):active{transform:scale(.97)}
   @keyframes slideUp{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:scale(1)}}
