@@ -159,7 +159,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.87";
+const BLISS_V = "2.65.88";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -2608,7 +2608,16 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
   const handleAiAnalyze = async () => {
     const apiKey = localStorage.getItem("bliss_gemini_key") || "";
     if (!apiKey) { alert("관리설정 → AI설정에서 Gemini API 키를 등록하세요"); return; }
-    const naverText = [f.requestMsg, f.ownerComment].filter(Boolean).join("\n");
+    const reqText = (() => {
+      if (!f.requestMsg) return "";
+      if (f.requestMsg.trim().startsWith("[")) {
+        try {
+          return JSON.parse(f.requestMsg).map(it => `${it.label}: ${it.value}`).join("\n");
+        } catch(e) {}
+      }
+      return f.requestMsg;
+    })();
+    const naverText = [reqText, f.ownerComment].filter(Boolean).join("\n");
     if (!naverText.trim()) { alert("분석할 네이버 예약정보가 없습니다"); return; }
     if (/^[\s\-\(\)대화없음]+$/.test(naverText.trim())) { alert("대화 내용이 없어 분석할 정보가 없습니다"); return; }
     setAiAnalyzing(true);
