@@ -159,7 +159,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.96";
+const BLISS_V = "2.65.97";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -1864,7 +1864,9 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
             const first = pendingList[0];
             const br = allBranchList.find(b=>b.id===first.bid);
             const bizId = br?.naverBizId;
-            return bizId ? <a href={`https://partner.booking.naver.com/bizes/${bizId}/booking-list-view`} target="_blank" rel="noopener noreferrer"
+            const resId = first?.reservationId;
+            const naverUrl = bizId ? (resId ? `https://partner.booking.naver.com/bizes/${bizId}/booking-list-view/bookings/${resId}` : `https://partner.booking.naver.com/bizes/${bizId}/booking-list-view`) : null;
+            return naverUrl ? <a href={naverUrl} target="_blank" rel="noopener noreferrer"
               onClick={e=>e.stopPropagation()}
               style={{fontSize:11,color:"#fff",fontWeight:700,background:"#03C75A",padding:"4px 10px",borderRadius:6,textDecoration:"none",flexShrink:0,whiteSpace:"nowrap"}}>네이버 확정</a> : null;
           })()}
@@ -2781,7 +2783,9 @@ ${naverText}
               {(() => {
               const br = (data.branchSettings||data.branches||[]).find(b=>b.id===branchId);
               const bizId = br?.naverBizId;
-              return bizId ? <a href={`https://partner.booking.naver.com/bizes/${bizId}/booking-list-view`} target="_blank" rel="noopener noreferrer"
+              const resId = f?.reservationId || item?.reservationId;
+              const naverUrl2 = bizId ? (resId ? `https://partner.booking.naver.com/bizes/${bizId}/booking-list-view/bookings/${resId}` : `https://partner.booking.naver.com/bizes/${bizId}/booking-list-view`) : null;
+              return naverUrl2 ? <a href={naverUrl2} target="_blank" rel="noopener noreferrer"
                 onClick={e=>e.stopPropagation()}
                 style={{fontSize:13,color:"#fff",fontWeight:700,background:"#03C75A",padding:"5px 12px",borderRadius:6,textDecoration:"none",display:"inline-flex",alignItems:"center",gap:3}}>네이버 확정 <I name="chevR" size={11} color="#fff"/></a> : null;
               })()}
@@ -3122,7 +3126,9 @@ ${naverText}
                 {(()=>{
                   const br = (data.branchSettings||data.branches||[]).find(b=>b.id===branchId);
                   const bizId = br?.naverBizId;
-                  const linkEl = bizId ? <a href={`https://partner.booking.naver.com/bizes/${bizId}/booking-list-view?bookingBusinessId=${bizId}`} target="_blank" rel="noopener noreferrer"
+                  const resId3 = f?.reservationId;
+                  const naverUrl3 = bizId ? (resId3 ? `https://partner.booking.naver.com/bizes/${bizId}/booking-list-view/bookings/${resId3}` : `https://partner.booking.naver.com/bizes/${bizId}/booking-list-view`) : null;
+                  const linkEl = naverUrl3 ? <a href={naverUrl3} target="_blank" rel="noopener noreferrer"
                     style={{display:"inline-flex",alignItems:"center",gap:3,fontSize:10,color:"#03C75A",fontWeight:600,textDecoration:"none",padding:"4px 12px",background:"#03C75A10",borderRadius:4,border:"1px solid #03C75A30",flexShrink:0}}>
                     <I name="naver" size={10}/> 예약관리 <I name="chevR" size={9} color="#03C75A"/>
                   </a> : null;
