@@ -159,7 +159,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.67.3";
+const BLISS_V = "2.67.4";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -4178,13 +4178,13 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
               <td style={{fontSize:11}}>{br?.short}</td>
               <td style={{fontWeight:600,maxWidth:68,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={r.custName||""}>{r.custName||"-"}{g?<span style={{marginLeft:4,fontSize:10,color:g==="M"?"#7c7cc8":"#e57373"}}>{g==="M"?"남":"여"}</span>:null}</td>
               <td style={{color:"#7c7cc8",fontSize:12,whiteSpace:"nowrap"}}>{r.custPhone||"-"}</td>
-              <td style={{fontSize:12}}>
-                {r.reservationId && <span style={{background:"#03C75A",color:"#fff",fontSize:9,fontWeight:700,borderRadius:3,padding:"1px 4px",marginRight:4,verticalAlign:"middle"}}>N</span>}
-                {svcDisplay}
-              </td>
+              <td style={{fontSize:12}}>{svcDisplay}</td>
               <td style={{fontSize:12}}>{staff?.dn||"-"}</td>
               
-              {naverColShow["직원메모"] ? <td style={{fontSize:11,color:"#888",maxWidth:100,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={r.ownerComment||""}>{r.ownerComment||<span style={{color:"#ccc"}}>-</span>}</td> : <td style={{fontSize:11,color:"#ccc",textAlign:"center"}}>-</td>}
+              <td style={{fontSize:11,color:"#888",maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={r.ownerComment||""}>
+                {r.reservationId && <span style={{background:"#03C75A",color:"#fff",fontSize:9,fontWeight:700,borderRadius:3,padding:"1px 4px",marginRight:3,verticalAlign:"middle",letterSpacing:"-0.3px"}}>N</span>}
+                {naverColShow["직원메모"] ? (r.ownerComment||<span style={{color:"#ccc"}}>-</span>) : null}
+              </td>
               <td style={{fontSize:10,color:"#03C75A",whiteSpace:"nowrap"}} onClick={e=>e.stopPropagation()}>
                 {r.reservationId ? <a href={`https://partner.booking.naver.com/bizes/1523676/booking-list-view/bookings/${r.reservationId}`} target="_blank" rel="noreferrer" style={{color:"#03C75A",textDecoration:"none"}}>{r.reservationId}</a> : <span style={{color:"#ccc"}}>-</span>}
               </td>
