@@ -159,7 +159,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.62";
+const BLISS_V = "2.65.63";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -6097,6 +6097,10 @@ function AdminServiceTags({ data, setData }) {
   const prevOverIdxRef = useRef(null);
   const [prevDragOver, setPrevDragOver] = useState(null); // 시각적 하이라이트용만 state
 
+  
+  const isScheduleTab = activeTab === "schedule";
+  const tabTags = (tags||[]).filter(t => isScheduleTab ? t.scheduleYn === "Y" : t.scheduleYn !== "Y");
+
   const previewTags = tabTags.filter(t=>t.useYn!==false);
   const onPrevDragStart = (i) => { prevDragIdxRef.current = i; };
   const onPrevDragEnter = (i) => { prevOverIdxRef.current = i; setPrevDragOver(i); };
@@ -6117,9 +6121,6 @@ function AdminServiceTags({ data, setData }) {
     syncTags(allSorted);
     newTabOrder.forEach((t,i) => sb.update("service_tags", t.id, {sort:i}).catch(console.error));
   };
-
-  const isScheduleTab = activeTab === "schedule";
-  const tabTags = (tags||[]).filter(t => isScheduleTab ? t.scheduleYn === "Y" : t.scheduleYn !== "Y");
 
   const syncTags = (updated) => { setTags(updated); if(setData) setData(prev=>prev ? {...prev,serviceTags:updated} : prev); };
   const [localTabTags, setLocalTabTags] = useState([]);
