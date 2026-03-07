@@ -159,7 +159,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.66.2";
+const BLISS_V = "2.66.3";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -1274,7 +1274,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   });
   const isNaverRes = (r) => !!r.reservationId;
   
-  const blocks = (data?.reservations||[]).filter(r => r.date === selDate && branchesToShow.some(b=>b.id===r.bid) && r.status !== "naver_changed");
+  const blocks = (data?.reservations||[]).filter(r => r.date === selDate && branchesToShow.some(b=>b.id===r.bid) && r.status !== "naver_changed" && r.status !== "naver_cancelled");
 
   // ── 네이버 예약 자동배치: 빈 담당자(왼쪽부터) 배분 ──
   const toMin = (t) => { const [h,m] = (t||"10:00").split(":").map(Number); return h*60+m; };
@@ -1523,11 +1523,13 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   const handleDelete = (id) => {
     const res = (data?.reservations||[]).find(r => r.id === id);
     if (res?.reservationId) {
-      const isChanged = res.status === "naver_changed";
-      const msg = isChanged
-        ? "날짜변경으로 대체된 예약입니다.\n'네이버취소' 상태로 변경할까요?"
-        : "네이버 예약은 삭제할 수 없습니다.\n'네이버취소' 상태로 변경할까요?";
-      if (!window.confirm(msg)) return;
+      // 이미 취소/변경 상태면 모달만 닫기 (타임라인에서 이미 안보임)
+      if (res.status === "naver_cancelled" || res.status === "naver_changed") {
+        setShowModal(false); setModalData(null);
+        return;
+      }
+      // 진행중인 네이버 예약은 naver_cancelled로 상태 변경
+      if (!window.confirm("네이버 예약은 삭제할 수 없습니다.\n'취소' 상태로 변경할까요?")) return;
       const updated = {...res, status: "naver_cancelled"};
       setData(prev => ({...prev, reservations: (prev?.reservations||[]).map(r => r.id === id ? updated : r)}));
       sb.update("reservations", id, {status: "naver_cancelled"}).catch(console.error);
