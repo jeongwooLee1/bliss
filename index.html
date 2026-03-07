@@ -159,7 +159,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.77";
+const BLISS_V = "2.65.78";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -6682,6 +6682,7 @@ const CSS = `
 @keyframes slideUp{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:scale(1)}}
   @keyframes bottomSheet{from{transform:translateY(100%)}to{transform:translateY(0)}}
   @keyframes ovFadeIn{from{opacity:0}to{opacity:1}}
+#place-modal{width:90vw!important;max-width:480px!important;left:50%!important;right:auto!important;transform:translateX(-50%) !important;}
 .res-modal{width:480px!important;max-width:480px!important;}
   @keyframes slideIn{from{transform:translateX(-100%)}to{transform:translateX(0)}}
   @keyframes naverBlink{0%,100%{background:#fff3e0}50%{background:#ffe0b2}}
