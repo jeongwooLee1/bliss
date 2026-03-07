@@ -159,7 +159,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.66.5";
+const BLISS_V = "2.66.6";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -2771,9 +2771,13 @@ ${naverText}
         <div style={{padding:"20px 24px 8px"}} className="form-col">
 
           {/* ═══ 네이버 예약 상태 배너 ═══ */}
+          {f.status === "naver_changed" && <div style={{background:"#E8F4FD",borderRadius:8,padding:"8px 12px",marginBottom:12,display:"flex",alignItems:"center",gap:8}}>
+            <span style={{fontSize:13,fontWeight:700,color:"#1976D2"}}>변경</span>
+            {f.reservationId && <span style={{fontSize:13,color:"#999",marginLeft:"auto"}}>#{f.reservationId}</span>}
+          </div>}
           {f.status === "naver_cancelled" && <div style={{background:"#FFF8E1",borderRadius:8,padding:"8px 12px",marginBottom:12,display:"flex",alignItems:"center",gap:8,boxShadow:"0 2px 8px rgba(230,167,0,.15)"}}>
             <span style={{fontSize:16}}><I name="alert" size={16} color="#E65100"/></span>
-            <span style={{fontSize:13,fontWeight:700,color:"#E6A700"}}>네이버 취소 예약</span>
+            <span style={{fontSize:13,fontWeight:700,color:"#E6A700"}}>취소</span>
             {f.reservationId && <span style={{fontSize:13,color:"#999",marginLeft:"auto"}}>#{f.reservationId}</span>}
           </div>}
           {f.status === "pending" && !(f.memo && f.memo.includes("확정완료")) && <div style={{background:"#FFF3E0",borderRadius:8,padding:"8px 12px",marginBottom:12,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",animation:"naverBlink 1.5s infinite",boxShadow:"0 2px 8px rgba(255,152,0,.15)"}}>
@@ -4064,9 +4068,9 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
           return <button key={k} onClick={()=>setStatusFilter(k)} style={{
             height:30,padding:"0 11px",borderRadius:20,border:"1.5px solid",fontSize:13,fontWeight:active?700:500,cursor:"pointer",fontFamily:"inherit",
             display:"flex",alignItems:"center",gap:5,transition:"all .15s",
-            background: active?(k==="naver_cancelled"?"#E6A700":"#7c7cc8"):"#fff",
-            borderColor: active?(k==="naver_cancelled"?"#E6A700":"#7c7cc8"):(k==="naver_cancelled"?"#E6A70044":"#e0e0e0"),
-            color: active?"#fff":(k==="naver_cancelled"?"#E6A700":"#555"),
+            background: active?(k==="naver_cancelled"?"#E05252":k==="naver_changed"?"#1976D2":"#7c7cc8"):"#fff",
+            borderColor: active?(k==="naver_cancelled"?"#E05252":k==="naver_changed"?"#1976D2":"#7c7cc8"):(k==="naver_cancelled"?"#E0525244":k==="naver_changed"?"#1976D244":"#e0e0e0"),
+            color: active?"#fff":(k==="naver_cancelled"?"#E05252":k==="naver_changed"?"#1976D2":"#555"),
             boxShadow: active?"0 2px 8px rgba(0,0,0,.2)":"0 1px 3px rgba(0,0,0,.08)",
           }}>
             <span>{label}</span>
