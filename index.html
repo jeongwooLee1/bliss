@@ -159,7 +159,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.99";
+const BLISS_V = "2.66.0";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -1521,8 +1521,17 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   };
 
   const handleDelete = (id) => {
-    setData(prev => ({ ...prev, reservations: (prev?.reservations||[]).filter(r => r.id !== id) }));
-    sb.del("reservations", id).catch(console.error);
+    const res = (data?.reservations||[]).find(r => r.id === id);
+    if (res?.reservationId) {
+      // 네이버 예약은 완전 삭제 대신 naver_cancelled로 상태 변경
+      if (!window.confirm("네이버 예약은 삭제할 수 없습니다.\n'네이버취소' 상태로 변경할까요?")) return;
+      const updated = {...res, status: "naver_cancelled"};
+      setData(prev => ({...prev, reservations: (prev?.reservations||[]).map(r => r.id === id ? updated : r)}));
+      sb.update("reservations", id, {status: "naver_cancelled"}).catch(console.error);
+    } else {
+      setData(prev => ({ ...prev, reservations: (prev?.reservations||[]).filter(r => r.id !== id) }));
+      sb.del("reservations", id).catch(console.error);
+    }
     setShowModal(false); setModalData(null);
   };
 
