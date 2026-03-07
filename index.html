@@ -159,7 +159,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.10";
+const BLISS_V = "2.69.11";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -1081,7 +1081,7 @@ function SignupWizard({ onComplete, onBack }) {
             {inline_data:{mime_type:mime,data:b64}},
             {text:'이 이미지는 한국 사업자등록증입니다. JSON만 답하세요. 마크다운 금지. {"bizNum":"사업자번호숫자10자리","bizName":"상호명","ownerName":"대표자명","address":"사업장주소전체","phone":"전화번호없으면빈문자열"}'}
           ]}],
-          generationConfig:{temperature:0,maxOutputTokens:300}
+          generationConfig:{temperature:0,maxOutputTokens:1000}
         })});
       const respText = await resp.text();
       if(!resp.ok){ alert("OCR 오류("+resp.status+"): "+respText.slice(0,300)); setScanMsg("분석 실패("+resp.status+")"); setTimeout(()=>{setScanning(false);setStep(2);},2000); return; }
@@ -1090,15 +1090,13 @@ function SignupWizard({ onComplete, onBack }) {
       if(!raw){ alert("Gemini 응답 비어있음: "+respText.slice(0,200)); setScanning(false); setStep(2); return; }
       let p;
       try { p=JSON.parse(raw); }
-      catch(pe) { alert("JSON파싱 실패. raw="+raw.slice(0,200)); setScanning(false); setStep(2); return; }
-      alert("인식결과: "+JSON.stringify(p));
+      catch(pe) { setScanning(false); setStep(2); return; }
       setForm(prev=>({...prev,
         bizNum:(p.bizNum||"").replace(/[^0-9]/g,""),
         bizName:p.bizName||"",ownerName:p.ownerName||"",address:p.address||"",phone:p.phone||""
       }));
       setScanDone(true); setScanning(false); setStep(2);
     } catch(e) {
-      alert("catch오류: "+e.message);
       setScanning(false); setStep(2);
     }
   };
