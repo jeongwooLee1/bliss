@@ -159,7 +159,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.6";
+const BLISS_V = "2.69.7";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -1024,165 +1024,135 @@ function SignupWizard({ onComplete, onBack }) {
   const [saving, setSaving]     = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scanMsg, setScanMsg]   = useState("");
-  const [imgPreview, setImgPreview] = useState(null);
   const [scanDone, setScanDone] = useState(false);
+  const [imgPreview, setImgPreview] = useState(null);
   const fileRef = React.useRef(null);
   const camRef  = React.useRef(null);
-  const [form, setForm] = useState({ bizNum:"", bizName:"", ownerName:"", address:"", bizType:"", bizItem:"", phone:"", pw:"", pw2:"" });
+  const [form, setForm] = useState({ bizNum:"", bizName:"", ownerName:"", address:"", phone:"", pw:"", pw2:"" });
   const set = (k,v) => setForm(p=>({...p,[k]:v}));
 
   const fmtBizNum = (v) => {
-    const d = v.replace(/[^0-9]/g,"").slice(0,10);
-    if (d.length<=3) return d;
-    if (d.length<=5) return d.slice(0,3)+"-"+d.slice(3);
+    const d=v.replace(/[^0-9]/g,"").slice(0,10);
+    if(d.length<=3)return d; if(d.length<=5)return d.slice(0,3)+"-"+d.slice(3);
     return d.slice(0,3)+"-"+d.slice(3,5)+"-"+d.slice(5);
   };
 
   const runOCR = async (file) => {
-    setScanning(true); setScanMsg("사진 확인 중...");
+    setScanning(true); setScanMsg("서버 연결 중...");
     try {
-      // 시스템 키 로드
       let key = window.__systemGeminiKey || "";
       if (!key) {
-        setScanMsg("서버 연결 중...");
-        const SB_U = "https://dpftlrsuqxqqeouwbfjd.supabase.co";
-        const SB_K = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwZnRscnN1cXhxcWVvdXdiZmpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5MDU4MjQsImV4cCI6MjA4NzQ4MTgyNH0.iydEkjtPjZ0jXpUUPJben4IWWneDqLomv-HDlcFayE4";
-        const r = await fetch(`${SB_U}/rest/v1/businesses?select=memo&code=eq.__system__`, { headers:{ apikey:SB_K, Authorization:`Bearer ${SB_K}` }});
-        const rows = await r.json();
-        if (rows?.[0]?.memo) { const m=JSON.parse(rows[0].memo); key=m.system_gemini_key||""; if(key) window.__systemGeminiKey=key; }
+        const SBU="https://dpftlrsuqxqqeouwbfjd.supabase.co";
+        const SBK="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwZnRscnN1cXhxcWVvdXdiZmpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5MDU4MjQsImV4cCI6MjA4NzQ4MTgyNH0.iydEkjtPjZ0jXpUUPJben4IWWneDqLomv-HDlcFayE4";
+        const r=await fetch(SBU+"/rest/v1/businesses?select=memo&code=eq.__system__",{headers:{apikey:SBK,Authorization:"Bearer "+SBK}});
+        const rows=await r.json();
+        if(rows[0]){const m=JSON.parse(rows[0].memo||"{}");key=m.system_gemini_key||"";if(key)window.__systemGeminiKey=key;}
       }
-      if (!key) { setScanMsg("직접 입력 모드로 전환합니다..."); setTimeout(()=>{ setScanning(false); setStep(2); },1200); return; }
-
+      if (!key) { setScanMsg("직접 입력 모드로 전환합니다..."); setTimeout(()=>{setScanning(false);setStep(2);},1200); return; }
       setScanMsg("AI 분석 중...");
-      const b64 = await new Promise((res,rej)=>{ const fr=new FileReader(); fr.onload=e=>res(e.target.result.split(",")[1]); fr.onerror=rej; fr.readAsDataURL(file); });
-      const mime = (file.type && file.type.startsWith("image/")) ? file.type : "image/jpeg";
-
-      const resp = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
-        { method:"POST", headers:{"Content-Type":"application/json"},
-          body: JSON.stringify({ contents:[{ parts:[
-            { inline_data:{ mime_type:mime, data:b64 }},
-            { text:'이 이미지는 한국 사업자등록증입니다. 아래 JSON 형식으로만 답하세요. 마크다운 없이 JSON만.
-{"bizNum":"사업자등록번호숫자10자리","bizName":"상호명","ownerName":"대표자명","address":"사업장주소","bizType":"업태","bizItem":"종목","phone":"전화번호없으면빈문자열"}' }
-          ]}], generationConfig:{ temperature:0, maxOutputTokens:400 } })
-        }
-      );
-      const json = await resp.json();
-      if (!resp.ok) { setScanMsg(`분석 실패(${resp.status}) — 직접 입력해주세요`); setTimeout(()=>{ setScanning(false); setStep(2); },2000); return; }
-      const raw = (json.candidates?.[0]?.content?.parts?.[0]?.text||"").replace(/```json|```/g,"").trim();
-      const p = JSON.parse(raw);
-      setForm(prev=>({ ...prev, bizNum:(p.bizNum||"").replace(/[^0-9]/g,""), bizName:p.bizName||"", ownerName:p.ownerName||"", address:p.address||"", bizType:p.bizType||"", bizItem:p.bizItem||"", phone:p.phone||"" }));
-      setScanDone(true);
-      setScanning(false);
-      setStep(2);
+      const b64=await new Promise((res,rej)=>{
+        const fr=new FileReader(); fr.onload=e=>res(e.target.result.split(",")[1]); fr.onerror=rej; fr.readAsDataURL(file);
+      });
+      const mime=(file.type&&file.type.startsWith("image/"))?file.type:"image/jpeg";
+      const resp=await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key="+key,
+        {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+          contents:[{parts:[
+            {inline_data:{mime_type:mime,data:b64}},
+            {text:'이 이미지는 한국 사업자등록증입니다. JSON만 답하세요. 마크다운 금지.
+{"bizNum":"사업자번호숫자10자리","bizName":"상호명","ownerName":"대표자명","address":"사업장주소전체","phone":"전화번호없으면빈문자열"}'}
+          ]}],
+          generationConfig:{temperature:0,maxOutputTokens:300}
+        })});
+      if(!resp.ok){setScanMsg("분석 실패("+resp.status+") — 직접 입력해주세요");setTimeout(()=>{setScanning(false);setStep(2);},1800);return;}
+      const json=await resp.json();
+      const raw=(json.candidates?.[0]?.content?.parts?.[0]?.text||"").replace(/```json|```/g,"").trim();
+      const p=JSON.parse(raw);
+      setForm(prev=>({...prev,
+        bizNum:(p.bizNum||"").replace(/[^0-9]/g,""),
+        bizName:p.bizName||"",ownerName:p.ownerName||"",address:p.address||"",phone:p.phone||""
+      }));
+      setScanDone(true); setScanning(false); setStep(2);
     } catch(e) {
       setScanMsg("인식 오류 — 직접 입력해주세요");
-      setTimeout(()=>{ setScanning(false); setStep(2); }, 1800);
+      setTimeout(()=>{setScanning(false);setStep(2);},1500);
     }
   };
 
   const handleFile = (file) => {
-    if (!file) return;
+    if(!file)return;
     setImgPreview(URL.createObjectURL(file));
     runOCR(file);
   };
 
   const submit = async () => {
-    const bn = form.bizNum.replace(/[^0-9]/g,"");
-    if (bn.length!==10) { alert("사업자등록번호(10자리)를 확인해주세요."); return; }
-    if (!form.bizName.trim()) { alert("상호명을 입력해주세요."); return; }
-    if (!form.pw || form.pw.length<4) { alert("비밀번호는 4자리 이상이어야 합니다."); return; }
-    if (form.pw !== form.pw2) { alert("비밀번호가 일치하지 않습니다."); return; }
+    const bn=form.bizNum.replace(/[^0-9]/g,"");
+    if(bn.length!==10){alert("사업자등록번호(10자리)를 확인해주세요.");return;}
+    if(!form.bizName.trim()){alert("상호명을 입력해주세요.");return;}
+    if(!form.pw||form.pw.length<4){alert("비밀번호는 4자리 이상이어야 합니다.");return;}
+    if(form.pw!==form.pw2){alert("비밀번호가 일치하지 않습니다.");return;}
     setSaving(true);
     try {
-      const ex = await sb.get("app_users",`&login_id=eq.${bn}`);
-      if (ex.length>0) { alert("이미 등록된 사업자번호입니다.
-로그인 화면에서 로그인하세요."); return; }
-      const bizId="biz_"+uid(), brId="br_"+uid(), uid2="acc_"+uid();
-      const expire=new Date(); expire.setDate(expire.getDate()+14);
-      await sb.insert("businesses",{ id:bizId, name:form.bizName.trim(), code:bn, phone:form.phone, memo:JSON.stringify({ plan:"trial", plan_expire:expire.toISOString().split("T")[0], plan_status:"active", owner_name:form.ownerName, biz_type:form.bizType, biz_item:form.bizItem }) });
-      await sb.insert("branches",{ id:brId, business_id:bizId, name:form.bizName.trim(), short:form.bizName.trim().slice(0,5), phone:form.phone, address:form.address, color:"#FFFFFF", sort:0, use_yn:true });
-      await sb.insert("app_users",{ id:uid2, business_id:bizId, login_id:bn, password:form.pw, name:(form.ownerName||form.bizName.trim())+" 대표", role:"owner", branch_ids:JSON.stringify([brId]), view_branch_ids:JSON.stringify([]) });
+      const ex=await sb.get("app_users","&login_id=eq."+bn);
+      if(ex.length>0){alert("이미 등록된 사업자번호입니다.");setSaving(false);return;}
+      const bizId="biz_"+uid(),brId="br_"+uid(),oId="acc_"+uid();
+      const exp=new Date();exp.setDate(exp.getDate()+14);
+      await sb.insert("businesses",{id:bizId,name:form.bizName.trim(),code:bn,phone:form.phone||"",memo:JSON.stringify({plan:"trial",plan_expire:exp.toISOString().split("T")[0],plan_status:"active",owner_name:form.ownerName||""})});
+      await sb.insert("branches",{id:brId,business_id:bizId,name:form.bizName.trim(),short:form.bizName.trim().slice(0,5),phone:form.phone||"",address:form.address||"",color:"#FFFFFF",sort:0,use_yn:true});
+      await sb.insert("app_users",{id:oId,business_id:bizId,login_id:bn,password:form.pw,name:(form.ownerName||form.bizName.trim())+" 대표",role:"owner",branch_ids:JSON.stringify([brId]),view_branch_ids:JSON.stringify([])});
       setStep(3);
-      setTimeout(()=>onComplete({ id:uid2, businessId:bizId, loginId:bn, pw:form.pw, name:(form.ownerName||form.bizName.trim())+" 대표", role:"owner", branches:[brId], viewBranches:[] }), 1800);
-    } catch(e) { alert("가입 실패: "+(e.message||"다시 시도해주세요.")); }
-    finally { setSaving(false); }
+      setTimeout(()=>onComplete({id:oId,businessId:bizId,loginId:bn,pw:form.pw,name:(form.ownerName||form.bizName.trim())+" 대표",role:"owner",branches:[brId],viewBranches:[]}),1800);
+    } catch(e){alert("가입 실패: "+(e.message||"다시 시도해주세요."));}
+    finally{setSaving(false);}
   };
 
-  const inp = { width:"100%", padding:"12px 14px", fontSize:14, borderRadius:10, border:"1px solid #e0e0e0", outline:"none", fontFamily:"inherit", boxSizing:"border-box", background:"#fff" };
-  const lbl = { fontSize:11, color:"#999", fontWeight:600, marginBottom:5, display:"block" };
+  const inp={width:"100%",padding:"12px 14px",fontSize:15,borderRadius:10,border:"1px solid #e0e0e0",outline:"none",fontFamily:"inherit",boxSizing:"border-box",background:"#fff"};
+  const lbl={fontSize:11,color:"#999",fontWeight:600,marginBottom:5,display:"block"};
 
-  // ── 스캔 중 오버레이 ──
   if (scanning) return (
-    <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:20,padding:"60px 0"}}>
-      {imgPreview && <img src={imgPreview} style={{width:"100%",maxHeight:200,objectFit:"contain",borderRadius:10,opacity:.6}}/>}
-      <div style={{width:52,height:52,border:"5px solid #e0e0f0",borderTopColor:"#7c7cc8",borderRadius:"50%",animation:"spin 1s linear infinite"}}/>
+    <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:20,minHeight:260}}>
+      {imgPreview && <img src={imgPreview} style={{width:"100%",maxHeight:180,objectFit:"contain",borderRadius:10,opacity:.5}} alt=""/>}
+      <div style={{width:48,height:48,border:"5px solid #e8e8f5",borderTopColor:"#7c7cc8",borderRadius:"50%",animation:"spin 1s linear infinite"}}/>
       <div style={{fontSize:14,color:"#7c7cc8",fontWeight:700}}>{scanMsg}</div>
     </div>
   );
 
-  // ── Step 1: 사진 등록 ──
   if (step===1) return (
-    <div style={{display:"flex",flexDirection:"column",gap:18}}>
+    <div style={{display:"flex",flexDirection:"column",gap:16}}>
       <div style={{textAlign:"center",paddingBottom:4}}>
-        <div style={{fontSize:32,marginBottom:8}}>📋</div>
+        <div style={{fontSize:30,marginBottom:6}}>📋</div>
         <div style={{fontSize:17,fontWeight:800,color:"#222"}}>사업자등록증 촬영</div>
         <div style={{fontSize:13,color:"#aaa",marginTop:4}}>찍으면 정보를 자동으로 채워드립니다</div>
       </div>
-
-      <button onClick={()=>camRef.current?.click()}
-        style={{padding:"18px 0",borderRadius:14,border:"none",
-          background:"linear-gradient(135deg,#7c7cc8,#9b9be0)",color:"#fff",
-          fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit",
-          display:"flex",alignItems:"center",justifyContent:"center",gap:10,
-          boxShadow:"0 4px 20px rgba(124,124,200,.35)"}}>
-        <span style={{fontSize:22}}>📷</span> 카메라로 촬영
+      <button onClick={()=>camRef.current&&camRef.current.click()}
+        style={{padding:"16px 0",borderRadius:12,border:"none",background:"linear-gradient(135deg,#7c7cc8,#9b9be0)",color:"#fff",fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
+        <span style={{fontSize:20}}>📷</span> 카메라로 촬영
       </button>
-      <input ref={camRef} type="file" accept="image/*" capture="environment" style={{display:"none"}} onChange={e=>handleFile(e.target.files?.[0])}/>
-
-      <button onClick={()=>fileRef.current?.click()}
-        style={{padding:"14px 0",borderRadius:10,border:"1px solid #e0e0e0",
-          background:"#fafafa",color:"#555",fontSize:13,cursor:"pointer",fontFamily:"inherit",
-          display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-        <span style={{fontSize:18}}>🖼️</span> 갤러리에서 선택
+      <input ref={camRef} type="file" accept="image/*" capture="environment" style={{display:"none"}} onChange={e=>handleFile(e.target.files&&e.target.files[0])}/>
+      <button onClick={()=>fileRef.current&&fileRef.current.click()}
+        style={{padding:"13px 0",borderRadius:10,border:"1px solid #e0e0e0",background:"#fafafa",color:"#555",fontSize:13,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+        <span style={{fontSize:16}}>🖼️</span> 갤러리에서 선택
       </button>
-      <input ref={fileRef} type="file" accept="image/*" style={{display:"none"}} onChange={e=>handleFile(e.target.files?.[0])}/>
-
-      <div style={{display:"flex",alignItems:"center",gap:8}}>
-        <div style={{flex:1,height:1,background:"#eee"}}/>
-        <span style={{fontSize:12,color:"#ccc"}}>또는</span>
-        <div style={{flex:1,height:1,background:"#eee"}}/>
-      </div>
-
-      <button onClick={()=>setStep(2)}
-        style={{padding:"13px 0",borderRadius:10,border:"1px solid #e0e0e0",
-          background:"#fff",color:"#888",fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>
-        직접 입력하기
-      </button>
-
-      <button onClick={onBack} style={{background:"none",border:"none",fontSize:12,color:"#ccc",cursor:"pointer",fontFamily:"inherit",padding:4,textAlign:"center",marginTop:4}}>← 로그인으로</button>
+      <input ref={fileRef} type="file" accept="image/*" style={{display:"none"}} onChange={e=>handleFile(e.target.files&&e.target.files[0])}/>
+      <button onClick={()=>setStep(2)} style={{padding:"12px 0",borderRadius:10,border:"1px solid #e0e0e0",background:"#fff",color:"#888",fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>직접 입력하기</button>
+      <button onClick={onBack} style={{background:"none",border:"none",fontSize:12,color:"#ccc",cursor:"pointer",fontFamily:"inherit",padding:4,textAlign:"center"}}>← 로그인으로</button>
     </div>
   );
 
-  // ── Step 2: 정보 입력/확인 ──
   if (step===2) return (
     <div style={{display:"flex",flexDirection:"column",gap:14}}>
       <div style={{display:"flex",alignItems:"center",gap:10}}>
         <button onClick={()=>setStep(1)} style={{background:"none",border:"none",fontSize:20,cursor:"pointer",color:"#ccc",padding:0,lineHeight:1,flexShrink:0}}>←</button>
         <div>
-          <div style={{fontSize:16,fontWeight:800,color:"#222"}}>{scanDone?"✅ 인식 완료":"업체 정보 입력"}</div>
+          <div style={{fontSize:16,fontWeight:800,color:"#222"}}>{scanDone?"✅ 인식 완료 — 확인하세요":"업체 정보 입력"}</div>
           <div style={{fontSize:11,color:"#aaa"}}>{scanDone?"잘못된 항목은 수정하세요":"사업자등록증을 보고 입력하세요"}</div>
         </div>
       </div>
-
       <div style={{background:"#f5f5ff",border:"1px solid #dde",borderRadius:10,padding:"10px 14px",fontSize:12,color:"#667"}}>
         💡 사업자등록번호가 <b>로그인 아이디</b>로 사용됩니다
       </div>
-
       <div>
         <label style={lbl}>사업자등록번호 <span style={{color:"#e57373"}}>*</span></label>
-        <input style={{...inp,fontWeight:700,letterSpacing:1,background:"#f8f8ff",border:"1px solid #c5c5e8"}}
-          value={fmtBizNum(form.bizNum)} onChange={e=>set("bizNum",e.target.value)} placeholder="000-00-00000" maxLength={12}/>
+        <input style={{...inp,fontWeight:700,letterSpacing:1,background:"#f8f8ff",border:"1px solid #c5c5e8"}} value={fmtBizNum(form.bizNum)} onChange={e=>set("bizNum",e.target.value)} placeholder="000-00-00000" maxLength={12}/>
       </div>
       <div>
         <label style={lbl}>상호명 <span style={{color:"#e57373"}}>*</span></label>
@@ -1207,27 +1177,106 @@ function SignupWizard({ onComplete, onBack }) {
         🎁 가입 후 <b>14일 무료 체험</b> · 모든 기능 이용 가능
       </div>
       <button onClick={submit} disabled={saving}
-        style={{width:"100%",padding:16,borderRadius:12,border:"none",
-          background:saving?"#c5c5e8":"linear-gradient(135deg,#7c7cc8,#9b9be0)",color:"#fff",
-          fontSize:16,fontWeight:800,cursor:saving?"not-allowed":"pointer",fontFamily:"inherit",
-          boxShadow:"0 4px 16px rgba(124,124,200,.3)",marginBottom:8}}>
-        {saving ? "처리 중..." : "시작하기 →"}
+        style={{width:"100%",padding:16,borderRadius:12,border:"none",background:saving?"#c5c5e8":"linear-gradient(135deg,#7c7cc8,#9b9be0)",color:"#fff",fontSize:16,fontWeight:800,cursor:saving?"not-allowed":"pointer",fontFamily:"inherit",marginBottom:8}}>
+        {saving?"처리 중...":"시작하기 →"}
       </button>
     </div>
   );
 
-  // ── Step 3: 완료 ──
   return (
     <div style={{textAlign:"center",padding:"30px 0",display:"flex",flexDirection:"column",alignItems:"center",gap:18}}>
-      <div style={{fontSize:60,animation:"bounceIn .6s ease"}}>🎉</div>
+      <div style={{fontSize:56,animation:"bounceIn .6s ease"}}>🎉</div>
       <div style={{fontSize:20,fontWeight:800,color:"#2e7d32"}}>가입 완료!</div>
       <div style={{fontSize:13,color:"#666",lineHeight:1.8}}>
-        <b style={{color:"#333"}}>{form.bizName}</b>님,<br/>
-        14일 무료 체험이 시작되었습니다.<br/>
-        <span style={{fontSize:11,color:"#aaa"}}>잠시 후 자동 로그인됩니다...</span>
+        <b style={{color:"#333"}}>{form.bizName}</b>님,<br/>14일 무료 체험이 시작되었습니다.
       </div>
       <div style={{width:"60%",height:4,background:"#e0e0f0",borderRadius:2,overflow:"hidden"}}>
         <div style={{height:"100%",background:"#7c7cc8",borderRadius:2,animation:"loadingBar 1.8s linear forwards"}}/>
+      </div>
+    </div>
+  );
+}
+
+// ─── Super: 시스템 설정 ───
+function SuperSystemSettings() {
+  const [key, setKey]     = useState("");
+  const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const rows = await sb.get("businesses","&code=eq.__system__");
+        if (rows.length > 0) {
+          const m = JSON.parse(rows[0].memo||"{}");
+          setKey(m.system_gemini_key||"");
+        }
+      } catch(e){}
+      finally { setLoading(false); }
+    })();
+  }, []);
+
+  const save = async () => {
+    try {
+      const rows = await sb.get("businesses","&code=eq.__system__");
+      const memo = JSON.stringify({ system_gemini_key: key.trim() });
+      if (rows.length > 0) {
+        await sb.update("businesses", rows[0].id, { memo });
+      } else {
+        await sb.insert("businesses",{ id:"biz_system", name:"[시스템]", code:"__system__", phone:"", memo });
+      }
+      window.__systemGeminiKey = key.trim();
+      setSaved(true);
+      setTimeout(()=>setSaved(false), 2500);
+    } catch(e) { alert("저장 실패: "+e.message); }
+  };
+
+  if (loading) return <div style={{padding:40,textAlign:"center",color:"#999"}}>로딩 중...</div>;
+
+  return (
+    <div style={{maxWidth:520,margin:"0 auto",padding:24}}>
+      <div style={{fontSize:15,fontWeight:800,color:"#333",marginBottom:4}}>시스템 설정</div>
+      <div style={{fontSize:12,color:"#999",marginBottom:24}}>일반 사용자에게는 표시되지 않는 개발자 전용 설정입니다.</div>
+
+      <div style={{background:"#fff",border:"1px solid #e8e8e8",borderRadius:12,padding:20,display:"flex",flexDirection:"column",gap:16}}>
+        <div>
+          <div style={{fontSize:13,fontWeight:700,color:"#444",marginBottom:4}}>Gemini API 키 (시스템)</div>
+          <div style={{fontSize:11,color:"#aaa",marginBottom:10}}>
+            가입 시 사업자등록증 자동 인식에 사용됩니다. 사용자에게는 노출되지 않습니다.
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <input
+              type="password"
+              value={key}
+              onChange={e=>{setKey(e.target.value);setSaved(false);}}
+              placeholder="AIza..."
+              style={{flex:1,padding:"10px 12px",fontSize:13,borderRadius:8,border:"1px solid #e0e0e0",outline:"none",fontFamily:"inherit"}}
+            />
+            <button onClick={save}
+              style={{padding:"10px 20px",borderRadius:8,border:"none",background:"#7c7cc8",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>
+              {saved ? "✓ 저장됨" : "저장"}
+            </button>
+          </div>
+          {key && <div style={{fontSize:11,color:"#7c7cc8",marginTop:6}}>✓ 키 등록됨 — 신규 가입 시 OCR 자동 활성화</div>}
+          {!key && <div style={{fontSize:11,color:"#f4a",marginTop:6}}>키 미등록 — 신규 가입자는 직접 입력 방식으로 진행됩니다</div>}
+        </div>
+
+        <div style={{borderTop:"1px solid #f0f0f0",paddingTop:14}}>
+          <div style={{fontSize:12,fontWeight:700,color:"#888",marginBottom:8}}>요금제 안내</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
+            {[
+              {name:"체험",id:"trial",color:"#9e9e9e",desc:"14일 무료"},
+              {name:"Basic",id:"basic",color:"#42a5f5",desc:"지점 1 · 직원 3"},
+              {name:"Pro",id:"pro",color:"#7c7cc8",desc:"무제한"},
+            ].map(p=>(
+              <div key={p.id} style={{border:"1px solid #e8e8e8",borderRadius:8,padding:"10px 12px",textAlign:"center"}}>
+                <div style={{fontSize:12,fontWeight:700,color:p.color}}>{p.name}</div>
+                <div style={{fontSize:11,color:"#999",marginTop:2}}>{p.desc}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{fontSize:11,color:"#ccc",marginTop:10}}>* 결제 연동은 추후 구현 예정</div>
+        </div>
       </div>
     </div>
   );
@@ -1248,10 +1297,10 @@ function Login({ users, onLogin, onSignup }) {
     onLogin(u);
   };
   if (showSignup) return (
-    <div style={{position:"fixed",inset:0,overflowY:"auto",WebkitOverflowScrolling:"touch",background:"linear-gradient(135deg,#e8e8f0 0%,#d8d8e8 50%,#c8c8d8 100%)",fontFamily:"'Pretendard',sans-serif",padding:"20px 16px 60px",boxSizing:"border-box",zIndex:9999}}>
+    <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,overflowY:"auto",WebkitOverflowScrolling:"touch",background:"linear-gradient(135deg,#e8e8f0 0%,#d8d8e8 50%,#c8c8d8 100%)",fontFamily:"'Pretendard',sans-serif",padding:"20px 16px 80px",boxSizing:"border-box",zIndex:9999}}>
       <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet"/>
       <style>{CSS}</style>
-      <div style={{background:"#fff",borderRadius:12,border:"1px solid #e0e0e0",padding:"28px 24px",width:"92%",maxWidth:460,margin:"0 auto",animation:"slideUp .6s cubic-bezier(.22,1,.36,1)",boxShadow:"0 12px 40px rgba(0,0,0,.15)"}}>
+      <div style={{background:"#fff",borderRadius:12,border:"1px solid #e0e0e0",padding:"28px 24px",width:"92%",maxWidth:460,animation:"slideUp .6s cubic-bezier(.22,1,.36,1)",boxShadow:"0 12px 40px rgba(0,0,0,.15)",marginTop:20}}>
         <div style={{textAlign:"center",marginBottom:24}}>
           <div style={{fontSize:24,fontWeight:800,color:"#7c7cc8",letterSpacing:-1}}>Bliss</div>
           <div style={{fontSize:11,color:"#999",marginTop:4}}>신규 가입</div>
