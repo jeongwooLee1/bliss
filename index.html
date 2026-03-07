@@ -4146,7 +4146,7 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
     })()}
     <div className="card tw">
       <table style={{tableLayout:"fixed",width:"100%"}}><thead><tr>
-        <th style={{width:68}}>날짜</th><th style={{width:50}}>시간</th><th style={{width:52}}>매장</th><th style={{width:64}}>고객</th><th style={{width:84}}>연락처</th><th style={{width:"14%"}}>시술</th><th style={{width:46}}>시술자</th><th style={{width:90,color:"#03C75A"}}>예약번호</th><th style={{width:50,color:"#e65100"}}>예약금</th><th style={{width:46}}>상태</th>
+        <th style={{width:68}}>날짜</th><th style={{width:50}}>시간</th><th style={{width:52}}>매장</th><th style={{width:64}}>고객</th><th style={{width:28,textAlign:"center"}}>성별</th><th style={{width:84}}>연락처</th><th style={{width:"14%"}}>시술</th><th style={{width:46}}>시술자</th><th style={{width:90,color:"#03C75A"}}>예약번호</th><th style={{width:50,color:"#e65100"}}>예약금</th><th style={{width:46}}>상태</th>
         <th style={{width:90,background:"#F1F8E9",padding:"3px 4px",transition:"width 0.15s",overflow:"hidden"}}>
             <label style={{display:"flex",alignItems:"center",gap:4,cursor:"pointer",fontSize:10,fontWeight:600,color:"#37474F",whiteSpace:"nowrap",overflow:"hidden"}}>
               <input type="checkbox" checked={!!naverColShow["직원메모"]} onChange={()=>toggleNaverCol("직원메모")}
@@ -4165,7 +4165,7 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
         ))}
         <th style={{width:60}}>액션</th>
       </tr></thead><tbody>
-        {res.length===0?<tr><td colSpan={13+NAVER_COLS.length} style={{textAlign:"center",color:"#bbb",padding:40,fontSize:13}}>예약이 없습니다</td></tr>:
+        {res.length===0?<tr><td colSpan={14+NAVER_COLS.length} style={{textAlign:"center",color:"#bbb",padding:40,fontSize:13}}>예약이 없습니다</td></tr>:
           res.map(r=>{
             const svc=(data.services||[]).find(s=>s.id===r.serviceId);
             const svcNames=(r.selectedServices||[]).map(sid=>(data.services||[]).find(s=>s.id===sid)?.name).filter(Boolean);
@@ -4184,7 +4184,10 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
               <td style={{fontSize:11,color:"#aaa"}}>{r.date}</td>
               <td style={{fontWeight:700,color:"#7c7cc8"}}>{r.time}</td>
               <td style={{fontSize:11}}>{br?.short}</td>
-              <td style={{fontWeight:600,maxWidth:68,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"flex",alignItems:"center"}} title={r.custName||""}>{g?<span style={{fontSize:9,fontWeight:700,borderRadius:8,padding:"1px 5px",marginRight:3,background:g==="M"?"#e8eaf6":"#fce4ec",color:g==="M"?"#3949ab":"#c2185b",flexShrink:0}}>{g==="M"?"남":"여"}</span>:null}{r.custName||"-"}</td>
+              <td style={{fontWeight:600,maxWidth:68,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={r.custName||""}>{r.custName||"-"}</td>
+              <td style={{textAlign:"center",padding:"2px"}}>
+                {g ? <span style={{fontSize:10,fontWeight:700,borderRadius:6,padding:"2px 5px",background:g==="M"?"#E3F2FD":"#FCE4EC",color:g==="M"?"#1565C0":"#C2185B",display:"inline-block"}}>{g==="M"?"남":"여"}</span> : <span style={{color:"#ddd",fontSize:10}}>-</span>}
+              </td>
               <td style={{color:"#7c7cc8",fontSize:12,whiteSpace:"nowrap"}}>{r.custPhone||"-"}</td>
               <td style={{fontSize:12}}>{svcDisplay}</td>
               <td style={{fontSize:12}}>{staff?.dn||"-"}</td>
