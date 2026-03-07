@@ -159,7 +159,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.68.5";
+const BLISS_V = "2.68.6";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -1567,7 +1567,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
     isDragging.current = false;
     longPressActive.current = false;
 
-    origBlockPos.current = { time: block.time, roomId: block.roomId, bid: block.bid };
+    origBlockPos.current = { time: block.time, roomId: block.roomId || naverAssignments[block.id] || null, bid: block.bid, staffId: block.staffId };
 
     const sr = scrollRef.current;
     const blockTopY = timeToY(block.time);
@@ -1613,7 +1613,15 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
             const [sh,sm] = snap.time.split(":").map(Number);
             const endMin = sh*60+sm+(r.dur||60);
             const endTime = `${String(Math.floor(endMin/60)).padStart(2,"0")}:${String(endMin%60).padStart(2,"0")}`;
-            return {...r, time: snap.time, endTime, roomId: snap.roomId||r.roomId, bid: snap.bid||r.bid};
+            const isNaverBlock = !!r.reservationId;
+            const toNaverCol = snap.roomId?.startsWith("nv_");
+            const toRegularCol = snap.roomId && !snap.roomId.startsWith("nv_");
+            const staffUpdate = isNaverBlock
+              ? (toNaverCol ? { staffId: "", roomId: "" }         // 네이버 칼럼으로 → 배정 해제
+                : toRegularCol ? { staffId: snap.roomId }         // 일반 칼럼으로 → staffId = roomId
+                : {})
+              : {};
+            return {...r, time: snap.time, endTime, roomId: snap.roomId||r.roomId, bid: snap.bid||r.bid, ...staffUpdate};
           })}));
           setPendingChange({ type: "move", block, data: snap, orig });
         }
@@ -1770,7 +1778,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
         const [sh,sm] = orig.time.split(":").map(Number);
         const endMin = sh*60+sm+(r.dur||60);
         const endTime = `${String(Math.floor(endMin/60)).padStart(2,"0")}:${String(endMin%60).padStart(2,"0")}`;
-        return {...r, time: orig.time, endTime, roomId: orig.roomId, bid: orig.bid};
+        return {...r, time: orig.time, endTime, roomId: orig.roomId || "", bid: orig.bid, staffId: orig.staffId || r.staffId};
       })}));
     }
     if (type === "resize") {
@@ -2029,17 +2037,12 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
           {allRooms.map((room, ci) => {
             const roomBlocks = blocks.filter(b => {
               if (room.isNaver) {
+                // 네이버 칼럼: 미배정(roomId 없거나 nv_ 접두) 네이버 예약만
                 if (!isNaverRes(b) || b.bid !== room.branch_id) return false;
-                if (b.roomId === room.id) return true;
-                if (!b.roomId?.startsWith("nv_")) {
-                  const firstNv = allRooms.find(r => r.isNaver && r.branch_id === room.branch_id);
-                  return firstNv?.id === room.id;
-                }
-                return false;
+                if (b.roomId && !b.roomId.startsWith("nv_")) return false; // 일반 룸에 이미 배정됨
+                return naverAssignments[b.id] === room.id;
               }
-              // 일반 칼럼: 네이버칼럼이 없는 지점이면 네이버 예약도 roomId 기준으로 표시
-              const hasNaverCols = allRooms.some(r => r.isNaver && r.branch_id === room.branch_id);
-              if (isNaverRes(b) && hasNaverCols) return false;
+              // 일반 칼럼: roomId 기준 (배정된 네이버 예약 포함)
               return b.roomId === room.id;
             });
             const isNewBranch = ci === 0 || room.branch_id !== allRooms[ci-1]?.branch_id;
@@ -2137,6 +2140,8 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                     // 네이버 취소/대기 상태 처리
                     const isNaverCancelled = block.status === "naver_cancelled";
                     const isNaverPending = block.status === "pending" && !(block.memo && block.memo.includes("확정완료"));
+                    // 네이버 예약이고 아직 일반 칼럼에 미배정 (roomId 없거나 nv_ 접두)
+                    const isNaverUnassigned = !!block.reservationId && (!block.roomId || block.roomId.startsWith("nv_"));
                     const stClr = block.type==="reservation" && !block.isSchedule && statusClr[block.status];
                     const color = isNaverCancelled ? "#E6A700" : (stClr || tagColor || BLOCK_COLORS[block.type] || "#7c7cc8");
                     const staff = (data.staff||[]).find(s=>s.id===block.staffId);
@@ -2155,9 +2160,9 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                           width: block._totalCols > 1 ? ((colW - 6) / block._totalCols) - 2 : undefined,
                           right: block._totalCols > 1 ? undefined : 3,
                           height:Math.max(h,rowH*2),
-                          background:isNaverCancelled?"#FFF8E1":isNaverPending?`${color}15`:`${color}${bgAlpha}`,
-                          border:isNaverCancelled?"1.5px dashed #E6A700":isNaverPending?`1.5px dashed ${color}`:"none",
-                          borderLeft:`3.5px solid ${isNaverCancelled?"#E6A700":color}`,
+                          background:isNaverCancelled?"#FFF8E1":isNaverUnassigned?"#FFF8E1":isNaverPending?`${color}15`:`${color}${bgAlpha}`,
+                          border:isNaverCancelled?"1.5px dashed #E6A700":isNaverUnassigned?"1.5px dashed #FF9800":isNaverPending?`1.5px dashed ${color}`:"none",
+                          borderLeft:`3.5px solid ${isNaverCancelled?"#E6A700":isNaverUnassigned?"#FF9800":color}`,
                           borderRadius:8,padding:"4px 6px",overflow:"hidden",fontSize:blockFs,lineHeight:1.2,
                           boxShadow:isDrag?"none":"0 1px 4px rgba(0,0,0,.1)",
                           cursor:isEditable?"grab":"pointer",zIndex:isDrag?0:3,transition:(isDrag||isBeingResized)?"none":"all .15s, box-shadow .2s",
@@ -2167,7 +2172,8 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                           <div style={{display:"flex",alignItems:"center",gap:2,overflow:"hidden",whiteSpace:"nowrap",flexWrap:"nowrap"}}>
                             {/* 태그 - 이름 앞에 */}
                             {isNaverCancelled && <span style={{fontSize:Math.max(6,blockFs-2),padding:"1px 3px",borderRadius:2,background:"#E6A700",color:"#fff",fontWeight:700,lineHeight:1,flexShrink:0}}>취소</span>}
-                            {isNaverPending && <span style={{fontSize:Math.max(6,blockFs-2),padding:"1px 3px",borderRadius:2,background:"#FF9800",color:"#fff",fontWeight:700,lineHeight:1,flexShrink:0,animation:"pendingBlink 1.5s infinite"}}>대기</span>}
+                            {isNaverUnassigned && <span style={{fontSize:Math.max(6,blockFs-2),padding:"1px 3px",borderRadius:2,background:"#FF9800",color:"#fff",fontWeight:700,lineHeight:1,flexShrink:0}}>미배정</span>}
+                            {isNaverPending && !isNaverUnassigned && <span style={{fontSize:Math.max(6,blockFs-2),padding:"1px 3px",borderRadius:2,background:"#FF9800",color:"#fff",fontWeight:700,lineHeight:1,flexShrink:0,animation:"pendingBlink 1.5s infinite"}}>대기</span>}
                             {block.selectedTags?.slice(0,3).map(tid=>{
                               const tg=tags.find(t=>t.id===tid);
                               if(!tg) return null;
