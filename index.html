@@ -159,7 +159,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.4";
+const BLISS_V = "2.69.5";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -1020,9 +1020,10 @@ function SuperUsers({ users, businesses, superData, setSuperData }) {
 
 // ─── SignupWizard ───
 function SignupWizard({ onComplete, onBack }) {
-  const [step, setStep]     = useState(1);
-  const [saving, setSaving] = useState(false);
+  const [step, setStep]       = useState(1);
+  const [saving, setSaving]   = useState(false);
   const [scanning, setScanning] = useState(false);
+  const [scanMsg, setScanMsg] = useState("");
   const [imgData, setImgData]   = useState(null);
   const [imgFile, setImgFile]   = useState(null);
   const [scanDone, setScanDone] = useState(false);
@@ -1064,18 +1065,21 @@ function SignupWizard({ onComplete, onBack }) {
           }
         } catch(e) {}
       }
-      if (!key) { setScanning(false); setStep(2); return; }
+      if (!key) { setScanMsg("시스템 준비 중입니다. 직접 입력해주세요."); setScanning(false); setStep(2); return; }
 
-      // base64 변환
+      setScanMsg("사진 분석 중...");
+      // base64 변환 (iOS HEIC 포함 모든 형식)
       const base64 = await new Promise((res, rej) => {
         const reader = new FileReader();
         reader.onload  = e => res(e.target.result.split(",")[1]);
         reader.onerror = rej;
         reader.readAsDataURL(file);
       });
-      const mimeType = file.type || "image/jpeg";
+      // iOS는 file.type이 비어있을 수 있어서 jpeg로 fallback
+      const mimeType = file.type && file.type !== "" ? file.type : "image/jpeg";
+      setScanMsg("AI 분석 중...");
       const resp = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`,
         { method:"POST", headers:{"Content-Type":"application/json"},
           body: JSON.stringify({
             contents:[{ parts:[
@@ -1086,6 +1090,12 @@ function SignupWizard({ onComplete, onBack }) {
           })
         }
       );
+      if (!resp.ok) {
+        const errText = await resp.text();
+        setScanMsg("인식 실패 — 직접 입력해주세요. ("+resp.status+")");
+        setTimeout(()=>{ setScanning(false); setScanMsg(""); setStep(2); }, 2000);
+        return;
+      }
       const d    = await resp.json();
       const text = (d.candidates?.[0]?.content?.parts?.[0]?.text||"").replace(/```json|```/g,"").trim();
       const p    = JSON.parse(text);
@@ -1096,8 +1106,11 @@ function SignupWizard({ onComplete, onBack }) {
         bizItem:p.bizItem||"", phone:p.phone||"",
       }));
       setScanDone(true);
-    } catch(e) { /* 실패해도 수동 입력으로 */ }
-    finally { setScanning(false); setStep(2); }
+      setScanMsg("");
+    } catch(e) {
+      setScanMsg("인식 실패 — 직접 입력해주세요.");
+    }
+    finally { setScanning(false); setTimeout(()=>setStep(2), scanMsg ? 1800 : 0); }
   };
 
   const submit = async () => {
@@ -1138,7 +1151,7 @@ function SignupWizard({ onComplete, onBack }) {
       {scanning ? (
         <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:14,padding:"32px 0"}}>
           <div style={{width:48,height:48,border:"4px solid #e0e0f0",borderTopColor:"#7c7cc8",borderRadius:"50%",animation:"spin 1s linear infinite"}}/>
-          <div style={{fontSize:13,color:"#7c7cc8",fontWeight:600}}>정보 인식 중...</div>
+          <div style={{fontSize:13,color:"#7c7cc8",fontWeight:600}}>{scanMsg || "정보 인식 중..."}</div>
         </div>
       ) : (
         <>
