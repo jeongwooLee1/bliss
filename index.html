@@ -159,7 +159,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.68.4";
+const BLISS_V = "2.68.5";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -3143,13 +3143,7 @@ ${naverText}
                   if (f.requestMsg.trim().startsWith("[")) {
                     try {
                       const items = JSON.parse(f.requestMsg);
-                      const savedCols = (()=>{try{return JSON.parse(localStorage.getItem("bliss_naver_cols")||"{}");}catch(e){return {};}})();
-                      const colKeyMap = Object.fromEntries(NAVER_COLS.map(nc=>[nc.label, nc.key]));
-                      return items.filter(it=>it.value).filter(it=>{
-                        const ck = colKeyMap[it.label];
-                        if (!ck) return true; // NAVER_COLS에 없는 항목(시술메뉴 등)은 항상 표시
-                        return !!savedCols[ck];
-                      }).map((it,i)=>{
+                      return items.filter(it=>it.value).map((it,i)=>{
                         if (it.label==="시술메뉴") return <NRow key={i} label="시술메뉴" value={it.value} valueColor="#1B5E20" bold/>;
                         return <div key={i} style={{display:"flex",alignItems:"baseline",gap:8,padding:"3px 0",borderBottom:"1px solid #E8F5E9",minHeight:26}}>
                           <span style={{fontSize:11,color:"#888",fontWeight:500,minWidth:72,flexShrink:0}}>{it.label}</span>
