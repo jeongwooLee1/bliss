@@ -159,7 +159,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.95";
+const BLISS_V = "2.65.96";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -4101,7 +4101,7 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
               </td>
               <td style={{fontSize:11,color:"#888",maxWidth:100,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={r.ownerComment||""}>{r.ownerComment||<span style={{color:"#ccc"}}>-</span>}</td>
               <td style={{fontSize:10,color:"#03C75A",whiteSpace:"nowrap"}}>
-                {r.reservationId ? <a href={`https://partner.booking.naver.com/bizes/1523676/booking-list-view/bookings/${r.reservationId}`} target="_blank" rel="noreferrer" style={{color:"#03C75A",textDecoration:"none"}}>{r.reservationId}</a> : <span style={{color:"#ccc"}}>-</span>}
+                {r.reservationId ? <a href={`https://partner.booking.naver.com/bizes/1523676/booking-list-view/bookings/${r.reservationId}`} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()} style={{color:"#03C75A",textDecoration:"none"}}>{r.reservationId}</a> : <span style={{color:"#ccc"}}>-</span>}
               </td>
 
               <td style={{fontSize:11,fontWeight:700,color:"#e65100",textAlign:"center"}}>{(()=>{
