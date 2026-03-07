@@ -159,7 +159,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.66.7";
+const BLISS_V = "2.66.8";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -2156,7 +2156,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                             {block.selectedServices.map(sid=>SVC_LIST.find(s=>s.id===sid)?.name).filter(Boolean).slice(0,2).join(", ")}
                             {block.selectedServices.length>2 && ` +${block.selectedServices.length-2}`}
                           </div>}
-                          {blockH >= 60 && (()=>{
+                          {h >= 60 && (()=>{
                             const reqText = (() => {
                               if (!block.requestMsg) return "";
                               if (block.requestMsg.trim().startsWith("[")) {
@@ -2166,7 +2166,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                             })();
                             const memo = block.ownerComment || "";
                             if (!reqText && !memo) return null;
-                            return <div style={{marginTop:2,fontSize:Math.max(6,blockFs-2),color:"#555",overflow:"hidden",display:"-webkit-box",WebkitLineClamp:blockH>=90?3:2,WebkitBoxOrient:"vertical"}}>
+                            return <div style={{marginTop:2,fontSize:Math.max(6,blockFs-2),color:"#555",overflow:"hidden",display:"-webkit-box",WebkitLineClamp:h>=90?3:2,WebkitBoxOrient:"vertical"}}>
                               {reqText && <span>{reqText}</span>}
                               {reqText && memo && <span style={{color:"#bbb"}}> · </span>}
                               {memo && <span style={{color:"#1565C0"}}>{memo}</span>}
