@@ -159,7 +159,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.90";
+const BLISS_V = "2.65.91";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -422,6 +422,7 @@ function App() {
           const memo = JSON.parse(bizList[0]?.memo || "{}");
           if (memo.gemini_key) {
             localStorage.setItem("bliss_gemini_key", memo.gemini_key);
+            window.__geminiKey = memo.gemini_key;
             console.log("✅ Gemini key 복원");
           }
           const AI_RULES_KEY = "bliss_ai_rules";
@@ -2606,7 +2607,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
 
   // ── AI 자동분석: 네이버 request_msg → 시술상품 + 예약태그 자동 선택 ──
   const handleAiAnalyze = async () => {
-    const apiKey = localStorage.getItem("bliss_gemini_key") || "";
+    const apiKey = window.__geminiKey || localStorage.getItem("bliss_gemini_key") || "";
     if (!apiKey) { alert("관리설정 → AI설정에서 Gemini API 키를 등록하세요"); return; }
     const reqText = (() => {
       if (!f.requestMsg) return "";
@@ -5863,7 +5864,7 @@ function AdminNotiSettings({ data, setData }) {
 // ─── AI설정 ───
 const AI_RULES_KEY = "bliss_ai_rules";
 function AdminAISettings({ data, sb, bizId }) {
-  const [apiKey, setApiKey] = useState(()=>localStorage.getItem("bliss_gemini_key")||"");
+  const [apiKey, setApiKey] = useState(()=>window.__geminiKey || localStorage.getItem("bliss_gemini_key")||"");
   const [saved, setSaved] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState(null);
@@ -5900,6 +5901,7 @@ function AdminAISettings({ data, sb, bizId }) {
   const save = async () => {
     const trimmed = apiKey.trim();
     localStorage.setItem("bliss_gemini_key", trimmed);
+    window.__geminiKey = trimmed;
     // 서버(bliss_naver.py)가 읽을 수 있도록 Supabase businesses.memo에도 저장
     if (bizId) {
       try {
@@ -6046,7 +6048,7 @@ function QuickBookModal({ onClose, onParsed, data }) {
   const fileRef = useRef(null);
   const camRef = useRef(null);
   const inputRef = useRef(null);
-  const apiKey = localStorage.getItem("bliss_gemini_key") || "";
+  const apiKey = window.__geminiKey || localStorage.getItem("bliss_gemini_key") || "";
   const C = "#7c7cc8";
   const G1 = "#4285f4", G2 = "#9b72cb", G3 = "#d96570";
 
