@@ -1058,8 +1058,7 @@ function SignupWizard({ onComplete, onBack }) {
         {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
           contents:[{parts:[
             {inline_data:{mime_type:mime,data:b64}},
-            {text:'이 이미지는 한국 사업자등록증입니다. JSON만 답하세요. 마크다운 금지.
-{"bizNum":"사업자번호숫자10자리","bizName":"상호명","ownerName":"대표자명","address":"사업장주소전체","phone":"전화번호없으면빈문자열"}'}
+            {text:'이 이미지는 한국 사업자등록증입니다. JSON만 답하세요. 마크다운 금지. {"bizNum":"사업자번호숫자10자리","bizName":"상호명","ownerName":"대표자명","address":"사업장주소전체","phone":"전화번호없으면빈문자열"}'}
           ]}],
           generationConfig:{temperature:0,maxOutputTokens:300}
         })});
