@@ -159,7 +159,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.9";
+const BLISS_V = "2.69.10";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -1050,10 +1050,31 @@ function SignupWizard({ onComplete, onBack }) {
       }
       if (!key) { setScanMsg("직접 입력 모드로 전환합니다..."); setTimeout(()=>{setScanning(false);setStep(2);},1200); return; }
       setScanMsg("AI 분석 중...");
-      const b64=await new Promise((res,rej)=>{
-        const fr=new FileReader(); fr.onload=e=>res(e.target.result.split(",")[1]); fr.onerror=rej; fr.readAsDataURL(file);
+      // iOS HEIC → Canvas로 JPEG 변환
+      const {b64, mime} = await new Promise((res,rej)=>{
+        const img=new Image();
+        const url=URL.createObjectURL(file);
+        img.onload=()=>{
+          URL.revokeObjectURL(url);
+          const canvas=document.createElement("canvas");
+          canvas.width=img.naturalWidth; canvas.height=img.naturalHeight;
+          canvas.getContext("2d").drawImage(img,0,0);
+          const dataUrl=canvas.toDataURL("image/jpeg",0.9);
+          res({b64:dataUrl.split(",")[1], mime:"image/jpeg"});
+        };
+        img.onerror=()=>{
+          // canvas 실패시 FileReader fallback
+          const fr=new FileReader();
+          fr.onload=e=>{
+            const dataUrl=e.target.result;
+            const m=dataUrl.split(";")[0].replace("data:","");
+            res({b64:dataUrl.split(",")[1], mime:m||"image/jpeg"});
+          };
+          fr.onerror=rej;
+          fr.readAsDataURL(file);
+        };
+        img.src=url;
       });
-      const mime=(file.type&&file.type.startsWith("image/"))?file.type:"image/jpeg";
       const resp=await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key="+key,
         {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
           contents:[{parts:[
