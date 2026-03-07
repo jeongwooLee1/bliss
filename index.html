@@ -159,7 +159,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.67";
+const BLISS_V = "2.65.68";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -2141,7 +2141,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                         {block.type==="memo" && <div style={{color:"#ef5350",fontWeight:600}}><I name="fileText" size={10} color="#ef5350"/> 메모</div>}
                         {block.type==="clockin" && <div style={{color:"#666",fontWeight:600}}><I name="clock" size={10} color="#666"/> {staff?.dn||"출근"}</div>}
                         {block.type==="cleaning" && <div style={{color:"#5cb5c5",fontWeight:600}}><I name="sparkles" size={10} color="#5cb5c5"/> 청소</div>}
-                        {block.memo && (() => { const clean = block.memo.split("\n").filter(l => !/^\[등록:|^\[수정:/.test(l.trim())).join("\n").trim(); return clean ? <div style={{color:"#555",marginTop:1,whiteSpace:"pre-line",wordBreak:"break-word"}}><I name="msgSq" size={10} color="#888"/> {clean}</div> : null; })()}
+                        {block.memo && (() => { const clean = block.memo.split("\n").filter(l => { const t=l.trim(); return !(/^\[등록:|^\[수정:/.test(t)) && !(/^\d+\.\d+\s+\d+:\d+\s*(예약)?접수/.test(t)); }).join("\n").trim(); return clean ? <div style={{color:"#555",marginTop:1,whiteSpace:"pre-line",wordBreak:"break-word"}}><I name="msgSq" size={10} color="#888"/> {clean}</div> : null; })()}
                         {/* Resize handle */}
                         {isEditable && <div className="resize-handle" onMouseDown={e=>handleResizeStart(block,e)} onTouchStart={e=>handleResizeStart(block,e)}
                           style={{position:"absolute",bottom:-8,left:0,right:0,height:24,cursor:"ns-resize",
@@ -2480,10 +2480,30 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
     const cleanMemo = memoLines.filter(l => !isAutoTs(l)).join("\n").trim();
     const mergedTs = existingTs.length > 0 ? existingTs : extractedTs;
     return {...item, memo: cleanMemo, custGender: item?.custGender || "", endDate: item?.date||todayStr(), endTime: defaultEnd(),
-      selectedTags: item?.selectedTags || [], isNewCust: false, tsLog: mergedTs,
+      selectedTags: (() => {
+      const baseTags = item?.selectedTags || [];
+      // 신규 예약이면 "신규" 태그 자동 포함
+      if (!item?.id && !isSchedule && NEW_CUST_TAG_ID_GLOBAL && !baseTags.includes(NEW_CUST_TAG_ID_GLOBAL))
+        return [...baseTags, NEW_CUST_TAG_ID_GLOBAL];
+      return baseTags;
+    })(), isNewCust: false, tsLog: mergedTs,
       selectedServices: item?.selectedServices || [],
       repeat: item?.repeat || "none", repeatUntil: item?.repeatUntil || "",
-      source: item?.source || (isNaverItem ? "네이버" : "")};
+      source: (() => {
+      const raw = item?.source || "";
+      if (!raw && isNaverItem) return SYSTEM_SRC_NAME_NAVER;
+      if (!raw) return "";
+      // 이미 resSources에 있는 이름이면 그대로 사용
+      const direct = (data?.resSources||[]).find(s => s.name === raw);
+      if (direct) return direct.name;
+      // "naver" 같은 영문 코드 → name 매핑
+      const lower = raw.toLowerCase();
+      const matched = (data?.resSources||[]).find(s =>
+        s.name?.toLowerCase() === lower ||
+        (lower === "naver" && s.name === SYSTEM_SRC_NAME_NAVER)
+      );
+      return matched?.name || raw;
+    })()};
   })());
   const set = (k,v) => setF(p=>({...p,[k]:v}));
 
@@ -3038,7 +3058,7 @@ ${naverText}
                   const br = (data.branchSettings||data.branches||[]).find(b=>b.id===branchId);
                   const bizId = br?.naverBizId;
                   const linkEl = bizId ? <a href={`https://partner.booking.naver.com/bizes/${bizId}/booking-list-view?bookingBusinessId=${bizId}`} target="_blank" rel="noopener noreferrer"
-                    style={{display:"inline-flex",alignItems:"center",gap:3,fontSize:10,color:"#03C75A",fontWeight:600,textDecoration:"none",padding:"2px 7px",background:"#03C75A10",borderRadius:4,border:"1px solid #03C75A30",flexShrink:0}}>
+                    style={{display:"inline-flex",alignItems:"center",gap:3,fontSize:10,color:"#03C75A",fontWeight:600,textDecoration:"none",padding:"4px 12px",background:"#03C75A10",borderRadius:4,border:"1px solid #03C75A30",flexShrink:0}}>
                     <I name="naver" size={10}/> 예약관리 <I name="chevR" size={9} color="#03C75A"/>
                   </a> : null;
                   if (f.visitCount > 0 || f.noShowCount > 0) return <div style={{display:"flex",gap:12,padding:"3px 0",minHeight:26,alignItems:"center"}}>
@@ -3089,7 +3109,8 @@ ${naverText}
                 // 예약금완료 태그 — isPrepaid만으로 판단 (totalPrice 유무 무관)
                 if (f.isPrepaid && !autoTags.includes(PREPAID_TAG_ID)) autoTags = [...autoTags, PREPAID_TAG_ID];
                 if (!f.isPrepaid && autoTags.includes(PREPAID_TAG_ID)) autoTags = autoTags.filter(id => id !== PREPAID_TAG_ID);
-                onSave({...f, tsLog: newLog, selectedTags: autoTags});
+                const memoToSave = (f.memo||"").split("\n").filter(l => { const t=l.trim(); return !(/^\[등록:|^\[수정:/.test(t)) && !(/^\d+\.\d+\s+\d+:\d+\s*(예약)?접수/.test(t)); }).join("\n").trim();
+                onSave({...f, memo: memoToSave, tsLog: newLog, selectedTags: autoTags});
               }}>{item?.id?"저장":"등록"}</button>
             {!isSchedule && f.type === "reservation" && (
               <button onClick={()=>setShowSaleForm(true)}
@@ -4863,7 +4884,7 @@ function AdminPlaces({ data, setData, bizId }) {
                 el.style.transform="translate(0,0) scale(1)"; el.style.opacity="1";
               });
             }}}
-            style={{position:"fixed",left:"10%",right:"10%",top:"5vh",zIndex:1000,
+            style={{position:"fixed",left:"16%",right:"16%",top:"5vh",zIndex:1000,
             background:"#fff",borderRadius:16,overflow:"hidden",
             boxShadow:"0 20px 60px rgba(0,0,0,.2)"}}>
             {/* Header */}
