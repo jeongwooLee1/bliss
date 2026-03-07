@@ -159,7 +159,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.70";
+const BLISS_V = "2.65.71";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -2500,10 +2500,13 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
     const mergedTs = existingTs.length > 0 ? existingTs : extractedTs;
     return {...item, memo: cleanMemo, custGender: item?.custGender || "", endDate: item?.date||todayStr(), endTime: defaultEnd(),
       selectedTags: (() => {
-      const baseTags = item?.selectedTags || [];
+      let baseTags = item?.selectedTags || [];
       // 신규 예약이면 "신규" 태그 자동 포함
       if (!item?.id && !isSchedule && NEW_CUST_TAG_ID_GLOBAL && !baseTags.includes(NEW_CUST_TAG_ID_GLOBAL))
-        return [...baseTags, NEW_CUST_TAG_ID_GLOBAL];
+        baseTags = [...baseTags, NEW_CUST_TAG_ID_GLOBAL];
+      // isPrepaid면 "예약금완료" 태그 자동 포함
+      if (item?.isPrepaid && PREPAID_TAG_ID && !baseTags.includes(PREPAID_TAG_ID))
+        baseTags = [...baseTags, PREPAID_TAG_ID];
       return baseTags;
     })(), isNewCust: false, tsLog: mergedTs,
       selectedServices: item?.selectedServices || [],
@@ -2956,7 +2959,13 @@ ${naverText}
               <div className={"tags-acc-hdr"+(srcOpen?" open":"")} onClick={()=>setSrcOpen(p=>!p)}>
                 <span style={{fontSize:13,fontWeight:600,color:"#444",display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
                   예약경로
-                  {f.source && <span style={{fontSize:12,fontWeight:600,color:"#7c7cc8",background:"#ededf8",borderRadius:4,padding:"1px 7px"}}>{f.source}</span>}
+                  {f.source && (() => {
+                    const srcItem = (data?.resSources||[]).find(s=>s.name===f.source);
+                    const bg = srcItem?.color || "#7c7cc8";
+                    const hex = bg.replace("#",""); const r=parseInt(hex.slice(0,2),16),g=parseInt(hex.slice(2,4),16),b=parseInt(hex.slice(4,6),16);
+                    const txt = (0.299*r+0.587*g+0.114*b)/255>0.55?"#333":"#fff";
+                    return <span style={{fontSize:12,fontWeight:600,color:txt,background:bg,borderRadius:4,padding:"1px 7px"}}>{f.source}</span>;
+                  })()}
                 </span>
                 <span className={"tags-acc-chev"+(srcOpen?" open":"")}>▾</span>
               </div>
@@ -3106,11 +3115,10 @@ ${naverText}
         </div>
         <div style={{padding:"14px 20px",background:"#fafafa",borderRadius:"0 0 14px 14px"}}>
             {/* 예약상태 버튼 */}
-            {item?.id && !isSchedule && <div style={{display:"flex",gap:6,marginBottom:10,alignItems:"center"}}>
-              <span style={{fontSize:11,color:"#aaa",fontWeight:500,flexShrink:0}}>상태</span>
-              <div style={{display:"flex",gap:4,flex:1}}>
+            {item?.id && !isSchedule && <div style={{display:"flex",gap:6,marginBottom:10,justifyContent:"center"}}>
+              <div style={{display:"flex",gap:4}}>
               {STATUS_KEYS.map(k=>{const sc=getStatusClr();const sel=f.status===k;return <button key={k} onClick={()=>set("status",k)}
-                style={{flex:1,padding:"4px 0",borderRadius:20,border:sel?`1.5px solid ${sc[k]}`:"1.5px solid #e8e8ee",
+                style={{padding:"4px 20px",borderRadius:20,border:sel?`1.5px solid ${sc[k]}`:"1.5px solid #e8e8ee",
                   background:sel?sc[k]:"transparent",color:sel?"#fff":sc[k],fontSize:11,fontWeight:sel?700:500,cursor:"pointer",fontFamily:"inherit",
                   transition:"all .15s",letterSpacing:-0.2,whiteSpace:"nowrap"}}>
                 {STATUS_LABEL[k]}</button>})}
@@ -4906,7 +4914,8 @@ function AdminPlaces({ data, setData, bizId }) {
                 el.style.transform="translate(0,0) scale(1)"; el.style.opacity="1";
               });
             }}}
-            style={{position:"fixed",left:"20%",right:"20%",top:"5vh",zIndex:1000,
+            style={{position:"fixed",left:"50%",top:"5vh",zIndex:1000,transform:"translateX(-50%)",
+            width:"min(680px, 88vw)",
             background:"#fff",borderRadius:16,overflow:"hidden",
             boxShadow:"0 20px 60px rgba(0,0,0,.2)"}}>
             {/* Header */}
