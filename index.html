@@ -4160,8 +4160,6 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
             const br=(data.branches||[]).find(b=>b.id===r.bid);
             const g=r.custGender||"";
             const sc=getStatusClr();
-            const reqMatch=(r.memo||"").match(/요청:\s*(.+)/);
-            const reqText=reqMatch?reqMatch[1].trim():"";
             return <tr key={r.id} style={{
                 background: r.status==="naver_cancelled" ? "#FFF8E1"
                   : r.status==="naver_changed" ? "#F3F4F6"
@@ -4176,9 +4174,7 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
               <td style={{color:"#7c7cc8",fontSize:12,whiteSpace:"nowrap"}}>{r.custPhone||"-"}</td>
               <td style={{fontSize:12}}>{svcDisplay}</td>
               <td style={{fontSize:12}}>{staff?.dn||"-"}</td>
-              <td style={{fontSize:11,color:"#666",maxWidth:140,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={r.requestMsg||""}>
-                {r.requestMsg ? (()=>{try{const a=JSON.parse(r.requestMsg);if(Array.isArray(a))return a.map(x=>`${x.label}:${x.value}`).join(" | ");}catch(e){}return r.requestMsg;})() : <span style={{color:"#ccc"}}>-</span>}
-              </td>
+              
               <td style={{fontSize:11,color:"#888",maxWidth:100,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={r.ownerComment||""}>{r.ownerComment||<span style={{color:"#ccc"}}>-</span>}</td>
               <td style={{fontSize:10,color:"#03C75A",whiteSpace:"nowrap"}} onClick={e=>e.stopPropagation()}>
                 {r.reservationId ? <a href={`https://partner.booking.naver.com/bizes/1523676/booking-list-view/bookings/${r.reservationId}`} target="_blank" rel="noreferrer" style={{color:"#03C75A",textDecoration:"none"}}>{r.reservationId}</a> : <span style={{color:"#ccc"}}>-</span>}
