@@ -159,7 +159,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.66.4";
+const BLISS_V = "2.66.5";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -4123,7 +4123,19 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
   if(!amt) return <span style={{color:"#ccc"}}>-</span>;
   return <span style={{background:"#e8f5e9",color:"#2e7d32",borderRadius:6,padding:"2px 6px",fontSize:10}} title={"선불결제: "+(r.npayMethod||"네이버페이")}>✓{amt.toLocaleString()}원</span>;
 })()} </td>
-              <td><span style={{fontSize:11,fontWeight:700,color:sc[r.status]||"#999"}}>{STATUS_LABEL[r.status]||r.status}</span></td>
+              <td>{(()=>{
+                const ST_PILL = {
+                  confirmed:     {bg:"#EEF4FB", color:"#5B9BD5", label:"진행"},
+                  completed:     {bg:"#EDFAED", color:"#3a8f3a", label:"완료"},
+                  cancelled:     {bg:"#FFF0F0", color:"#E05252", label:"취소"},
+                  no_show:       {bg:"#FFF0F0", color:"#E05252", label:"노쇼"},
+                  pending:       {bg:"#FFF8E1", color:"#E6A700", label:"확정대기"},
+                  naver_cancelled:{bg:"#FFF0F0", color:"#E05252", label:"취소"},
+                  naver_changed: {bg:"#E8F4FD", color:"#1976D2", label:"변경"},
+                };
+                const p = ST_PILL[r.status] || {bg:"#F5F5F5", color:"#999", label:r.status};
+                return <span style={{fontSize:10,fontWeight:700,background:p.bg,color:p.color,borderRadius:4,padding:"2px 6px",whiteSpace:"nowrap"}}>{p.label}</span>;
+              })()}</td>
               <td><div style={{display:"flex",gap:4}}>
                 <button title="타임라인에서 열기" onClick={()=>{if(setPendingOpenRes)setPendingOpenRes(r);if(setPage)setPage("timeline");}} style={{width:28,height:28,borderRadius:6,border:"1px solid #e8e8e8",background:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"#7c7cc8",boxShadow:"0 1px 3px rgba(0,0,0,.08)"}}><I name="calendar" size={12}/></button>
 <button onClick={()=>deleteRes(r.id)} style={{width:28,height:28,borderRadius:6,border:"1px solid #ffe0e0",background:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"#e57373",boxShadow:"0 1px 3px rgba(0,0,0,.08)"}}><I name="trash" size={12}/></button>
