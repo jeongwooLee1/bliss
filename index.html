@@ -159,7 +159,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.80";
+const BLISS_V = "2.65.81";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -2718,7 +2718,7 @@ ${naverText}
     <div className="ov" onClick={onClose} style={{alignItems:"flex-start",padding:"20px 16px",overflow:"auto",WebkitOverflowScrolling:"touch"}}>
       <div ref={modalRef} className="modal-res" onClick={e=>e.stopPropagation()} style={{background:"#fff",
         borderRadius:14,border:"1px solid #ecedf2",
-        width:"96%",maxWidth:780,margin:"0 auto",
+        width:"90%",maxWidth:560,margin:"0 auto",
         animation:"slideUp .4s cubic-bezier(.22,1,.36,1)",
         boxShadow:"0 20px 60px rgba(0,0,0,.14),0 4px 16px rgba(0,0,0,.06)"}}>
         {/* ═══ Chrome-style Tabs ═══ */}
