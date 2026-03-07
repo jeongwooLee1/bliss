@@ -159,7 +159,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.11";
+const BLISS_V = "2.69.12";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -482,7 +482,7 @@ function App() {
           if (!db.serviceTags.find(t=>t.name===name && t.scheduleYn!=="Y")) {
             const nt={id:`tag_sys_${name}`,name,color,useYn:true,scheduleYn};
             db.serviceTags=[...db.serviceTags,nt];
-            sb.insert("service_tags",{id:nt.id,business_id:_activeBizId,name,color,use_yn:true,schedule_yn:scheduleYn}).catch(()=>{});
+            sb.upsert("service_tags",[{id:nt.id,business_id:_activeBizId,name,color,use_yn:true,schedule_yn:scheduleYn}]);
             resolveSystemIds(db.serviceTags, db.resSources);
           }
         };
@@ -532,7 +532,7 @@ function App() {
         if (!db.serviceTags.find(t=>t.name===name && t.scheduleYn!=="Y")) {
           const nt={id:`tag_sys_${name}`,name,color,useYn:true,scheduleYn};
           db.serviceTags=[...db.serviceTags,nt];
-          sb.insert("service_tags",{id:nt.id,business_id:_activeBizId,name,color,use_yn:true,schedule_yn:scheduleYn}).catch(()=>{});
+          sb.upsert("service_tags",[{id:nt.id,business_id:_activeBizId,name,color,use_yn:true,schedule_yn:scheduleYn}]);
           resolveSystemIds(db.serviceTags, db.resSources);
         }
       };
@@ -6804,7 +6804,7 @@ function AdminServiceTags({ data, setData }) {
     const t = {id:uid(), name:newTag.name.trim(), dur:Number(newTag.dur)||0,
       scheduleYn: isScheduleTab ? "Y" : "N", color:newTag.color, useYn:true, sort:tags.length};
     syncTags([...tags, t]);
-    sb.insert("service_tags", tagToDb(t)).catch(console.error);
+    sb.upsert("service_tags", [tagToDb(t)]);
     setNewTag({name:"",dur:0,color:""});
     setShowAdd(false);
   };
@@ -6840,7 +6840,7 @@ function AdminServiceTags({ data, setData }) {
       scheduleYn: isScheduleTab?"Y":"N", color:r["색상"]||"", useYn:(r["사용"]||"Y")!=="N", sort:tags.length})).filter(r=>r.name);
     if(newTags.length && window.confirm(newTags.length+"개 태그를 추가하시겠습니까?")) {
       syncTags([...tags,...newTags]);
-      newTags.forEach(t=>sb.insert("service_tags", tagToDb(t)).catch(console.error));
+      sb.upsert("service_tags", newTags.map(tagToDb));
     }
   };
 
