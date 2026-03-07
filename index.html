@@ -159,7 +159,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.64";
+const BLISS_V = "2.65.65";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -2077,16 +2077,24 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                           opacity:isDrag?0.15:1,userSelect:"none",WebkitUserSelect:"none",WebkitTouchCallout:"none"}}
                         className="tl-block">
                         {block.type==="reservation" && !block.isSchedule && <>
-                          <div style={{display:"flex",alignItems:"center",gap:3,overflow:"hidden",whiteSpace:"nowrap"}}>
-                            {isNaverCancelled && <span style={{fontSize:Math.max(6,blockFs-2),padding:"1px 3px",borderRadius:2,background:"#E6A700",color:"#fff",fontWeight:700,lineHeight:1,flexShrink:0}}>네이버취소</span>}
-                            {isNaverPending && <span style={{fontSize:Math.max(6,blockFs-2),padding:"1px 3px",borderRadius:2,background:"#FF9800",color:"#fff",fontWeight:700,lineHeight:1,flexShrink:0,animation:"pendingBlink 1.5s infinite"}}>확정대기</span>}
-
-                            <span style={{fontWeight:600,color:isNaverCancelled?"#999":"#333",overflow:"hidden",textOverflow:"ellipsis",textDecoration:isNaverCancelled?"line-through":"none"}}>{block.custGender && <span style={{color:block.custGender==="M"?"#4a7cc8":"#e57373"}}>{block.custGender==="M"?"남":"여"}</span>} {block.custName}</span>
+                          <div style={{display:"flex",alignItems:"center",gap:2,overflow:"hidden",whiteSpace:"nowrap",flexWrap:"nowrap"}}>
+                            {/* 태그 - 이름 앞에 */}
+                            {isNaverCancelled && <span style={{fontSize:Math.max(6,blockFs-2),padding:"1px 3px",borderRadius:2,background:"#E6A700",color:"#fff",fontWeight:700,lineHeight:1,flexShrink:0}}>취소</span>}
+                            {isNaverPending && <span style={{fontSize:Math.max(6,blockFs-2),padding:"1px 3px",borderRadius:2,background:"#FF9800",color:"#fff",fontWeight:700,lineHeight:1,flexShrink:0,animation:"pendingBlink 1.5s infinite"}}>대기</span>}
+                            {block.selectedTags?.slice(0,3).map(tid=>{
+                              const tg=tags.find(t=>t.id===tid);
+                              if(!tg) return null;
+                              const bg=tg.color||"#7c7cc8";
+                              const h=bg.replace("#",""); const r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16);
+                              const txt=(0.299*r+0.587*g+0.114*b)/255>0.55?"#333":"#fff";
+                              return <span key={tid} style={{fontSize:Math.max(6,blockFs-2),padding:"1px 3px",borderRadius:2,background:bg,color:txt,fontWeight:700,lineHeight:1,flexShrink:0}}>({tg.name})</span>;
+                            })}
+                            {block.selectedTags?.length>3 && <span style={{fontSize:Math.max(6,blockFs-2),color:"#fff",background:"#999",borderRadius:2,padding:"1px 2px",flexShrink:0}}>+{block.selectedTags.length-3}</span>}
+                            {/* 이름 */}
+                            <span style={{fontWeight:600,color:isNaverCancelled?"#999":"#333",overflow:"hidden",textOverflow:"ellipsis",textDecoration:isNaverCancelled?"line-through":"none",flexShrink:1,minWidth:0}}>
+                              {block.custGender && <span style={{color:block.custGender==="M"?"#4a7cc8":"#e57373"}}>{block.custGender==="M"?"남":"여"}</span>} {block.custName}
+                            </span>
                           </div>
-                          {block.selectedTags?.length>0 && <div style={{display:"flex",flexWrap:"wrap",gap:2,marginTop:1}}>
-                            {block.selectedTags.slice(0,3).map(tid=>{const tg=tags.find(t=>t.id===tid);return tg?<span key={tid} style={{fontSize:Math.max(6,blockFs-2),padding:"0 3px",borderRadius:2,border:"1px solid "+(tg.color||"#7c7cc8"),background:tg.color?tg.color+"25":"#7c7cc815",color:"#333",fontWeight:600}}>{tg.name}</span>:null})}
-                            {block.selectedTags.length>3 && <span style={{fontSize:Math.max(6,blockFs-2),color:"#999"}}>+{block.selectedTags.length-3}</span>}
-                          </div>}
                           {block.selectedServices?.length>0 && <div style={{fontSize:Math.max(6,blockFs-2),color:"#333",fontWeight:600,marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
                             {block.selectedServices.map(sid=>SVC_LIST.find(s=>s.id===sid)?.name).filter(Boolean).slice(0,2).join(", ")}
                             {block.selectedServices.length>2 && ` +${block.selectedServices.length-2}`}
@@ -2959,16 +2967,22 @@ ${naverText}
             {/* 항목 리스트 - 통일된 row 디자인 */}
             {(()=>{
               // label+value row 컴포넌트 (인라인)
-              const NRow = ({label, value, valueColor, bold}) => value ? <div style={{display:"flex",alignItems:"baseline",gap:8,padding:"3px 0",borderBottom:"1px solid #E8F5E9",minHeight:26}}>
+              const NRow = ({label, value, valueColor, bold, rightEl}) => value ? <div style={{display:"flex",alignItems:"baseline",gap:8,padding:"3px 0",borderBottom:"1px solid #E8F5E9",minHeight:26}}>
                 <span style={{fontSize:11,color:"#888",fontWeight:500,minWidth:72,flexShrink:0}}>{label}</span>
                 <span style={{fontSize:12,color:valueColor||"#333",fontWeight:bold?700:500,lineHeight:1.4,wordBreak:"break-word",flex:1}}>{value}</span>
+                {rightEl && <span style={{flexShrink:0}}>{rightEl}</span>}
               </div> : null;
               const fmtDt = (v) => { const d=new Date(v); return isNaN(d)?v:`${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`; };
               return <>
                 {/* 신청/확정/취소 */}
-                {f.naverRegDt && <NRow label="신청일시" value={fmtDt(f.naverRegDt)} valueColor="#555"/>}
-                {f.naverConfirmedDt && <NRow label="확정일시" value={fmtDt(f.naverConfirmedDt)} valueColor="#2E7D32" bold/>}
-                {f.naverCancelledDt && <NRow label="취소일시" value={fmtDt(f.naverCancelledDt)} valueColor="#c62828" bold/>}
+                {(f.naverRegDt || f.naverConfirmedDt || f.naverCancelledDt) && <div style={{display:"flex",alignItems:"baseline",gap:8,padding:"3px 0",borderBottom:"1px solid #E8F5E9",minHeight:26}}>
+                  <span style={{fontSize:11,color:"#888",fontWeight:500,minWidth:72,flexShrink:0}}>일시</span>
+                  <span style={{fontSize:12,flex:1,display:"flex",flexWrap:"wrap",gap:10,alignItems:"center"}}>
+                    {f.naverRegDt && <span style={{color:"#888"}}><span style={{color:"#aaa",marginRight:3}}>신청</span>{fmtDt(f.naverRegDt)}</span>}
+                    {f.naverConfirmedDt && <span style={{color:"#2E7D32",fontWeight:700}}><span style={{fontWeight:500,color:"#aaa",marginRight:3}}>확정</span>{fmtDt(f.naverConfirmedDt)}</span>}
+                    {f.naverCancelledDt && <span style={{color:"#c62828",fontWeight:700}}><span style={{fontWeight:500,color:"#aaa",marginRight:3}}>취소</span>{fmtDt(f.naverCancelledDt)}</span>}
+                  </span>
+                </div>}
                 {/* 결제 */}
                 {f.isPrepaid && (f.totalPrice||0) > 0 && <NRow label="결제금액" value={`✓ ${(f.totalPrice||0).toLocaleString()}원${f.npayMethod?" ("+f.npayMethod+")":""}`} valueColor="#2e7d32" bold/>}
                 {/* 고객 요청사항 파싱 */}
@@ -2979,29 +2993,28 @@ ${naverText}
                   if (!val) return null;
                   if (key==="시술메뉴") return <NRow key={i} label="시술메뉴" value={val} valueColor="#1B5E20" bold/>;
                   if (key==="스타일리스트") return <NRow key={i} label="스타일리스트" value={val} valueColor="#333" bold/>;
-                  if (key) return <div key={i} style={{display:"flex",alignItems:"flex-start",gap:8,padding:"3px 0",borderBottom:"1px solid #E8F5E9",minHeight:26}}>
-                    <span style={{fontSize:11,color:"#888",fontWeight:500,minWidth:72,flexShrink:0,lineHeight:"18px"}}>{key}</span>
-                    <span style={{fontSize:12,fontWeight:600,color:"#1565C0",background:"#E3F2FD",borderRadius:4,padding:"1px 8px",lineHeight:"18px",wordBreak:"break-word",flex:1}}>{val}</span>
+                  if (key) return <div key={i} style={{display:"flex",alignItems:"baseline",gap:8,padding:"3px 0",borderBottom:"1px solid #E8F5E9",minHeight:26}}>
+                    <span style={{fontSize:11,color:"#888",fontWeight:500,minWidth:72,flexShrink:0}}>{key}</span>
+                    <span style={{fontSize:12,fontWeight:600,color:"#1565C0",background:"#E3F2FD",borderRadius:4,padding:"1px 8px",lineHeight:1.4,wordBreak:"break-word",flex:1}}>{val}</span>
                   </div>;
                   return <NRow key={i} label="요청" value={val}/>;
                 })}
                 {/* 직원 메모 */}
                 {f.ownerComment && <NRow label="직원메모" value={f.ownerComment}/>}
-                {/* 방문/노쇼 */}
-                {(f.visitCount > 0 || f.noShowCount > 0) && <div style={{display:"flex",gap:12,padding:"3px 0",minHeight:26,alignItems:"center"}}>
-                  {f.visitCount > 0 && <span style={{fontSize:11,color:"#888",fontWeight:500}}>방문 <strong style={{color:"#2E7D32",fontSize:12}}>{f.visitCount}회</strong></span>}
-                  {f.noShowCount > 0 && <span style={{fontSize:11,color:"#888",fontWeight:500}}>노쇼 <strong style={{color:"#c62828",fontSize:12}}>{f.noShowCount}회</strong></span>}
-                </div>}
-                {/* 바로가기 - 우측 하단 */}
+                {/* {/* 방문/노쇼 + 바로가기 */}
                 {(()=>{
                   const br = (data.branchSettings||data.branches||[]).find(b=>b.id===branchId);
                   const bizId = br?.naverBizId;
-                  return bizId ? <div style={{display:"flex",justifyContent:"flex-end",marginTop:6}}>
-                    <a href={`https://partner.booking.naver.com/bizes/${bizId}/booking-list-view?bookingBusinessId=${bizId}`} target="_blank" rel="noopener noreferrer"
-                      style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:11,color:"#03C75A",fontWeight:600,textDecoration:"none",padding:"3px 8px",background:"#03C75A10",borderRadius:4,border:"1px solid #03C75A30"}}>
-                      <I name="naver" size={11}/> 네이버 예약 관리 <I name="chevR" size={10} color="#03C75A"/>
-                    </a>
-                  </div> : null;
+                  const linkEl = bizId ? <a href={`https://partner.booking.naver.com/bizes/${bizId}/booking-list-view?bookingBusinessId=${bizId}`} target="_blank" rel="noopener noreferrer"
+                    style={{display:"inline-flex",alignItems:"center",gap:3,fontSize:10,color:"#03C75A",fontWeight:600,textDecoration:"none",padding:"2px 7px",background:"#03C75A10",borderRadius:4,border:"1px solid #03C75A30",flexShrink:0}}>
+                    <I name="naver" size={10}/> 예약관리 <I name="chevR" size={9} color="#03C75A"/>
+                  </a> : null;
+                  if (f.visitCount > 0 || f.noShowCount > 0) return <div style={{display:"flex",gap:12,padding:"3px 0",minHeight:26,alignItems:"center"}}>
+                    {f.visitCount > 0 && <span style={{fontSize:11,color:"#888",fontWeight:500}}>방문 <strong style={{color:"#2E7D32",fontSize:12}}>{f.visitCount}회</strong></span>}
+                    {f.noShowCount > 0 && <span style={{fontSize:11,color:"#888",fontWeight:500}}>노쇼 <strong style={{color:"#c62828",fontSize:12}}>{f.noShowCount}회</strong></span>}
+                    {linkEl && <span style={{marginLeft:"auto"}}>{linkEl}</span>}
+                  </div>;
+                  return linkEl ? <div style={{display:"flex",justifyContent:"flex-end",paddingTop:4}}>{linkEl}</div> : null;
                 })()}
               </>;
             })()}
@@ -3043,13 +3056,13 @@ ${naverText}
                 if (!f.isPrepaid && autoTags.includes(PREPAID_TAG_ID)) autoTags = autoTags.filter(id => id !== PREPAID_TAG_ID);
                 onSave({...f, tsLog: newLog, selectedTags: autoTags});
               }}>{item?.id?"저장":"등록"}</button>
-            {item?.id && <button onClick={()=>onDeleteRequest?.(item)} title="삭제" style={{marginLeft:"auto",padding:"8px 10px",borderRadius:8,border:"none",background:"transparent",color:"#e57373",cursor:"pointer",display:"flex",alignItems:"center",transition:"background .15s"}} onMouseEnter={e=>e.currentTarget.style.background="#ffeaea"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}><I name="trash" size={17}/></button>}
             {!isSchedule && f.type === "reservation" && (
               <button onClick={()=>setShowSaleForm(true)}
-                style={{padding:"10px 22px",borderRadius:8,border:"1.5px solid #7c7cc8",background:"transparent",color:"#7c7cc8",fontWeight:600,fontSize:13.5,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap",transition:"background .14s"}}>
+                style={{padding:"10px 18px",borderRadius:8,border:"1.5px solid #7c7cc8",background:"transparent",color:"#7c7cc8",fontWeight:600,fontSize:13,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap",transition:"background .14s"}}>
                 {existingSale ? <><I name="wallet" size={12}/> 매출확인</> : <><I name="wallet" size={12}/> 매출등록</>}
               </button>
-            )}</>}
+            )}
+            {item?.id && <button onClick={()=>onDeleteRequest?.(item)} title="삭제" style={{marginLeft:"auto",padding:"8px 10px",borderRadius:8,border:"none",background:"transparent",color:"#e57373",cursor:"pointer",display:"flex",alignItems:"center",transition:"background .15s"}} onMouseEnter={e=>e.currentTarget.style.background="#ffeaea"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}><I name="trash" size={17}/></button>}</>}
             {isReadOnly && <span style={{fontSize:13,color:"#999",display:"flex",alignItems:"center",gap:4}}><I name="eye" size={12}/> 열람 전용 (타 지점)</span>}
           </div>
         </div>
