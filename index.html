@@ -159,7 +159,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.67.1";
+const BLISS_V = "2.67.2";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -4172,7 +4172,10 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
               <td style={{fontSize:11}}>{br?.short}</td>
               <td style={{fontWeight:600,maxWidth:68,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={r.custName||""}>{r.custName||"-"}{g?<span style={{marginLeft:4,fontSize:10,color:g==="M"?"#7c7cc8":"#e57373"}}>{g==="M"?"남":"여"}</span>:null}</td>
               <td style={{color:"#7c7cc8",fontSize:12,whiteSpace:"nowrap"}}>{r.custPhone||"-"}</td>
-              <td style={{fontSize:12}}>{svcDisplay}</td>
+              <td style={{fontSize:12}}>
+                {r.reservationId && <span style={{background:"#03C75A",color:"#fff",fontSize:9,fontWeight:700,borderRadius:3,padding:"1px 4px",marginRight:4,verticalAlign:"middle"}}>N</span>}
+                {svcDisplay}
+              </td>
               <td style={{fontSize:12}}>{staff?.dn||"-"}</td>
               
               <td style={{fontSize:11,color:"#888",maxWidth:100,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={r.ownerComment||""}>{r.ownerComment||<span style={{color:"#ccc"}}>-</span>}</td>
