@@ -3351,7 +3351,7 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
   const PROD_LIST = (data?.products || []);
   const CATS = (data?.categories || []).slice().sort((a,b)=>(a.sort||0)-(b.sort||0));
   const branchStaff = (data.staff||[]).filter(s => s.bid === branchId);
-  const [manager, setManager] = useState(reservation?.staffId || branchStaff[0]?.id || "");
+  const [manager, setManager] = useState(reservation?.staffId || "");
   const [selBranch, setSelBranch] = useState(branchId);
   const [gender, setGender] = useState(reservation?.custGender || "");
   const [saleMemo, setSaleMemo] = useState(reservation?.saleMemo || "");
@@ -3545,6 +3545,10 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
       alert("매출 금액이 0원입니다. 시술 또는 제품을 선택해주세요.");
       return;
     }
+    if (!manager) {
+      alert("시술자를 선택해주세요.");
+      return;
+    }
     // 고객 이름/연락처 - 마스킹 체크만
     const custName = (cust.name||"").trim();
     const custPhone = (cust.phone||"").trim();
@@ -3669,8 +3673,9 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
         {/* Controls: Manager, Branch, Gender, Live Totals */}
         <div style={{ padding: "8px 16px", borderBottom: "1px solid #e0e0e0", display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", background: "#f8f0f0" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12 }}>
-            <span style={{ color: "#888" }}>Manager</span>
-            <select className="inp" style={{ width: 90, padding: "3px 6px", fontSize: 11 }} value={manager} onChange={e => setManager(e.target.value)}>
+            <span style={{ color: "#888", fontWeight: 700 }}>시술자 <span style={{color:"#ef5350"}}>*</span></span>
+            <select className="inp" style={{ width: 100, padding: "3px 6px", fontSize: 11, borderColor: manager ? "#d0d0d0" : "#ef5350", background: manager ? "#fff" : "#fff5f5" }} value={manager} onChange={e => setManager(e.target.value)}>
+              <option value="">시술자 선택</option>
               {branchStaff.map(s => <option key={s.id} value={s.id}>{s.dn}</option>)}
             </select>
           </div>
