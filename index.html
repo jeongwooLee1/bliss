@@ -159,7 +159,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.86";
+const BLISS_V = "2.65.87";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -3079,7 +3079,10 @@ ${naverText}
                   return <NRow key={i} label="요청" value={val}/>;
                 })}
                 {/* 직원 메모 */}
-                {f.ownerComment && <NRow label="직원메모" value={f.ownerComment}/>}
+                {f.ownerComment && <div style={{display:"flex",alignItems:"baseline",gap:8,padding:"3px 0",borderBottom:"1px solid #E8F5E9",minHeight:26}}>
+                  <span style={{fontSize:11,color:"#888",fontWeight:500,minWidth:72,flexShrink:0}}>직원메모</span>
+                  <span style={{fontSize:12,fontWeight:400,color:"#1565C0",background:"#E3F2FD",borderRadius:4,padding:"1px 8px",lineHeight:1.4,wordBreak:"break-word"}}>{f.ownerComment}</span>
+                </div>}
                 {/* {/* 방문/노쇼 + 바로가기 */}
                 {(()=>{
                   const br = (data.branchSettings||data.branches||[]).find(b=>b.id===branchId);
