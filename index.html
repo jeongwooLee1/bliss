@@ -159,7 +159,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.82";
+const BLISS_V = "2.65.83";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -3078,8 +3078,7 @@ ${naverText}
                   </div>;
                   return <NRow key={i} label="요청" value={val}/>;
                 })}
-                {/* 직원 메모 */}
-                {f.ownerComment && <NRow label="직원메모" value={f.ownerComment}/>}
+                {/* 직원 메모는 하단 textarea에서 표시 */}
                 {/* {/* 방문/노쇼 + 바로가기 */}
                 {(()=>{
                   const br = (data.branchSettings||data.branches||[]).find(b=>b.id===branchId);
@@ -3106,9 +3105,9 @@ ${naverText}
           </div>}
 
           {/* 예약메모 - 직원 메모 (네이버 포함 모두 수정 가능) */}
-          <div style={{background:"#fff",border:"1.5px solid #e8e8ee",borderRadius:10,padding:"10px 14px",margin:"0 0 4px"}}>
+          <div style={{background:"#fff",border:"1.5px solid #e8e8ee",borderRadius:10,padding:"10px 14px",margin:"8px 0"}}>
             <div style={{fontSize:11,fontWeight:600,color:"#aaa",marginBottom:6,letterSpacing:0.3}}>직원 메모</div>
-            <textarea className="inp inp-memo" rows={4} value={f.memo} onChange={e=>set("memo",e.target.value)} style={{resize:"vertical",minHeight:80,border:"none",padding:0,background:"transparent",boxShadow:"none",outline:"none",width:"100%",fontSize:13}} placeholder="직원 메모를 입력하세요"/>
+            <textarea className="inp inp-memo" rows={4} value={f.memo} onChange={e=>set("memo",e.target.value)} style={{resize:"vertical",minHeight:80,border:"none",padding:0,background:"transparent",boxShadow:"none",outline:"none",width:"100%",fontSize:13,fontFamily:"inherit"}} placeholder="직원 메모를 입력하세요"/>
           </div>
 
           {/* Action Buttons - 한 줄 (pinned bottom) */}
