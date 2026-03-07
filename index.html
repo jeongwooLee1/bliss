@@ -3141,7 +3141,12 @@ ${naverText}
                   if (f.requestMsg.trim().startsWith("[")) {
                     try {
                       const items = JSON.parse(f.requestMsg);
-                      return items.filter(it=>it.value).map((it,i)=>{
+                      // NAVER_COLS key 매핑 for naverColShow
+                      const colKeyMap = Object.fromEntries(NAVER_COLS.map(c=>[c.label, c.key]));
+                      return items.filter(it=>it.value).filter(it=>{
+                        const ck = colKeyMap[it.label];
+                        return !ck || (naverColShow && naverColShow[ck]);
+                      }).map((it,i)=>{
                         if (it.label==="시술메뉴") return <NRow key={i} label="시술메뉴" value={it.value} valueColor="#1B5E20" bold/>;
                         return <div key={i} style={{display:"flex",alignItems:"baseline",gap:8,padding:"3px 0",borderBottom:"1px solid #E8F5E9",minHeight:26}}>
                           <span style={{fontSize:11,color:"#888",fontWeight:500,minWidth:72,flexShrink:0}}>{it.label}</span>
@@ -4195,11 +4200,6 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
   if(!amt) return <span style={{color:"#ccc"}}>-</span>;
   return <span style={{background:"#e8f5e9",color:"#2e7d32",borderRadius:6,padding:"2px 6px",fontSize:10}} title={"선불결제: "+(r.npayMethod||"네이버페이")}>✓{amt.toLocaleString()}원</span>;
 })()} </td>
-              {NAVER_COLS.map(col => (
-                <td key={col.key} style={{fontSize:10,color:"#555",maxWidth:naverColShow[col.key]?90:32,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",background:"#F9FBE7",padding:naverColShow[col.key]?"4px 6px":"2px",transition:"max-width 0.15s"}} title={naverColShow[col.key]?getNaverVal(r.requestMsg, col.kws):""}>
-                  {naverColShow[col.key] ? (getNaverVal(r.requestMsg, col.kws) || <span style={{color:"#ccc"}}>-</span>) : null}
-                </td>
-              ))}
               <td>{(()=>{
                 const ST_PILL = {
                   confirmed:     {bg:"#EEF4FB", color:"#5B9BD5", label:"진행"},
@@ -4213,6 +4213,11 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
                 const p = ST_PILL[r.status] || {bg:"#F5F5F5", color:"#999", label:r.status};
                 return <span style={{fontSize:10,fontWeight:700,background:p.bg,color:p.color,borderRadius:4,padding:"2px 6px",whiteSpace:"nowrap"}}>{p.label}</span>;
               })()}</td>
+              {NAVER_COLS.map(col => (
+                <td key={col.key} style={{fontSize:10,color:"#555",maxWidth:naverColShow[col.key]?90:32,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",background:"#F9FBE7",padding:naverColShow[col.key]?"4px 6px":"2px",transition:"max-width 0.15s"}} title={naverColShow[col.key]?getNaverVal(r.requestMsg, col.kws):""}>
+                  {naverColShow[col.key] ? (getNaverVal(r.requestMsg, col.kws) || <span style={{color:"#ccc"}}>-</span>) : null}
+                </td>
+              ))}
               <td><div style={{display:"flex",gap:4}}>
                 <button title="타임라인에서 열기" onClick={()=>{if(setPendingOpenRes)setPendingOpenRes(r);if(setPage)setPage("timeline");}} style={{width:28,height:28,borderRadius:6,border:"1px solid #e8e8e8",background:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"#7c7cc8",boxShadow:"0 1px 3px rgba(0,0,0,.08)"}}><I name="calendar" size={12}/></button>
 <button onClick={()=>deleteRes(r.id)} style={{width:28,height:28,borderRadius:6,border:"1px solid #ffe0e0",background:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:"#e57373",boxShadow:"0 1px 3px rgba(0,0,0,.08)"}}><I name="trash" size={12}/></button>
