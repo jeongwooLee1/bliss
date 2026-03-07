@@ -82,7 +82,7 @@ function fromDb(table,rows){const m=DBMAP[table];if(!m)return rows;return rows.m
     // Auto-detect gender from naver memo (옵션: 여) or 남))
     if(!r.custGender && r.memo){const ml=r.memo.toLowerCase();if(/여\)/.test(r.memo))r.custGender="F";else if(/남\)/.test(r.memo))r.custGender="M";}
     // naverCancelledDt 있으면 자동으로 naver_cancelled 상태
-    if(r.naverCancelledDt && r.status !== "naver_cancelled") r.status = "naver_cancelled";
+    if(r.naverCancelledDt && r.status !== "naver_cancelled" && r.status !== "naver_changed") r.status = "naver_cancelled";
   }
   // Convert booleans to Y/N for service_tags
   if(table==="service_tags"){r.scheduleYn=(r.scheduleYn===true||r.scheduleYn==="Y")?"Y":"N";r.useYn=r.useYn!==false;}
@@ -159,7 +159,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.98";
+const BLISS_V = "2.65.99";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -227,10 +227,10 @@ for (let h = 10; h <= 21; h++) { HOUR_TIMES.push(`${String(h).padStart(2,"0")}:0
 const PAY_KEYS = ["cash","transfer","card","point"];
 const PAY_LABEL = { cash:"현금", transfer:"입금", card:"카드", point:"포인트", gift:"상품권" };
 const PAY_CLR = { cash:"#6bab9e", transfer:"#ef5350", card:"#7c7cc8", point:"#d0d0d0", gift:"#ef5350" };
-const STATUS_LABEL = { confirmed:"진행", completed:"완료", cancelled:"취소", no_show:"노쇼", pending:"확정대기", naver_cancelled:"네이버취소" };
+const STATUS_LABEL = { confirmed:"진행", completed:"완료", cancelled:"취소", no_show:"노쇼", pending:"확정대기", naver_cancelled:"네이버취소", naver_changed:"날짜변경" };
 const DEFAULT_SOURCES = ["네이버","전화","방문","소개","인스타","카카오","기타"];
 const STATUS_KEYS = ["confirmed","completed","cancelled","no_show"];
-const STATUS_CLR_DEFAULT = { confirmed:"#5B9BD5", completed:"#6AB56A", cancelled:"#E8B830", no_show:"#E05252" , naver_cancelled:"#E6A700"};
+const STATUS_CLR_DEFAULT = { confirmed:"#5B9BD5", completed:"#6AB56A", cancelled:"#E8B830", no_show:"#E05252" , naver_cancelled:"#E6A700", naver_changed:"#9E9E9E"};
 const getStatusClr = () => { try { const v = localStorage.getItem("tl_sc"); return v ? {...STATUS_CLR_DEFAULT,...JSON.parse(v)} : {...STATUS_CLR_DEFAULT}; } catch(e) { return {...STATUS_CLR_DEFAULT}; } };
 const BLOCK_COLORS = { reservation:"#7c7cc8", memo:"#ef5350", clockin:"#d0d0d0", cleaning:"#5cb5c5", break:"#9e9ec8" };
 
@@ -1274,7 +1274,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   });
   const isNaverRes = (r) => !!r.reservationId;
   
-  const blocks = (data?.reservations||[]).filter(r => r.date === selDate && branchesToShow.some(b=>b.id===r.bid));
+  const blocks = (data?.reservations||[]).filter(r => r.date === selDate && branchesToShow.some(b=>b.id===r.bid) && r.status !== "naver_changed");
 
   // ── 네이버 예약 자동배치: 빈 담당자(왼쪽부터) 배분 ──
   const toMin = (t) => { const [h,m] = (t||"10:00").split(":").map(Number); return h*60+m; };
@@ -4046,7 +4046,7 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
       const allRes = (data?.reservations||[]).filter(r=>r.type==="reservation"&&(vb==="all"?userBranches.includes(r.bid):r.bid===vb)&&inRange(r.date));
       // 전체 카운트 (naver_cancelled 포함)
       const activeRes = allRes;
-      const counts = {all: activeRes.length, confirmed:0, pending:0, completed:0, cancelled:0, noshow:0, naver_cancelled:0};
+      const counts = {all: activeRes.length, confirmed:0, pending:0, completed:0, cancelled:0, noshow:0, naver_cancelled:0, naver_changed:0};
       allRes.forEach(r=>{ if(counts[r.status]!==undefined) counts[r.status]++; });
       const tabs = [
         {k:"all", label:"전체"},
@@ -4055,6 +4055,7 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
         {k:"cancelled", label:"취소"},
         {k:"noshow", label:"노쇼"},
         {k:"naver_cancelled", label:"네이버취소"},
+        {k:"naver_changed", label:"날짜변경"},
       ];
       return <div style={{display:"flex",gap:5,marginBottom:10,flexWrap:"wrap"}}>
         {tabs.map(({k,label})=>{
@@ -4094,12 +4095,18 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
             const sc=getStatusClr();
             const reqMatch=(r.memo||"").match(/요청:\s*(.+)/);
             const reqText=reqMatch?reqMatch[1].trim():"";
-            return <tr key={r.id} style={{opacity:r.status==="naver_cancelled"?0.6:1, background:r.status==="naver_cancelled"?"#FFFDE7":"transparent"}}>
+            return <tr key={r.id} style={{
+                background: r.status==="naver_cancelled" ? "#FFF8E1"
+                  : r.status==="naver_changed" ? "#F3F4F6"
+                  : r.status==="cancelled" ? "#FFF0F0"
+                  : r.status==="no_show" ? "#FFF0F0"
+                  : "transparent"
+              }}>
               <td style={{fontSize:11,color:"#aaa"}}>{r.date}</td>
               <td style={{fontWeight:700,color:"#7c7cc8"}}>{r.time}</td>
               <td style={{fontSize:11}}>{br?.short}</td>
-              <td style={{fontWeight:600}}>{r.custName||"-"}{g?<span style={{marginLeft:4,fontSize:10,color:g==="M"?"#7c7cc8":"#e57373"}}>{g==="M"?"남":"여"}</span>:null}</td>
-              <td style={{color:"#7c7cc8",fontSize:12}}>{r.custPhone||"-"}</td>
+              <td style={{fontWeight:600,maxWidth:68,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={r.custName||""}>{r.custName||"-"}{g?<span style={{marginLeft:4,fontSize:10,color:g==="M"?"#7c7cc8":"#e57373"}}>{g==="M"?"남":"여"}</span>:null}</td>
+              <td style={{color:"#7c7cc8",fontSize:12,whiteSpace:"nowrap"}}>{r.custPhone||"-"}</td>
               <td style={{fontSize:12}}>{svcDisplay}</td>
               <td style={{fontSize:12}}>{staff?.dn||"-"}</td>
               <td style={{fontSize:11,color:"#666",maxWidth:140,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={r.requestMsg||""}>
