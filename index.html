@@ -227,6 +227,29 @@ for (let h = 10; h <= 21; h++) { HOUR_TIMES.push(`${String(h).padStart(2,"0")}:0
 const PAY_KEYS = ["cash","transfer","card","point"];
 const PAY_LABEL = { cash:"현금", transfer:"입금", card:"카드", point:"포인트", gift:"상품권" };
 const PAY_CLR = { cash:"#6bab9e", transfer:"#ef5350", card:"#7c7cc8", point:"#d0d0d0", gift:"#ef5350" };
+// ── 네이버 예약정보 컬럼 정의 ──────────────────────────────────────────────────
+const NAVER_COLS = [
+  { key:"시술메뉴",  label:"시술메뉴",  kws:["시술메뉴"] },
+  { key:"유입경로",  label:"유입경로",  kws:["유입경로"] },
+  { key:"관리부위",  label:"관리부위",  kws:["시술부위","관리받으실 부위","관리받을 부위","부위","Please tell me which part"] },
+  { key:"주차",     label:"주차",     kws:["주차"] },
+  { key:"첫방문",   label:"첫방문",   kws:["첫방문","first"] },
+  { key:"요청",     label:"요청사항", kws:["요청"] },
+];
+// request_msg JSON에서 특정 키워드 라벨 값 추출
+const getNaverVal = (requestMsg, keywords) => {
+  if (!requestMsg) return "";
+  if (requestMsg.trim().startsWith("[")) {
+    try {
+      const items = JSON.parse(requestMsg);
+      for (const it of items) {
+        if (keywords.some(kw => (it.label||"").includes(kw))) return it.value || "";
+      }
+    } catch(e) {}
+  }
+  return "";
+};
+
 const STATUS_LABEL = { confirmed:"진행", completed:"완료", cancelled:"취소", no_show:"노쇼", pending:"확정대기", naver_cancelled:"취소", naver_changed:"변경" };
 const DEFAULT_SOURCES = ["네이버","전화","방문","소개","인스타","카카오","기타"];
 const STATUS_KEYS = ["confirmed","completed","cancelled","no_show"];
@@ -1119,7 +1142,13 @@ function MiniCal({ selDate, onSelect, onClose }) {
   </div>;
 }
 
-function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, currentUser, setPage, bizId, onMenuClick, bizName, pendingOpenRes, setPendingOpenRes }) {
+function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, currentUser, setPage, bizId, onMenuClick, bizName, pendingOpenRes, setPendingOpenRes, naverColShow={} }) {
+  // 타임라인 블록에 표시할 네이버 필드 (naverColShow prop이 없으면 자체 state 사용)
+  const [_naverColShowState, _setNaverColShowState] = React.useState(() => {
+    try { return JSON.parse(localStorage.getItem("bliss_naver_cols") || "null") || {}; }
+    catch(e) { return {}; }
+  });
+  const effectiveNaverColShow = Object.keys(naverColShow).length > 0 ? naverColShow : _naverColShowState;
   const SVC_LIST = (data?.services || []).slice().sort((a,b)=>(a.sort||0)-(b.sort||0));
   const PROD_LIST = (data?.products || []);
   const [selDate, setSelDate] = useState(todayStr());
@@ -2157,18 +2186,16 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                             {block.selectedServices.length>2 && ` +${block.selectedServices.length-2}`}
                           </div>}
                           {h >= 60 && (()=>{
-                            const reqText = (() => {
-                              if (!block.requestMsg) return "";
-                              if (block.requestMsg.trim().startsWith("[")) {
-                                try { return JSON.parse(block.requestMsg).map(it=>it.value).filter(Boolean).join(" / "); } catch(e) {}
-                              }
-                              return block.requestMsg;
-                            })();
+                            // 체크된 네이버 필드만 표시
+                            const checkedCols = NAVER_COLS.filter(col => effectiveNaverColShow[col.key]);
+                            const naverParts = checkedCols
+                              .map(col => getNaverVal(block.requestMsg, col.kws))
+                              .filter(Boolean);
                             const memo = block.ownerComment || "";
-                            if (!reqText && !memo) return null;
+                            if (!naverParts.length && !memo) return null;
                             return <div style={{marginTop:2,fontSize:Math.max(6,blockFs-2),color:"#555",overflow:"hidden",display:"-webkit-box",WebkitLineClamp:h>=90?3:2,WebkitBoxOrient:"vertical"}}>
-                              {reqText && <span>{reqText}</span>}
-                              {reqText && memo && <span style={{color:"#bbb"}}> · </span>}
+                              {naverParts.map((v,i) => <span key={i}>{i>0 && <span style={{color:"#ccc"}}> / </span>}{v}</span>)}
+                              {naverParts.length>0 && memo && <span style={{color:"#bbb"}}> · </span>}
                               {memo && <span style={{color:"#1565C0"}}>{memo}</span>}
                             </div>;
                           })()}
@@ -2242,7 +2269,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
         </div>;
       })()}
 
-      {showModal && <TimelineModal item={modalData} onSave={handleSave} onDelete={handleDelete} onDeleteRequest={handleDeleteRequest} onClose={()=>_mc(()=>{setShowModal(false);setModalData(null)})} selBranch={userBranches[0]} userBranches={userBranches} data={data} setData={setData} setPage={setPage}/>}
+      {showModal && <TimelineModal item={modalData} onSave={handleSave} onDelete={handleDelete} onDeleteRequest={handleDeleteRequest} naverColShow={naverColShow} onClose={()=>_mc(()=>{setShowModal(false);setModalData(null)})} selBranch={userBranches[0]} userBranches={userBranches} data={data} setData={setData} setPage={setPage}/>}
 
       {showQuickBook && <QuickBookModal
         onClose={()=>setShowQuickBook(false)}
@@ -3222,7 +3249,7 @@ ${naverText}
 }
 
 // ═══════════════════════════════════════════
-// Bliss v2.5 - realtime extra/discount totals
+// Bliss v2.67.0 - realtime extra/discount totals
 const SaleSvcRow = React.memo(function SaleSvcRow({ id, name, dur, checked, amount, defPrice, toggle, setAmt }) {
   const disabled = defPrice === 0;
   const [localAmt, setLocalAmt] = useState(amount || "");
@@ -3997,6 +4024,16 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
   const [vb, setVb] = useState("all");
   const [q, setQ] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  // 타임라인 블록에 표시할 네이버 필드 (localStorage 저장)
+  const [naverColShow, setNaverColShow] = React.useState(() => {
+    try { return JSON.parse(localStorage.getItem("bliss_naver_cols") || "null") || {시술메뉴:false,유입경로:false,관리부위:false,주차:false,첫방문:false,요청:false}; }
+    catch(e) { return {시술메뉴:false,유입경로:false,관리부위:false,주차:false,첫방문:false,요청:false}; }
+  });
+  const toggleNaverCol = (key) => setNaverColShow(prev => {
+    const next = {...prev, [key]: !prev[key]};
+    localStorage.setItem("bliss_naver_cols", JSON.stringify(next));
+    return next;
+  });
 
   const periodLabels = {"1day":"오늘","7days":"7일","month":"한달","all":"전체","custom":"직접","prev":"전일","thismonth":"이번달","lastmonth":"지난달"};
 
@@ -4102,9 +4139,19 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
     })()}
     <div className="card tw">
       <table style={{tableLayout:"fixed",width:"100%"}}><thead><tr>
-        <th style={{width:72}}>날짜</th><th style={{width:88}}>시간</th><th style={{width:56}}>매장</th><th style={{width:68}}>고객</th><th style={{width:92}}>연락처</th><th style={{width:"16%"}}>시술</th><th style={{width:56}}>시술자</th><th style={{width:"14%"}}>요청사항</th><th style={{width:"10%"}}>직원메모</th><th style={{width:96,color:"#03C75A"}}><span style={{background:"#03C75A",color:"#fff",fontSize:9,fontWeight:700,borderRadius:3,padding:"1px 4px",marginRight:3}}>N</span>예약번호</th><th style={{width:56,color:"#e65100"}}>예약금</th><th style={{width:56}}>상태</th><th style={{width:60}}>액션</th>
+        <th style={{width:72}}>날짜</th><th style={{width:88}}>시간</th><th style={{width:56}}>매장</th><th style={{width:68}}>고객</th><th style={{width:92}}>연락처</th><th style={{width:"12%"}}>시술</th><th style={{width:56}}>시술자</th><th style={{width:"8%"}}>직원메모</th><th style={{width:96,color:"#03C75A"}}><span style={{background:"#03C75A",color:"#fff",fontSize:9,fontWeight:700,borderRadius:3,padding:"1px 4px",marginRight:3}}>N</span>예약번호</th><th style={{width:56,color:"#e65100"}}>예약금</th><th style={{width:56}}>상태</th>
+        {NAVER_COLS.map(col => (
+          <th key={col.key} style={{width:80,background:"#F1F8E9",padding:"4px 4px"}}>
+            <label style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2,cursor:"pointer",fontSize:10,fontWeight:600,color:"#2E7D32",whiteSpace:"nowrap"}}>
+              <input type="checkbox" checked={!!naverColShow[col.key]} onChange={()=>toggleNaverCol(col.key)}
+                style={{width:12,height:12,accentColor:"#2E7D32",cursor:"pointer"}}/>
+              {col.label}
+            </label>
+          </th>
+        ))}
+        <th style={{width:60}}>액션</th>
       </tr></thead><tbody>
-        {res.length===0?<tr><td colSpan={13} style={{textAlign:"center",color:"#bbb",padding:40,fontSize:13}}>예약이 없습니다</td></tr>:
+        {res.length===0?<tr><td colSpan={13+NAVER_COLS.length} style={{textAlign:"center",color:"#bbb",padding:40,fontSize:13}}>예약이 없습니다</td></tr>:
           res.map(r=>{
             const svc=(data.services||[]).find(s=>s.id===r.serviceId);
             const svcNames=(r.selectedServices||[]).map(sid=>(data.services||[]).find(s=>s.id===sid)?.name).filter(Boolean);
@@ -4143,6 +4190,11 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
   if(!amt) return <span style={{color:"#ccc"}}>-</span>;
   return <span style={{background:"#e8f5e9",color:"#2e7d32",borderRadius:6,padding:"2px 6px",fontSize:10}} title={"선불결제: "+(r.npayMethod||"네이버페이")}>✓{amt.toLocaleString()}원</span>;
 })()} </td>
+              {NAVER_COLS.map(col => (
+                <td key={col.key} style={{fontSize:10,color:"#555",maxWidth:80,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",background:"#F9FBE7"}} title={getNaverVal(r.requestMsg, col.kws)}>
+                  {getNaverVal(r.requestMsg, col.kws) || <span style={{color:"#ccc"}}>-</span>}
+                </td>
+              ))}
               <td>{(()=>{
                 const ST_PILL = {
                   confirmed:     {bg:"#EEF4FB", color:"#5B9BD5", label:"진행"},
