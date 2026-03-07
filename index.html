@@ -159,7 +159,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.2";
+const BLISS_V = "2.69.3";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -1346,10 +1346,10 @@ function Login({ users, onLogin, onSignup }) {
     onLogin(u);
   };
   if (showSignup) return (
-    <div style={{minHeight:"100vh",width:"100%",display:"flex",alignItems:"flex-start",justifyContent:"center",background:"linear-gradient(135deg,#e8e8f0 0%,#d8d8e8 50%,#c8c8d8 100%)",fontFamily:"'Pretendard',sans-serif",padding:"20px 16px",overflowY:"auto"}}>
+    <div style={{height:"100vh",width:"100%",overflowY:"auto",WebkitOverflowScrolling:"touch",background:"linear-gradient(135deg,#e8e8f0 0%,#d8d8e8 50%,#c8c8d8 100%)",fontFamily:"'Pretendard',sans-serif",padding:"20px 16px 40px",boxSizing:"border-box"}}>
       <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet"/>
       <style>{CSS}</style>
-      <div style={{background:"#fff",borderRadius:12,border:"1px solid #e0e0e0",padding:"28px 24px",width:"92%",maxWidth:460,animation:"slideUp .6s cubic-bezier(.22,1,.36,1)",boxShadow:"0 12px 40px rgba(0,0,0,.15)",marginTop:20}}>
+      <div style={{background:"#fff",borderRadius:12,border:"1px solid #e0e0e0",padding:"28px 24px",width:"92%",maxWidth:460,margin:"0 auto",animation:"slideUp .6s cubic-bezier(.22,1,.36,1)",boxShadow:"0 12px 40px rgba(0,0,0,.15)"}}>
         <div style={{textAlign:"center",marginBottom:24}}>
           <div style={{fontSize:24,fontWeight:800,color:"#7c7cc8",letterSpacing:-1}}>Bliss</div>
           <div style={{fontSize:11,color:"#999",marginTop:4}}>신규 가입</div>
