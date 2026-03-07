@@ -159,7 +159,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.71";
+const BLISS_V = "2.65.72";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -4915,7 +4915,7 @@ function AdminPlaces({ data, setData, bizId }) {
               });
             }}}
             style={{position:"fixed",left:"50%",top:"5vh",zIndex:1000,transform:"translateX(-50%)",
-            width:"min(680px, 88vw)",
+            width:"min(520px, 90vw)",
             background:"#fff",borderRadius:16,overflow:"hidden",
             boxShadow:"0 20px 60px rgba(0,0,0,.2)"}}>
             {/* Header */}
