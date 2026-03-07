@@ -159,7 +159,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.68";
+const BLISS_V = "2.65.69";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -3044,7 +3044,6 @@ ${naverText}
                   const val = ci > -1 ? line.slice(ci+2).trim() : line.trim();
                   if (!val) return null;
                   if (key==="시술메뉴") return <NRow key={i} label="시술메뉴" value={val} valueColor="#1B5E20" bold/>;
-                  if (key==="스타일리스트") return <NRow key={i} label="스타일리스트" value={val} valueColor="#333" bold/>;
                   if (key) return <div key={i} style={{display:"flex",alignItems:"baseline",gap:8,padding:"3px 0",borderBottom:"1px solid #E8F5E9",minHeight:26}}>
                     <span style={{fontSize:11,color:"#888",fontWeight:500,minWidth:72,flexShrink:0}}>{key}</span>
                     <span style={{fontSize:12,fontWeight:600,color:"#1565C0",background:"#E3F2FD",borderRadius:4,padding:"1px 8px",lineHeight:1.4,wordBreak:"break-word"}}>{val}</span>
