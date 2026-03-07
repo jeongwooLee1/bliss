@@ -159,7 +159,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.60";
+const BLISS_V = "2.65.61";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -2859,8 +2859,11 @@ ${naverText}
                 {(data?.resSources||[]).filter(s=>s.useYn!==false).sort((a,b)=>(a.sort||0)-(b.sort||0)).map(src => {
                   const sel = f.source === src.name;
                   const clr = src.color || "#7c7cc8";
-                  return <button key={src.id} onClick={()=>set("source",sel?"":src.name)}
-                    style={{padding:"4px 12px",fontSize:13,fontWeight:500,borderRadius:20,cursor:"pointer",fontFamily:"inherit",
+                  const isNaverSrc = src.name === "네이버" || src.name === SYSTEM_SRC_NAME_NAVER;
+                  const isNaverLocked = isNaverItem && isNaverSrc;
+                  return <button key={src.id}
+                    onClick={()=>{ if(isNaverLocked) return; set("source",sel?"":src.name); }}
+                    style={{padding:"4px 12px",fontSize:13,fontWeight:500,borderRadius:20,cursor:isNaverLocked?"default":"pointer",fontFamily:"inherit",
                       border:"none",transition:"background .12s",
                       background:sel?clr:"transparent",
                       color:sel?"#fff":clr,
@@ -5506,7 +5509,7 @@ function AdminResSources({ data, setData }) {
             <button onClick={()=>startEdit(src)} style={{background:"none",border:"none",cursor:"pointer",color:"#7c7cc8",fontSize:12}}><I name="edit" size={13}/></button>
             {SYSTEM_SRC_IDS.includes(src.id) ? <span title="삭제 불가" style={{color:"#e0e0e0",fontSize:12}}><I name="trash" size={13}/></span> : delConfirm===src.id
               ? <><button className="btn-d btn-sm" onClick={()=>deleteSource(src.id)} style={{padding:"1px 5px",fontSize:9}}>확인</button><button className="btn-s btn-sm" onClick={()=>setDelConfirm(null)} style={{padding:"1px 4px",fontSize:9}}>취소</button></>
-              : <button onClick={()=>setDelConfirm(src.id)} style={{background:"none",border:"none",cursor:"pointer",color:"#e57373",fontSize:12}}><I name="trash" size={13}/></button>}
+              : (SYSTEM_SRC_IDS.includes(src.id) ? <span title="기본 경로는 삭제할 수 없습니다" style={{color:"#ddd",fontSize:12,cursor:"not-allowed"}}><I name="trash" size={13}/></span> : <button onClick={()=>setDelConfirm(src.id)} style={{background:"none",border:"none",cursor:"pointer",color:"#e57373",fontSize:12}}><I name="trash" size={13}/></button>)}
           </div></td>
         </tr>;
       })}</tbody></table>
