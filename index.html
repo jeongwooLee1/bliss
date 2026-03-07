@@ -159,7 +159,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.66";
+const BLISS_V = "2.65.67";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -187,12 +187,12 @@ const TIMES = [];
 for (let h = 8; h <= 22; h++) for (let m = 0; m < 60; m += 5)
   TIMES.push(`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`);
 // ─── 시간 커스텀 드롭다운 ───
-function TimeSelect({ value, onChange, times, label }) {
-  const [open, setOpen] = React.useState(false);
-  const ref = React.useRef(null);
-  const listRef = React.useRef(null);
+function TimeSelect({ value, onChange, times }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const listRef = useRef(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!open) return;
     // 선택 항목으로 스크롤
     setTimeout(() => {
@@ -3001,7 +3001,7 @@ ${naverText}
               // label+value row 컴포넌트 (인라인)
               const NRow = ({label, value, valueColor, bold, rightEl}) => value ? <div style={{display:"flex",alignItems:"baseline",gap:8,padding:"3px 0",borderBottom:"1px solid #E8F5E9",minHeight:26}}>
                 <span style={{fontSize:11,color:"#888",fontWeight:500,minWidth:72,flexShrink:0}}>{label}</span>
-                <span style={{fontSize:12,color:valueColor||"#333",fontWeight:bold?700:500,lineHeight:1.4,wordBreak:"break-word",flex:1}}>{value}</span>
+                <span style={{fontSize:12,color:valueColor||"#333",fontWeight:600,lineHeight:1.4,wordBreak:"break-word",flex:1}}>{value}</span>
                 {rightEl && <span style={{flexShrink:0}}>{rightEl}</span>}
               </div> : null;
               const fmtDt = (v) => { const d=new Date(v); return isNaN(d)?v:`${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`; };
@@ -3027,7 +3027,7 @@ ${naverText}
                   if (key==="스타일리스트") return <NRow key={i} label="스타일리스트" value={val} valueColor="#333" bold/>;
                   if (key) return <div key={i} style={{display:"flex",alignItems:"baseline",gap:8,padding:"3px 0",borderBottom:"1px solid #E8F5E9",minHeight:26}}>
                     <span style={{fontSize:11,color:"#888",fontWeight:500,minWidth:72,flexShrink:0}}>{key}</span>
-                    <span style={{fontSize:12,fontWeight:600,color:"#1565C0",background:"#E3F2FD",borderRadius:4,padding:"1px 8px",lineHeight:1.4,wordBreak:"break-word",flex:1}}>{val}</span>
+                    <span style={{fontSize:12,fontWeight:600,color:"#1565C0",background:"#E3F2FD",borderRadius:4,padding:"1px 8px",lineHeight:1.4,wordBreak:"break-word"}}>{val}</span>
                   </div>;
                   return <NRow key={i} label="요청" value={val}/>;
                 })}
@@ -3062,9 +3062,6 @@ ${naverText}
           <div>
             <textarea className="inp inp-memo" rows={4} value={f.memo} onChange={e=>set("memo",e.target.value)} style={{resize:"vertical",minHeight:90}} placeholder="직원 메모를 입력하세요"/>
             
-            {(f.tsLog?.length > 0) && <div style={{marginTop:4,fontSize:13,color:"#999",lineHeight:1.6}}>
-              {f.tsLog.map((ts,i)=><div key={i}>{ts}</div>)}
-            </div>}
           </div>
 
           {/* Action Buttons - 한 줄 (pinned bottom) */}
