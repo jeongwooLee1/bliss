@@ -159,7 +159,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.0";
+const BLISS_V = "2.69.1";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -1011,13 +1011,12 @@ function SuperUsers({ users, businesses, superData, setSuperData }) {
 
 // ─── SignupWizard ───
 function SignupWizard({ onComplete, onBack }) {
-  const [step, setStep]           = useState(1);
-  const [geminiKey, setGeminiKey] = useState(() => { try { return localStorage.getItem("bliss_gemini_key")||""; } catch(e){ return ""; }});
-  const [imgData, setImgData]     = useState(null);
-  const [imgFile, setImgFile]     = useState(null);
-  const [analyzing, setAnalyzing] = useState(false);
+  const [step, setStep]             = useState(1);
+  const [imgData, setImgData]       = useState(null);
+  const [imgFile, setImgFile]       = useState(null);
+  const [analyzing, setAnalyzing]   = useState(false);
   const [analyzeErr, setAnalyzeErr] = useState("");
-  const [saving, setSaving]       = useState(false);
+  const [saving, setSaving]         = useState(false);
   const fileRef = React.useRef(null);
   const camRef  = React.useRef(null);
 
@@ -1043,15 +1042,17 @@ function SignupWizard({ onComplete, onBack }) {
     return d.slice(0,3)+"-"+d.slice(3,5)+"-"+d.slice(5);
   };
 
+  // 이미지 있으면 Gemini OCR 시도, 없으면 바로 Step 2 수동입력
   const analyze = async () => {
-    if (!imgData) { setAnalyzeErr("사업자등록증 이미지를 선택해주세요."); return; }
-    if (!geminiKey.trim()) { setAnalyzeErr("Gemini API 키를 입력해주세요."); return; }
+    if (!imgData) { setStep(2); return; }
+    const geminiKey = window.__geminiKey || "";
+    if (!geminiKey) { setStep(2); return; } // 키 없으면 수동 입력으로
     setAnalyzing(true); setAnalyzeErr("");
     try {
-      const base64  = imgData.split(",")[1];
+      const base64   = imgData.split(",")[1];
       const mimeType = (imgFile?.type)||"image/jpeg";
       const resp = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey.trim()}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`,
         { method:"POST", headers:{"Content-Type":"application/json"},
           body: JSON.stringify({
             contents:[{ parts:[
@@ -1062,19 +1063,18 @@ function SignupWizard({ onComplete, onBack }) {
           })
         }
       );
-      const d = await resp.json();
+      const d    = await resp.json();
       const text = (d.candidates?.[0]?.content?.parts?.[0]?.text||"").replace(/```json|```/g,"").trim();
-      const p = JSON.parse(text);
+      const p    = JSON.parse(text);
       setForm(prev=>({...prev,
         bizNum:(p.bizNum||"").replace(/[^0-9]/g,""),
         bizName:p.bizName||"", ownerName:p.ownerName||"",
-        address:p.address||"",  bizType:p.bizType||"",
-        bizItem:p.bizItem||"",  phone:p.phone||"",
+        address:p.address||"", bizType:p.bizType||"",
+        bizItem:p.bizItem||"", phone:p.phone||"",
       }));
-      setStep(2);
     } catch(e) {
-      setAnalyzeErr("분석 실패: "+(e.message||"이미지를 다시 시도해주세요."));
-    } finally { setAnalyzing(false); }
+      setAnalyzeErr("자동 인식 실패 — 아래 정보를 직접 입력해주세요.");
+    } finally { setAnalyzing(false); setStep(2); }
   };
 
   const submit = async () => {
@@ -1094,13 +1094,12 @@ function SignupWizard({ onComplete, onBack }) {
 
       const expire = new Date(); expire.setDate(expire.getDate()+14);
       const memoObj = {
-        gemini_key:   geminiKey.trim(),
-        plan:         "trial",
-        plan_expire:  expire.toISOString().split("T")[0],
-        plan_status:  "active",
-        owner_name:   form.ownerName,
-        biz_type:     form.bizType,
-        biz_item:     form.bizItem,
+        plan:        "trial",
+        plan_expire: expire.toISOString().split("T")[0],
+        plan_status: "active",
+        owner_name:  form.ownerName,
+        biz_type:    form.bizType,
+        biz_item:    form.bizItem,
       };
 
       await sb.insert("businesses",{ id:bizId, name:form.bizName.trim(), code:cleanBizNum,
@@ -1118,8 +1117,6 @@ function SignupWizard({ onComplete, onBack }) {
         role:"owner",
         branch_ids:JSON.stringify([branchId]),
         view_branch_ids:JSON.stringify([]) });
-
-      try { localStorage.setItem("bliss_gemini_key",geminiKey.trim()); window.__geminiKey=geminiKey.trim(); } catch(e){}
 
       setStep(3);
       setTimeout(()=>onComplete({
@@ -1145,12 +1142,11 @@ function SignupWizard({ onComplete, onBack }) {
         <div style={{fontSize:12,color:"#999"}}>사업자등록증을 촬영하거나 업로드하면<br/>정보를 자동으로 인식합니다</div>
       </div>
 
-      {/* 이미지 선택 영역 */}
       <div onClick={()=>fileRef.current?.click()}
         style={{border:"2px dashed "+(imgData?"#7c7cc8":"#d0d0d0"),borderRadius:12,padding:20,
           textAlign:"center",cursor:"pointer",background:imgData?"#f7f7ff":"#fafafa",
           transition:"all .2s",minHeight:140,display:"flex",flexDirection:"column",
-          alignItems:"center",justifyContent:"center",gap:8,position:"relative",overflow:"hidden"}}>
+          alignItems:"center",justifyContent:"center",gap:8,overflow:"hidden"}}>
         {imgData ? (
           <>
             <img src={imgData} style={{maxHeight:160,maxWidth:"100%",borderRadius:8,objectFit:"contain"}} alt="사업자등록증"/>
@@ -1167,7 +1163,6 @@ function SignupWizard({ onComplete, onBack }) {
       <input ref={fileRef} type="file" accept="image/*" style={{display:"none"}}
         onChange={e=>handleImg(e.target.files?.[0])}/>
 
-      {/* 카메라 직접 촬영 버튼 */}
       <button onClick={()=>camRef.current?.click()}
         style={{padding:"10px",border:"1px solid #d0d0d0",borderRadius:8,background:"#fff",
           fontSize:12,color:"#666",cursor:"pointer",fontFamily:"inherit",display:"flex",
@@ -1177,17 +1172,6 @@ function SignupWizard({ onComplete, onBack }) {
       <input ref={camRef} type="file" accept="image/*" capture="environment" style={{display:"none"}}
         onChange={e=>handleImg(e.target.files?.[0])}/>
 
-      {/* Gemini API 키 */}
-      <div>
-        <label style={labelStyle}>Gemini API 키 <span style={{color:"#e57373"}}>*</span></label>
-        <input style={inputStyle} type="password" value={geminiKey}
-          onChange={e=>setGeminiKey(e.target.value)} placeholder="AIza..."/>
-        <div style={{fontSize:10,color:"#bbb",marginTop:4}}>
-          <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer"
-            style={{color:"#7c7cc8"}}>Google AI Studio</a>에서 무료로 발급
-        </div>
-      </div>
-
       {analyzeErr && <div style={{fontSize:12,color:"#e57373",padding:"8px 12px",background:"#fff5f5",borderRadius:8,border:"1px solid #ffcdd2"}}>{analyzeErr}</div>}
 
       <button onClick={analyze} disabled={analyzing}
@@ -1195,7 +1179,7 @@ function SignupWizard({ onComplete, onBack }) {
           background:analyzing?"#c5c5e8":"#7c7cc8",color:"#fff",
           fontSize:15,fontWeight:800,cursor:analyzing?"not-allowed":"pointer",fontFamily:"inherit",
           display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-        {analyzing ? <><span style={{animation:"spin 1s linear infinite",display:"inline-block"}}>⏳</span> AI 분석 중...</> : "🔍 자동 인식 시작"}
+        {analyzing ? <><span style={{animation:"spin 1s linear infinite",display:"inline-block"}}>⏳</span> AI 분석 중...</> : imgData ? "🔍 자동 인식 시작" : "정보 직접 입력 →"}
       </button>
 
       <button onClick={onBack} style={{background:"none",border:"none",fontSize:12,color:"#bbb",cursor:"pointer",fontFamily:"inherit",padding:4}}>← 로그인으로 돌아가기</button>
