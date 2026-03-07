@@ -159,7 +159,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.67.4";
+const BLISS_V = "2.67.5";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -4139,19 +4139,19 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
     })()}
     <div className="card tw">
       <table style={{tableLayout:"fixed",width:"100%"}}><thead><tr>
-        <th style={{width:72}}>날짜</th><th style={{width:88}}>시간</th><th style={{width:56}}>매장</th><th style={{width:68}}>고객</th><th style={{width:92}}>연락처</th><th style={{width:"12%"}}>시술</th><th style={{width:56}}>시술자</th><th style={{width:"8%",background:"#EDE7F6",padding:"4px 4px"}}>
+        <th style={{width:68}}>날짜</th><th style={{width:50}}>시간</th><th style={{width:52}}>매장</th><th style={{width:64}}>고객</th><th style={{width:84}}>연락처</th><th style={{width:"14%"}}>시술</th><th style={{width:46}}>시술자</th><th style={{width:naverColShow["직원메모"]?90:32,background:"#EDE7F6",padding:"4px 2px",transition:"width 0.15s"}}>
           <label style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2,cursor:"pointer",fontSize:10,fontWeight:600,color:"#6A1B9A",whiteSpace:"nowrap"}}>
             <input type="checkbox" checked={!!naverColShow["직원메모"]} onChange={()=>toggleNaverCol("직원메모")}
               style={{width:12,height:12,accentColor:"#6A1B9A",cursor:"pointer"}}/>
-            직원메모
+            {naverColShow["직원메모"] ? "직원메모" : null}
           </label>
-        </th><th style={{width:96,color:"#03C75A"}}><span style={{background:"#03C75A",color:"#fff",fontSize:9,fontWeight:700,borderRadius:3,padding:"1px 4px",marginRight:3}}>N</span>예약번호</th><th style={{width:56,color:"#e65100"}}>예약금</th><th style={{width:56}}>상태</th>
+        </th><th style={{width:90,color:"#03C75A"}}><span style={{background:"#03C75A",color:"#fff",fontSize:9,fontWeight:700,borderRadius:3,padding:"1px 4px",marginRight:3}}>N</span>예약번호</th><th style={{width:50,color:"#e65100"}}>예약금</th><th style={{width:46}}>상태</th>
         {NAVER_COLS.map(col => (
-          <th key={col.key} style={{width:80,background:"#F1F8E9",padding:"4px 4px"}}>
+          <th key={col.key} style={{width:naverColShow[col.key]?90:32,background:"#F1F8E9",padding:"4px 2px",transition:"width 0.15s"}}>
             <label style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2,cursor:"pointer",fontSize:10,fontWeight:600,color:"#2E7D32",whiteSpace:"nowrap"}}>
               <input type="checkbox" checked={!!naverColShow[col.key]} onChange={()=>toggleNaverCol(col.key)}
                 style={{width:12,height:12,accentColor:"#2E7D32",cursor:"pointer"}}/>
-              {col.label}
+              {naverColShow[col.key] ? col.label : null}
             </label>
           </th>
         ))}
@@ -4181,7 +4181,7 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
               <td style={{fontSize:12}}>{svcDisplay}</td>
               <td style={{fontSize:12}}>{staff?.dn||"-"}</td>
               
-              <td style={{fontSize:11,color:"#888",maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={r.ownerComment||""}>
+              <td style={{fontSize:11,color:"#888",maxWidth:naverColShow["직원메모"]?120:32,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",padding:naverColShow["직원메모"]?"4px 6px":"2px",transition:"max-width 0.15s"}} title={r.ownerComment||""}>
                 {r.reservationId && <span style={{background:"#03C75A",color:"#fff",fontSize:9,fontWeight:700,borderRadius:3,padding:"1px 4px",marginRight:3,verticalAlign:"middle",letterSpacing:"-0.3px"}}>N</span>}
                 {naverColShow["직원메모"] ? (r.ownerComment||<span style={{color:"#ccc"}}>-</span>) : null}
               </td>
@@ -4196,8 +4196,8 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
   return <span style={{background:"#e8f5e9",color:"#2e7d32",borderRadius:6,padding:"2px 6px",fontSize:10}} title={"선불결제: "+(r.npayMethod||"네이버페이")}>✓{amt.toLocaleString()}원</span>;
 })()} </td>
               {NAVER_COLS.map(col => (
-                <td key={col.key} style={{fontSize:10,color:"#555",maxWidth:80,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",background:"#F9FBE7"}} title={getNaverVal(r.requestMsg, col.kws)}>
-                  {getNaverVal(r.requestMsg, col.kws) || <span style={{color:"#ccc"}}>-</span>}
+                <td key={col.key} style={{fontSize:10,color:"#555",maxWidth:naverColShow[col.key]?90:32,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",background:"#F9FBE7",padding:naverColShow[col.key]?"4px 6px":"2px",transition:"max-width 0.15s"}} title={naverColShow[col.key]?getNaverVal(r.requestMsg, col.kws):""}>
+                  {naverColShow[col.key] ? (getNaverVal(r.requestMsg, col.kws) || <span style={{color:"#ccc"}}>-</span>) : null}
                 </td>
               ))}
               <td>{(()=>{
