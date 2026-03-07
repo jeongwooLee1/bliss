@@ -159,7 +159,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.68.1";
+const BLISS_V = "2.68.2";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -4184,7 +4184,7 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
               <td style={{fontSize:11,color:"#aaa"}}>{r.date}</td>
               <td style={{fontWeight:700,color:"#7c7cc8"}}>{r.time}</td>
               <td style={{fontSize:11}}>{br?.short}</td>
-              <td style={{fontWeight:600,maxWidth:68,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={r.custName||""}>{r.custName||"-"}{g?<span style={{marginLeft:4,fontSize:10,color:g==="M"?"#7c7cc8":"#e57373"}}>{g==="M"?"남":"여"}</span>:null}</td>
+              <td style={{fontWeight:600,maxWidth:68,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"flex",alignItems:"center"}} title={r.custName||""}>{g?<span style={{fontSize:9,fontWeight:700,borderRadius:8,padding:"1px 5px",marginRight:3,background:g==="M"?"#e8eaf6":"#fce4ec",color:g==="M"?"#3949ab":"#c2185b",flexShrink:0}}>{g==="M"?"남":"여"}</span>:null}{r.custName||"-"}</td>
               <td style={{color:"#7c7cc8",fontSize:12,whiteSpace:"nowrap"}}>{r.custPhone||"-"}</td>
               <td style={{fontSize:12}}>{svcDisplay}</td>
               <td style={{fontSize:12}}>{staff?.dn||"-"}</td>
