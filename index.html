@@ -159,7 +159,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.8";
+const BLISS_V = "2.69.9";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -1066,16 +1066,19 @@ function SignupWizard({ onComplete, onBack }) {
       if(!resp.ok){ alert("OCR 오류("+resp.status+"): "+respText.slice(0,300)); setScanMsg("분석 실패("+resp.status+")"); setTimeout(()=>{setScanning(false);setStep(2);},2000); return; }
       const json=JSON.parse(respText);
       const raw=(json.candidates?.[0]?.content?.parts?.[0]?.text||"").replace(/```json|```/g,"").trim();
-      if(!raw){setScanMsg("응답 없음 — 직접 입력해주세요");setTimeout(()=>{setScanning(false);setStep(2);},1500);return;}
-      const p=JSON.parse(raw);
+      if(!raw){ alert("Gemini 응답 비어있음: "+respText.slice(0,200)); setScanning(false); setStep(2); return; }
+      let p;
+      try { p=JSON.parse(raw); }
+      catch(pe) { alert("JSON파싱 실패. raw="+raw.slice(0,200)); setScanning(false); setStep(2); return; }
+      alert("인식결과: "+JSON.stringify(p));
       setForm(prev=>({...prev,
         bizNum:(p.bizNum||"").replace(/[^0-9]/g,""),
         bizName:p.bizName||"",ownerName:p.ownerName||"",address:p.address||"",phone:p.phone||""
       }));
       setScanDone(true); setScanning(false); setStep(2);
     } catch(e) {
-      setScanMsg("인식 오류 — 직접 입력해주세요");
-      setTimeout(()=>{setScanning(false);setStep(2);},1500);
+      alert("catch오류: "+e.message);
+      setScanning(false); setStep(2);
     }
   };
 
