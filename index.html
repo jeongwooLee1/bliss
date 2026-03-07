@@ -159,7 +159,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.92";
+const BLISS_V = "2.65.93";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -2610,7 +2610,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
     let apiKey = window.__geminiKey || localStorage.getItem("bliss_gemini_key") || "";
     if (!apiKey) {
       try {
-        const r = await fetch(`${SB_URL}/rest/v1/businesses?id=eq.${bizId}&select=memo`, {headers: sbHeaders});
+        const r = await fetch(`${SB_URL}/rest/v1/businesses?select=memo&limit=1`, {headers: sbHeaders});
         const rows = await r.json();
         const memo = JSON.parse(rows[0]?.memo || "{}");
         apiKey = memo.gemini_key || "";
