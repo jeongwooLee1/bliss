@@ -4025,13 +4025,20 @@ function SmartDatePicker({ open, onClose, anchorEl, startDate, endDate, onApply,
 function ReservationList({ data, setData, userBranches, isMaster, setPage, setPendingOpenRes }) {
   const today = todayStr();
   const dateAnchorRef = React.useRef(null);
-  const [startDate, setStartDate] = useState(today);
-  const [endDate, setEndDate] = useState(() => { const d=new Date(); d.setDate(d.getDate()+6); return fmtLocal(d); });
-  const [periodKey, setPeriodKey] = useState("7days");
+  const _lsResFilter = () => { try { return JSON.parse(localStorage.getItem("bliss_res_filter") || "null") || {}; } catch(e) { return {}; } };
+  const [startDate, setStartDateRaw] = useState(() => _lsResFilter().startDate || today);
+  const [endDate, setEndDateRaw] = useState(() => { const f=_lsResFilter(); if(f.endDate) return f.endDate; const d=new Date(); d.setDate(d.getDate()+6); return fmtLocal(d); });
+  const [periodKey, setPeriodKeyRaw] = useState(() => _lsResFilter().periodKey || "7days");
   const [showSheet, setShowSheet] = useState(false);
-  const [vb, setVb] = useState("all");
+  const [vb, setVbRaw] = useState(() => _lsResFilter().vb || "all");
   const [q, setQ] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilterRaw] = useState(() => _lsResFilter().statusFilter || "all");
+  const _saveResFilter = (patch) => { try { const cur=_lsResFilter(); localStorage.setItem("bliss_res_filter", JSON.stringify({...cur,...patch})); } catch(e){} };
+  const setStartDate = (v) => { setStartDateRaw(v); _saveResFilter({startDate:v}); };
+  const setEndDate = (v) => { setEndDateRaw(v); _saveResFilter({endDate:v}); };
+  const setPeriodKey = (v) => { setPeriodKeyRaw(v); _saveResFilter({periodKey:v}); };
+  const setVb = (v) => { setVbRaw(v); _saveResFilter({vb:v}); };
+  const setStatusFilter = (v) => { setStatusFilterRaw(v); _saveResFilter({statusFilter:v}); };
   // 타임라인 블록에 표시할 네이버 필드 (localStorage 저장)
   const [naverColShow, setNaverColShow] = React.useState(() => {
     try { return JSON.parse(localStorage.getItem("bliss_naver_cols") || "null") || {상품:true,시술메뉴:false,유입경로:false,관리부위:false,주차:false,첫방문:false,요청:false,"직원메모":false}; }
