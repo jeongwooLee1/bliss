@@ -159,7 +159,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.61";
+const BLISS_V = "2.65.62";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -2486,6 +2486,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
   // 시술 선택 패널 열기
   const [showSvcPicker, setShowSvcPicker] = useState(false);
   const [tagsOpen, setTagsOpen] = useState(!isNaverItem);
+  const [srcOpen, setSrcOpen] = useState(!isNaverItem);
   // AI 자동분석 상태
   const [aiAnalyzing, setAiAnalyzing] = useState(false);
 
@@ -2642,12 +2643,12 @@ ${naverText}
         <div style={{padding:"20px 24px 8px"}} className="form-col">
 
           {/* ═══ 네이버 예약 상태 배너 ═══ */}
-          {f.status === "naver_cancelled" && <div style={{background:"#FFF8E1",border:"1.5px solid #E6A700",borderRadius:6,padding:"8px 12px",marginBottom:12,display:"flex",alignItems:"center",gap:8}}>
+          {f.status === "naver_cancelled" && <div style={{background:"#FFF8E1",borderRadius:8,padding:"8px 12px",marginBottom:12,display:"flex",alignItems:"center",gap:8,boxShadow:"0 2px 8px rgba(230,167,0,.15)"}}>
             <span style={{fontSize:16}}><I name="alert" size={16} color="#E65100"/></span>
             <span style={{fontSize:13,fontWeight:700,color:"#E6A700"}}>네이버 취소 예약</span>
             {f.reservationId && <span style={{fontSize:13,color:"#999",marginLeft:"auto"}}>#{f.reservationId}</span>}
           </div>}
-          {f.status === "pending" && !(f.memo && f.memo.includes("확정완료")) && <div style={{background:"#FFF3E0",border:"1.5px solid #FF9800",borderRadius:6,padding:"8px 12px",marginBottom:12,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",animation:"naverBlink 1.5s infinite"}}>
+          {f.status === "pending" && !(f.memo && f.memo.includes("확정완료")) && <div style={{background:"#FFF3E0",borderRadius:8,padding:"8px 12px",marginBottom:12,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",animation:"naverBlink 1.5s infinite",boxShadow:"0 2px 8px rgba(255,152,0,.15)"}}>
             <span style={{fontSize:16}}><I name="bell" size={16} color="#E65100"/></span>
             <span style={{fontSize:13,fontWeight:700,color:"#E65100"}}>네이버 확정대기</span>
             <div style={{marginLeft:"auto",display:"flex",gap:6}}>
@@ -2738,10 +2739,10 @@ ${naverText}
             {/* 고객 검색 */}
             <div>
               <div style={{position:"relative"}}>
-                <div style={{display:"flex",gap:6}}>
-                  <input className="inp inp-search" style={{flex:1,minHeight:40,borderRadius:10}} value={custSearch} onChange={e=>{setCustSearch(e.target.value);setShowCustDropdown(true)}}
+                <div style={{position:"relative",display:"flex",alignItems:"center"}}>
+                  <span style={{position:"absolute",left:12,color:"#9098a8",display:"flex",alignItems:"center",pointerEvents:"none"}}><I name="search" size={15}/></span>
+                  <input className="inp inp-search" style={{flex:1,minHeight:40,borderRadius:10,paddingLeft:36}} value={custSearch} onChange={e=>{setCustSearch(e.target.value);setShowCustDropdown(true)}}
                     placeholder="고객명, 전화번호, 차량번호 (2글자 이상)" onFocus={()=>setShowCustDropdown(true)}/>
-                  <button className="btn-s btn-sm" onClick={()=>setShowCustDropdown(!showCustDropdown)}><I name="search" size={14}/></button>
                 </div>
                 {showCustDropdown && custSearch.length >= 2 && <div style={{position:"absolute",top:"100%",left:0,right:0,background:"#fff",borderRadius:8,maxHeight:220,overflow:"auto",zIndex:10,marginTop:4,boxShadow:"0 8px 24px rgba(0,0,0,.12)"}}>
                   {custResults.map(c=><div key={c.id} onClick={()=>{selectCust(c);setF(p=>({...p,isNewCust:false}))}}
@@ -2852,35 +2853,46 @@ ${naverText}
             </div>;
             })()}
 
-            {/* 예약경로 */}
+            {/* 예약경로 아코디언 */}
             {!isSchedule && <div className="tags-acc acc-src">
-              <div style={{padding:"10px 14px 6px",fontSize:11.5,fontWeight:600,color:"#9098a8",letterSpacing:".06em",textTransform:"uppercase"}}>예약경로</div>
-              <div style={{display:"flex",flexWrap:"wrap",gap:5,padding:"4px 14px 12px"}}>
-                {(data?.resSources||[]).filter(s=>s.useYn!==false).sort((a,b)=>(a.sort||0)-(b.sort||0)).map(src => {
-                  const sel = f.source === src.name;
-                  const clr = src.color || "#7c7cc8";
-                  const isNaverSrc = src.name === "네이버" || src.name === SYSTEM_SRC_NAME_NAVER;
-                  const isNaverLocked = isNaverItem && isNaverSrc;
-                  return <button key={src.id}
-                    onClick={()=>{ if(isNaverLocked) return; set("source",sel?"":src.name); }}
-                    style={{padding:"4px 12px",fontSize:13,fontWeight:500,borderRadius:20,cursor:isNaverLocked?"default":"pointer",fontFamily:"inherit",
-                      border:"none",transition:"background .12s",
-                      background:sel?clr:"transparent",
-                      color:sel?"#fff":clr,
-                      outline:sel?"none":`1.5px solid ${clr}40`,
-                      outlineOffset:-1}}>
-                    {src.name}
-                  </button>;
-                })}
+              <div className={"tags-acc-hdr"+(srcOpen?" open":"")} onClick={()=>setSrcOpen(p=>!p)}>
+                <span style={{fontSize:13,fontWeight:600,color:"#444",display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+                  예약경로
+                  {f.source && <span style={{fontSize:12,fontWeight:600,color:"#7c7cc8",background:"#ededf8",borderRadius:4,padding:"1px 7px"}}>{f.source}</span>}
+                </span>
+                <span className={"tags-acc-chev"+(srcOpen?" open":"")}>▾</span>
+              </div>
+              <div className={"tags-acc-body"+(srcOpen?" open":"")}>
+                <div style={{padding:"8px 12px 10px",display:"flex",flexWrap:"wrap",gap:5}}>
+                  {(data?.resSources||[]).filter(s=>s.useYn!==false).sort((a,b)=>(a.sort||0)-(b.sort||0)).map(src => {
+                    const sel = f.source === src.name;
+                    const clr = src.color || "#7c7cc8";
+                    const isNaverSrc = src.name === "네이버" || src.name === SYSTEM_SRC_NAME_NAVER;
+                    const isNaverLocked = isNaverItem && isNaverSrc;
+                    const txtClr = (() => { const h=(clr).replace("#",""); const r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16); return (0.299*r+0.587*g+0.114*b)/255>0.55?"#333":"#fff"; })();
+                    return <button key={src.id}
+                      onClick={()=>{ if(isNaverLocked) return; set("source",sel?"":src.name); }}
+                      className="tag-pill"
+                      style={{background:sel?clr:clr+"22",color:sel?txtClr:clr,border:"none",fontWeight:sel?700:500,cursor:isNaverLocked?"default":"pointer"}}>
+                      {src.name}
+                    </button>;
+                  })}
+                </div>
               </div>
             </div>}
 
             {/* 예약태그 아코디언 */}
             <div className="tags-acc acc-tag">
               <div className={"tags-acc-hdr"+(tagsOpen?" open":"")} onClick={()=>setTagsOpen(p=>!p)}>
-                <span style={{fontSize:13,fontWeight:600,color:"#444",display:"flex",alignItems:"center",gap:6}}>
+                <span style={{fontSize:13,fontWeight:600,color:"#444",display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
                   예약태그
-                  {(f.selectedTags||[]).length > 0 && <span style={{fontSize:12,fontWeight:600,color:"#7c7cc8",background:"#ededf8",borderRadius:4,padding:"1px 7px"}}>{(f.selectedTags||[]).length}개 선택</span>}
+                  {(f.selectedTags||[]).map(tid => {
+                    const tag = (data?.serviceTags||[]).find(t=>t.id===tid);
+                    if (!tag) return null;
+                    const bg = tag.color || "#7c7cc8";
+                    const txt = (() => { const h=bg.replace("#",""); const r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16); return (0.299*r+0.587*g+0.114*b)/255>0.55?"#333":"#fff"; })();
+                    return <span key={tid} style={{fontSize:11,fontWeight:600,background:bg,color:txt,borderRadius:20,padding:"1px 8px"}}>{tag.name}</span>;
+                  })}
                 </span>
                 <span className={"tags-acc-chev"+(tagsOpen?" open":"")}>▾</span>
               </div>
@@ -2910,11 +2922,11 @@ ${naverText}
           </>}
 
           {/* ═══ 네이버 예약정보 (읽기전용) ═══ */}
-          {isNaverItem && <div style={{background:"#F1F8E9",border:"1.5px solid #A5D6A7",borderRadius:8,padding:"10px 14px",marginBottom:8}}>
-            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
+          {isNaverItem && <div style={{background:"#F1F8E9",borderRadius:8,padding:"10px 14px",marginBottom:8,boxShadow:"0 2px 8px rgba(0,0,0,.06)"}}>
+            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8,flexWrap:"wrap"}}>
               <I name="naver" size={14}/>
               <span style={{fontSize:13,fontWeight:700,color:"#2E7D32"}}>네이버 예약정보</span>
-              <span style={{fontSize:13,color:"#aaa",marginLeft:4}}>(수정 불가)</span>
+              {f.reservationId && <span style={{fontSize:12,fontWeight:700,color:"#1B5E20",background:"#C8E6C9",borderRadius:4,padding:"1px 6px",letterSpacing:0.5}}>#{f.reservationId}</span>}
               {!isReadOnly && (f.requestMsg || f.ownerComment) && <button
                 onClick={handleAiAnalyze} disabled={aiAnalyzing}
                 style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:4,padding:"3px 10px",fontSize:13,fontWeight:700,
@@ -2927,24 +2939,22 @@ ${naverText}
               </button>}
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"4px 12px"}}>
-              {/* 예약번호 */}
-              {f.reservationId && <div style={{gridColumn:"1/-1",display:"flex",gap:6,alignItems:"center",paddingBottom:4,borderBottom:"1px solid #C8E6C9",marginBottom:2}}>
-                <span style={{fontSize:13,color:"#666",minWidth:60}}>예약번호</span>
-                <span style={{fontSize:13,fontWeight:700,color:"#1B5E20",letterSpacing:0.5}}>#{f.reservationId}</span>
-              </div>}
-              {/* 신청/확정/취소 일시 */}
-              {f.naverRegDt && <div style={{display:"flex",flexDirection:"column",gap:1}}>
-                <span style={{fontSize:13,color:"#888"}}>신청</span>
-                <span style={{fontSize:13,fontWeight:600,color:"#333"}}>{(()=>{const d=new Date(f.naverRegDt);return isNaN(d)?f.naverRegDt:`${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;})()}</span>
-              </div>}
-              {f.naverConfirmedDt && <div style={{display:"flex",flexDirection:"column",gap:1}}>
-                <span style={{fontSize:13,color:"#888"}}>확정</span>
-                <span style={{fontSize:13,fontWeight:600,color:"#2E7D32"}}>{(()=>{const d=new Date(f.naverConfirmedDt);return isNaN(d)?f.naverConfirmedDt:`${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;})()}</span>
-              </div>}
-              {f.naverCancelledDt && <div style={{display:"flex",flexDirection:"column",gap:1,gridColumn:"1/-1"}}>
-                <span style={{fontSize:13,color:"#888"}}>취소</span>
-                <span style={{fontSize:13,fontWeight:600,color:"#c62828"}}>{(()=>{const d=new Date(f.naverCancelledDt);return isNaN(d)?f.naverCancelledDt:`${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;})()}</span>
-              </div>}
+              
+              {/* 신청/확정/취소 일시 - 한 줄 가로 배치 */}
+              <div style={{gridColumn:"1/-1",display:"flex",gap:14,flexWrap:"wrap",alignItems:"center"}}>
+                {f.naverRegDt && <span style={{display:"flex",alignItems:"center",gap:4,fontSize:12}}>
+                  <span style={{color:"#aaa",fontWeight:500}}>신청</span>
+                  <span style={{fontWeight:600,color:"#555"}}>{(()=>{const d=new Date(f.naverRegDt);return isNaN(d)?f.naverRegDt:`${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;})()}</span>
+                </span>}
+                {f.naverConfirmedDt && <span style={{display:"flex",alignItems:"center",gap:4,fontSize:12}}>
+                  <span style={{color:"#aaa",fontWeight:500}}>확정</span>
+                  <span style={{fontWeight:700,color:"#2E7D32"}}>{(()=>{const d=new Date(f.naverConfirmedDt);return isNaN(d)?f.naverConfirmedDt:`${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;})()}</span>
+                </span>}
+                {f.naverCancelledDt && <span style={{display:"flex",alignItems:"center",gap:4,fontSize:12}}>
+                  <span style={{color:"#aaa",fontWeight:500}}>취소</span>
+                  <span style={{fontWeight:700,color:"#c62828"}}>{(()=>{const d=new Date(f.naverCancelledDt);return isNaN(d)?f.naverCancelledDt:`${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;})()}</span>
+                </span>}
+              </div>
               {/* 결제정보 */}
               {f.isPrepaid && (f.totalPrice||0) > 0 && <div style={{gridColumn:"1/-1",display:"flex",gap:6,alignItems:"center",marginTop:2,paddingTop:4,borderTop:"1px solid #C8E6C9"}}>
                 <span style={{fontSize:13,color:"#888",minWidth:40}}>결제</span>
@@ -3019,7 +3029,7 @@ ${naverText}
                   background:sel?sc[k]:"#fff",color:sel?"#fff":sc[k],fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",transition:"all .15s"}}>
                 {STATUS_LABEL[k]}</button>})}
             </div>}
-            <div style={{display:"flex",gap:8,alignItems:"center",justifyContent:"center",padding:"14px 24px 20px"}}>
+            <div style={{display:"flex",gap:8,alignItems:"center",padding:"14px 24px 20px"}}>
             {!isReadOnly && <><button className="btn-p" style={{padding:"10px 26px",background:isSchedule?"#e17055":"#7c7cc8",boxShadow:isSchedule?"0 4px 14px rgba(225,112,85,.35)":"0 4px 14px rgba(124,124,200,.35)"}} onClick={()=>{
                 const now = new Date();
                 const ts = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")} ${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`;
@@ -3035,8 +3045,8 @@ ${naverText}
                 if (f.isPrepaid && !autoTags.includes(PREPAID_TAG_ID)) autoTags = [...autoTags, PREPAID_TAG_ID];
                 if (!f.isPrepaid && autoTags.includes(PREPAID_TAG_ID)) autoTags = autoTags.filter(id => id !== PREPAID_TAG_ID);
                 onSave({...f, tsLog: newLog, selectedTags: autoTags});
-              }}>{item?.id?"수정 완료":"등록"}</button>
-            {item?.id && <button className="btn-d" style={{padding:"10px 18px"}} onClick={()=>onDeleteRequest?.(item)}>삭제</button>}
+              }}>{item?.id?"저장":"등록"}</button>
+            {item?.id && <button onClick={()=>onDeleteRequest?.(item)} title="삭제" style={{marginLeft:"auto",padding:"8px 10px",borderRadius:8,border:"none",background:"transparent",color:"#e57373",cursor:"pointer",display:"flex",alignItems:"center",transition:"background .15s"}} onMouseEnter={e=>e.currentTarget.style.background="#ffeaea"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}><I name="trash" size={17}/></button>}
             {!isSchedule && f.type === "reservation" && (
               <button onClick={()=>setShowSaleForm(true)}
                 style={{padding:"10px 22px",borderRadius:8,border:"1.5px solid #7c7cc8",background:"transparent",color:"#7c7cc8",fontWeight:600,fontSize:13.5,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap",transition:"background .14s"}}>
@@ -6439,12 +6449,12 @@ const CSS = `
   }
   .tags-acc-body{overflow:hidden;transition:max-height .42s cubic-bezier(.4,0,.2,1),opacity .28s ease;max-height:0;opacity:0}
   .tags-acc-body.open{max-height:800px;opacity:1}
-  .tags-acc-chev{display:inline-block;transition:transform .32s ease;font-size:13px;color:#9098a8;line-height:1}
+  .tags-acc-chev{display:inline-block;transition:transform .32s ease;font-size:18px;color:#9098a8;line-height:1}
   .tags-acc-chev.open{transform:rotate(180deg)}
 
   /* 아코디언 색 오버라이드 — 모두 동일하게 중립 */
-  .acc-svc,.acc-src,.acc-tag{background:#f5f6f8;border:1.5px solid transparent}
-  .acc-svc:hover,.acc-src:hover,.acc-tag:hover{border-color:#d4d6e0;box-shadow:0 2px 12px rgba(0,0,0,.06)}
+  .acc-svc,.acc-src,.acc-tag{background:#fff;border:none;box-shadow:0 2px 10px rgba(0,0,0,.07);border-radius:10px}
+  .acc-svc:hover,.acc-src:hover,.acc-tag:hover{box-shadow:0 4px 16px rgba(0,0,0,.1)}
   .acc-svc .tags-acc-hdr,.acc-src .tags-acc-hdr,.acc-tag .tags-acc-hdr{background:transparent}
   .acc-tag .tags-acc-hdr.open{background:transparent}
 
