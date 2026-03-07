@@ -159,7 +159,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.68.0";
+const BLISS_V = "2.68.1";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -2717,7 +2717,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
 ${naverText}
 
 응답 형식:
-{"matchedTagIds":["태그id1","태그id2"],"matchedServiceIds":["시술id1"],"reason":"선택 이유 한줄"}`;
+{"matchedTagIds":["태그id1","태그id2"],"matchedServiceIds":["시술id1"],"gender":"F 또는 M 또는 빈문자열","reason":"선택 이유 한줄"}`;
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
         method:"POST", headers:{"Content-Type":"application/json"},
         body:JSON.stringify({contents:[{parts:[{text:prompt}]}], generationConfig:{temperature:0}})
@@ -2732,6 +2732,7 @@ ${naverText}
       // 예약금완료 자동 처리: isPrepaid=true이면 태그 추가 (totalPrice 무관)
       if (f.isPrepaid && !newTags.includes(PREPAID_TAG_ID)) newTags = [...newTags, PREPAID_TAG_ID];
       const newSvcs = parsed.matchedServiceIds || [];
+      const aiGender = parsed.gender || "";
       setF(p => {
         const tagSum = newTags.reduce((s,tid)=>{const t=(data?.serviceTags||[]).find(x=>x.id===tid);return s+(t?.dur||0);},0);
         const svcSum = newSvcs.reduce((s,sid)=>{const sv=(data?.services||[]).find(x=>x.id===sid);return s+(sv?.dur||0);},0);
@@ -2739,7 +2740,7 @@ ${naverText}
         const [sh,sm] = p.time.split(":").map(Number);
         const endMin = sh*60+sm+dur;
         const endTime = `${String(Math.min(22,Math.floor(endMin/60))).padStart(2,"0")}:${String(endMin%60).padStart(2,"0")}`;
-        return {...p, selectedTags:newTags, selectedServices:newSvcs, dur, endTime};
+        return {...p, selectedTags:newTags, selectedServices:newSvcs, dur, endTime, custGender: aiGender || p.custGender};
       });
       if (parsed.reason) alert(`✅ AI 분석 완료\n${parsed.reason}`);
     } catch(e) { alert("AI 분석 실패: "+e.message); }
