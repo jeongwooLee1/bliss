@@ -159,7 +159,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.74";
+const BLISS_V = "2.65.75";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -4914,8 +4914,7 @@ function AdminPlaces({ data, setData, bizId }) {
                 el.style.transform="translate(0,0) scale(1)"; el.style.opacity="1";
               });
             }}}
-            style={{position:"fixed",left:"50%",top:"5vh",zIndex:1000,transform:"translateX(-50%)",
-            width:"90vw",maxWidth:480,
+            className="res-modal" style={{position:"fixed",left:"50%",top:"5vh",zIndex:1000,transform:"translateX(-50%)",
             background:"#fff",borderRadius:16,overflow:"hidden",
             boxShadow:"0 20px 60px rgba(0,0,0,.2)"}}>
             {/* Header */}
@@ -6682,6 +6681,7 @@ const CSS = `
 @keyframes slideUp{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:scale(1)}}
   @keyframes bottomSheet{from{transform:translateY(100%)}to{transform:translateY(0)}}
   @keyframes ovFadeIn{from{opacity:0}to{opacity:1}}
+.res-modal{width:480px!important;max-width:480px!important;}
   @keyframes slideIn{from{transform:translateX(-100%)}to{transform:translateX(0)}}
   @keyframes naverBlink{0%,100%{background:#fff3e0}50%{background:#ffe0b2}}
   @keyframes pendingBlink{0%,100%{opacity:1}50%{opacity:.5}}
