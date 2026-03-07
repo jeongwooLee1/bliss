@@ -159,7 +159,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.63";
+const BLISS_V = "2.65.64";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -399,6 +399,17 @@ function App() {
         const db = await loadAllFromDb(bizId);
         const staff = db.rooms.map(r => ({ id: r.id, dn: r.name, bid: r.branch_id }));
         resolveSystemIds(db.serviceTags, db.resSources);
+        // 네이버 예약경로 없으면 자동 생성 (sort=0, 삭제불가)
+        if (!db.resSources.find(s=>s.name===SYSTEM_SRC_NAME_NAVER)) {
+          const ns={id:"src_naver_sys",name:SYSTEM_SRC_NAME_NAVER,color:"#03C75A",useYn:true,sort:0};
+          db.resSources=[ns,...db.resSources.map((s,i)=>({...s,sort:i+1}))];
+          sb.insert("reservation_sources",{id:ns.id,business_id:_activeBizId,name:ns.name,color:ns.color,use_yn:true,sort:0}).catch(()=>{});
+          resolveSystemIds(db.serviceTags, db.resSources);
+        } else {
+          // 네이버 소스가 sort=0이 아니면 맨 앞으로
+          const ni=db.resSources.findIndex(s=>s.name===SYSTEM_SRC_NAME_NAVER);
+          if(ni>0){const [ns]=db.resSources.splice(ni,1);db.resSources=[{...ns,sort:0},...db.resSources.map((s,i)=>({...s,sort:i+1}))];resolveSystemIds(db.serviceTags,db.resSources);}
+        }
         setData({
           branches: db.branches, rooms: db.rooms, services: db.services, products: db.products,
           categories: db.cats, serviceTags: db.serviceTags,
@@ -430,6 +441,16 @@ function App() {
       const db = await loadAllFromDb(bizId);
       const staff = db.rooms.map(r => ({ id: r.id, dn: r.name, bid: r.branch_id }));
       resolveSystemIds(db.serviceTags, db.resSources);
+      // 네이버 예약경로 없으면 자동 생성
+      if (!db.resSources.find(s=>s.name===SYSTEM_SRC_NAME_NAVER)) {
+        const ns={id:"src_naver_sys",name:SYSTEM_SRC_NAME_NAVER,color:"#03C75A",useYn:true,sort:0};
+        db.resSources=[ns,...db.resSources.map((s,i)=>({...s,sort:i+1}))];
+        sb.insert("reservation_sources",{id:ns.id,business_id:_activeBizId,name:ns.name,color:ns.color,use_yn:true,sort:0}).catch(()=>{});
+        resolveSystemIds(db.serviceTags, db.resSources);
+      } else {
+        const ni=db.resSources.findIndex(s=>s.name===SYSTEM_SRC_NAME_NAVER);
+        if(ni>0){const [ns]=db.resSources.splice(ni,1);db.resSources=[{...ns,sort:0},...db.resSources.map((s,i)=>({...s,sort:i+1}))];resolveSystemIds(db.serviceTags,db.resSources);}
+      }
       setData({
         branches: db.branches, rooms: db.rooms, services: db.services, products: db.products,
         categories: db.cats, serviceTags: db.serviceTags,
@@ -2652,8 +2673,6 @@ ${naverText}
             <span style={{fontSize:16}}><I name="bell" size={16} color="#E65100"/></span>
             <span style={{fontSize:13,fontWeight:700,color:"#E65100"}}>네이버 확정대기</span>
             <div style={{marginLeft:"auto",display:"flex",gap:6}}>
-              <button onClick={()=>{if(!window.confirm("이 예약을 취소 처리하시겠습니까?")) return; const updated={...f,status:"naver_cancelled"}; onSave(updated); onClose();}}
-                style={{fontSize:13,color:"#fff",fontWeight:700,background:"#E65100",padding:"5px 12px",borderRadius:6,border:"none",cursor:"pointer",fontFamily:"inherit"}}>취소처리</button>
               {(() => {
               const br = (data.branchSettings||data.branches||[]).find(b=>b.id===branchId);
               const bizId = br?.naverBizId;
@@ -2922,98 +2941,76 @@ ${naverText}
           </>}
 
           {/* ═══ 네이버 예약정보 (읽기전용) ═══ */}
-          {isNaverItem && <div style={{background:"#F1F8E9",borderRadius:8,padding:"10px 14px",marginBottom:8,boxShadow:"0 2px 8px rgba(0,0,0,.06)"}}>
-            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8,flexWrap:"wrap"}}>
+          {isNaverItem && <div style={{background:"#F1F8E9",borderRadius:8,padding:"12px 14px",marginBottom:8,boxShadow:"0 2px 8px rgba(0,0,0,.06)"}}>
+            {/* 헤더 */}
+            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:10,flexWrap:"wrap"}}>
               <I name="naver" size={14}/>
               <span style={{fontSize:13,fontWeight:700,color:"#2E7D32"}}>네이버 예약정보</span>
-              {f.reservationId && <span style={{fontSize:12,fontWeight:700,color:"#1B5E20",background:"#C8E6C9",borderRadius:4,padding:"1px 6px",letterSpacing:0.5}}>#{f.reservationId}</span>}
+              {f.reservationId && <span style={{fontSize:11,fontWeight:700,color:"#1B5E20",background:"#C8E6C9",borderRadius:4,padding:"1px 6px",letterSpacing:0.5}}>#{f.reservationId}</span>}
               {!isReadOnly && (f.requestMsg || f.ownerComment) && <button
                 onClick={handleAiAnalyze} disabled={aiAnalyzing}
-                style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:4,padding:"3px 10px",fontSize:13,fontWeight:700,
+                style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:4,padding:"3px 10px",fontSize:12,fontWeight:700,
                   border:"none",borderRadius:12,cursor:aiAnalyzing?"not-allowed":"pointer",
                   background:aiAnalyzing?"#e0e0e0":"linear-gradient(135deg,#7c7cc8,#9b72cb)",
                   color:aiAnalyzing?"#999":"#fff",transition:"all .2s"}}>
-                {aiAnalyzing
-                  ? <><span style={{fontSize:13}}>⏳</span> 분석중...</>
-                  : <><span style={{fontSize:13}}>✨</span> AI 분석</>}
+                {aiAnalyzing ? <><span>⏳</span> 분석중...</> : <><span>✨</span> AI 분석</>}
               </button>}
             </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"4px 12px"}}>
-              
-              {/* 신청/확정/취소 일시 - 한 줄 가로 배치 */}
-              <div style={{gridColumn:"1/-1",display:"flex",gap:14,flexWrap:"wrap",alignItems:"center"}}>
-                {f.naverRegDt && <span style={{display:"flex",alignItems:"center",gap:4,fontSize:12}}>
-                  <span style={{color:"#aaa",fontWeight:500}}>신청</span>
-                  <span style={{fontWeight:600,color:"#555"}}>{(()=>{const d=new Date(f.naverRegDt);return isNaN(d)?f.naverRegDt:`${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;})()}</span>
-                </span>}
-                {f.naverConfirmedDt && <span style={{display:"flex",alignItems:"center",gap:4,fontSize:12}}>
-                  <span style={{color:"#aaa",fontWeight:500}}>확정</span>
-                  <span style={{fontWeight:700,color:"#2E7D32"}}>{(()=>{const d=new Date(f.naverConfirmedDt);return isNaN(d)?f.naverConfirmedDt:`${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;})()}</span>
-                </span>}
-                {f.naverCancelledDt && <span style={{display:"flex",alignItems:"center",gap:4,fontSize:12}}>
-                  <span style={{color:"#aaa",fontWeight:500}}>취소</span>
-                  <span style={{fontWeight:700,color:"#c62828"}}>{(()=>{const d=new Date(f.naverCancelledDt);return isNaN(d)?f.naverCancelledDt:`${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`;})()}</span>
-                </span>}
-              </div>
-              {/* 결제정보 */}
-              {f.isPrepaid && (f.totalPrice||0) > 0 && <div style={{gridColumn:"1/-1",display:"flex",gap:6,alignItems:"center",marginTop:2,paddingTop:4,borderTop:"1px solid #C8E6C9"}}>
-                <span style={{fontSize:13,color:"#888",minWidth:40}}>결제</span>
-                <span style={{fontSize:13,fontWeight:700,color:"#2e7d32"}}>✓ {(f.totalPrice||0).toLocaleString()}원</span>
-                {f.npayMethod && <span style={{fontSize:13,color:"#666"}}>({f.npayMethod})</span>}
-              </div>}
-              {/* 고객 요청사항 - 답변 먼저, 질문은 truncate */}
-              {f.requestMsg && <div style={{gridColumn:"1/-1",marginTop:2,paddingTop:4,borderTop:"1px solid #C8E6C9"}}>
-                {f.requestMsg.split("\n").filter(l=>l.trim()).map((line,i)=>{
-                  // 마지막 ": " 기준으로 분리 (질문 안에 콜론이 있어도 올바르게 분리)
-                  const lastColonIdx = line.lastIndexOf(": ");
-                  const key = lastColonIdx > -1 ? line.slice(0, lastColonIdx).trim() : null;
-                  const val = lastColonIdx > -1 ? line.slice(lastColonIdx+2).trim() : line.trim();
-                  if(key === "시술메뉴") return <div key={i} style={{marginBottom:4}}>
-                    <span style={{fontSize:13,color:"#888",display:"block",marginBottom:2}}>네이버 시술메뉴</span>
-                    <span style={{fontSize:13,fontWeight:600,color:"#1B5E20"}}>{val}</span>
+            {/* 항목 리스트 - 통일된 row 디자인 */}
+            {(()=>{
+              // label+value row 컴포넌트 (인라인)
+              const NRow = ({label, value, valueColor, bold}) => value ? <div style={{display:"flex",alignItems:"baseline",gap:8,padding:"3px 0",borderBottom:"1px solid #E8F5E9",minHeight:26}}>
+                <span style={{fontSize:11,color:"#888",fontWeight:500,minWidth:72,flexShrink:0}}>{label}</span>
+                <span style={{fontSize:12,color:valueColor||"#333",fontWeight:bold?700:500,lineHeight:1.4,wordBreak:"break-word",flex:1}}>{value}</span>
+              </div> : null;
+              const fmtDt = (v) => { const d=new Date(v); return isNaN(d)?v:`${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`; };
+              return <>
+                {/* 신청/확정/취소 */}
+                {f.naverRegDt && <NRow label="신청일시" value={fmtDt(f.naverRegDt)} valueColor="#555"/>}
+                {f.naverConfirmedDt && <NRow label="확정일시" value={fmtDt(f.naverConfirmedDt)} valueColor="#2E7D32" bold/>}
+                {f.naverCancelledDt && <NRow label="취소일시" value={fmtDt(f.naverCancelledDt)} valueColor="#c62828" bold/>}
+                {/* 결제 */}
+                {f.isPrepaid && (f.totalPrice||0) > 0 && <NRow label="결제금액" value={`✓ ${(f.totalPrice||0).toLocaleString()}원${f.npayMethod?" ("+f.npayMethod+")":""}`} valueColor="#2e7d32" bold/>}
+                {/* 고객 요청사항 파싱 */}
+                {f.requestMsg && f.requestMsg.split("\n").filter(l=>l.trim()).map((line,i)=>{
+                  const ci = line.lastIndexOf(": ");
+                  const key = ci > -1 ? line.slice(0,ci).trim() : null;
+                  const val = ci > -1 ? line.slice(ci+2).trim() : line.trim();
+                  if (!val) return null;
+                  if (key==="시술메뉴") return <NRow key={i} label="시술메뉴" value={val} valueColor="#1B5E20" bold/>;
+                  if (key==="스타일리스트") return <NRow key={i} label="스타일리스트" value={val} valueColor="#333" bold/>;
+                  if (key) return <div key={i} style={{display:"flex",alignItems:"flex-start",gap:8,padding:"3px 0",borderBottom:"1px solid #E8F5E9",minHeight:26}}>
+                    <span style={{fontSize:11,color:"#888",fontWeight:500,minWidth:72,flexShrink:0,lineHeight:"18px"}}>{key}</span>
+                    <span style={{fontSize:12,fontWeight:600,color:"#1565C0",background:"#E3F2FD",borderRadius:4,padding:"1px 8px",lineHeight:"18px",wordBreak:"break-word",flex:1}}>{val}</span>
                   </div>;
-                  if(key === "스타일리스트") return <div key={i} style={{marginBottom:4}}>
-                    <span style={{fontSize:13,color:"#888",display:"block",marginBottom:2}}>스타일리스트</span>
-                    <span style={{fontSize:13,fontWeight:600,color:"#333"}}>{val}</span>
-                  </div>;
-                  if(key) return <div key={i} style={{marginBottom:3}}>
-                    {/* 질문 먼저 흐리게, 답변은 아래 크게 */}
-                    <span style={{fontSize:13,color:"#aaa",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",display:"block",maxWidth:"100%"}} title={key}>{key}</span>
-                    <span style={{fontSize:13,color:"#222",fontWeight:600,lineHeight:1.5,wordBreak:"break-word",display:"block"}}>{val}</span>
-                  </div>;
-                  // 키 없는 순수 텍스트 (고객 자유입력)
-                  return <div key={i} style={{marginBottom:3}}>
-                    <span style={{fontSize:13,color:"#333",lineHeight:1.5,whiteSpace:"pre-wrap"}}>{val}</span>
-                  </div>;
+                  return <NRow key={i} label="요청" value={val}/>;
                 })}
-              </div>}
-              {/* 직원 메모 (네이버 파트너 메모) */}
-              {f.ownerComment && <div style={{gridColumn:"1/-1",marginTop:2,paddingTop:4,borderTop:"1px solid #C8E6C9"}}>
-                <span style={{fontSize:13,color:"#888",display:"block",marginBottom:2}}>직원 메모</span>
-                <span style={{fontSize:13,color:"#333",lineHeight:1.5,whiteSpace:"pre-wrap"}}>{f.ownerComment}</span>
-              </div>}
-              {/* 방문/노쇼 이력 */}
-              {(f.visitCount > 0 || f.noShowCount > 0) && <div style={{gridColumn:"1/-1",display:"flex",gap:10,marginTop:2,paddingTop:4,borderTop:"1px solid #C8E6C9"}}>
-                {f.visitCount > 0 && <span style={{fontSize:13,color:"#555"}}>방문 <strong>{f.visitCount}회</strong></span>}
-                {f.noShowCount > 0 && <span style={{fontSize:13,color:"#c62828"}}>노쇼 <strong>{f.noShowCount}회</strong></span>}
-              </div>}
-            </div>
+                {/* 직원 메모 */}
+                {f.ownerComment && <NRow label="직원메모" value={f.ownerComment}/>}
+                {/* 방문/노쇼 */}
+                {(f.visitCount > 0 || f.noShowCount > 0) && <div style={{display:"flex",gap:12,padding:"3px 0",minHeight:26,alignItems:"center"}}>
+                  {f.visitCount > 0 && <span style={{fontSize:11,color:"#888",fontWeight:500}}>방문 <strong style={{color:"#2E7D32",fontSize:12}}>{f.visitCount}회</strong></span>}
+                  {f.noShowCount > 0 && <span style={{fontSize:11,color:"#888",fontWeight:500}}>노쇼 <strong style={{color:"#c62828",fontSize:12}}>{f.noShowCount}회</strong></span>}
+                </div>}
+                {/* 바로가기 - 우측 하단 */}
+                {(()=>{
+                  const br = (data.branchSettings||data.branches||[]).find(b=>b.id===branchId);
+                  const bizId = br?.naverBizId;
+                  return bizId ? <div style={{display:"flex",justifyContent:"flex-end",marginTop:6}}>
+                    <a href={`https://partner.booking.naver.com/bizes/${bizId}/booking-list-view?bookingBusinessId=${bizId}`} target="_blank" rel="noopener noreferrer"
+                      style={{display:"inline-flex",alignItems:"center",gap:4,fontSize:11,color:"#03C75A",fontWeight:600,textDecoration:"none",padding:"3px 8px",background:"#03C75A10",borderRadius:4,border:"1px solid #03C75A30"}}>
+                      <I name="naver" size={11}/> 네이버 예약 관리 <I name="chevR" size={10} color="#03C75A"/>
+                    </a>
+                  </div> : null;
+                })()}
+              </>;
+            })()}
           </div>}
 
           {/* 예약메모 - 직원 메모 (네이버 포함 모두 수정 가능) */}
           <div>
             <textarea className="inp inp-memo" rows={4} value={f.memo} onChange={e=>set("memo",e.target.value)} style={{resize:"vertical",minHeight:90}} placeholder="직원 메모를 입력하세요"/>
-            {(() => {
-              const isNaverRes = !!(f.reservationId || (f.memo && /네이버/.test(f.memo)));
-              if (!isNaverRes) return null;
-              const br = (data.branchSettings||data.branches||[]).find(b=>b.id===branchId);
-              const bizId = br?.naverBizId;
-              if (!bizId) return null;
-              return <a href={`https://partner.booking.naver.com/bizes/${bizId}/booking-list-view?bookingBusinessId=${bizId}`} target="_blank" rel="noopener noreferrer"
-                style={{display:"inline-flex",alignItems:"center",gap:4,marginTop:4,fontSize:13,color:"#03C75A",fontWeight:600,textDecoration:"none",padding:"4px 8px",background:"#03C75A10",borderRadius:4,border:"1px solid #03C75A30"}}>
-                <I name="naver" size={13}/> 네이버 예약 관리 바로가기 <I name="chevR" size={12} color="#03C75A"/>
-              </a>;
-            })()}
+            
             {(f.tsLog?.length > 0) && <div style={{marginTop:4,fontSize:13,color:"#999",lineHeight:1.6}}>
               {f.tsLog.map((ts,i)=><div key={i}>{ts}</div>)}
             </div>}
@@ -5106,7 +5103,10 @@ const DragHandle = ({onTouchStart}) => <span onTouchStart={onTouchStart} style={
 function AdminSaleItems({ data, setData }) {
   const [services, setServices] = useState([...(data?.services||[])].sort((a,b)=>a.sort-b.sort));
   useEffect(() => { setData(p => ({...p, services})); }, [services]);
-  const cats = (data?.categories || []);
+  const [cats, setCats] = useState(()=>[...(data?.categories||[])].sort((a,b)=>(a.sort||0)-(b.sort||0)));
+  useEffect(()=>{ setCats([...(data?.categories||[])].sort((a,b)=>(a.sort||0)-(b.sort||0))); },[data?.categories?.length]);
+  const catDragRef = useRef(null); const catOverRef = useRef(null); const [catDragOver, setCatDragOver] = useState(null);
+  const syncCats = (updated) => { setCats(updated); if(setData) setData(p=>p?{...p,categories:updated}:p); };
   const [editId, setEditId] = useState(null);
   const [editData, setEditData] = useState({});
   const [showAdd, setShowAdd] = useState(false);
@@ -5232,11 +5232,29 @@ function AdminSaleItems({ data, setData }) {
         <button className="btn-p btn-sm" onClick={addSvc} style={{padding:"6px 16px",marginLeft:"auto"}}>등록</button>
       </div>
     </div>}
-    <div style={{display:"flex",gap:3,marginBottom:10,flexWrap:"wrap",alignItems:"center"}}>
-      <button className={filterCat==="all"?"btn-p btn-sm":"btn-s btn-sm"} onClick={()=>setFilterCat("all")} style={{fontSize:10}}>전체 ({services.length})</button>
-      {cats.map(c=><button key={c.id} className={filterCat===c.id?"btn-p btn-sm":"btn-s btn-sm"} onClick={()=>setFilterCat(c.id)} style={{fontSize:10}}>{c.name} ({services.filter(s=>s.cat===c.id).length})</button>)}
-      {selected.size > 0 && <button className="btn-d btn-sm" onClick={bulkDelete} style={{fontSize:10,marginLeft:"auto",padding:"4px 12px"}}><I name="trash" size={12}/> 선택 삭제 ({selected.size})</button>}
-      <button onClick={resetSort} style={{fontSize:9,marginLeft:selected.size>0?"4px":"auto",padding:"3px 8px",border:"1px solid #ccc",borderRadius:4,background:"#f8f8f8",color:"#888",cursor:"pointer"}}>순서 리셋</button>
+    <div style={{marginBottom:8}}>
+      <div style={{fontSize:10,color:"#888",marginBottom:4}}>카테고리 <span style={{color:"#bbb",fontSize:9}}>(드래그로 순서 변경)</span></div>
+      <div style={{display:"flex",gap:4,flexWrap:"wrap",alignItems:"center",padding:"6px 8px",background:"#f8f8f8",borderRadius:8,minHeight:36}} onDragOver={e=>e.preventDefault()}>
+        <button className={filterCat==="all"?"btn-p btn-sm":"btn-s btn-sm"} onClick={()=>setFilterCat("all")} style={{fontSize:10}}>전체 ({services.length})</button>
+        {cats.map((cat,i)=><button key={cat.id}
+          draggable className={filterCat===cat.id?"btn-p btn-sm":"btn-s btn-sm"}
+          onClick={()=>setFilterCat(cat.id)}
+          onDragStart={()=>{catDragRef.current=i;}}
+          onDragEnter={()=>{catOverRef.current=i; setCatDragOver(i);}}
+          onDragEnd={()=>{
+            const di=catDragRef.current, oi=catOverRef.current;
+            setCatDragOver(null); catDragRef.current=null; catOverRef.current=null;
+            if(di===null||oi===null||di===oi) return;
+            const r=[...cats]; const [m]=r.splice(di,1); r.splice(oi,0,m);
+            const reordered=r.map((c,j)=>({...c,sort:j}));
+            syncCats(reordered);
+            reordered.forEach(c=>sb.update("service_categories",c.id,{sort:c.sort}).catch(console.error));
+          }}
+          style={{fontSize:10,cursor:"grab",opacity:catDragOver===i?0.5:1,outline:catDragOver===i?"2px dashed #7c7cc8":"none"}}
+          >{cat.name} ({services.filter(s=>s.cat===cat.id).length})</button>)}
+        {selected.size > 0 && <button className="btn-d btn-sm" onClick={bulkDelete} style={{fontSize:10,marginLeft:"auto",padding:"4px 12px"}}><I name="trash" size={12}/> 선택 삭제 ({selected.size})</button>}
+        <button onClick={resetSort} style={{fontSize:9,marginLeft:selected.size>0?"4px":"auto",padding:"3px 8px",border:"1px solid #ccc",borderRadius:4,background:"#fff",color:"#888",cursor:"pointer"}}>순서 리셋</button>
+      </div>
     </div>
     <div className="tw admin-tw" style={{maxHeight:"calc(100vh - 340px)",overflow:"auto"}}>
       <table><thead><tr>
@@ -5397,6 +5415,10 @@ function AdminResSources({ data, setData }) {
   const [editData, setEditData] = useState({});
   const [delConfirm, setDelConfirm] = useState(null);
   const [selected, setSelected] = useState(new Set());
+  // 미리보기 드래그 refs
+  const srcPrevDragRef = useRef(null);
+  const srcPrevOverRef = useRef(null);
+  const [srcPrevOver, setSrcPrevOver] = useState(null);
   const syncSources = (updated) => { setSources(updated); if(setData) setData(prev=>({...prev,resSources:updated})); };
   const drag = useDragSort(sources, syncSources, "sort", (reordered) => {
     reordered.forEach(s => sb.update("reservation_sources", s.id, {sort: s.sort}).catch(console.error));
@@ -5459,13 +5481,31 @@ function AdminResSources({ data, setData }) {
     </div>}
 
     <div className="card" style={{padding:12,marginBottom:14}}>
-      <div style={{fontSize:10,color:"#888",marginBottom:6}}>미리보기</div>
-      <div style={{display:"flex",flexWrap:"wrap",gap:4,padding:8,background:"#f8f8f8",borderRadius:8,border:"1px solid #e0e0e0"}}>
-        {sources.filter(s=>s.useYn!==false).map(s=>{
+      <div style={{fontSize:10,color:"#888",marginBottom:6}}>미리보기 <span style={{color:"#bbb",fontSize:9}}>(드래그로 순서 변경)</span></div>
+      <div style={{display:"flex",flexWrap:"wrap",gap:6,padding:8,background:"#f8f8f8",borderRadius:8,minHeight:36}} onDragOver={e=>e.preventDefault()}>
+        {sources.filter(s=>s.useYn!==false).map((s,i)=>{
           const clr = s.color||"#7c7cc8";
-          return <span key={s.id} style={{padding:"4px 8px",fontSize:10,fontWeight:500,borderRadius:4,display:"flex",alignItems:"center",gap:3,
-            border:"1px solid "+clr+"80",color:clr,background:clr+"15"}}>
-            <span style={{width:6,height:6,borderRadius:6,background:clr}}/>{s.name}
+          const h=clr.replace("#",""); const r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16);
+          const txtClr=(0.299*r+0.587*g+0.114*b)/255>0.55?"#333":"#fff";
+          const isNaverSrc = s.name===SYSTEM_SRC_NAME_NAVER;
+          return <span key={s.id} draggable
+            onDragStart={()=>{srcPrevDragRef.current=i;}}
+            onDragEnter={()=>{srcPrevOverRef.current=i; setSrcPrevOver(i);}}
+            onDragEnd={()=>{
+              const di=srcPrevDragRef.current, oi=srcPrevOverRef.current;
+              setSrcPrevOver(null); srcPrevDragRef.current=null; srcPrevOverRef.current=null;
+              if(di===null||oi===null||di===oi) return;
+              const active=sources.filter(s=>s.useYn!==false), inactive=sources.filter(s=>s.useYn===false);
+              const r=[...active]; const [m]=r.splice(di,1); r.splice(oi,0,m);
+              const reordered=[...r,...inactive].map((s,j)=>({...s,sort:j}));
+              syncSources(reordered);
+              reordered.forEach(s=>sb.update("reservation_sources",s.id,{sort:s.sort}).catch(console.error));
+            }}
+            className="tag-pill"
+            style={{background:srcPrevOver===i?"#e8e0ff":clr,color:srcPrevOver===i?"#7c7cc8":txtClr,fontWeight:600,cursor:"grab",
+              boxShadow:isNaverSrc?"0 0 0 1.5px #03C75A40":undefined,
+              display:"inline-flex",alignItems:"center",gap:4,userSelect:"none"}}>
+            {isNaverSrc && <I name="naver" size={11} color={txtClr}/>}{s.name}
           </span>;
         })}
       </div>
@@ -5503,9 +5543,13 @@ function AdminResSources({ data, setData }) {
           <td><DragHandle onTouchStart={drag.onTouchStart(i)}/></td>
           <td style={{color:"#999"}}>{i+1}</td>
           <td style={{fontWeight:600,fontSize:12}}>
-            <span style={{padding:"2px 6px",borderRadius:4,display:"inline-flex",alignItems:"center",gap:4,border:"1px solid "+(src.color||"#7c7cc8")+"50",background:(src.color||"#7c7cc8")+"12",color:src.color||"#333"}}>
-              <span style={{width:6,height:6,borderRadius:6,background:src.color||"#7c7cc8"}}/>{src.name}
-            </span>
+            {(()=>{
+              const clr=src.color||"#7c7cc8"; const h=clr.replace("#",""); const r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16); const txtC=(0.299*r+0.587*g+0.114*b)/255>0.55?"#333":"#fff";
+              const isNv=src.name===SYSTEM_SRC_NAME_NAVER;
+              return <span className="tag-pill" style={{background:clr,color:txtC,fontWeight:600,display:"inline-flex",alignItems:"center",gap:4}}>
+                {isNv && <I name="naver" size={11} color={txtC}/>}{src.name}
+              </span>;
+            })()}
           </td>
           <td style={{textAlign:"center"}}>{src.color?<div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>
             <div style={{width:24,height:16,borderRadius:3,background:src.color,border:"1px solid #d0d0d080"}}/>
