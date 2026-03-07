@@ -159,7 +159,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.65";
+const BLISS_V = "2.65.66";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -186,6 +186,41 @@ const todayStr = () => fmtLocal(new Date());
 const TIMES = [];
 for (let h = 8; h <= 22; h++) for (let m = 0; m < 60; m += 5)
   TIMES.push(`${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`);
+// ─── 시간 커스텀 드롭다운 ───
+function TimeSelect({ value, onChange, times, label }) {
+  const [open, setOpen] = React.useState(false);
+  const ref = React.useRef(null);
+  const listRef = React.useRef(null);
+
+  React.useEffect(() => {
+    if (!open) return;
+    // 선택 항목으로 스크롤
+    setTimeout(() => {
+      if (listRef.current) {
+        const active = listRef.current.querySelector('.active');
+        if (active) active.scrollIntoView({ block: 'center' });
+      }
+    }, 0);
+    const close = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener('mousedown', close);
+    return () => document.removeEventListener('mousedown', close);
+  }, [open]);
+
+  return <span className="time-sel-wrap" ref={ref}>
+    <button className="time-sel-btn" onClick={() => setOpen(o => !o)} type="button">{value}</button>
+    {open && <div className="time-sel-dropdown">
+      <ul ref={listRef}>
+        {times.map(t => <li key={t}
+          className={"time-sel-item" + (t === value ? " active" : "")}
+          onMouseDown={e => { e.preventDefault(); onChange(t); setOpen(false); }}>
+          {t}
+        </li>)}
+      </ul>
+    </div>}
+  </span>;
+}
+
+
 const HOUR_TIMES = [];
 for (let h = 10; h <= 21; h++) { HOUR_TIMES.push(`${String(h).padStart(2,"0")}:00`); HOUR_TIMES.push(`${String(h).padStart(2,"0")}:30`); }
 
@@ -2087,7 +2122,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                               const bg=tg.color||"#7c7cc8";
                               const h=bg.replace("#",""); const r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16);
                               const txt=(0.299*r+0.587*g+0.114*b)/255>0.55?"#333":"#fff";
-                              return <span key={tid} style={{fontSize:Math.max(6,blockFs-2),padding:"1px 3px",borderRadius:2,background:bg,color:txt,fontWeight:700,lineHeight:1,flexShrink:0}}>({tg.name})</span>;
+                              return <span key={tid} style={{fontSize:Math.max(6,blockFs-2),padding:"1px 4px",borderRadius:2,background:bg,color:txt,fontWeight:700,lineHeight:1,flexShrink:0}}>{tg.name}</span>;
                             })}
                             {block.selectedTags?.length>3 && <span style={{fontSize:Math.max(6,blockFs-2),color:"#fff",background:"#999",borderRadius:2,padding:"1px 2px",flexShrink:0}}>+{block.selectedTags.length-3}</span>}
                             {/* 이름 */}
@@ -2440,8 +2475,9 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
   } : (() => {
     const existingTs = item?.tsLog || [];
     const memoLines = (item?.memo || "").split("\n");
-    const extractedTs = memoLines.filter(l => /^\[등록:|^\[수정:/.test(l.trim()));
-    const cleanMemo = memoLines.filter(l => !/^\[등록:|^\[수정:/.test(l.trim())).join("\n").trim();
+    const isAutoTs = l => /^\[등록:|^\[수정:/.test(l.trim()) || /^\d+\.\d+\s+\d+:\d+\s*(예약)?접수/.test(l.trim());
+    const extractedTs = memoLines.filter(isAutoTs);
+    const cleanMemo = memoLines.filter(l => !isAutoTs(l)).join("\n").trim();
     const mergedTs = existingTs.length > 0 ? existingTs : extractedTs;
     return {...item, memo: cleanMemo, custGender: item?.custGender || "", endDate: item?.date||todayStr(), endTime: defaultEnd(),
       selectedTags: item?.selectedTags || [], isNewCust: false, tsLog: mergedTs,
@@ -2697,16 +2733,12 @@ ${naverText}
               <div className="fld-datetime" style={{width:"100%",gap:6}}>
                 {/* 날짜 */}
                 <DatePick value={f.date} onChange={v=>set("date",v)}/>
-                <span style={{color:"#cdd0d8",fontSize:13,padding:"0 2px",userSelect:"none"}}>|</span>
+                <span style={{color:"#cdd0d8",fontSize:13,padding:"0 8px",userSelect:"none"}}>|</span>
                 {/* 시간 */}
-                <select className="fld-sel" value={f.time} onChange={e=>{const nt=e.target.value;set("time",nt);set("endTime",addMin(nt,f.dur))}}>
-                  {TIMES.filter(t=>{const h=parseInt(t);return h>=8&&h<=21}).map(t=><option key={t} value={t}>{t}</option>)}
-                </select>
-                <span style={{color:"#b0b6c2",fontSize:12,userSelect:"none"}}>~</span>
-                <select className="fld-sel" value={f.endTime} onChange={e=>{set("endTime",e.target.value);set("dur",calcDur(f.time,e.target.value))}}>
-                  {TIMES.filter(t=>{const h=parseInt(t);return h>=8&&h<=22}).map(t=><option key={t} value={t}>{t}</option>)}
-                </select>
-                <span style={{color:"#cdd0d8",fontSize:13,padding:"0 2px",userSelect:"none"}}>|</span>
+                <TimeSelect value={f.time} times={TIMES.filter(t=>{const h=parseInt(t);return h>=8&&h<=21;})} onChange={nt=>{set("time",nt);set("endTime",addMin(nt,f.dur));}}/>
+                <span style={{color:"#b0b6c2",fontSize:13,padding:"0 8px",userSelect:"none",fontWeight:400}}>–</span>
+                <TimeSelect value={f.endTime} times={TIMES.filter(t=>{const h=parseInt(t);return h>=8&&h<=22;})} onChange={t=>{set("endTime",t);set("dur",calcDur(f.time,t));}}/>
+                <span style={{color:"#cdd0d8",fontSize:13,padding:"0 8px",userSelect:"none"}}>|</span>
                 {/* 지점 */}
                 <I name="mapPin" size={11} color="#b0b6c2"/>
                 <select className="res-room-sel fld-sel" style={{flex:"1 1 auto",minWidth:100}} value={`${f.roomId}|${f.staffId}`} onChange={e=>{const [r,s]=e.target.value.split("|");set("roomId",r);set("staffId",s)}}>
@@ -2811,7 +2843,7 @@ ${naverText}
               <div className="fld-datetime" style={{width:"100%",gap:6}}>
                 {/* 날짜 */}
                 <DatePick value={f.date} onChange={v=>set("date",v)}/>
-                <span style={{color:"#cdd0d8",fontSize:13,padding:"0 2px",userSelect:"none"}}>|</span>
+                <span style={{color:"#cdd0d8",fontSize:13,padding:"0 8px",userSelect:"none"}}>|</span>
                 {/* 시간 */}
                 <select className="fld-sel" value={f.time} onChange={e=>{const nt=e.target.value;set("time",nt);set("endTime",addMin(nt,f.dur))}}>
                   {TIMES.filter(t=>{const h=parseInt(t);return h>=8&&h<=21}).map(t=><option key={t} value={t}>{t}</option>)}
@@ -2820,7 +2852,7 @@ ${naverText}
                 <select className="fld-sel" value={f.endTime} onChange={e=>{set("endTime",e.target.value);set("dur",calcDur(f.time,e.target.value))}}>
                   {TIMES.filter(t=>{const h=parseInt(t);return h>=8&&h<=22}).map(t=><option key={t} value={t}>{t}</option>)}
                 </select>
-                <span style={{color:"#cdd0d8",fontSize:13,padding:"0 2px",userSelect:"none"}}>|</span>
+                <span style={{color:"#cdd0d8",fontSize:13,padding:"0 8px",userSelect:"none"}}>|</span>
                 {/* 지점 */}
                 <I name="mapPin" size={11} color="#b0b6c2"/>
                 <select className="res-room-sel fld-sel" style={{flex:"1 1 auto",minWidth:100}} value={`${f.roomId}|${f.staffId}`} onChange={e=>{const [r,s]=e.target.value.split("|");set("roomId",r);set("staffId",s)}}>
@@ -3010,8 +3042,14 @@ ${naverText}
                     <I name="naver" size={10}/> 예약관리 <I name="chevR" size={9} color="#03C75A"/>
                   </a> : null;
                   if (f.visitCount > 0 || f.noShowCount > 0) return <div style={{display:"flex",gap:12,padding:"3px 0",minHeight:26,alignItems:"center"}}>
-                    {f.visitCount > 0 && <span style={{fontSize:11,color:"#888",fontWeight:500}}>방문 <strong style={{color:"#2E7D32",fontSize:12}}>{f.visitCount}회</strong></span>}
-                    {f.noShowCount > 0 && <span style={{fontSize:11,color:"#888",fontWeight:500}}>노쇼 <strong style={{color:"#c62828",fontSize:12}}>{f.noShowCount}회</strong></span>}
+                    {f.visitCount > 0 && <span style={{display:"flex",alignItems:"baseline",gap:8,flex:1}}>
+                      <span style={{fontSize:11,color:"#888",fontWeight:500,minWidth:72,flexShrink:0}}>방문</span>
+                      <strong style={{color:"#2E7D32",fontSize:12,fontWeight:700}}>{f.visitCount}회</strong>
+                    </span>}
+                    {f.noShowCount > 0 && <span style={{display:"flex",alignItems:"baseline",gap:8,flex:1}}>
+                      <span style={{fontSize:11,color:"#888",fontWeight:500,minWidth:72,flexShrink:0}}>노쇼</span>
+                      <strong style={{color:"#c62828",fontSize:12,fontWeight:700}}>{f.noShowCount}회</strong>
+                    </span>}
                     {linkEl && <span style={{marginLeft:"auto"}}>{linkEl}</span>}
                   </div>;
                   return linkEl ? <div style={{display:"flex",justifyContent:"flex-end",paddingTop:4}}>{linkEl}</div> : null;
@@ -4828,7 +4866,7 @@ function AdminPlaces({ data, setData, bizId }) {
                 el.style.transform="translate(0,0) scale(1)"; el.style.opacity="1";
               });
             }}}
-            style={{position:"fixed",left:24,right:24,top:"15vh",zIndex:1000,
+            style={{position:"fixed",left:"10%",right:"10%",top:"5vh",zIndex:1000,
             background:"#fff",borderRadius:16,overflow:"hidden",
             boxShadow:"0 20px 60px rgba(0,0,0,.2)"}}>
             {/* Header */}
@@ -6477,22 +6515,45 @@ const CSS = `
 
   /* 날짜+시간 통합 필드 */
   .fld-datetime{
-    display:inline-flex;align-items:center;gap:4px;
+    display:inline-flex;align-items:center;gap:2px;
     background:#f5f6f8;border:1.5px solid transparent;border-radius:8px;
-    padding:0 12px;height:40px;cursor:default;
+    padding:0 14px;height:42px;cursor:default;
     transition:border-color .15s,background .15s
   }
   .fld-datetime:hover{background:#f0f1f4;border-color:#d4d6e0}
   .fld-sel{
-    background:transparent;border:none;font-size:13.5px;font-weight:500;
-    font-family:inherit;color:#222;cursor:pointer;outline:none;
-    padding:0 1px;appearance:none;-webkit-appearance:none
+    background:transparent;border:none;font-size:14px;font-weight:600;
+    font-family:inherit;color:#333;cursor:pointer;outline:none;
+    padding:0;appearance:none;-webkit-appearance:none;
+    text-align:center;min-width:44px;
   }
-  .fld-sel:focus{outline:none}
+  .fld-sel:focus{outline:none;color:#7c7cc8}
+  .fld-sel option{background:#fff;color:#333;font-size:13px;font-weight:500;padding:6px 10px}
   .fld-datetime select{
-    background:transparent;border:none;font-size:13.5px;font-weight:500;
-    font-family:inherit;color:#222;cursor:pointer;outline:none;padding:0 1px
+    background:transparent;border:none;font-size:14px;font-weight:600;
+    font-family:inherit;color:#333;cursor:pointer;outline:none;padding:0;
+    appearance:none;-webkit-appearance:none;min-width:44px;text-align:center;
   }
+  .fld-datetime select:focus{outline:none;color:#7c7cc8}
+  /* 시간 커스텀 드롭다운 */
+  .time-sel-wrap{position:relative;display:inline-flex;align-items:center}
+  .time-sel-btn{background:transparent;border:none;font-size:14px;font-weight:700;
+    font-family:inherit;color:#333;cursor:pointer;padding:0 2px;outline:none;
+    min-width:44px;text-align:center;letter-spacing:-0.3px;
+    transition:color .15s}
+  .time-sel-btn:hover,.time-sel-btn:focus{color:#7c7cc8;outline:none}
+  .time-sel-dropdown{position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);
+    background:#fff;border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,.15);
+    z-index:9999;overflow:hidden;min-width:90px;
+    border:1px solid #e8e8ee;animation:fadeIn .12s ease}
+  .time-sel-dropdown ul{list-style:none;margin:0;padding:4px 0;max-height:220px;overflow-y:auto}
+  .time-sel-dropdown ul::-webkit-scrollbar{width:4px}
+  .time-sel-dropdown ul::-webkit-scrollbar-track{background:transparent}
+  .time-sel-dropdown ul::-webkit-scrollbar-thumb{background:#d4d6e8;border-radius:4px}
+  .time-sel-item{padding:7px 16px;font-size:13px;font-weight:500;color:#333;
+    cursor:pointer;white-space:nowrap;transition:background .1s,color .1s}
+  .time-sel-item:hover{background:#f0f0ff;color:#7c7cc8}
+  .time-sel-item.active{background:#7c7cc8;color:#fff;font-weight:700}
 
   /* 섹션 카드 — 아코디언 */
   .tags-acc{
