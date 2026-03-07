@@ -159,7 +159,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.66.3";
+const BLISS_V = "2.66.4";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -1521,22 +1521,8 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   };
 
   const handleDelete = (id) => {
-    const res = (data?.reservations||[]).find(r => r.id === id);
-    if (res?.reservationId) {
-      // 이미 취소/변경 상태면 모달만 닫기 (타임라인에서 이미 안보임)
-      if (res.status === "naver_cancelled" || res.status === "naver_changed") {
-        setShowModal(false); setModalData(null);
-        return;
-      }
-      // 진행중인 네이버 예약은 naver_cancelled로 상태 변경
-      if (!window.confirm("네이버 예약은 삭제할 수 없습니다.\n'취소' 상태로 변경할까요?")) return;
-      const updated = {...res, status: "naver_cancelled"};
-      setData(prev => ({...prev, reservations: (prev?.reservations||[]).map(r => r.id === id ? updated : r)}));
-      sb.update("reservations", id, {status: "naver_cancelled"}).catch(console.error);
-    } else {
-      setData(prev => ({ ...prev, reservations: (prev?.reservations||[]).filter(r => r.id !== id) }));
-      sb.del("reservations", id).catch(console.error);
-    }
+    setData(prev => ({ ...prev, reservations: (prev?.reservations||[]).filter(r => r.id !== id) }));
+    sb.del("reservations", id).catch(console.error);
     setShowModal(false); setModalData(null);
   };
 
@@ -3206,7 +3192,7 @@ ${naverText}
                 {existingSale ? <><I name="wallet" size={12}/> 매출확인</> : <><I name="wallet" size={12}/> 매출등록</>}
               </button>
             )}
-            {item?.id && <button onClick={()=>onDeleteRequest?.(item)} title="삭제" style={{marginLeft:"auto",padding:"8px 10px",borderRadius:8,border:"none",background:"transparent",color:"#e57373",cursor:"pointer",display:"flex",alignItems:"center",transition:"background .15s"}} onMouseEnter={e=>e.currentTarget.style.background="#ffeaea"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}><I name="trash" size={17}/></button>}</>}
+            {item?.id && !item?.reservationId && <button onClick={()=>onDeleteRequest?.(item)} title="삭제" style={{marginLeft:"auto",padding:"8px 10px",borderRadius:8,border:"none",background:"transparent",color:"#e57373",cursor:"pointer",display:"flex",alignItems:"center",transition:"background .15s"}} onMouseEnter={e=>e.currentTarget.style.background="#ffeaea"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}><I name="trash" size={17}/></button>}</>}
             {isReadOnly && <span style={{fontSize:13,color:"#999",display:"flex",alignItems:"center",gap:4}}><I name="eye" size={12}/> 열람 전용 (타 지점)</span>}
           </div>
         </div>
