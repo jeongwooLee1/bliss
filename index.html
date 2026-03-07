@@ -159,7 +159,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.65.88";
+const BLISS_V = "2.65.89";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -420,7 +420,7 @@ function App() {
         // businesses.memo에서 gemini_key / ai_rules 복원 (localStorage 삭제 후 복구)
         try {
           const memo = JSON.parse(bizList[0]?.memo || "{}");
-          if (memo.gemini_key && !localStorage.getItem("bliss_gemini_key")?.trim()) {
+          if (memo.gemini_key) {
             localStorage.setItem("bliss_gemini_key", memo.gemini_key);
             console.log("✅ Gemini key 복원");
           }
@@ -5882,7 +5882,7 @@ function AdminAISettings({ data, sb, bizId }) {
           if (memo.gemini_key) {
             setApiKey(memo.gemini_key);
             localStorage.setItem("bliss_gemini_key", memo.gemini_key);
-            console.log("✅ Gemini key 복원");
+            console.log("✅ Gemini key 복원");y 복원");
           }
           // ai_rules 복원
           if (memo.ai_rules?.length) {
