@@ -159,7 +159,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.3";
+const BLISS_V = "2.69.4";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -1045,43 +1045,59 @@ function SignupWizard({ onComplete, onBack }) {
   const handleImg = async (file) => {
     if (!file) return;
     setImgFile(file); setScanDone(false);
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      const data = e.target.result;
-      setImgData(data);
-      // 시스템 Gemini 키로 자동 OCR
-      const key = window.__systemGeminiKey || "";
-      if (!key) { setStep(2); return; }
-      setScanning(true);
-      try {
-        const base64   = data.split(",")[1];
-        const mimeType = file.type || "image/jpeg";
-        const resp = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`,
-          { method:"POST", headers:{"Content-Type":"application/json"},
-            body: JSON.stringify({
-              contents:[{ parts:[
-                { inline_data:{ mime_type:mimeType, data:base64 }},
-                { text:`이 이미지는 한국 사업자등록증입니다. 아래 JSON 형식으로만 답하세요. 다른 텍스트는 절대 포함하지 마세요.\n{"bizNum":"사업자등록번호 숫자10자리만","bizName":"상호또는법인명","ownerName":"대표자이름","address":"사업장소재지 전체주소","bizType":"업태","bizItem":"종목","phone":"전화번호 없으면 빈문자열"}` }
-              ]}],
-              generationConfig:{ temperature:0.1, maxOutputTokens:300 }
-            })
+    setScanning(true);
+    setImgData(URL.createObjectURL(file));
+    try {
+      // 시스템 Gemini 키: 메모리 캐시 우선, 없으면 DB에서 직접 fetch
+      let key = window.__systemGeminiKey || "";
+      if (!key) {
+        try {
+          const SB_URL2 = "https://dpftlrsuqxqqeouwbfjd.supabase.co";
+          const SB_KEY2 = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwZnRscnN1cXhxcWVvdXdiZmpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5MDU4MjQsImV4cCI6MjA4NzQ4MTgyNH0.iydEkjtPjZ0jXpUUPJben4IWWneDqLomv-HDlcFayE4";
+          const r = await fetch(`${SB_URL2}/rest/v1/businesses?select=memo&code=eq.__system__`,
+            { headers:{ apikey:SB_KEY2, Authorization:`Bearer ${SB_KEY2}` }});
+          const rows = await r.json();
+          if (rows.length > 0) {
+            const m = JSON.parse(rows[0].memo || "{}");
+            key = m.system_gemini_key || "";
+            if (key) window.__systemGeminiKey = key;
           }
-        );
-        const d    = await resp.json();
-        const text = (d.candidates?.[0]?.content?.parts?.[0]?.text||"").replace(/```json|```/g,"").trim();
-        const p    = JSON.parse(text);
-        setForm(prev=>({...prev,
-          bizNum:(p.bizNum||"").replace(/[^0-9]/g,""),
-          bizName:p.bizName||"", ownerName:p.ownerName||"",
-          address:p.address||"", bizType:p.bizType||"",
-          bizItem:p.bizItem||"", phone:p.phone||"",
-        }));
-        setScanDone(true);
-      } catch(e) { /* 실패 시 수동 입력으로 */ }
-      finally { setScanning(false); setStep(2); }
-    };
-    reader.readAsDataURL(file);
+        } catch(e) {}
+      }
+      if (!key) { setScanning(false); setStep(2); return; }
+
+      // base64 변환
+      const base64 = await new Promise((res, rej) => {
+        const reader = new FileReader();
+        reader.onload  = e => res(e.target.result.split(",")[1]);
+        reader.onerror = rej;
+        reader.readAsDataURL(file);
+      });
+      const mimeType = file.type || "image/jpeg";
+      const resp = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`,
+        { method:"POST", headers:{"Content-Type":"application/json"},
+          body: JSON.stringify({
+            contents:[{ parts:[
+              { inline_data:{ mime_type:mimeType, data:base64 }},
+              { text:`이 이미지는 한국 사업자등록증입니다. 아래 JSON 형식으로만 답하세요. 다른 텍스트는 절대 포함하지 마세요.\n{"bizNum":"사업자등록번호 숫자10자리만","bizName":"상호또는법인명","ownerName":"대표자이름","address":"사업장소재지 전체주소","bizType":"업태","bizItem":"종목","phone":"전화번호 없으면 빈문자열"}` }
+            ]}],
+            generationConfig:{ temperature:0.1, maxOutputTokens:300 }
+          })
+        }
+      );
+      const d    = await resp.json();
+      const text = (d.candidates?.[0]?.content?.parts?.[0]?.text||"").replace(/```json|```/g,"").trim();
+      const p    = JSON.parse(text);
+      setForm(prev=>({...prev,
+        bizNum:(p.bizNum||"").replace(/[^0-9]/g,""),
+        bizName:p.bizName||"", ownerName:p.ownerName||"",
+        address:p.address||"", bizType:p.bizType||"",
+        bizItem:p.bizItem||"", phone:p.phone||"",
+      }));
+      setScanDone(true);
+    } catch(e) { /* 실패해도 수동 입력으로 */ }
+    finally { setScanning(false); setStep(2); }
   };
 
   const submit = async () => {
