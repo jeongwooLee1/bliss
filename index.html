@@ -1063,8 +1063,7 @@ function SignupWizard({ onComplete, onBack }) {
           generationConfig:{temperature:0,maxOutputTokens:300}
         })});
       const respText = await resp.text();
-      if(!resp.ok){ alert("OCR 오류 전문:
-"+respText.slice(0,300)); setScanMsg("분석 실패("+resp.status+")"); setTimeout(()=>{setScanning(false);setStep(2);},2000); return; }
+      if(!resp.ok){ alert("OCR 오류("+resp.status+"): "+respText.slice(0,300)); setScanMsg("분석 실패("+resp.status+")"); setTimeout(()=>{setScanning(false);setStep(2);},2000); return; }
       const json=JSON.parse(respText);
       const raw=(json.candidates?.[0]?.content?.parts?.[0]?.text||"").replace(/```json|```/g,"").trim();
       if(!raw){setScanMsg("응답 없음 — 직접 입력해주세요");setTimeout(()=>{setScanning(false);setStep(2);},1500);return;}
