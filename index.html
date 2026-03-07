@@ -159,7 +159,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.66.1";
+const BLISS_V = "2.66.2";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -227,7 +227,7 @@ for (let h = 10; h <= 21; h++) { HOUR_TIMES.push(`${String(h).padStart(2,"0")}:0
 const PAY_KEYS = ["cash","transfer","card","point"];
 const PAY_LABEL = { cash:"현금", transfer:"입금", card:"카드", point:"포인트", gift:"상품권" };
 const PAY_CLR = { cash:"#6bab9e", transfer:"#ef5350", card:"#7c7cc8", point:"#d0d0d0", gift:"#ef5350" };
-const STATUS_LABEL = { confirmed:"진행", completed:"완료", cancelled:"취소", no_show:"노쇼", pending:"확정대기", naver_cancelled:"네이버취소", naver_changed:"날짜변경" };
+const STATUS_LABEL = { confirmed:"진행", completed:"완료", cancelled:"취소", no_show:"노쇼", pending:"확정대기", naver_cancelled:"취소", naver_changed:"변경" };
 const DEFAULT_SOURCES = ["네이버","전화","방문","소개","인스타","카카오","기타"];
 const STATUS_KEYS = ["confirmed","completed","cancelled","no_show"];
 const STATUS_CLR_DEFAULT = { confirmed:"#5B9BD5", completed:"#6AB56A", cancelled:"#E8B830", no_show:"#E05252" , naver_cancelled:"#E6A700", naver_changed:"#9E9E9E"};
@@ -4066,8 +4066,8 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
         {k:"pending", label:"대기"},
         {k:"cancelled", label:"취소"},
         {k:"noshow", label:"노쇼"},
-        {k:"naver_cancelled", label:"네이버취소"},
-        {k:"naver_changed", label:"날짜변경"},
+        {k:"naver_cancelled", label:"취소"},
+        {k:"naver_changed", label:"변경"},
       ];
       return <div style={{display:"flex",gap:5,marginBottom:10,flexWrap:"wrap"}}>
         {tabs.map(({k,label})=>{
