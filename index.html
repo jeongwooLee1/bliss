@@ -1,4 +1,11 @@
-<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"/>
+  <link rel="manifest" href="/bliss/manifest.json"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="Bliss"/>
+  <link rel="apple-touch-icon" href="/bliss/icon-192.png"/>
+  <meta name="theme-color" content="#7c7cc8"/><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/><meta http-equiv="Pragma" content="no-cache"/><meta http-equiv="Expires" content="0"/>
 <title>Bliss 관리시스템</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
@@ -159,7 +166,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.13";
+const BLISS_V = "2.69.14";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -394,7 +401,7 @@ function App() {
           setAllUsers(users);
           // Check saved session for auto-login
           try {
-            const saved = JSON.parse(sessionStorage.getItem("bliss_session")||"null");
+            const saved = JSON.parse(localStorage.getItem("bliss_session")||"null");
             console.log("Session restore:", saved);
             if (saved?.userId) {
               const u = users.find(u => u.id === saved.userId);
@@ -420,7 +427,7 @@ function App() {
     setRole(user.role);
     // Save session only on manual login (auto-login already has session)
     if (!isAutoLogin) {
-      try{sessionStorage.setItem("bliss_session",JSON.stringify({userId:user.id,loginId:user.loginId||user.login_id}));}catch(e){}
+      try{localStorage.setItem("bliss_session",JSON.stringify({userId:user.id,loginId:user.loginId||user.login_id}));}catch(e){}
     }
     if (user.role === "super") {
       setLoadMsg("관리자 데이터 로딩 중...");
@@ -430,7 +437,7 @@ function App() {
         setSuperData(sd);
         // Auto re-enter business if saved in session
         let pendingBiz;
-        try { pendingBiz = JSON.parse(sessionStorage.getItem("bliss_session")||"{}").bizId; } catch(e){}
+        try { pendingBiz = JSON.parse(localStorage.getItem("bliss_session")||"{}").bizId; } catch(e){}
         if (pendingBiz) { handleEnterBiz(pendingBiz); return; }
         setPhase("super");
       } catch(e) {
@@ -508,7 +515,7 @@ function App() {
 
   // Super admin: enter a specific business
   const handleEnterBiz = async (bizId) => {
-    try{const s=JSON.parse(sessionStorage.getItem("bliss_session")||"{}");s.bizId=bizId;sessionStorage.setItem("bliss_session",JSON.stringify(s));}catch(e){}
+    try{const s=JSON.parse(localStorage.getItem("bliss_session")||"{}");s.bizId=bizId;localStorage.setItem("bliss_session",JSON.stringify(s));}catch(e){}
     setLoadMsg("매장 데이터 로딩 중...");
     setPhase("loading");
     try {
@@ -554,7 +561,7 @@ function App() {
   };
 
   const handleLogout = () => {
-    try{sessionStorage.removeItem("bliss_session");sessionStorage.removeItem("bliss_page");sessionStorage.removeItem("bliss_adminTab");}catch(e){}
+    try{localStorage.removeItem("bliss_session");sessionStorage.removeItem("bliss_page");sessionStorage.removeItem("bliss_adminTab");}catch(e){}
     setCurrentUser(null); setCurrentBizId(null); setCurrentBiz(null);
     setData(null); setSuperData(null); setRole("staff");
     setUserBranches([]); setViewBranches([]); setPage("timeline");
@@ -656,7 +663,7 @@ function App() {
 
 
   const handleBackToSuper = async () => {
-    try{const s=JSON.parse(sessionStorage.getItem("bliss_session")||"{}");delete s.bizId;sessionStorage.setItem("bliss_session",JSON.stringify(s));}catch(e){}
+    try{const s=JSON.parse(localStorage.getItem("bliss_session")||"{}");delete s.bizId;localStorage.setItem("bliss_session",JSON.stringify(s));}catch(e){}
     setLoadMsg("관리자 데이터 로딩 중...");
     setPhase("loading");
     const sd = await loadAllFromDb(null);
@@ -667,10 +674,44 @@ function App() {
   };
 
   if (phase === "loading") return <Loading msg={loadMsg} />;
+  const [showPwaBanner, setShowPwaBanner] = React.useState(false);
+  React.useEffect(()=>{
+    const isStandalone=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone;
+    const installed=localStorage.getItem("bliss_pwa_installed");
+    const dismissed=localStorage.getItem("bliss_pwa_dismissed");
+    if(!isStandalone&&!installed&&!dismissed&&phase==="app"){setTimeout(()=>setShowPwaBanner(true),3000);}
+  },[phase]);
+
   if (phase === "login") return <Login users={allUsers} onLogin={handleLogin} onSignup={async (newUser) => {
     setAllUsers(prev => [...prev, newUser]);
     await handleLogin(newUser);
   }} />;
+  if (showPwaBanner) return (
+    <div style={{position:"fixed",inset:0,zIndex:99999,display:"flex",alignItems:"flex-end",justifyContent:"center",background:"rgba(0,0,0,.5)"}}>
+      <div style={{background:"#fff",borderRadius:"20px 20px 0 0",padding:"28px 24px 48px",width:"100%",maxWidth:480}}>
+        <div style={{textAlign:"center",marginBottom:20}}>
+          <div style={{fontSize:48,marginBottom:8}}>📱</div>
+          <div style={{fontSize:18,fontWeight:800,color:"#222",marginBottom:6}}>홈 화면에 추가하기</div>
+          <div style={{fontSize:13,color:"#888",lineHeight:1.7}}>Bliss를 홈 화면에 추가하면<br/>앱처럼 빠르게 실행할 수 있어요</div>
+        </div>
+        <div style={{background:"#f5f5ff",borderRadius:12,padding:"14px 16px",marginBottom:16,fontSize:12,color:"#555",lineHeight:1.9}}>
+          <b style={{color:"#7c7cc8"}}>iPhone (Safari)</b><br/>
+          하단 <b>공유 버튼 →</b> <b>"홈 화면에 추가"</b> 탭<br/><br/>
+          <b style={{color:"#7c7cc8"}}>Android (Chrome)</b><br/>
+          우측 상단 <b>메뉴 →</b> <b>"홈 화면에 추가"</b> 탭
+        </div>
+        {window.__pwaInstallPrompt &&
+          <button onClick={()=>{window.__pwaInstallPrompt.prompt();setShowPwaBanner(false);}}
+            style={{width:"100%",padding:14,borderRadius:12,border:"none",background:"linear-gradient(135deg,#7c7cc8,#9b9be0)",color:"#fff",fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit",marginBottom:10,display:"block"}}>
+            지금 설치하기
+          </button>}
+        <button onClick={()=>{setShowPwaBanner(false);localStorage.setItem("bliss_pwa_dismissed","1");}}
+          style={{width:"100%",padding:12,borderRadius:12,border:"1px solid #e0e0e0",background:"#fff",color:"#999",fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>
+          다음에 하기
+        </button>
+      </div>
+    </div>
+  );
   if (phase === "super") return <SuperDashboard superData={superData} setSuperData={setSuperData} currentUser={currentUser} onLogout={handleLogout} onEnterBiz={handleEnterBiz} />;
 
   // Phase: app (owner or staff)
@@ -7263,5 +7304,15 @@ const CSS = `
 `;
 
 ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(ErrorBoundary, null, React.createElement(App)));
+</script>
+<script>
+if("serviceWorker" in navigator){
+  window.addEventListener("load",()=>{
+    navigator.serviceWorker.register("/bliss/sw.js").catch(e=>console.log("SW error",e));
+  });
+}
+let _pwaPrompt=null;
+window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();window.__pwaInstallPrompt=e;});
+window.addEventListener("appinstalled",()=>{window.__pwaInstallPrompt=null;localStorage.setItem("bliss_pwa_installed","1");});
 </script></body></html>
 
