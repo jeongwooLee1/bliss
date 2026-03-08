@@ -230,7 +230,8 @@ def upsert_reservation(parsed, status="pending", memo_suffix=None):
             "type": "reservation", "is_schedule": False, "is_new_cust": True,
             "selected_tags": [], "selected_services": [],
             "repeat": "none", "repeat_until": "", "repeat_group_id": "",
-            "reservation_id": rid, "source": "naver"
+            "reservation_id": rid, "source": "naver",
+            "is_scraping_done": False  # 반드시 False → bliss_naver.py 스크래퍼가 채움
         }
         # 선택메뉴 서비스 매칭
         selected_menus = parsed.get("selected_menu") or []
