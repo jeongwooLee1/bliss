@@ -571,160 +571,161 @@ def scrape_reservation(biz_id: str, rid: str):
 
 
 # ─── 스크래퍼 스레드 ──────────────────────────────────────────────────────────
+def _process_one(rid, biz_id, action, old_rid):
+    """예약 1건 처리. task_done()은 finally에서 정확히 1회 호출."""
+    log.info(f"▶ #{rid}  biz={biz_id}  action={action}")
+
+    with queued_lock:
+        queued_set.discard(rid)
+
+    try:
+
+        # 변경 액션: 구예약 naver_changed 처리
+        if action == "change" and old_rid:
+            try:
+                old_r = requests.get(
+                    f"{SUPABASE_URL}/rest/v1/reservations?reservation_id=eq.{old_rid}&select=id,status",
+                    headers=HEADERS, timeout=10
+                )
+                old_rows = old_r.json()
+                if old_rows:
+                    old_status = old_rows[0].get("status", "")
+                    if old_status != "naver_changed":
+                        requests.patch(
+                            f"{SUPABASE_URL}/rest/v1/reservations?reservation_id=eq.{old_rid}",
+                            headers={**HEADERS, "Prefer": "return=minimal"},
+                            json={"status": "naver_changed"},
+                            timeout=10
+                        )
+                        log.info(f"  🔄 변경: 구예약 #{old_rid} → naver_changed")
+                    else:
+                        log.info(f"  ⏭  구예약 #{old_rid} 이미 naver_changed")
+                else:
+                    log.info(f"  ℹ️  구예약 #{old_rid} DB에 없음 (무시)")
+            except Exception as e:
+                log.error(f"  구예약 처리 오류: {e}")
+
+        # 취소 액션: DB에 이미 있으면 바로 취소 처리 후 스크래핑 스킵
+        if action == "cancel":
+            try:
+                existing_r = requests.get(
+                    f"{SUPABASE_URL}/rest/v1/reservations?reservation_id=eq.{rid}&select=id,status",
+                    headers=HEADERS, timeout=10
+                )
+                existing = existing_r.json()
+                if existing:
+                    db_cancel(rid)
+                    return  # finally → task_done() 후 루프 continue
+                # 없으면 아래 스크래핑으로 진행해서 저장 후 취소 상태로
+            except Exception as e:
+                log.error(f"  취소 확인 오류: {e}")
+                return  # finally → task_done() 후 루프 continue
+
+        # ── 스크래핑 ──
+        raw = scrape_reservation(biz_id, rid)
+
+        if not raw:
+            fail_counts[rid] = fail_counts.get(rid, 0) + 1
+            save_fail_counts()
+            if fail_counts[rid] >= 3:
+                log.warning(f"  #{rid} 3회 실패 → 영구 스킵")
+            else:
+                log.warning(f"  #{rid} 스크래핑 실패 ({fail_counts[rid]}/3)")
+            return  # finally → task_done()
+
+        # 성별 추론
+        svc_str = " ".join(raw.get("services", []))
+        gender = "M" if "남)" in svc_str else ("F" if "여)" in svc_str else "")
+
+        # 지점 ID
+        bid = ""
+        for nbid, br in _branches.items():
+            if str(nbid) == str(biz_id):
+                bid = br.get("id", "")
+                break
+        if not bid:
+            try:
+                rb = requests.get(
+                    f"{SUPABASE_URL}/rest/v1/branches?naver_biz_id=eq.{biz_id}&select=id",
+                    headers=HEADERS, timeout=5
+                )
+                rows = rb.json()
+                if rows:
+                    bid = rows[0]["id"]
+                    _branches[biz_id] = rows[0]
+            except:
+                pass
+
+        # 상태 결정
+        if action == "cancel":
+            status = "naver_cancelled"
+        else:
+            status = raw.get("status", "confirmed")
+
+        # 고객 전화번호로 기존 고객 조회
+        phone = raw.get("phone", "")
+        visit_count = raw.get("visit_count", 0)
+        matched_cust = find_cust_by_phone(phone, BUSINESS_ID) if phone else None
+        if matched_cust:
+            matched_cust_id = matched_cust["id"]
+            is_new = False
+            log.info(f"  고객 매칭: {matched_cust['name']} ({phone}) → cust_id={matched_cust_id}")
+        else:
+            matched_cust_id = None
+            is_new = visit_count == 0
+
+        db_data = {
+            "bid":                bid,
+            "cust_id":            matched_cust_id or "",
+            "cust_name":          raw.get("name", ""),
+            "cust_phone":         raw.get("phone", ""),
+            "cust_email":         raw.get("email", ""),
+            "cust_gender":        gender,
+            "date":               raw.get("date", ""),
+            "time":               raw.get("time", ""),
+            "dur":                45,
+            "status":             status,
+            "selected_services":  [],
+            "is_new_cust":        is_new,
+            "request_msg":        _build_request_msg(raw),
+            "owner_comment":      raw.get("owner_comment", ""),
+            "is_prepaid":         raw.get("is_prepaid", False),
+            "npay_method":        raw.get("npay_method", ""),
+            "total_price":        raw.get("total_price", 0),
+            "visit_count":        raw.get("visit_count", 0),
+            "no_show_count":      raw.get("no_show_count", 0),
+            "naver_reg_dt":       raw.get("reg_datetime", ""),
+            "naver_confirmed_dt": raw.get("confirmed_datetime", ""),
+            "naver_cancelled_dt": raw.get("cancelled_datetime", ""),
+            "is_scraping_done":   True,
+        }
+
+        db_upsert(rid, db_data)
+
+        ai_analyze_reservation(
+            rid=rid,
+            request_msg=db_data.get("request_msg", ""),
+            owner_comment=db_data.get("owner_comment", ""),
+            cust_name=db_data.get("cust_name", ""),
+            visit_count=db_data.get("visit_count", 0),
+            is_prepaid=db_data.get("is_prepaid", False),
+            is_new_cust=db_data.get("is_new_cust", False),
+        )
+
+    except Exception as e:
+        log.error(f"  #{rid} 처리 오류: {e}", exc_info=True)
+    finally:
+        task_queue.task_done()  # get() 이후 무조건 1회 호출
+
+
 def scraper_thread():
     log.info("스크래퍼 스레드 시작")
-
     while True:
-        # ── 아이템 꺼내기 ──
         try:
             rid, biz_id, action, old_rid = task_queue.get(timeout=5)
         except Empty:
             continue
-
-        log.info(f"▶ #{rid}  biz={biz_id}  action={action}")
-
-        with queued_lock:
-            queued_set.discard(rid)
-
-        # ══ 단일 try/finally: get() 이후 task_done() 정확히 1회 보장 ══
-        try:
-
-            # 변경 액션: 구예약 naver_changed 처리
-            if action == "change" and old_rid:
-                try:
-                    old_r = requests.get(
-                        f"{SUPABASE_URL}/rest/v1/reservations?reservation_id=eq.{old_rid}&select=id,status",
-                        headers=HEADERS, timeout=10
-                    )
-                    old_rows = old_r.json()
-                    if old_rows:
-                        old_status = old_rows[0].get("status", "")
-                        if old_status != "naver_changed":
-                            requests.patch(
-                                f"{SUPABASE_URL}/rest/v1/reservations?reservation_id=eq.{old_rid}",
-                                headers={**HEADERS, "Prefer": "return=minimal"},
-                                json={"status": "naver_changed"},
-                                timeout=10
-                            )
-                            log.info(f"  🔄 변경: 구예약 #{old_rid} → naver_changed")
-                        else:
-                            log.info(f"  ⏭  구예약 #{old_rid} 이미 naver_changed")
-                    else:
-                        log.info(f"  ℹ️  구예약 #{old_rid} DB에 없음 (무시)")
-                except Exception as e:
-                    log.error(f"  구예약 처리 오류: {e}")
-
-            # 취소 액션: DB에 이미 있으면 바로 취소 처리 후 스크래핑 스킵
-            if action == "cancel":
-                try:
-                    existing_r = requests.get(
-                        f"{SUPABASE_URL}/rest/v1/reservations?reservation_id=eq.{rid}&select=id,status",
-                        headers=HEADERS, timeout=10
-                    )
-                    existing = existing_r.json()
-                    if existing:
-                        db_cancel(rid)
-                        return  # finally → task_done() 후 루프 continue
-                    # 없으면 아래 스크래핑으로 진행해서 저장 후 취소 상태로
-                except Exception as e:
-                    log.error(f"  취소 확인 오류: {e}")
-                    return  # finally → task_done() 후 루프 continue
-
-            # ── 스크래핑 ──
-            raw = scrape_reservation(biz_id, rid)
-
-            if not raw:
-                fail_counts[rid] = fail_counts.get(rid, 0) + 1
-                save_fail_counts()
-                if fail_counts[rid] >= 3:
-                    log.warning(f"  #{rid} 3회 실패 → 영구 스킵")
-                else:
-                    log.warning(f"  #{rid} 스크래핑 실패 ({fail_counts[rid]}/3)")
-                return  # finally → task_done()
-
-            # 성별 추론
-            svc_str = " ".join(raw.get("services", []))
-            gender = "M" if "남)" in svc_str else ("F" if "여)" in svc_str else "")
-
-            # 지점 ID
-            bid = ""
-            for nbid, br in _branches.items():
-                if str(nbid) == str(biz_id):
-                    bid = br.get("id", "")
-                    break
-            if not bid:
-                try:
-                    rb = requests.get(
-                        f"{SUPABASE_URL}/rest/v1/branches?naver_biz_id=eq.{biz_id}&select=id",
-                        headers=HEADERS, timeout=5
-                    )
-                    rows = rb.json()
-                    if rows:
-                        bid = rows[0]["id"]
-                        _branches[biz_id] = rows[0]
-                except:
-                    pass
-
-            # 상태 결정
-            if action == "cancel":
-                status = "naver_cancelled"
-            else:
-                status = raw.get("status", "confirmed")
-
-            # 고객 전화번호로 기존 고객 조회
-            phone = raw.get("phone", "")
-            visit_count = raw.get("visit_count", 0)
-            matched_cust = find_cust_by_phone(phone, BUSINESS_ID) if phone else None
-            if matched_cust:
-                matched_cust_id = matched_cust["id"]
-                is_new = False
-                log.info(f"  고객 매칭: {matched_cust['name']} ({phone}) → cust_id={matched_cust_id}")
-            else:
-                matched_cust_id = None
-                is_new = visit_count == 0
-
-            db_data = {
-                "bid":                bid,
-                "cust_id":            matched_cust_id or "",
-                "cust_name":          raw.get("name", ""),
-                "cust_phone":         raw.get("phone", ""),
-                "cust_email":         raw.get("email", ""),
-                "cust_gender":        gender,
-                "date":               raw.get("date", ""),
-                "time":               raw.get("time", ""),
-                "dur":                45,
-                "status":             status,
-                "selected_services":  [],
-                "is_new_cust":        is_new,
-                "request_msg":        _build_request_msg(raw),
-                "owner_comment":      raw.get("owner_comment", ""),
-                "is_prepaid":         raw.get("is_prepaid", False),
-                "npay_method":        raw.get("npay_method", ""),
-                "total_price":        raw.get("total_price", 0),
-                "visit_count":        raw.get("visit_count", 0),
-                "no_show_count":      raw.get("no_show_count", 0),
-                "naver_reg_dt":       raw.get("reg_datetime", ""),
-                "naver_confirmed_dt": raw.get("confirmed_datetime", ""),
-                "naver_cancelled_dt": raw.get("cancelled_datetime", ""),
-                "is_scraping_done":   True,
-            }
-
-            db_upsert(rid, db_data)
-
-            ai_analyze_reservation(
-                rid=rid,
-                request_msg=db_data.get("request_msg", ""),
-                owner_comment=db_data.get("owner_comment", ""),
-                cust_name=db_data.get("cust_name", ""),
-                visit_count=db_data.get("visit_count", 0),
-                is_prepaid=db_data.get("is_prepaid", False),
-                is_new_cust=db_data.get("is_new_cust", False),
-            )
-
-        except Exception as e:
-            log.error(f"  #{rid} 처리 오류: {e}", exc_info=True)
-        finally:
-            task_queue.task_done()  # get() 이후 무조건 1회 호출
+        _process_one(rid, biz_id, action, old_rid)
 
 
 # ─── AI 자동 분석 ─────────────────────────────────────────────────────────────
