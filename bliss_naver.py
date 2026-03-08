@@ -1071,12 +1071,17 @@ if __name__ == "__main__":
         try:
             import socket, datetime
             hostname = socket.gethostname()
+            try:
+                local_ip = socket.gethostbyname(socket.getfqdn())
+            except Exception:
+                local_ip = "unknown"
+            server_id = f"bliss-naver-{local_ip}"
             requests.post(
                 f"{SUPABASE_URL}/rest/v1/server_logs",
                 headers={**HEADERS, "Prefer": "resolution=merge-duplicates,return=minimal"},
                 json={
-                    "id": f"bliss-naver-{hostname}",
-                    "server": hostname,
+                    "id": server_id,
+                    "server": f"{hostname}({local_ip})",
                     "scraper_status": scraper_st,
                     "gmail_status": gmail_st,
                     "queue_size": q_size,
