@@ -166,7 +166,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.16";
+const BLISS_V = "2.69.17";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -763,6 +763,7 @@ function App() {
         </div>
       </div>
     )}
+    </>
   );
 }
 
@@ -892,6 +893,7 @@ function SuperDashboard({ superData, setSuperData, currentUser, onLogout, onEnte
   </>;
 
   return (
+    <>
     <div style={{display:"flex",height:"100dvh",fontFamily:"'Pretendard',sans-serif",background:"#f8f8f8",position:"fixed",top:0,left:0,right:0,bottom:0}}>
       <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet"/>
       <style>{CSS}</style>
