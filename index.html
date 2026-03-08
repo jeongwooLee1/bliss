@@ -623,7 +623,6 @@ function App() {
     };
 
     // 항상 폴링 시작 (30초)
-    pollRef.current = poll;
     poll();
     pollIv = setInterval(poll, 30000);
 
@@ -1625,7 +1624,6 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   const pendingRTQueueRef = useRef([]);
   const [rtPendingCount, setRtPendingCount] = React.useState(0);
   const [isRefreshing, setIsRefreshing] = React.useState(false);
-  const pollRef = useRef(null);
   const [topbarH, setTopbarH] = useState(80);
 
   // Branch view: 편집가능(userBranches) + 열람가능(viewBranches)
@@ -2357,7 +2355,12 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                   return {...prev, reservations};
                 });
               }
-              if (pollRef.current) await pollRef.current().catch(()=>{});
+              // 직접 fetch하여 강제 갱신
+              try {
+                const rows = await sb.getByBiz("reservations", bizId);
+                const parsed = fromDb("reservations", rows);
+                setData(prev => prev ? {...prev, reservations: parsed} : prev);
+              } catch(e) {}
               setTimeout(() => setIsRefreshing(false), 800);
             }}
             style={{
