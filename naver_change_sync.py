@@ -270,28 +270,33 @@ def handle_change(r, subj):
     kst = kst_now()
 
     if new_row:
-        # 이미 있으면 상태만 pending으로 (변경됐으니 재확인 필요)
+        # 변경 이메일 = 네이버 측 확정 의미 → confirmed로 처리
+        # (변경 후 별도 확정 이메일이 오지 않으므로)
+        prev_status = new_row.get("status","")
+        new_status = "confirmed" if prev_status not in ("cancelled","no_show") else prev_status
         db_patch(new_row["id"], {
-            "status": "pending",
-            "memo": (new_row.get("memo") or "") + f"\n{kst} 네이버변경"
+            "status": new_status,
+            "naver_confirmed_dt": datetime.now(timezone(timedelta(hours=9))).isoformat(),
+            "memo": (new_row.get("memo") or "") + f"\n{kst} 네이버변경→확정"
         })
-        log.info(f"  #{new_rid} 이미 존재 → status=pending 으로 변경")
+        log.info(f"  #{new_rid} 이미 존재 → status={new_status} 으로 변경")
     elif old_row:
         # 구 예약 정보를 새 rid로 복사 (이름/연락처 보존)
         import uuid
         new_rec = dict(old_row)
         new_rec["reservation_id"] = new_rid
         new_rec["id"] = "nv_" + uuid.uuid4().hex[:12]
-        new_rec["status"] = "pending"
-        new_rec["memo"] = (new_rec.get("memo") or "") + f"\n{kst} 네이버변경"
+        new_rec["status"] = "confirmed"  # 변경 이메일 = 확정
+        new_rec["naver_confirmed_dt"] = datetime.now(timezone(timedelta(hours=9))).isoformat()
+        new_rec["memo"] = (new_rec.get("memo") or "") + f"\n{kst} 네이버변경→확정"
         requests.post(f"{SUPABASE_URL}/rest/v1/reservations", headers=HEADERS, json=new_rec).raise_for_status()
-        log.info(f"  created #{new_rid} from #{old_rid} (이름={new_rec.get('cust_name') or '미정'})")
+        log.info(f"  created #{new_rid} from #{old_rid} (이름={new_rec.get('cust_name') or '미정'}) status=confirmed")
     else:
         # 구 예약도 없으면 이메일에서 파싱 가능한 정보로 새로 생성
         log.warning(f"  구 예약 #{old_rid} DB 없음 → 새로 생성 시도")
         parsed = parse_new_reservation(subj + " " + r.get("body", ""))
         parsed["reservation_id"] = new_rid
-        upsert_reservation(parsed, status="pending", memo_suffix="네이버변경(원본없음)")
+        upsert_reservation(parsed, status="confirmed", memo_suffix="네이버변경→확정(원본없음)")
 
     # 구 예약 삭제
     if old_row:
