@@ -1061,10 +1061,30 @@ if __name__ == "__main__":
             t2 = threading.Thread(target=gmail_thread, daemon=True, name="gmail")
             t2.start()
 
-        log.info(
-            f"상태: 큐 대기 {task_queue.qsize()}건 "
-            f"| scraper={'alive' if t1.is_alive() else 'DEAD'} "
-            f"| gmail={'alive' if t2.is_alive() else 'DEAD'} "
-        )
+        scraper_st = 'alive' if t1.is_alive() else 'DEAD'
+        gmail_st   = 'alive' if t2.is_alive() else 'DEAD'
+        q_size     = task_queue.qsize()
+
+        log.info(f"상태: 큐 대기 {q_size}건 | scraper={scraper_st} | gmail={gmail_st}")
+
+        # Supabase server_logs 업데이트 (Claude 모니터링용)
+        try:
+            import socket, datetime
+            hostname = socket.gethostname()
+            requests.post(
+                f"{SUPABASE_URL}/rest/v1/server_logs",
+                headers={**HEADERS, "Prefer": "resolution=merge-duplicates,return=minimal"},
+                json={
+                    "id": f"bliss-naver-{hostname}",
+                    "server": hostname,
+                    "scraper_status": scraper_st,
+                    "gmail_status": gmail_st,
+                    "queue_size": q_size,
+                    "updated_at": datetime.datetime.utcnow().isoformat() + "Z",
+                },
+                timeout=5
+            )
+        except Exception as _e:
+            log.debug(f"server_logs 업데이트 실패: {_e}")
 
 
