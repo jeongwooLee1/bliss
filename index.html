@@ -166,7 +166,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.25";
+const BLISS_V = "2.69.26";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -333,6 +333,7 @@ function _mc(cb) {
 // ─── App ───
 function App() {
   const [phase, setPhase] = useState("loading"); // loading, login, super, app
+  const [pageHistory, setPageHistory] = React.useState([]);
   const [allUsers, setAllUsers] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [currentBizId, setCurrentBizId] = useState(null);
@@ -350,8 +351,26 @@ function App() {
   const [pendingOpenRes, setPendingOpenRes] = useState(null);
   const setPage = useCallback((p) => {
     console.log("[SESSION] page save:", p);
-    setPageRaw(p);
+    setPageRaw(prev => {
+      if (prev && prev !== p) setPageHistory(h => [...h.slice(-9), prev]);
+      return p;
+    });
     try { sessionStorage.setItem("bliss_page", p); } catch(e){}
+    try { window.history.pushState({page: p}, ""); } catch(e){}
+  }, []);
+
+  React.useEffect(() => {
+    const onPop = () => {
+      setPageHistory(h => {
+        if (h.length === 0) return h;
+        const prev = h[h.length - 1];
+        setPageRaw(prev);
+        try { sessionStorage.setItem("bliss_page", prev); } catch(e){}
+        return h.slice(0, -1);
+      });
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
   }, []);
   const [sideOpen, setSideOpen] = useState(false);
   const [loadMsg, setLoadMsg] = useState("연결 중...");
@@ -712,9 +731,22 @@ function App() {
         </div>
       </div>}
       <main className="main-c" style={S.main}>
-        <div className="mob-hdr" style={{...S.mobHdr, ...(page==="timeline"?{display:"none"}:{})}}>
-          <button onClick={()=>setSideOpen(true)} style={S.menuBtn}><I name="menu" size={22}/></button>
-          {bizName && <span style={{fontSize:18,fontWeight:800,color:"#7c7cc8"}}>{bizName}</span>}
+        <div className="mob-hdr" style={{...S.mobHdr,position:"relative",...(page==="timeline"?{display:"none"}:{})}}>
+          {pageHistory.length > 0
+            ? <button onClick={()=>{
+                setPageHistory(h=>{
+                  const prev=h[h.length-1];
+                  setPageRaw(prev);
+                  try{sessionStorage.setItem("bliss_page",prev);}catch(e){}
+                  return h.slice(0,-1);
+                });
+              }} style={{...S.menuBtn,display:"flex",alignItems:"center",gap:2,color:"#7c7cc8",fontWeight:700}}>
+                <I name="chevron-left" size={22}/><span style={{fontSize:14}}>뒤로</span>
+              </button>
+            : <button onClick={()=>setSideOpen(true)} style={S.menuBtn}><I name="menu" size={22}/></button>
+          }
+          {bizName && <span style={{fontSize:16,fontWeight:800,color:"#7c7cc8",position:"absolute",left:"50%",transform:"translateX(-50%)"}}>{bizName}</span>}
+          {pageHistory.length > 0 && <button onClick={()=>setSideOpen(true)} style={{...S.menuBtn,marginLeft:"auto"}}><I name="menu" size={22}/></button>}
         </div>
         <div className="page-pad" style={{flex:1,padding:page==="timeline"?"0":"16px 20px 16px",display:"flex",flexDirection:"column",minHeight:0,overflow:"hidden"}}>
           <div className={page==="timeline"?"":"fade-in"} key={page} style={page==="timeline"?{flex:1,display:"flex",flexDirection:"column",minHeight:0}:{overflow:"auto",flex:1,WebkitOverflowScrolling:"touch"}}>
