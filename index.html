@@ -166,7 +166,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.24";
+const BLISS_V = "2.69.25";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -5734,8 +5734,16 @@ function AdminSaleItems({ data, setData }) {
   };
   const addSvc = () => {
     if(!newSvc.name.trim()) return;
-    const svc = {...newSvc, id:uid(), priceF:Number(newSvc.priceF)||0, priceM:Number(newSvc.priceM)||0, dur:Number(newSvc.dur)||20, sort:services.length, isPackage:!!newSvc.isPackage, pkgCount:Number(newSvc.pkgCount)||0, pkgPriceF:Number(newSvc.pkgPriceF)||0, pkgPriceM:Number(newSvc.pkgPriceM)||0};
-    setServices(p=>[...p, svc]);
+    // 같은 카테고리 중 최대 sort 찾기 → 그 바로 뒤에 삽입
+    const sameCat = services.filter(s=>s.cat===newSvc.cat);
+    const insertAfterSort = sameCat.length>0 ? Math.max(...sameCat.map(s=>s.sort||0)) : -1;
+    // insertAfterSort 보다 sort가 큰 기존 항목들을 +1씩 밀기
+    const shifted = services.map(s=>(s.sort||0)>insertAfterSort ? {...s,sort:(s.sort||0)+1} : s);
+    const newSort = insertAfterSort+1;
+    const svc = {...newSvc, id:uid(), priceF:Number(newSvc.priceF)||0, priceM:Number(newSvc.priceM)||0, dur:Number(newSvc.dur)||20, sort:newSort, isPackage:!!newSvc.isPackage, pkgCount:Number(newSvc.pkgCount)||0, pkgPriceF:Number(newSvc.pkgPriceF)||0, pkgPriceM:Number(newSvc.pkgPriceM)||0};
+    setServices([...shifted, svc]);
+    // DB: 밀린 항목들 sort 업데이트
+    shifted.filter((s,i)=>s.sort!==(services[i]?.sort||0)).forEach(s=>sb.update("services",s.id,{sort:s.sort}).catch(console.error));
     sb.insert("services", {id:svc.id, business_id:_activeBizId, cat:svc.cat, name:svc.name, dur:svc.dur, price_f:svc.priceF, price_m:svc.priceM, note:svc.note||"", sort:svc.sort, is_package:svc.isPackage, pkg_count:svc.pkgCount, pkg_price_f:svc.pkgPriceF, pkg_price_m:svc.pkgPriceM}).catch(console.error);
     setNewSvc({ cat:cats[0]?.id||"sc1", name:"", dur:20, priceF:0, priceM:0, note:"", isPackage:false, pkgCount:5, pkgPriceF:0, pkgPriceM:0 }); setShowAdd(false);
   };
