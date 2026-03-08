@@ -953,17 +953,33 @@ def _build_bid_to_biz():
         log.warning(f"bid→biz_id 로드 실패: {e}")
 
 def poll_unscraped():
-    """is_scraping_done=False 인 naver 예약을 찾아 스크래핑 큐에 추가"""
+    """is_scraping_done=False 이거나 cust_name이 비어있는 naver 예약을 재스크래핑"""
     if not _bid_to_biz:
         _build_bid_to_biz()
     try:
-        r = requests.get(
+        # is_scraping_done=False 인 것
+        r1 = requests.get(
             f"{SUPABASE_URL}/rest/v1/reservations"
             f"?source=eq.naver&is_scraping_done=eq.false"
             f"&select=id,reservation_id,bid&limit=50",
             headers=HEADERS, timeout=10
         )
-        rows = r.json() if r.ok else []
+        rows1 = r1.json() if r1.ok else []
+        # cust_name이 비어있는 것 (is_scraping_done=True라도)
+        r2 = requests.get(
+            f"{SUPABASE_URL}/rest/v1/reservations"
+            f"?source=eq.naver&cust_name=eq.&is_scraping_done=eq.true"
+            f"&select=id,reservation_id,bid&limit=50",
+            headers=HEADERS, timeout=10
+        )
+        rows2 = r2.json() if r2.ok else []
+        # 중복 제거 후 합치기
+        seen = set()
+        rows = []
+        for row in rows1 + rows2:
+            if row["id"] not in seen:
+                seen.add(row["id"])
+                rows.append(row)
     except Exception as e:
         log.warning(f"미스크래핑 폴링 실패: {e}")
         return
