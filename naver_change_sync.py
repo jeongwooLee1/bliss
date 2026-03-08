@@ -283,6 +283,7 @@ def handle_change(r, subj):
         new_rec = dict(old_row)
         new_rec["reservation_id"] = new_rid
         new_rec["id"] = "nv_" + uuid.uuid4().hex[:12]
+        new_rec["is_scraping_done"] = False  # bliss_naver.py 스크래퍼가 채움
         new_rec["status"] = "confirmed"  # 변경 이메일 = 확정
         new_rec["naver_confirmed_dt"] = datetime.now(timezone(timedelta(hours=9))).isoformat()
         requests.post(f"{SUPABASE_URL}/rest/v1/reservations", headers=HEADERS, json=new_rec).raise_for_status()
