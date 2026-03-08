@@ -166,7 +166,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.19";
+const BLISS_V = "2.69.20";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -332,14 +332,7 @@ function _mc(cb) {
 
 // ─── App ───
 function App() {
-  const [phase, setPhase] = useState("loading");
-  const [showPwaBanner, setShowPwaBanner] = React.useState(false);
-  React.useEffect(()=>{
-    const isStandalone=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone;
-    const installed=localStorage.getItem("bliss_pwa_installed");
-    const dismissed=localStorage.getItem("bliss_pwa_dismissed");
-    if(!isStandalone&&!installed&&!dismissed&&phase==="app"){setTimeout(()=>setShowPwaBanner(true),3000);}
-  },[phase]); // loading, login, super, app
+  const [phase, setPhase] = useState("loading"); // loading, login, super, app
   const [allUsers, setAllUsers] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [currentBizId, setCurrentBizId] = useState(null);
@@ -681,7 +674,6 @@ function App() {
   };
 
   if (phase === "loading") return <Loading msg={loadMsg} />;
-
   if (phase === "login") return <Login users={allUsers} onLogin={handleLogin} onSignup={async (newUser) => {
     setAllUsers(prev => [...prev, newUser]);
     await handleLogin(newUser);
@@ -736,6 +728,642 @@ function App() {
           </div>
         </div>
       </main>
+    </div>
+  );
+}
+
+
+class ErrorBoundary extends React.Component {
+  constructor(props) { super(props); this.state = { error: null }; }
+  static getDerivedStateFromError(e) { return { error: e }; }
+  componentDidCatch(e, info) {
+    console.error("[Bliss] ERROR:", e.message);
+    console.error("[Bliss] STACK:", e.stack);
+    console.error("[Bliss] COMPONENT:", info.componentStack);
+    this.setState({ errorInfo: info });
+  }
+  render() {
+    if (this.state.error) {
+      const stack = this.state.error?.stack || "";
+      const component = this.state.errorInfo?.componentStack || "";
+      return <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"100vh",background:"#fafafa",fontFamily:"sans-serif",padding:24}}>
+        <div style={{fontSize:32,marginBottom:16}}>⚠️</div>
+        <div style={{fontSize:18,fontWeight:700,color:"#333",marginBottom:8}}>화면을 불러오지 못했습니다</div>
+        <div style={{fontSize:13,color:"#c00",marginBottom:8,fontFamily:"monospace",maxWidth:600,wordBreak:"break-all"}}>{this.state.error.message}</div>
+        <pre style={{fontSize:10,color:"#888",maxWidth:700,maxHeight:180,overflow:"auto",background:"#f0f0f0",padding:8,borderRadius:6,marginBottom:16,textAlign:"left"}}>{stack.slice(0,1500)}</pre>
+        <pre style={{fontSize:10,color:"#aaa",maxWidth:700,maxHeight:100,overflow:"auto",background:"#f5f5f5",padding:8,borderRadius:6,marginBottom:20,textAlign:"left"}}>{component.slice(0,500)}</pre>
+        <button onClick={()=>window.location.reload()} style={{padding:"10px 24px",background:"#7c7cc8",color:"#fff",border:"none",borderRadius:8,fontSize:14,cursor:"pointer",fontWeight:600}}>
+          새로고침
+        </button>
+        <div style={{marginTop:12,fontSize:11,color:"#bbb"}}>문제가 계속되면 Ctrl+Shift+R (강제 새로고침)</div>
+      </div>;
+    }
+    return this.props.children;
+  }
+}
+
+function Loading({msg}) { return <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"100vh",background:"#f8f8f8",color:"#888",fontFamily:"'Pretendard',sans-serif",gap:12}}><div style={{fontSize:24}}><I name="loader" size={24} color="#7c7cc8"/></div><div>{msg||"로딩 중..."}</div></div>; }
+
+// ═══════════════════════════════════════════
+// SUPER ADMIN DASHBOARD
+// ═══════════════════════════════════════════
+function SuperDashboard({ superData, setSuperData, currentUser, onLogout, onEnterBiz }) {
+  const [tab, setTab] = useState("businesses");
+  const { businesses=[], groups=[], groupMembers=[], users=[] } = superData || {};
+
+  // ── Business CRUD ──
+  const [bizForm, setBizForm] = useState(null);
+  const saveBiz = async () => {
+    if (!bizForm?.name || !bizForm?.code) return alert("업체명과 대표 아이디를 입력하세요");
+    const isNew = !bizForm.id;
+    const biz = isNew ? { ...bizForm, id: "biz_" + uid() } : bizForm;
+    if (isNew) {
+      await sb.insert("businesses", { id:biz.id, name:biz.name, code:biz.code, phone:biz.phone||"", memo:biz.memo||"" });
+      const ownerId = "acc_" + uid();
+      await sb.insert("app_users", { id:ownerId, business_id:biz.id, login_id:biz.code, password:"1234", name:biz.name+" 대표", role:"owner", branch_ids:"[]", view_branch_ids:"[]" });
+      // Auto-assign group if selected
+      if (bizForm.groupId) {
+        const gm = { id:"gm_"+uid(), group_id:bizForm.groupId, business_id:biz.id };
+        await sb.insert("business_group_members", gm);
+        setSuperData(p => ({...p, businesses:[...p.businesses, biz], users:[...p.users, {id:ownerId, businessId:biz.id, loginId:biz.code, pw:"1234", name:biz.name+" 대표", role:"owner", branches:[], viewBranches:[]}], groupMembers:[...p.groupMembers, gm]}));
+      } else {
+        setSuperData(p => ({...p, businesses:[...p.businesses, biz], users:[...p.users, {id:ownerId, businessId:biz.id, loginId:biz.code, pw:"1234", name:biz.name+" 대표", role:"owner", branches:[], viewBranches:[]}]}));
+      }
+    } else {
+      await sb.update("businesses", biz.id, { name:biz.name, code:biz.code, phone:biz.phone||"", memo:biz.memo||"" });
+      // Update group membership
+      const curMem = groupMembers.find(m=>m.business_id===biz.id);
+      if (bizForm.groupId && (!curMem || curMem.group_id!==bizForm.groupId)) {
+        if (curMem) await sb.del("business_group_members", curMem.id);
+        const gm = { id:"gm_"+uid(), group_id:bizForm.groupId, business_id:biz.id };
+        await sb.insert("business_group_members", gm);
+        setSuperData(p => ({...p, businesses:p.businesses.map(b=>b.id===biz.id?biz:b), groupMembers:[...(p?.groupMembers||[]).filter(m=>m.business_id!==biz.id), gm]}));
+      } else if (!bizForm.groupId && curMem) {
+        await sb.del("business_group_members", curMem.id);
+        setSuperData(p => ({...p, businesses:p.businesses.map(b=>b.id===biz.id?biz:b), groupMembers:(p?.groupMembers||[]).filter(m=>m.business_id!==biz.id)}));
+      } else {
+        setSuperData(p => ({...p, businesses:p.businesses.map(b=>b.id===biz.id?biz:b)}));
+      }
+    }
+    setBizForm(null);
+  };
+  const deleteBiz = async (id) => {
+    if (!confirm("이 사업자를 삭제하시겠습니까? 모든 데이터가 삭제됩니다.")) return;
+    await sb.del("businesses", id);
+    setSuperData(p => ({...p, businesses:(p?.businesses||[]).filter(b=>b.id!==id)}));
+  };
+  const seedBizTemplates = async (bizId) => {
+    const prefix = bizId.replace("biz_","");
+    const br = { id:`br_${prefix}_1`, business_id:bizId, name:"본점", short:"본점", phone:"", address:"", color:"#FFFFFF", sort:0, use_yn:true };
+    await sb.insert("branches", br);
+    await sb.insert("rooms", { id:`rm_${prefix}_1`, business_id:bizId, branch_id:br.id, name:"담당자1", color:"", sort_order:0 });
+    const cats = ["왁싱","페이셜","바디","기타"];
+    for (let i=0;i<cats.length;i++) await sb.insert("service_categories", { id:`cat_${prefix}_${i}`, business_id:bizId, name:cats[i], sort:i });
+    alert("기본 템플릿이 등록되었습니다.");
+  };
+  const startEditBiz = (b) => {
+    const curMem = groupMembers.find(m=>m.business_id===b.id);
+    setBizForm({...b, groupId: curMem?.group_id||""});
+  };
+
+  // ── Group quick-add (inline) ──
+  const [newGrp, setNewGrp] = useState("");
+  const addGroup = async () => {
+    if (!newGrp.trim()) return;
+    const grp = { id:"grp_"+uid(), name:newGrp.trim(), memo:"" };
+    await sb.insert("business_groups", grp);
+    setSuperData(p => ({...p, groups:[...p.groups, grp]}));
+    setNewGrp("");
+  };
+
+  const [sideOpen, setSideOpen] = useState(false);
+  const tabs = [{id:"businesses",label:<><I name="building" size={15}/> 업체 관리</>},{id:"users",label:<><I name="user" size={15}/> 사용자</>},{id:"settings",label:<><I name="settings" size={15}/> 시스템 설정</>}];
+
+  const SideContent = () => <>
+    <div style={{padding:"20px 16px 16px",borderBottom:"1px solid #e0e0e0"}}>
+      <div style={{fontSize:20,fontWeight:800,color:"#7c7cc8",letterSpacing:-1}}>Bliss</div>
+      <div style={{fontSize:11,color:"#888",marginTop:4}}>슈퍼관리자 · {currentUser?.name}</div>
+    </div>
+    <div style={{flex:1,padding:"12px 0"}}>
+      {tabs.map(t=>(
+        <button key={t.id} onClick={()=>{setTab(t.id);setSideOpen(false)}} style={{display:"flex",alignItems:"center",gap:10,padding:"10px 16px",border:"none",cursor:"pointer",fontSize:13,fontWeight:tab===t.id?700:400,
+          background:tab===t.id?"#f0f0ff":"transparent",color:tab===t.id?"#5a5ac8":"#555",
+          borderLeft:tab===t.id?"3px solid #7c7cc8":"3px solid transparent",
+          fontFamily:"inherit",width:"100%",textAlign:"left"}}>{t.label}</button>
+      ))}
+    </div>
+    <div style={{padding:12,borderTop:"1px solid #e0e0e0"}}>
+      <button onClick={onLogout} style={{width:"100%",padding:"8px 14px",borderRadius:4,border:"1px solid #d0d0d0",background:"#fff",color:"#888",cursor:"pointer",fontSize:12,fontWeight:600,fontFamily:"inherit"}}>로그아웃</button>
+    </div>
+  </>;
+
+  return (
+    <div style={{display:"flex",height:"100dvh",fontFamily:"'Pretendard',sans-serif",background:"#f8f8f8",position:"fixed",top:0,left:0,right:0,bottom:0}}>
+      <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet"/>
+      <style>{CSS}</style>
+      {/* Desktop sidebar */}
+      <aside className="sidebar-d" style={{width:220,background:"#fff",borderRight:"1px solid #e0e0e0",display:"flex",flexDirection:"column"}}>
+        <SideContent/>
+      </aside>
+      {/* Mobile sidebar overlay */}
+      {sideOpen && <div className="sidebar-m" style={{position:"fixed",inset:0,zIndex:300}}>
+        <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,.5)"}} onClick={()=>setSideOpen(false)}/>
+        <div style={{position:"relative",width:260,height:"100%",background:"#fff",display:"flex",flexDirection:"column",animation:"slideIn .5s cubic-bezier(.22,1,.36,1)"}}>
+          <SideContent/>
+        </div>
+      </div>}
+      <main className="main-c" style={{flex:1,display:"flex",flexDirection:"column",height:"100%",overflow:"hidden"}}>
+        {/* Mobile header */}
+        <div className="mob-hdr" style={{padding:"10px 16px",background:"#fff",borderBottom:"1px solid #e0e0e0",display:"flex",alignItems:"center",gap:12}}>
+          <button onClick={()=>setSideOpen(true)} style={{background:"none",border:"none",color:"#333",cursor:"pointer",fontSize:20,fontFamily:"inherit"}}><I name="menu" size={20}/></button>
+          <span style={{fontSize:14,fontWeight:700,color:"#7c7cc8"}}>Bliss 슈퍼관리자</span>
+        </div>
+        <div className="page-pad" style={{flex:1,padding:24,overflow:"auto",WebkitOverflowScrolling:"touch"}}>
+        {/* ── 업체 관리 ── */}
+        {tab==="businesses" && <div>
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:16,flexWrap:"wrap"}}>
+            <h2 style={{fontSize:18,fontWeight:800,color:"#333"}}><I name="building" size={18}/> 업체 관리</h2>
+            <span style={{fontSize:12,color:"#888"}}>{businesses.length}개 업체</span>
+            <button className="btn-p" style={{marginLeft:"auto"}} onClick={()=>setBizForm({name:"",code:"",phone:"",memo:"",groupId:""})}><I name="plus" size={12}/> 업체 추가</button>
+          </div>
+          {bizForm && <div className="card" style={{padding:16,marginBottom:16}}>
+            <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"end"}}>
+              <FLD label="업체명"><input className="inp" style={{width:"100%",maxWidth:160}} value={bizForm.name} onChange={e=>setBizForm({...bizForm,name:e.target.value})} placeholder="업체명 입력"/></FLD>
+              <FLD label="대표 아이디"><input className="inp" style={{width:"100%",maxWidth:140}} value={bizForm.code} onChange={e=>setBizForm({...bizForm,code:e.target.value.toLowerCase().replace(/[^a-z0-9]/g,"")})} placeholder="영문소문자+숫자"/></FLD>
+              <FLD label="전화"><input className="inp" style={{width:"100%",maxWidth:140}} value={bizForm.phone||""} onChange={e=>setBizForm({...bizForm,phone:e.target.value})} placeholder="02-0000-0000"/></FLD>
+              <FLD label="그룹">
+                <div style={{display:"flex",gap:4}}>
+                  <select className="inp" style={{width:"100%",maxWidth:130}} value={bizForm.groupId||""} onChange={e=>setBizForm({...bizForm,groupId:e.target.value})}>
+                    <option value="">없음</option>
+                    {groups.map(g=><option key={g.id} value={g.id}>{g.name}</option>)}
+                  </select>
+                  <div style={{display:"flex",gap:2}}>
+                    <input className="inp" style={{width:80,fontSize:10,padding:"4px 6px"}} value={newGrp} onChange={e=>setNewGrp(e.target.value)} placeholder="새 그룹" onKeyDown={e=>e.key==="Enter"&&addGroup()}/>
+                    <button className="btn-s" style={{padding:"2px 6px",fontSize:10}} onClick={addGroup}>+</button>
+                  </div>
+                </div>
+              </FLD>
+              <FLD label="메모"><input className="inp" style={{width:"100%",maxWidth:160}} value={ (() => { try { const m=JSON.parse(bizForm.memo||"{}"); return m.gemini_key ? "" : (bizForm.memo||""); } catch { return bizForm.memo||""; } })() } onChange={e=>{ try { const m=JSON.parse(bizForm.memo||"{}"); if(m.gemini_key){setBizForm({...bizForm,memo:JSON.stringify({...m,_note:e.target.value})});}else{setBizForm({...bizForm,memo:e.target.value});} } catch { setBizForm({...bizForm,memo:e.target.value}); } }} placeholder="메모"/></FLD>
+              <button className="btn-p" onClick={saveBiz}>{bizForm.id?"저장":"추가"}</button>
+              <button className="btn-s" onClick={()=>setBizForm(null)}>취소</button>
+            </div>
+            {!bizForm.id && <div style={{marginTop:8,fontSize:11,color:"#999"}}>* 대표 아이디로 대표 계정이 자동 생성됩니다 (초기 비밀번호: 1234)</div>}
+          </div>}
+          <div className="card tw">
+            <table><thead><tr>
+              <th>업체명</th><th>대표 아이디</th><th>전화</th><th>그룹</th><th>계정수</th><th>메모</th><th>관리</th>
+            </tr></thead><tbody>
+              {businesses.map(b=>{
+                const bizUsers = users.filter(u=>u.businessId===b.id);
+                const grps = groupMembers.filter(m=>m.business_id===b.id).map(m=>groups.find(g=>g.id===m.group_id)?.name).filter(Boolean);
+                return <tr key={b.id}>
+                  <td style={{fontWeight:700}}>{b.name}</td>
+                  <td style={{color:"#7c7cc8",fontFamily:"monospace",fontSize:12}}>{b.code}</td>
+                  <td style={{fontSize:12,color:"#888"}}>{b.phone||"-"}</td>
+                  <td>{grps.length>0 ? <span style={{fontSize:10,color:"#5cb5c5",background:"#5cb5c520",padding:"2px 8px",borderRadius:8}}>{grps.join(", ")}</span> : <span style={{color:"#ccc"}}>-</span>}</td>
+                  <td style={{color:"#888"}}>{bizUsers.length}명</td>
+                  <td style={{fontSize:12,color:"#888"}}>{ (() => { try { const m=JSON.parse(b.memo||"{}"); return m.gemini_key ? <span style={{color:"#ccc",fontStyle:"italic"}}>설정값</span> : (b.memo||"-"); } catch { return b.memo||"-"; } })() }</td>
+                  <td style={{display:"flex",gap:4}}>
+                    <button className="btn-p" style={{padding:"4px 10px",fontSize:11}} onClick={()=>onEnterBiz(b.id)}>접속</button>
+                    <button className="btn-s" style={{padding:"4px 10px",fontSize:11}} onClick={()=>startEditBiz(b)}>수정</button>
+                    <button className="btn-s" style={{padding:"4px 10px",fontSize:11}} onClick={()=>seedBizTemplates(b.id)}>템플릿</button>
+                    <button className="btn-d" style={{padding:"4px 10px",fontSize:11}} onClick={()=>deleteBiz(b.id)}>삭제</button>
+                  </td>
+                </tr>;
+              })}
+              {businesses.length===0 && <tr><td colSpan={7} style={{textAlign:"center",color:"#999",padding:40}}>등록된 업체가 없습니다</td></tr>}
+            </tbody></table>
+          </div>
+        </div>}
+
+        {/* ── 사용자 ── */}
+        {tab==="users" && <SuperUsers users={users} businesses={businesses} superData={superData} setSuperData={setSuperData}/>}
+        {tab==="settings" && <SuperSystemSettings/>}
+        </div>
+      </main>
+    </div>
+  );
+}
+
+// ─── Super: 전체 사용자 관리 ───
+function SuperUsers({ users, businesses, superData, setSuperData }) {
+  const [editId, setEditId] = useState(null);
+  const [form, setForm] = useState(null);
+
+  const startAdd = () => { setEditId("new"); setForm({name:"", loginId:"", pw:"1234", role:"owner", businessId:businesses[0]?.id||"", branches:[], viewBranches:[]}); };
+  const startEdit = (u) => { setEditId(u.id); setForm({...u}); };
+  const cancel = () => { setEditId(null); setForm(null); };
+
+  const save = async () => {
+    if(!form.name||!form.loginId||!form.pw) { alert("이름, 아이디, 비밀번호를 입력하세요."); return; }
+    if(editId==="new") {
+      const newU = {...form, id:"acc_"+uid()};
+      await sb.insert("app_users", {id:newU.id, business_id:newU.businessId||null, login_id:newU.loginId, password:newU.pw, name:newU.name, role:newU.role, branch_ids:JSON.stringify(newU.branches||[]), view_branch_ids:JSON.stringify(newU.viewBranches||[])}).catch(console.error);
+      setSuperData(p=>({...p, users:[...p.users, newU]}));
+    } else {
+      await sb.update("app_users", editId, {business_id:form.businessId||null, login_id:form.loginId, password:form.pw, name:form.name, role:form.role, branch_ids:JSON.stringify(form.branches||[]), view_branch_ids:JSON.stringify(form.viewBranches||[])}).catch(console.error);
+      setSuperData(p=>({...p, users:p.users.map(u=>u.id===editId?{...form}:u)}));
+    }
+    cancel();
+  };
+  const remove = async (id) => {
+    if(!window.confirm("이 사용자를 삭제하시겠습니까?")) return;
+    await sb.del("app_users", id).catch(console.error);
+    setSuperData(p=>({...p, users:(p?.users||[]).filter(u=>u.id!==id)}));
+  };
+
+  const roleLabel = (r) => r==="super"?"슈퍼":r==="owner"?"대표":"직원";
+  const roleBg = (r) => r==="super"?"#e5737315":r==="owner"?"#7c7cc815":"#f5f5f5";
+  const roleClr = (r) => r==="super"?"#e57373":r==="owner"?"#7c7cc8":"#888";
+
+  return <div>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:8}}>
+      <h2 style={{fontSize:18,fontWeight:800,color:"#333"}}><I name="user" size={18}/> 전체 사용자 <span style={{fontSize:13,fontWeight:400,color:"#999"}}>{users.length}명</span></h2>
+      <button className="btn-p" onClick={startAdd}><I name="plus" size={12}/> 사용자 추가</button>
+    </div>
+
+    {form && <div className="card" style={{padding:20,marginBottom:16}}>
+      <h3 style={{fontSize:14,fontWeight:700,marginBottom:12}}>{editId==="new"?"사용자 추가":"사용자 수정"}</h3>
+      <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"flex-end"}}>
+        <FLD label="이름"><input className="inp" style={{width:"100%",maxWidth:120}} value={form.name} onChange={e=>setForm(p=>({...p,name:e.target.value}))}/></FLD>
+        <FLD label="아이디"><input className="inp" style={{width:"100%",maxWidth:120}} value={form.loginId} onChange={e=>setForm(p=>({...p,loginId:e.target.value}))}/></FLD>
+        <FLD label="비밀번호"><input className="inp" style={{width:"100%",maxWidth:100}} value={form.pw} onChange={e=>setForm(p=>({...p,pw:e.target.value}))}/></FLD>
+        <FLD label="유형"><select className="inp" style={{width:"100%",maxWidth:90}} value={form.role} onChange={e=>setForm(p=>({...p,role:e.target.value}))}>
+          <option value="super">슈퍼</option><option value="owner">대표</option><option value="staff">직원</option>
+        </select></FLD>
+        <FLD label="업체"><select className="inp" style={{width:"100%",maxWidth:150}} value={form.businessId||""} onChange={e=>setForm(p=>({...p,businessId:e.target.value}))}>
+          <option value="">없음</option>{businesses.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
+        </select></FLD>
+        <div style={{display:"flex",gap:6}}>
+          <button className="btn-p" style={{padding:"7px 16px"}} onClick={save}>{editId==="new"?"추가":"저장"}</button>
+          <button className="btn-s" style={{padding:"7px 16px"}} onClick={cancel}>취소</button>
+        </div>
+      </div>
+    </div>}
+
+    <div className="card tw">
+      <table><thead><tr>
+        <th>이름</th><th>아이디</th><th>유형</th><th>업체</th><th>비밀번호</th><th style={{width:120}}>관리</th>
+      </tr></thead><tbody>
+        {users.map(u=>{
+          const biz = businesses.find(b=>b.id===u.businessId);
+          return <tr key={u.id}>
+            <td style={{fontWeight:600}}>{u.name}</td>
+            <td style={{color:"#7c7cc8"}}>{u.loginId||u.login_id}</td>
+            <td><span style={{fontSize:10,padding:"2px 8px",borderRadius:10,background:roleBg(u.role),color:roleClr(u.role),fontWeight:600}}>{roleLabel(u.role)}</span></td>
+            <td style={{fontSize:12,color:"#555"}}>{biz?.name||"-"}</td>
+            <td style={{color:"#aaa"}}>{"•".repeat((u.pw||u.password||"").length)}</td>
+            <td style={{display:"flex",gap:4}}>
+              <button className="btn-s" style={{padding:"4px 10px",fontSize:11}} onClick={()=>startEdit(u)}>수정</button>
+              {u.role!=="super" && <button className="btn-d" style={{padding:"4px 10px",fontSize:11}} onClick={()=>remove(u.id)}>삭제</button>}
+            </td>
+          </tr>;
+        })}
+      </tbody></table>
+    </div>
+  </div>;
+}
+
+
+// ─── SignupWizard ───
+function SignupWizard({ onComplete, onBack }) {
+  const [step, setStep]         = useState(1);
+  const [saving, setSaving]     = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [scanMsg, setScanMsg]   = useState("");
+  const [scanDone, setScanDone] = useState(false);
+  const [imgPreview, setImgPreview] = useState(null);
+  const fileRef = React.useRef(null);
+  const camRef  = React.useRef(null);
+  const [form, setForm] = useState({ bizNum:"", bizName:"", ownerName:"", address:"", phone:"", pw:"", pw2:"" });
+  const set = (k,v) => setForm(p=>({...p,[k]:v}));
+
+  const fmtBizNum = (v) => {
+    const d=v.replace(/[^0-9]/g,"").slice(0,10);
+    if(d.length<=3)return d; if(d.length<=5)return d.slice(0,3)+"-"+d.slice(3);
+    return d.slice(0,3)+"-"+d.slice(3,5)+"-"+d.slice(5);
+  };
+
+  const runOCR = async (file) => {
+    setScanning(true); setScanMsg("서버 연결 중...");
+    try {
+      let key = window.__systemGeminiKey || "";
+      if (!key) {
+        const SBU="https://dpftlrsuqxqqeouwbfjd.supabase.co";
+        const SBK="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwZnRscnN1cXhxcWVvdXdiZmpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5MDU4MjQsImV4cCI6MjA4NzQ4MTgyNH0.iydEkjtPjZ0jXpUUPJben4IWWneDqLomv-HDlcFayE4";
+        const r=await fetch(SBU+"/rest/v1/businesses?select=memo&code=eq.__system__",{headers:{apikey:SBK,Authorization:"Bearer "+SBK}});
+        const rows=await r.json();
+        if(rows[0]){const m=JSON.parse(rows[0].memo||"{}");key=m.system_gemini_key||"";if(key)window.__systemGeminiKey=key;}
+      }
+      if (!key) { setScanMsg("직접 입력 모드로 전환합니다..."); setTimeout(()=>{setScanning(false);setStep(2);},1200); return; }
+      setScanMsg("AI 분석 중...");
+      // iOS HEIC → Canvas로 JPEG 변환
+      const {b64, mime} = await new Promise((res,rej)=>{
+        const img=new Image();
+        const url=URL.createObjectURL(file);
+        img.onload=()=>{
+          URL.revokeObjectURL(url);
+          const canvas=document.createElement("canvas");
+          canvas.width=img.naturalWidth; canvas.height=img.naturalHeight;
+          canvas.getContext("2d").drawImage(img,0,0);
+          const dataUrl=canvas.toDataURL("image/jpeg",0.9);
+          res({b64:dataUrl.split(",")[1], mime:"image/jpeg"});
+        };
+        img.onerror=()=>{
+          // canvas 실패시 FileReader fallback
+          const fr=new FileReader();
+          fr.onload=e=>{
+            const dataUrl=e.target.result;
+            const m=dataUrl.split(";")[0].replace("data:","");
+            res({b64:dataUrl.split(",")[1], mime:m||"image/jpeg"});
+          };
+          fr.onerror=rej;
+          fr.readAsDataURL(file);
+        };
+        img.src=url;
+      });
+      const resp=await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key="+key,
+        {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+          contents:[{parts:[
+            {inline_data:{mime_type:mime,data:b64}},
+            {text:'이 이미지는 한국 사업자등록증입니다. JSON만 답하세요. 마크다운 금지. {"bizNum":"사업자번호숫자10자리","bizName":"상호명","ownerName":"대표자명","address":"사업장주소전체","phone":"전화번호없으면빈문자열"}'}
+          ]}],
+          generationConfig:{temperature:0,maxOutputTokens:1000}
+        })});
+      const respText = await resp.text();
+      if(!resp.ok){ alert("OCR 오류("+resp.status+"): "+respText.slice(0,300)); setScanMsg("분석 실패("+resp.status+")"); setTimeout(()=>{setScanning(false);setStep(2);},2000); return; }
+      const json=JSON.parse(respText);
+      const raw=(json.candidates?.[0]?.content?.parts?.[0]?.text||"").replace(/```json|```/g,"").trim();
+      if(!raw){ alert("Gemini 응답 비어있음: "+respText.slice(0,200)); setScanning(false); setStep(2); return; }
+      let p;
+      try { p=JSON.parse(raw); }
+      catch(pe) { setScanning(false); setStep(2); return; }
+      setForm(prev=>({...prev,
+        bizNum:(p.bizNum||"").replace(/[^0-9]/g,""),
+        bizName:p.bizName||"",ownerName:p.ownerName||"",address:p.address||"",phone:p.phone||""
+      }));
+      setScanDone(true); setScanning(false); setStep(2);
+    } catch(e) {
+      setScanning(false); setStep(2);
+    }
+  };
+
+  const handleFile = (file) => {
+    if(!file)return;
+    setImgPreview(URL.createObjectURL(file));
+    runOCR(file);
+  };
+
+  const submit = async () => {
+    const bn=form.bizNum.replace(/[^0-9]/g,"");
+    if(bn.length!==10){alert("사업자등록번호(10자리)를 확인해주세요.");return;}
+    if(!form.bizName.trim()){alert("상호명을 입력해주세요.");return;}
+    if(!form.pw||form.pw.length<4){alert("비밀번호는 4자리 이상이어야 합니다.");return;}
+    if(form.pw!==form.pw2){alert("비밀번호가 일치하지 않습니다.");return;}
+    setSaving(true);
+    try {
+      const ex=await sb.get("app_users","&login_id=eq."+bn);
+      if(ex.length>0){alert("이미 등록된 사업자번호입니다.");setSaving(false);return;}
+      const bizId="biz_"+uid(),brId="br_"+uid(),oId="acc_"+uid();
+      const exp=new Date();exp.setDate(exp.getDate()+14);
+      await sb.insert("businesses",{id:bizId,name:form.bizName.trim(),code:bn,phone:form.phone||"",memo:JSON.stringify({plan:"trial",plan_expire:exp.toISOString().split("T")[0],plan_status:"active",owner_name:form.ownerName||""})});
+      await sb.insert("branches",{id:brId,business_id:bizId,name:form.bizName.trim(),short:form.bizName.trim().slice(0,5),phone:form.phone||"",address:form.address||"",color:"#FFFFFF",sort:0,use_yn:true});
+      await sb.insert("app_users",{id:oId,business_id:bizId,login_id:bn,password:form.pw,name:(form.ownerName||form.bizName.trim())+" 대표",role:"owner",branch_ids:JSON.stringify([brId]),view_branch_ids:JSON.stringify([])});
+      setStep(3);
+      setTimeout(()=>onComplete({id:oId,businessId:bizId,loginId:bn,pw:form.pw,name:(form.ownerName||form.bizName.trim())+" 대표",role:"owner",branches:[brId],viewBranches:[]}),1800);
+    } catch(e){alert("가입 실패: "+(e.message||"다시 시도해주세요."));}
+    finally{setSaving(false);}
+  };
+
+  const inp={width:"100%",padding:"12px 14px",fontSize:15,borderRadius:10,border:"1px solid #e0e0e0",outline:"none",fontFamily:"inherit",boxSizing:"border-box",background:"#fff"};
+  const lbl={fontSize:11,color:"#999",fontWeight:600,marginBottom:5,display:"block"};
+
+  if (scanning) return (
+    <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:20,minHeight:260}}>
+      {imgPreview && <img src={imgPreview} style={{width:"100%",maxHeight:180,objectFit:"contain",borderRadius:10,opacity:.5}} alt=""/>}
+      <div style={{width:48,height:48,border:"5px solid #e8e8f5",borderTopColor:"#7c7cc8",borderRadius:"50%",animation:"spin 1s linear infinite"}}/>
+      <div style={{fontSize:14,color:"#7c7cc8",fontWeight:700}}>{scanMsg}</div>
+    </div>
+  );
+
+  if (step===1) return (
+    <div style={{display:"flex",flexDirection:"column",gap:16}}>
+      <div style={{textAlign:"center",paddingBottom:4}}>
+        <div style={{fontSize:30,marginBottom:6}}>📋</div>
+        <div style={{fontSize:17,fontWeight:800,color:"#222"}}>사업자등록증 촬영</div>
+        <div style={{fontSize:13,color:"#aaa",marginTop:4}}>찍으면 정보를 자동으로 채워드립니다</div>
+      </div>
+      <button onClick={()=>camRef.current&&camRef.current.click()}
+        style={{padding:"16px 0",borderRadius:12,border:"none",background:"linear-gradient(135deg,#7c7cc8,#9b9be0)",color:"#fff",fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
+        <span style={{fontSize:20}}>📷</span> 카메라로 촬영
+      </button>
+      <input ref={camRef} type="file" accept="image/*" capture="environment" style={{display:"none"}} onChange={e=>handleFile(e.target.files&&e.target.files[0])}/>
+      <button onClick={()=>fileRef.current&&fileRef.current.click()}
+        style={{padding:"13px 0",borderRadius:10,border:"1px solid #e0e0e0",background:"#fafafa",color:"#555",fontSize:13,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+        <span style={{fontSize:16}}>🖼️</span> 갤러리에서 선택
+      </button>
+      <input ref={fileRef} type="file" accept="image/*" style={{display:"none"}} onChange={e=>handleFile(e.target.files&&e.target.files[0])}/>
+      <button onClick={()=>setStep(2)} style={{padding:"12px 0",borderRadius:10,border:"1px solid #e0e0e0",background:"#fff",color:"#888",fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>직접 입력하기</button>
+      <button onClick={onBack} style={{background:"none",border:"none",fontSize:12,color:"#ccc",cursor:"pointer",fontFamily:"inherit",padding:4,textAlign:"center"}}>← 로그인으로</button>
+    </div>
+  );
+
+  if (step===2) return (
+    <div style={{display:"flex",flexDirection:"column",gap:14}}>
+      <div style={{display:"flex",alignItems:"center",gap:10}}>
+        <button onClick={()=>setStep(1)} style={{background:"none",border:"none",fontSize:20,cursor:"pointer",color:"#ccc",padding:0,lineHeight:1,flexShrink:0}}>←</button>
+        <div>
+          <div style={{fontSize:16,fontWeight:800,color:"#222"}}>{scanDone?"✅ 인식 완료 — 확인하세요":"업체 정보 입력"}</div>
+          <div style={{fontSize:11,color:"#aaa"}}>{scanDone?"잘못된 항목은 수정하세요":"사업자등록증을 보고 입력하세요"}</div>
+        </div>
+      </div>
+      <div style={{background:"#f5f5ff",border:"1px solid #dde",borderRadius:10,padding:"10px 14px",fontSize:12,color:"#667"}}>
+        💡 사업자등록번호가 <b>로그인 아이디</b>로 사용됩니다
+      </div>
+      <div>
+        <label style={lbl}>사업자등록번호 <span style={{color:"#e57373"}}>*</span></label>
+        <input style={{...inp,fontWeight:700,letterSpacing:1,background:"#f8f8ff",border:"1px solid #c5c5e8"}} value={fmtBizNum(form.bizNum)} onChange={e=>set("bizNum",e.target.value)} placeholder="000-00-00000" maxLength={12}/>
+      </div>
+      <div>
+        <label style={lbl}>상호명 <span style={{color:"#e57373"}}>*</span></label>
+        <input style={inp} value={form.bizName} onChange={e=>set("bizName",e.target.value)} placeholder="예: 하우스왁싱 강남점"/>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+        <div><label style={lbl}>대표자명</label><input style={inp} value={form.ownerName} onChange={e=>set("ownerName",e.target.value)} placeholder="홍길동"/></div>
+        <div><label style={lbl}>전화번호</label><input style={inp} value={form.phone} onChange={e=>set("phone",e.target.value)} placeholder="02-0000-0000"/></div>
+      </div>
+      <div>
+        <label style={lbl}>사업장 주소</label>
+        <input style={inp} value={form.address} onChange={e=>set("address",e.target.value)} placeholder="서울특별시 강남구..."/>
+      </div>
+      <div style={{borderTop:"1px solid #f0f0f0",paddingTop:14}}>
+        <div style={{fontSize:12,fontWeight:700,color:"#555",marginBottom:10}}>🔐 비밀번호 설정</div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+          <div><label style={lbl}>비밀번호 <span style={{color:"#e57373"}}>*</span></label><input style={inp} type="password" value={form.pw} onChange={e=>set("pw",e.target.value)} placeholder="4자리 이상"/></div>
+          <div><label style={lbl}>비밀번호 확인 <span style={{color:"#e57373"}}>*</span></label><input style={{...inp,borderColor:form.pw2&&form.pw!==form.pw2?"#e57373":"#e0e0e0"}} type="password" value={form.pw2} onChange={e=>set("pw2",e.target.value)} placeholder="동일하게 입력"/></div>
+        </div>
+      </div>
+      <div style={{background:"#f0fff4",border:"1px solid #a5d6a7",borderRadius:10,padding:"10px 14px",fontSize:12,color:"#2e7d32"}}>
+        🎁 가입 후 <b>14일 무료 체험</b> · 모든 기능 이용 가능
+      </div>
+      <button onClick={submit} disabled={saving}
+        style={{width:"100%",padding:16,borderRadius:12,border:"none",background:saving?"#c5c5e8":"linear-gradient(135deg,#7c7cc8,#9b9be0)",color:"#fff",fontSize:16,fontWeight:800,cursor:saving?"not-allowed":"pointer",fontFamily:"inherit",marginBottom:8}}>
+        {saving?"처리 중...":"시작하기 →"}
+      </button>
+    </div>
+  );
+
+  return (
+    <div style={{textAlign:"center",padding:"30px 0",display:"flex",flexDirection:"column",alignItems:"center",gap:18}}>
+      <div style={{fontSize:56,animation:"bounceIn .6s ease"}}>🎉</div>
+      <div style={{fontSize:20,fontWeight:800,color:"#2e7d32"}}>가입 완료!</div>
+      <div style={{fontSize:13,color:"#666",lineHeight:1.8}}>
+        <b style={{color:"#333"}}>{form.bizName}</b>님,<br/>14일 무료 체험이 시작되었습니다.
+      </div>
+      <div style={{width:"60%",height:4,background:"#e0e0f0",borderRadius:2,overflow:"hidden"}}>
+        <div style={{height:"100%",background:"#7c7cc8",borderRadius:2,animation:"loadingBar 1.8s linear forwards"}}/>
+      </div>
+    </div>
+  );
+}
+
+// ─── Super: 시스템 설정 ───
+function SuperSystemSettings() {
+  const [key, setKey]     = useState("");
+  const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const rows = await sb.get("businesses","&code=eq.__system__");
+        if (rows.length > 0) {
+          const m = JSON.parse(rows[0].memo||"{}");
+          setKey(m.system_gemini_key||"");
+        }
+      } catch(e){}
+      finally { setLoading(false); }
+    })();
+  }, []);
+
+  const save = async () => {
+    try {
+      const rows = await sb.get("businesses","&code=eq.__system__");
+      const memo = JSON.stringify({ system_gemini_key: key.trim() });
+      if (rows.length > 0) {
+        await sb.update("businesses", rows[0].id, { memo });
+      } else {
+        await sb.insert("businesses",{ id:"biz_system", name:"[시스템]", code:"__system__", phone:"", memo });
+      }
+      window.__systemGeminiKey = key.trim();
+      setSaved(true);
+      setTimeout(()=>setSaved(false), 2500);
+    } catch(e) { alert("저장 실패: "+e.message); }
+  };
+
+  if (loading) return <div style={{padding:40,textAlign:"center",color:"#999"}}>로딩 중...</div>;
+
+  return (
+    <div style={{maxWidth:520,margin:"0 auto",padding:24}}>
+      <div style={{fontSize:15,fontWeight:800,color:"#333",marginBottom:4}}>시스템 설정</div>
+      <div style={{fontSize:12,color:"#999",marginBottom:24}}>일반 사용자에게는 표시되지 않는 개발자 전용 설정입니다.</div>
+
+      <div style={{background:"#fff",border:"1px solid #e8e8e8",borderRadius:12,padding:20,display:"flex",flexDirection:"column",gap:16}}>
+        <div>
+          <div style={{fontSize:13,fontWeight:700,color:"#444",marginBottom:4}}>Gemini API 키 (시스템)</div>
+          <div style={{fontSize:11,color:"#aaa",marginBottom:10}}>
+            가입 시 사업자등록증 자동 인식에 사용됩니다. 사용자에게는 노출되지 않습니다.
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <input
+              type="password"
+              value={key}
+              onChange={e=>{setKey(e.target.value);setSaved(false);}}
+              placeholder="AIza..."
+              style={{flex:1,padding:"10px 12px",fontSize:13,borderRadius:8,border:"1px solid #e0e0e0",outline:"none",fontFamily:"inherit"}}
+            />
+            <button onClick={save}
+              style={{padding:"10px 20px",borderRadius:8,border:"none",background:"#7c7cc8",color:"#fff",fontSize:13,fontWeight:700,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>
+              {saved ? "✓ 저장됨" : "저장"}
+            </button>
+          </div>
+          {key && <div style={{fontSize:11,color:"#7c7cc8",marginTop:6}}>✓ 키 등록됨 — 신규 가입 시 OCR 자동 활성화</div>}
+          {!key && <div style={{fontSize:11,color:"#f4a",marginTop:6}}>키 미등록 — 신규 가입자는 직접 입력 방식으로 진행됩니다</div>}
+        </div>
+
+        <div style={{borderTop:"1px solid #f0f0f0",paddingTop:14}}>
+          <div style={{fontSize:12,fontWeight:700,color:"#888",marginBottom:8}}>요금제 안내</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
+            {[
+              {name:"체험",id:"trial",color:"#9e9e9e",desc:"14일 무료"},
+              {name:"Basic",id:"basic",color:"#42a5f5",desc:"지점 1 · 직원 3"},
+              {name:"Pro",id:"pro",color:"#7c7cc8",desc:"무제한"},
+            ].map(p=>(
+              <div key={p.id} style={{border:"1px solid #e8e8e8",borderRadius:8,padding:"10px 12px",textAlign:"center"}}>
+                <div style={{fontSize:12,fontWeight:700,color:p.color}}>{p.name}</div>
+                <div style={{fontSize:11,color:"#999",marginTop:2}}>{p.desc}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{fontSize:11,color:"#ccc",marginTop:10}}>* 결제 연동은 추후 구현 예정</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+// ─── Login ───
+function Login({ users, onLogin, onSignup }) {
+  const [showSignup, setShowSignup] = useState(false);
+  const [loginId, setLoginId] = useState(() => {try{return localStorage.getItem("savedLoginId")||"";}catch(e){return "";}});
+  const [pw, setPw] = useState("");
+  const [saveId, setSaveId] = useState(() => {try{return localStorage.getItem("savedLoginId")!==null;}catch(e){return false;}});
+  const [err, setErr] = useState("");
+  const handleLogin = () => {
+    const u = users.find(u => (u.loginId||u.login_id) === loginId && (u.pw||u.password) === pw);
+    if (!u) { setErr("아이디 또는 비밀번호가 일치하지 않습니다."); return; }
+    try{if(saveId)localStorage.setItem("savedLoginId",loginId);else localStorage.removeItem("savedLoginId");}catch(e){}
+    onLogin(u);
+  };
+  if (showSignup) return (
+    <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,overflowY:"auto",WebkitOverflowScrolling:"touch",background:"linear-gradient(135deg,#e8e8f0 0%,#d8d8e8 50%,#c8c8d8 100%)",fontFamily:"'Pretendard',sans-serif",padding:"20px 16px 80px",boxSizing:"border-box",zIndex:9999}}>
+      <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet"/>
+      <style>{CSS}</style>
+      <div style={{background:"#fff",borderRadius:12,border:"1px solid #e0e0e0",padding:"28px 24px",width:"92%",maxWidth:460,animation:"slideUp .6s cubic-bezier(.22,1,.36,1)",boxShadow:"0 12px 40px rgba(0,0,0,.15)",marginTop:20}}>
+        <div style={{textAlign:"center",marginBottom:24}}>
+          <div style={{fontSize:24,fontWeight:800,color:"#7c7cc8",letterSpacing:-1}}>Bliss</div>
+          <div style={{fontSize:11,color:"#999",marginTop:4}}>신규 가입</div>
+        </div>
+        <SignupWizard onComplete={(newUser)=>{ setShowSignup(false); onSignup(newUser); }} onBack={()=>setShowSignup(false)}/>
+      </div>
+    </div>
+  );
+  return (
+    <div style={{minHeight:"100vh",width:"100%",display:"flex",alignItems:"center",justifyContent:"center",background:"linear-gradient(135deg,#e8e8f0 0%,#d8d8e8 50%,#c8c8d8 100%)",fontFamily:"'Pretendard',sans-serif",padding:16}}>
+      <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet"/>
+      <style>{CSS}</style>
+      <div style={{background:"#fff",borderRadius:12,border:"1px solid #e0e0e0",padding:"32px 28px",width:"92%",maxWidth:420,animation:"slideUp .6s cubic-bezier(.22,1,.36,1)",boxShadow:"0 12px 40px rgba(0,0,0,.15)"}}>
+        <div style={{textAlign:"center",marginBottom:32}}>
+          <div style={{fontSize:28,fontWeight:800,color:"#7c7cc8",letterSpacing:-1}}>Bliss</div>
+          <div style={{fontSize:12,color:"#999",marginTop:8}}>통합 예약 & 매출 관리 시스템</div>
+        </div>
+        <div style={{display:"flex",flexDirection:"column",gap:14}}>
+          <FLD label="아이디"><input className="inp" placeholder="아이디 입력" value={loginId} onChange={e=>{setLoginId(e.target.value);setErr("")}}/></FLD>
+          <FLD label="비밀번호"><input className="inp" type="password" placeholder="비밀번호 입력" value={pw} onChange={e=>{setPw(e.target.value);setErr("")}} onKeyDown={e=>e.key==="Enter"&&handleLogin()}/></FLD>
+          {err && <div style={{fontSize:12,color:"#e57373",textAlign:"center"}}>{err}</div>}
+          <label style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:"#888",cursor:"pointer"}}>
+            <input type="checkbox" checked={saveId} onChange={e=>setSaveId(e.target.checked)} style={{accentColor:"#7c7cc8",width:14,height:14}}/>
+            아이디 저장
+          </label>
+          <button className="btn-p" style={{width:"100%",padding:13,marginTop:4,fontSize:15}} onClick={handleLogin}>로그인</button>
+          <div style={{borderTop:"1px solid #f0f0f0",marginTop:8,paddingTop:12,textAlign:"center"}}>
+            <span style={{fontSize:12,color:"#999"}}>아직 계정이 없으신가요? </span>
+            <button onClick={()=>setShowSignup(true)} style={{background:"none",border:"none",fontSize:12,color:"#7c7cc8",fontWeight:700,cursor:"pointer",fontFamily:"inherit",textDecoration:"underline"}}>무료 체험 시작 →</button>
+          </div>
+          <div style={{fontSize:10,color:"#bbb",textAlign:"center",marginTop:4}}>v{BLISS_V}</div><div style={{fontSize:20,color:"#ff0000",textAlign:"center",fontWeight:900,marginTop:4}}>v{BLISS_V}</div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -6644,13 +7272,54 @@ const CSS = `
 ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(ErrorBoundary, null, React.createElement(App)));
 </script>
 <script>
+// Service Worker
 if("serviceWorker" in navigator){
   window.addEventListener("load",()=>{
-    navigator.serviceWorker.register("/bliss/sw.js").catch(e=>console.log("SW error",e));
+    navigator.serviceWorker.register("/bliss/sw.js").catch(()=>{});
   });
 }
-let _pwaPrompt=null;
-window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();window.__pwaInstallPrompt=e;});
-window.addEventListener("appinstalled",()=>{window.__pwaInstallPrompt=null;localStorage.setItem("bliss_pwa_installed","1");});
+// PWA 설치 프롬프트 저장
+window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();window.__pwaPrompt=e;});
+window.addEventListener("appinstalled",()=>{localStorage.setItem("bliss_pwa_installed","1");});
+
+// 홈 추가 배너 (순수 DOM, React 외부)
+function blissShowPWA(){
+  if(localStorage.getItem("bliss_pwa_installed")||localStorage.getItem("bliss_pwa_dismissed"))return;
+  if(window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone)return;
+  if(document.getElementById("bliss-pwa-banner"))return;
+  const d=document.createElement("div");
+  d.id="bliss-pwa-banner";
+  d.style.cssText="position:fixed;inset:0;z-index:99999;display:flex;align-items:flex-end;background:rgba(0,0,0,.5);font-family:'Pretendard',sans-serif";
+  d.innerHTML=`<div style="background:#fff;border-radius:20px 20px 0 0;padding:28px 24px 48px;width:100%;box-sizing:border-box">
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="font-size:48px">📱</div>
+      <div style="font-size:18px;font-weight:800;color:#222;margin:8px 0 6px">홈 화면에 추가하기</div>
+      <div style="font-size:13px;color:#888;line-height:1.7">Bliss를 홈 화면에 추가하면<br>앱처럼 빠르게 실행할 수 있어요</div>
+    </div>
+    <div style="background:#f5f5ff;border-radius:12px;padding:14px 16px;margin-bottom:16px;font-size:12px;color:#555;line-height:1.9">
+      <b style="color:#7c7cc8">iPhone (Safari)</b><br>
+      하단 공유 버튼 → <b>"홈 화면에 추가"</b> 탭<br><br>
+      <b style="color:#7c7cc8">Android (Chrome)</b><br>
+      우측 상단 메뉴 → <b>"홈 화면에 추가"</b> 탭
+    </div>
+    <button id="bliss-pwa-install" style="display:none;width:100%;padding:14px;border-radius:12px;border:none;background:linear-gradient(135deg,#7c7cc8,#9b9be0);color:#fff;font-size:15px;font-weight:800;cursor:pointer;margin-bottom:10px;box-sizing:border-box">지금 설치하기</button>
+    <button id="bliss-pwa-dismiss" style="width:100%;padding:12px;border-radius:12px;border:1px solid #e0e0e0;background:#fff;color:#999;font-size:13px;cursor:pointer;box-sizing:border-box">다음에 하기</button>
+  </div>`;
+  document.body.appendChild(d);
+  if(window.__pwaPrompt){
+    const btn=document.getElementById("bliss-pwa-install");
+    btn.style.display="block";
+    btn.onclick=()=>{window.__pwaPrompt.prompt();d.remove();};
+  }
+  document.getElementById("bliss-pwa-dismiss").onclick=()=>{localStorage.setItem("bliss_pwa_dismissed","1");d.remove();};
+}
+// 앱 로그인 후 감지 (mob-hdr = 앱 화면 헤더)
+let _pwaTimer=null;
+const _obs=new MutationObserver(()=>{
+  if(document.querySelector(".mob-hdr")&&!_pwaTimer){
+    _pwaTimer=setTimeout(blissShowPWA,3000);
+  }
+});
+_obs.observe(document.body,{childList:true,subtree:true});
 </script></body></html>
 
