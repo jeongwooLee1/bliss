@@ -166,7 +166,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.21";
+const BLISS_V = "2.69.22";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -3110,7 +3110,7 @@ ${naverText}
   }
 
   return (
-    <div className="ov" onClick={onClose} style={{alignItems:"flex-start",padding:"20px 16px",overflow:"auto",WebkitOverflowScrolling:"touch"}}>
+    <div className="ov" onClick={onClose} style={{alignItems:"flex-start",padding:"20px 16px",overflowY:"auto",overflowX:"hidden",WebkitOverflowScrolling:"touch"}}>
       <div ref={modalRef} className="modal-res" onClick={e=>e.stopPropagation()} style={{background:"#fff",
         borderRadius:14,border:"1px solid #ecedf2",
         width:"90%",maxWidth:560,margin:"0 auto",
