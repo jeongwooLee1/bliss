@@ -978,10 +978,19 @@ def poll_unscraped():
             headers=HEADERS, timeout=10
         )
         rows2 = r2.json() if r2.ok else []
+        # request_msg 있는데 selected_tags 비어있는 것 (AI 분석 안 된 것)
+        r3 = requests.get(
+            f"{SUPABASE_URL}/rest/v1/reservations"
+            f"?source=eq.naver&is_scraping_done=eq.true"
+            f"&selected_tags=eq.%5B%5D&not.request_msg=eq."
+            f"&select=id,reservation_id,bid&limit=50",
+            headers=HEADERS, timeout=10
+        )
+        rows3 = r3.json() if r3.ok else []
         # 중복 제거 후 합치기
         seen = set()
         rows = []
-        for row in rows1 + rows2:
+        for row in rows1 + rows2 + rows3:
             if row["id"] not in seen:
                 seen.add(row["id"])
                 rows.append(row)
