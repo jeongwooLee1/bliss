@@ -268,15 +268,15 @@ def handle_change(r, subj):
     kst = kst_now()
 
     if new_row:
-        # 변경 이메일 = 네이버 측 확정 의미 → confirmed로 처리
-        # (변경 후 별도 확정 이메일이 오지 않으므로)
+        # 변경 이메일 = 네이버 측 확정 의미 → confirmed + is_scraping_done=False → 재스크래핑 + AI 분석
         prev_status = new_row.get("status","")
         new_status = "confirmed" if prev_status not in ("cancelled","no_show") else prev_status
         db_patch(new_row["id"], {
             "status": new_status,
             "naver_confirmed_dt": datetime.now(timezone(timedelta(hours=9))).isoformat(),
+            "is_scraping_done": False,  # 반드시 재스크래핑 + AI 분석
         })
-        log.info(f"  #{new_rid} 이미 존재 → status={new_status} 으로 변경")
+        log.info(f"  #{new_rid} 이미 존재 → status={new_status}, is_scraping_done=False")
     elif old_row:
         # 구 예약 정보를 새 rid로 복사 (이름/연락처 보존)
         import uuid
