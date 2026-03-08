@@ -166,7 +166,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.26";
+const BLISS_V = "2.69.27";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -4747,7 +4747,7 @@ function SalesPage({ data, setData, userBranches, isMaster, setPage }) {
     </div>
     {showModal && <DetailedSaleForm
       reservation={{id:uid(),bid:userBranches[0],custId:null,custName:"",custPhone:"",custGender:"",
-        staffId:(data.staff||[]).find(s=>s.bid===(userBranches[0]))?.id||"",serviceId:null,date:selDate}}
+        staffId:(data.staff||[]).find(s=>s.bid===(userBranches[0]))?.id||"",serviceId:null,date:todayStr()}}
       branchId={userBranches[0]}
       onSubmit={(sale)=>{handleSave(sale);}}
       onClose={()=>_mc(()=>setShowModal(false))} data={data} setData={setData} />}
