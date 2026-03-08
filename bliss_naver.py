@@ -962,42 +962,35 @@ def _build_bid_to_biz():
         log.warning(f"bid→biz_id 로드 실패: {e}")
 
 def poll_unscraped():
-    """is_scraping_done=False 이거나 cust_name이 비어있는 naver 예약을 재스크래핑"""
+    """is_scraping_done=False 이거나 AI 분석 누락된 naver 예약을 재스크래핑"""
     if not _bid_to_biz:
         _build_bid_to_biz()
     try:
-        # is_scraping_done=False 인 것
-        r1 = requests.get(
+        # 전체 조회 후 Python에서 필터 (Supabase 빈배열 필터 부정확 문제 회피)
+        r_all = requests.get(
             f"{SUPABASE_URL}/rest/v1/reservations"
-            f"?source=eq.naver&is_scraping_done=eq.false"
-            f"&select=id,reservation_id,bid&limit=50",
-            headers=HEADERS, timeout=10
+            f"?source=eq.naver"
+            f"&select=id,reservation_id,bid,is_scraping_done,cust_name,selected_tags,request_msg"
+            f"&limit=500",
+            headers=HEADERS, timeout=15
         )
-        rows1 = r1.json() if r1.ok else []
-        # cust_name이 비어있는 것 (is_scraping_done=True라도)
-        r2 = requests.get(
-            f"{SUPABASE_URL}/rest/v1/reservations"
-            f"?source=eq.naver&cust_name=eq.&is_scraping_done=eq.true"
-            f"&select=id,reservation_id,bid&limit=50",
-            headers=HEADERS, timeout=10
-        )
-        rows2 = r2.json() if r2.ok else []
-        # request_msg 있는데 selected_tags 비어있는 것 (AI 분석 안 된 것)
-        r3 = requests.get(
-            f"{SUPABASE_URL}/rest/v1/reservations"
-            f"?source=eq.naver&is_scraping_done=eq.true"
-            f"&selected_tags=eq.%5B%5D&not.request_msg=eq."
-            f"&select=id,reservation_id,bid&limit=50",
-            headers=HEADERS, timeout=10
-        )
-        rows3 = r3.json() if r3.ok else []
-        # 중복 제거 후 합치기
+        all_rows = r_all.json() if r_all.ok else []
         seen = set()
         rows = []
-        for row in rows1 + rows2 + rows3:
-            if row["id"] not in seen:
-                seen.add(row["id"])
-                rows.append(row)
+        for row in all_rows:
+            reason = None
+            if not row.get("is_scraping_done"):
+                reason = "scraping_todo"
+            elif not (row.get("cust_name") or "").strip():
+                reason = "no_name"
+            elif (row.get("request_msg") or "").strip() and not (row.get("selected_tags") or []):
+                reason = "ai_missing"
+            if reason:
+                if row["id"] not in seen:
+                    seen.add(row["id"])
+                    rows.append(row)
+        if rows:
+            log.info(f"  poll_unscraped: {len(rows)}건 감지")
     except Exception as e:
         log.warning(f"미스크래핑 폴링 실패: {e}")
         return
