@@ -868,7 +868,7 @@ def ai_analyze_reservation(rid: str, request_msg: str, owner_comment: str,
 
         try:
             resp = requests.post(
-                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}",
+                f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}",
                 json={"contents": [{"parts": [{"text": prompt}]}], "generationConfig": {"temperature": 0}},
                 timeout=30
             )
@@ -881,10 +881,15 @@ def ai_analyze_reservation(rid: str, request_msg: str, owner_comment: str,
                 ai_gender  = result.get("gender", "").strip().upper()
                 if ai_gender not in ("F", "M"):
                     ai_gender = ""
+                log.info(f"  🤖 Gemini 응답 ok: tags={ai_tag_ids} svcs={ai_svc_ids} gender={ai_gender}")
             else:
-                log.warning(f"  #{rid} Gemini API 오류: {resp.status_code}")
+                err_msg = f"Gemini API 오류 #{rid}: {resp.status_code} {resp.text[:200]}"
+                log.warning(err_msg)
+                _report_heartbeat(last_error=err_msg)  # server_logs에 기록
         except Exception as e:
-            log.warning(f"  #{rid} AI 분석 실패: {e}")
+            err_msg = f"AI 분석 실패 #{rid}: {e}"
+            log.warning(err_msg)
+            _report_heartbeat(last_error=err_msg)
 
     # ── 최종 태그 계산 ────────────────────────────────────────────────────────
     # 기존 시스템 태그 보존 + AI 태그 추가 (중복 제거)
