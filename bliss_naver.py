@@ -1048,11 +1048,11 @@ def gmail_thread():
                         if not is_processed(uid_str):
                             _proc_uid(mail, uid, uid_str)
 
-                time.sleep(15)
+                time.sleep(5)
 
         except Exception as e:
             log.error(f"Gmail 오류: {e}")
-            time.sleep(30)
+            time.sleep(10)
         finally:
             try: mail.logout()
             except: pass
@@ -1122,10 +1122,10 @@ if __name__ == "__main__":
 
 
     while True:
-        time.sleep(60)
+        time.sleep(20)
 
-        # ── 미스크래핑 예약 폴링 (5분마다) ──
-        if int(time.time()) % 300 < 60:
+        # ── 미스크래핑 예약 폴링 (1분마다) ──
+        if int(time.time()) % 60 < 20:
             poll_unscraped()
 
         # ── Watchdog: 죽은 스레드 자동 재시작 ──
