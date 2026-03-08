@@ -641,8 +641,7 @@ def scraper_thread():
                     log.warning(f"  #{rid} 3회 실패 → 영구 스킵")
                 else:
                     log.warning(f"  #{rid} 스크래핑 실패 ({fail_counts[rid]}/3)")
-                task_queue.task_done()
-                continue
+                continue  # finally에서 task_done() 처리
 
             # 성별 추론 (AI가 서비스 매칭하므로 gender만 추출)
             svc_str = " ".join(raw.get("services", []))
