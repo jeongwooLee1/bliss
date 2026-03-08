@@ -324,18 +324,20 @@ def handle_confirm(rid):
     log.info(f"  confirmed: #{rid}")
 
 def handle_cancel(rid):
-    """취소 이메일: 상태만 cancelled로 변경. 이름/연락처 절대 건드리지 않음"""
+    """취소 이메일: naver_cancelled + naver_cancelled_dt 기록"""
     row = db_get(rid)
     if not row:
         log.warning(f"  DB #{rid} 없음")
         return
-    if row["status"] == "cancelled":
-        log.info(f"  #{rid} 이미 cancelled")
+    if row["status"] == "naver_cancelled" and (row.get("naver_cancelled_dt") or "").strip():
+        log.info(f"  #{rid} 이미 취소 완료")
         return
+    kst = kst_now()
     db_patch(row["id"], {
-        "status": "cancelled",
+        "status": "naver_cancelled",
+        "naver_cancelled_dt": kst,  # 반드시 기록 → 잘못된취소 감지와 구분
     })
-    log.info(f"  cancelled: #{rid}")
+    log.info(f"  naver_cancelled: #{rid}")
 
 def handle_new(parsed, subj):
     """신규 접수: DB 저장 후 즉시 scrape_queue 추가"""
