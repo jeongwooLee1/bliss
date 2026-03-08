@@ -166,7 +166,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.20";
+const BLISS_V = "2.69.21";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -2388,15 +2388,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                     const t=e.touches[0];const rect=e.currentTarget.getBoundingClientRect();
                     const y=t.clientY-rect.top;const ri=Math.floor(y/rowH);
                     setHoverCell({roomId:room.id,rowIdx:ri});
-                    cellLongPress.current={moved:false};
-                    cellLongPress.current.timer=setTimeout(()=>{
-                      if(!cellLongPress.current?.moved){
-                        try{navigator.vibrate&&navigator.vibrate(30)}catch(ex){}
-                        const time=yToTime(y);
-                        setModalData({roomId:room.id,bid:room.branch_id,time,date:selDate});
-                        setShowModal(true);setHoverCell(null);
-                      }
-                    },500);
+                    cellLongPress.current={moved:false,y,room};
                   }}
                   onTouchMove={e=>{
                     if(cellLongPress.current)cellLongPress.current.moved=true;
@@ -2406,7 +2398,15 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                     const y=t.clientY-rect.top;const ri=Math.floor(y/rowH);
                     setHoverCell({roomId:room.id,rowIdx:ri});
                   }}
-                  onTouchEnd={()=>{clearTimeout(cellLongPress.current?.timer);cellLongPress.current=null;setTimeout(()=>setHoverCell(null),300)}}
+                  onTouchEnd={()=>{
+                    const lp=cellLongPress.current;cellLongPress.current=null;
+                    if(lp&&!lp.moved){
+                      const time=yToTime(lp.y);
+                      setModalData({roomId:lp.room.id,bid:lp.room.branch_id,time,date:selDate});
+                      setShowModal(true);
+                    }
+                    setTimeout(()=>setHoverCell(null),300);
+                  }}
                 >
                   {/* Hover/touch highlight */}
                   {hoverCell?.roomId===room.id && hoverCell.rowIdx>=0 && <div style={{position:"absolute",top:hoverCell.rowIdx*rowH,left:0,right:0,height:rowH,background:"rgba(124,124,200,0.12)",borderTop:"1px solid rgba(124,124,200,0.3)",borderBottom:"1px solid rgba(124,124,200,0.3)",zIndex:1,pointerEvents:"none",transition:"top 0.05s ease"}}/>}
