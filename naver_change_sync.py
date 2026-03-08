@@ -206,9 +206,6 @@ def upsert_reservation(parsed, status="pending", memo_suffix=None):
         if parsed.get("date") and not existing.get("date"): update["date"] = parsed["date"]
         if parsed.get("time") and not existing.get("time"): update["time"] = parsed["time"]
         if status and existing.get("status") != status: update["status"] = status
-        if memo_suffix:
-            old_memo = existing.get("memo") or ""
-            update["memo"] = (old_memo + "\n" if old_memo else "") + f"{kst} {memo_suffix}"
         if update:
             db_patch(existing["id"], update)
             log.info(f"  updated: #{rid} {update}")
@@ -277,7 +274,6 @@ def handle_change(r, subj):
         db_patch(new_row["id"], {
             "status": new_status,
             "naver_confirmed_dt": datetime.now(timezone(timedelta(hours=9))).isoformat(),
-            "memo": (new_row.get("memo") or "") + f"\n{kst} 네이버변경→확정"
         })
         log.info(f"  #{new_rid} 이미 존재 → status={new_status} 으로 변경")
     elif old_row:
@@ -288,7 +284,6 @@ def handle_change(r, subj):
         new_rec["id"] = "nv_" + uuid.uuid4().hex[:12]
         new_rec["status"] = "confirmed"  # 변경 이메일 = 확정
         new_rec["naver_confirmed_dt"] = datetime.now(timezone(timedelta(hours=9))).isoformat()
-        new_rec["memo"] = (new_rec.get("memo") or "") + f"\n{kst} 네이버변경→확정"
         requests.post(f"{SUPABASE_URL}/rest/v1/reservations", headers=HEADERS, json=new_rec).raise_for_status()
         log.info(f"  created #{new_rid} from #{old_rid} (이름={new_rec.get('cust_name') or '미정'}) status=confirmed")
     else:
@@ -296,7 +291,7 @@ def handle_change(r, subj):
         log.warning(f"  구 예약 #{old_rid} DB 없음 → 새로 생성 시도")
         parsed = parse_new_reservation(subj + " " + r.get("body", ""))
         parsed["reservation_id"] = new_rid
-        upsert_reservation(parsed, status="confirmed", memo_suffix="네이버변경→확정(원본없음)")
+        upsert_reservation(parsed, status="confirmed")
 
     # 구 예약 삭제
     if old_row:
@@ -335,11 +330,8 @@ def handle_cancel(rid):
     if row["status"] == "cancelled":
         log.info(f"  #{rid} 이미 cancelled")
         return
-    kst = kst_now()
-    old_memo = row.get("memo") or ""
     db_patch(row["id"], {
         "status": "cancelled",
-        "memo": (old_memo + "\n" if old_memo else "") + f"{kst} 네이버 취소"
     })
     log.info(f"  cancelled: #{rid}")
 
