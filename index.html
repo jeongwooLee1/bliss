@@ -737,6 +737,32 @@ function App() {
         </div>
       </main>
     </div>
+    {showPwaBanner && (
+      <div style={{position:"fixed",inset:0,zIndex:99999,display:"flex",alignItems:"flex-end",background:"rgba(0,0,0,.5)"}}>
+        <div style={{background:"#fff",borderRadius:"20px 20px 0 0",padding:"28px 24px 48px",width:"100%"}}>
+          <div style={{textAlign:"center",marginBottom:20}}>
+            <div style={{fontSize:48}}>📱</div>
+            <div style={{fontSize:18,fontWeight:800,color:"#222",margin:"8px 0 6px"}}>홈 화면에 추가하기</div>
+            <div style={{fontSize:13,color:"#888",lineHeight:1.7}}>Bliss를 홈 화면에 추가하면<br/>앱처럼 빠르게 실행할 수 있어요</div>
+          </div>
+          <div style={{background:"#f5f5ff",borderRadius:12,padding:"14px 16px",marginBottom:16,fontSize:12,color:"#555",lineHeight:1.9}}>
+            <b style={{color:"#7c7cc8"}}>iPhone (Safari)</b><br/>
+            하단 공유 버튼 → <b>"홈 화면에 추가"</b> 탭<br/><br/>
+            <b style={{color:"#7c7cc8"}}>Android (Chrome)</b><br/>
+            우측 상단 메뉴 → <b>"홈 화면에 추가"</b> 탭
+          </div>
+          {window.__pwaInstallPrompt &&
+            <button onClick={()=>{window.__pwaInstallPrompt.prompt();setShowPwaBanner(false);}}
+              style={{width:"100%",padding:14,borderRadius:12,border:"none",background:"linear-gradient(135deg,#7c7cc8,#9b9be0)",color:"#fff",fontSize:15,fontWeight:800,cursor:"pointer",fontFamily:"inherit",marginBottom:10,display:"block"}}>
+              지금 설치하기
+            </button>}
+          <button onClick={()=>{setShowPwaBanner(false);localStorage.setItem("bliss_pwa_dismissed","1");}}
+            style={{width:"100%",padding:12,borderRadius:12,border:"1px solid #e0e0e0",background:"#fff",color:"#999",fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>
+            다음에 하기
+          </button>
+        </div>
+      </div>
+    )}
   );
 }
 
