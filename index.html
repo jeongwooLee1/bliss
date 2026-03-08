@@ -166,7 +166,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.14";
+const BLISS_V = "2.69.15";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -332,7 +332,14 @@ function _mc(cb) {
 
 // ─── App ───
 function App() {
-  const [phase, setPhase] = useState("loading"); // loading, login, super, app
+  const [phase, setPhase] = useState("loading");
+  const [showPwaBanner, setShowPwaBanner] = React.useState(false);
+  React.useEffect(()=>{
+    const isStandalone=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone;
+    const installed=localStorage.getItem("bliss_pwa_installed");
+    const dismissed=localStorage.getItem("bliss_pwa_dismissed");
+    if(!isStandalone&&!installed&&!dismissed&&phase==="app"){setTimeout(()=>setShowPwaBanner(true),3000);}
+  },[phase]); // loading, login, super, app
   const [allUsers, setAllUsers] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [currentBizId, setCurrentBizId] = useState(null);
@@ -674,13 +681,6 @@ function App() {
   };
 
   if (phase === "loading") return <Loading msg={loadMsg} />;
-  const [showPwaBanner, setShowPwaBanner] = React.useState(false);
-  React.useEffect(()=>{
-    const isStandalone=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone;
-    const installed=localStorage.getItem("bliss_pwa_installed");
-    const dismissed=localStorage.getItem("bliss_pwa_dismissed");
-    if(!isStandalone&&!installed&&!dismissed&&phase==="app"){setTimeout(()=>setShowPwaBanner(true),3000);}
-  },[phase]);
 
   if (phase === "login") return <Login users={allUsers} onLogin={handleLogin} onSignup={async (newUser) => {
     setAllUsers(prev => [...prev, newUser]);
