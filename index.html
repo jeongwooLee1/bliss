@@ -159,7 +159,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.12";
+const BLISS_V = "2.69.13";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -5435,13 +5435,11 @@ function AdminPlaces({ data, setData, bizId }) {
               {/* 네이버예약 칼럼수 */}
               <div style={{display:"flex",alignItems:"center",padding:"0 16px",minHeight:44}}>
                 <span style={{width:80,fontSize:12,color:"#888",flexShrink:0,fontWeight:500,lineHeight:1.2}}>네이버예약<br/>칼럼수</span>
-                <div style={{flex:1,display:"flex",alignItems:"center",gap:6,padding:"8px 0"}}>
-                  {[1,2,3,4,5].map(n=>(
-                    <button key={n} onClick={()=>updateField(b.id,"naverColCount",n)}
-                      style={{width:34,height:34,borderRadius:8,border:"none",fontSize:14,fontWeight:700,cursor:"pointer",fontFamily:"inherit",
-                        background:(b.naverColCount||1)===n?"#7c7cc8":"#f2f2f7",
-                        color:(b.naverColCount||1)===n?"#fff":"#888"}}>{n}</button>
-                  ))}
+                <div style={{flex:1,display:"flex",alignItems:"center",gap:8,padding:"8px 0"}}>
+                  <input type="number" min={0} value={b.naverColCount??1}
+                    onChange={e=>updateField(b.id,"naverColCount",Math.max(0,parseInt(e.target.value)||0))}
+                    style={{width:64,padding:"7px 10px",fontSize:15,fontWeight:700,borderRadius:8,border:"1px solid #d0d0d0",textAlign:"center",outline:"none",fontFamily:"inherit"}}/>
+                  <span style={{fontSize:11,color:"#bbb"}}>0 = 네이버 미사용</span>
                 </div>
               </div>
             </div>
