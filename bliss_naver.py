@@ -1075,13 +1075,18 @@ if __name__ == "__main__":
                 local_ip = socket.gethostbyname(socket.getfqdn())
             except Exception:
                 local_ip = "unknown"
-            server_id = f"bliss-naver-{local_ip}"
+            # 서버 구분: Oracle=10.0.0.x, naver-sync=그 외
+            if local_ip.startswith("10.0.0."):
+                server_label = "oracle(158.179.174.30)"
+            else:
+                server_label = "naver-sync(27.1.36.102)"
+            server_id = f"bliss-naver-{server_label}"
             requests.post(
                 f"{SUPABASE_URL}/rest/v1/server_logs",
                 headers={**HEADERS, "Prefer": "resolution=merge-duplicates,return=minimal"},
                 json={
                     "id": server_id,
-                    "server": f"{hostname}({local_ip})",
+                    "server": server_label,
                     "scraper_status": scraper_st,
                     "gmail_status": gmail_st,
                     "queue_size": q_size,
