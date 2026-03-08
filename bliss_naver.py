@@ -209,11 +209,15 @@ def db_cancel(rid: str):
         if cur_status == "naver_cancelled":
             log.info(f"  ⏭  #{rid} 이미 취소 상태")
             return
+        from datetime import datetime, timezone, timedelta
+        kst_now = datetime.now(timezone(timedelta(hours=9))).isoformat()
         requests.patch(
             f"{SUPABASE_URL}/rest/v1/reservations?id=eq.{rows[0]['id']}",
-            headers=HEADERS, json={"status": "naver_cancelled"}, timeout=10
+            headers=HEADERS,
+            json={"status": "naver_cancelled", "naver_cancelled_dt": kst_now},
+            timeout=10
         )
-        log.info(f"  ✅ #{rid} 취소 처리")
+        log.info(f"  ✅ #{rid} 취소 처리 (cancelled_dt={kst_now[:16]})")
     else:
         # DB에 없음 → 스크래핑해서 취소 상태로 저장 (취소 메일이 접수 메일보다 먼저 도착한 경우)
         log.warning(f"  #{rid} DB 없음 → 스크래핑 후 취소 등록")
