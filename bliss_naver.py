@@ -101,6 +101,7 @@ def load_cache():
     r2 = requests.get(f"{SUPABASE_URL}/rest/v1/services?select=*&business_id=eq.{BUSINESS_ID}", headers=HEADERS, timeout=10)
     _services = r2.json() if r2.ok else []
     log.info(f"캐시 로드: 지점 {len(_branches)}개 / 서비스 {len(_services)}개")
+    _build_bid_to_biz()
 
 # ─── 고객 매칭 ──────────────────────────────────────────────────────────────
 def find_cust_by_phone(phone: str, business_id: str):
@@ -932,6 +933,63 @@ def ai_analyze_reservation(rid: str, request_msg: str, owner_comment: str,
         log.warning(f"  #{rid} AI 결과 저장 실패: {e}")
 
 
+# ─── 미스크래핑 예약 폴링 ─────────────────────────────────────────────────────
+
+# bid → naver_biz_id 캐시 (최초 1회 load_cache에서 채움)
+_bid_to_biz: dict = {}
+
+def _build_bid_to_biz():
+    """branches 테이블에서 bid→naver_biz_id 매핑 생성"""
+    global _bid_to_biz
+    try:
+        r = requests.get(
+            f"{SUPABASE_URL}/rest/v1/branches?select=id,naver_biz_id",
+            headers=HEADERS, timeout=10
+        )
+        if r.ok:
+            _bid_to_biz = {b["id"]: b["naver_biz_id"] for b in r.json() if b.get("naver_biz_id")}
+            log.info(f"bid→biz_id 매핑 로드: {len(_bid_to_biz)}개")
+    except Exception as e:
+        log.warning(f"bid→biz_id 로드 실패: {e}")
+
+def poll_unscraped():
+    """is_scraping_done=False 인 naver 예약을 찾아 스크래핑 큐에 추가"""
+    if not _bid_to_biz:
+        _build_bid_to_biz()
+    try:
+        r = requests.get(
+            f"{SUPABASE_URL}/rest/v1/reservations"
+            f"?source=eq.naver&is_scraping_done=eq.false"
+            f"&select=id,reservation_id,bid&limit=50",
+            headers=HEADERS, timeout=10
+        )
+        rows = r.json() if r.ok else []
+    except Exception as e:
+        log.warning(f"미스크래핑 폴링 실패: {e}")
+        return
+
+    if not rows:
+        return
+
+    log.info(f"미스크래핑 예약 {len(rows)}건 발견 → 큐 추가")
+    for row in rows:
+        rid = str(row.get("reservation_id", ""))
+        bid = row.get("bid", "")
+        biz_id = _bid_to_biz.get(bid, "")
+        if not rid or not biz_id:
+            log.warning(f"  #{row['id']} rid={rid} biz_id={biz_id} → 스킵 (정보 부족)")
+            continue
+        with queued_lock:
+            if rid in queued_set:
+                continue
+            if fail_counts.get(rid, 0) >= 3:
+                log.warning(f"  #{rid} 영구 스킵 (실패 {fail_counts[rid]}회)")
+                continue
+            queued_set.add(rid)
+            task_queue.put((rid, biz_id, "scrape", None))
+        log.info(f"  → 큐 추가: #{rid} biz={biz_id}")
+
+
 # ─── Gmail IMAP 스레드 ────────────────────────────────────────────────────────
 
 
@@ -1049,6 +1107,10 @@ if __name__ == "__main__":
 
     while True:
         time.sleep(60)
+
+        # ── 미스크래핑 예약 폴링 (5분마다) ──
+        if int(time.time()) % 300 < 60:
+            poll_unscraped()
 
         # ── Watchdog: 죽은 스레드 자동 재시작 ──
         if not t1.is_alive():
