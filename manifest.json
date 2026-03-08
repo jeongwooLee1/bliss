@@ -1,0 +1,25 @@
+{
+  "name": "Bliss 예약관리",
+  "short_name": "Bliss",
+  "description": "미용실 예약 관리 시스템",
+  "start_url": "/bliss/",
+  "scope": "/bliss/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f0f0f8",
+  "theme_color": "#7c7cc8",
+  "icons": [
+    {
+      "src": "/bliss/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/bliss/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
