@@ -246,9 +246,9 @@ def upsert_reservation(parsed, status="pending", memo_suffix=None):
                     if svc["name"] in mc or mc in svc["name"]:
                         matched_ids.append(svc["id"]); total_dur += svc.get("dur") or 0; break
             if matched_ids:
-                row["selected_services"] = matched_ids
-                row["dur"] = total_dur
-                log.info(f"  서비스 매칭: {selected_menus} -> {matched_ids}")
+                # selected_services는 bliss_naver.py AI 분석이 담당 → 여기서 세팅 안 함
+                row["dur"] = total_dur  # 시간만 계산
+                log.info(f"  시간 계산: {selected_menus} -> dur={total_dur}분 (서비스는 AI 담당)")
         requests.post(f"{SUPABASE_URL}/rest/v1/reservations", headers=HEADERS, json=row).raise_for_status()
         br_name = branch["short"] if branch else "?"
         log.info(f"  created: #{rid} [{br_name}] {parsed.get('date','')} {parsed.get('time','')} name={row['cust_name'] or '(미정)'}")
