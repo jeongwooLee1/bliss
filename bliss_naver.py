@@ -575,6 +575,7 @@ def scraper_thread():
     log.info("스크래퍼 스레드 시작")
 
     while True:
+        # ── 아이템 꺼내기 ──
         try:
             rid, biz_id, action, old_rid = task_queue.get(timeout=5)
         except Empty:
@@ -585,53 +586,51 @@ def scraper_thread():
         with queued_lock:
             queued_set.discard(rid)
 
-        # 변경 액션: 구예약(old_rid) naver_cancelled 처리
-        if action == "change" and old_rid:
-            try:
-                old_r = requests.get(
-                    f"{SUPABASE_URL}/rest/v1/reservations?reservation_id=eq.{old_rid}&select=id,status",
-                    headers=HEADERS, timeout=10
-                )
-                old_rows = old_r.json()
-                if old_rows:
-                    old_status = old_rows[0].get("status", "")
-                    if old_status != "naver_changed":
-                        requests.patch(
-                            f"{SUPABASE_URL}/rest/v1/reservations?reservation_id=eq.{old_rid}",
-                            headers={**HEADERS, "Prefer": "return=minimal"},
-                            json={"status": "naver_changed"},
-                            timeout=10
-                        )
-                        log.info(f"  🔄 변경: 구예약 #{old_rid} → naver_changed")
-                    else:
-                        log.info(f"  ⏭  구예약 #{old_rid} 이미 naver_changed")
-                else:
-                    log.info(f"  ℹ️  구예약 #{old_rid} DB에 없음 (무시)")
-            except Exception as e:
-                log.error(f"  구예약 취소 오류: {e}")
-
-        # 취소 액션: 스크래핑 후 취소 처리 (최신 데이터 저장 + 상태 취소)
-        # 단, DB에 이미 있으면 바로 취소만
-        if action == "cancel":
-            try:
-                existing_r = requests.get(
-                    f"{SUPABASE_URL}/rest/v1/reservations?reservation_id=eq.{rid}&select=id,status",
-                    headers=HEADERS, timeout=10
-                )
-                existing = existing_r.json()
-                if existing:
-                    # 있으면 바로 취소 상태로
-                    db_cancel(rid)
-                    task_queue.task_done()
-                    continue
-                # 없으면 스크래핑 후 취소 상태로 저장 (아래 공통 흐름으로)
-            except Exception as e:
-                log.error(f"  취소 확인 오류: {e}")
-                task_queue.task_done()
-                continue
-
-        # ── 스크래핑 ──
+        # ══ 단일 try/finally: get() 이후 task_done() 정확히 1회 보장 ══
         try:
+
+            # 변경 액션: 구예약 naver_changed 처리
+            if action == "change" and old_rid:
+                try:
+                    old_r = requests.get(
+                        f"{SUPABASE_URL}/rest/v1/reservations?reservation_id=eq.{old_rid}&select=id,status",
+                        headers=HEADERS, timeout=10
+                    )
+                    old_rows = old_r.json()
+                    if old_rows:
+                        old_status = old_rows[0].get("status", "")
+                        if old_status != "naver_changed":
+                            requests.patch(
+                                f"{SUPABASE_URL}/rest/v1/reservations?reservation_id=eq.{old_rid}",
+                                headers={**HEADERS, "Prefer": "return=minimal"},
+                                json={"status": "naver_changed"},
+                                timeout=10
+                            )
+                            log.info(f"  🔄 변경: 구예약 #{old_rid} → naver_changed")
+                        else:
+                            log.info(f"  ⏭  구예약 #{old_rid} 이미 naver_changed")
+                    else:
+                        log.info(f"  ℹ️  구예약 #{old_rid} DB에 없음 (무시)")
+                except Exception as e:
+                    log.error(f"  구예약 처리 오류: {e}")
+
+            # 취소 액션: DB에 이미 있으면 바로 취소 처리 후 스크래핑 스킵
+            if action == "cancel":
+                try:
+                    existing_r = requests.get(
+                        f"{SUPABASE_URL}/rest/v1/reservations?reservation_id=eq.{rid}&select=id,status",
+                        headers=HEADERS, timeout=10
+                    )
+                    existing = existing_r.json()
+                    if existing:
+                        db_cancel(rid)
+                        return  # finally → task_done() 후 루프 continue
+                    # 없으면 아래 스크래핑으로 진행해서 저장 후 취소 상태로
+                except Exception as e:
+                    log.error(f"  취소 확인 오류: {e}")
+                    return  # finally → task_done() 후 루프 continue
+
+            # ── 스크래핑 ──
             raw = scrape_reservation(biz_id, rid)
 
             if not raw:
@@ -641,9 +640,9 @@ def scraper_thread():
                     log.warning(f"  #{rid} 3회 실패 → 영구 스킵")
                 else:
                     log.warning(f"  #{rid} 스크래핑 실패 ({fail_counts[rid]}/3)")
-                continue  # finally에서 task_done() 처리
+                return  # finally → task_done()
 
-            # 성별 추론 (AI가 서비스 매칭하므로 gender만 추출)
+            # 성별 추론
             svc_str = " ".join(raw.get("services", []))
             gender = "M" if "남)" in svc_str else ("F" if "여)" in svc_str else "")
 
@@ -666,28 +665,23 @@ def scraper_thread():
                 except:
                     pass
 
-            # memo 필드는 직원 메모 전용 → 스크래퍼가 건드리지 않음 (BLISS_PRESERVE_FIELDS에 포함)
-            # 네이버 정보는 requestMsg, ownerComment, isPrepaid 등 별도 필드에 저장됨
-
             # 상태 결정
-            # 취소 메일인데 여기까지 온 경우(DB 없어서 스크래핑 진행): 취소 상태 강제
             if action == "cancel":
                 status = "naver_cancelled"
             else:
-                # Naver API 상태 우선 (변경 메일도 최신 상태 반영)
                 status = raw.get("status", "confirmed")
 
-            # 고객 전화번호로 기존 고객 조회 → cust_id 연동
+            # 고객 전화번호로 기존 고객 조회
             phone = raw.get("phone", "")
             visit_count = raw.get("visit_count", 0)
             matched_cust = find_cust_by_phone(phone, BUSINESS_ID) if phone else None
             if matched_cust:
                 matched_cust_id = matched_cust["id"]
-                is_new = False  # DB에 고객 있으면 신규 아님
+                is_new = False
                 log.info(f"  고객 매칭: {matched_cust['name']} ({phone}) → cust_id={matched_cust_id}")
             else:
                 matched_cust_id = None
-                is_new = visit_count == 0  # 고객 없으면 방문횟수로 판단
+                is_new = visit_count == 0
 
             db_data = {
                 "bid":                bid,
@@ -700,11 +694,8 @@ def scraper_thread():
                 "time":               raw.get("time", ""),
                 "dur":                45,
                 "status":             status,
-                "selected_services":  [],  # AI 분석이 채움
+                "selected_services":  [],
                 "is_new_cust":        is_new,
-                # Naver 전용 필드 (모두 최신값으로 덮어씌움)
-                # request_msg: 시술메뉴 + 스타일리스트 + 고객요청 + 모든 폼 응답 합산
-                # 주차여부 같은 운영 안내 폼은 제외 (차량번호 기재 포함된 긴 안내문)
                 "request_msg":        _build_request_msg(raw),
                 "owner_comment":      raw.get("owner_comment", ""),
                 "is_prepaid":         raw.get("is_prepaid", False),
@@ -720,7 +711,6 @@ def scraper_thread():
 
             db_upsert(rid, db_data)
 
-            # 스크래핑 완료 후 AI 자동 분석
             ai_analyze_reservation(
                 rid=rid,
                 request_msg=db_data.get("request_msg", ""),
@@ -734,8 +724,7 @@ def scraper_thread():
         except Exception as e:
             log.error(f"  #{rid} 처리 오류: {e}", exc_info=True)
         finally:
-            task_queue.task_done()
-
+            task_queue.task_done()  # get() 이후 무조건 1회 호출
 
 
 # ─── AI 자동 분석 ─────────────────────────────────────────────────────────────
@@ -1059,6 +1048,18 @@ if __name__ == "__main__":
 
     while True:
         time.sleep(60)
+
+        # ── Watchdog: 죽은 스레드 자동 재시작 ──
+        if not t1.is_alive():
+            log.error("⚠️  스크래퍼 스레드 DEAD → 재시작")
+            t1 = threading.Thread(target=scraper_thread, daemon=True, name="scraper")
+            t1.start()
+
+        if not t2.is_alive():
+            log.error("⚠️  Gmail 스레드 DEAD → 재시작")
+            t2 = threading.Thread(target=gmail_thread, daemon=True, name="gmail")
+            t2.start()
+
         log.info(
             f"상태: 큐 대기 {task_queue.qsize()}건 "
             f"| scraper={'alive' if t1.is_alive() else 'DEAD'} "
