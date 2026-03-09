@@ -3631,7 +3631,7 @@ return f.requestMsg.split("\n").filter(l=>l.trim()).map((line,i)=>{
                   });
                 })()}
                 {/* 직원 메모 */}
-                {f.ownerComment && <div style={{display:"flex",alignItems:"baseline",gap:8,padding:"3px 0",borderBottom:"1px solid #E8F5E9",minHeight:26}}>
+                {f.ownerComment && naverColShow["직원메모"] !== false && <div style={{display:"flex",alignItems:"baseline",gap:8,padding:"3px 0",borderBottom:"1px solid #E8F5E9",minHeight:26}}>
                   <span style={{fontSize:11,color:"#888",fontWeight:500,minWidth:72,flexShrink:0}}>직원메모</span>
                   <span style={{fontSize:12,fontWeight:400,color:"#1565C0",background:"#E3F2FD",borderRadius:4,padding:"1px 8px",lineHeight:1.4,wordBreak:"break-word"}}>{f.ownerComment}</span>
                 </div>}
@@ -3715,7 +3715,7 @@ return f.requestMsg.split("\n").filter(l=>l.trim()).map((line,i)=>{
 }
 
 // ═══════════════════════════════════════════
-// Bliss v2.67.5 - realtime extra/discount totals
+// Bliss v2.67.6 - realtime extra/discount totals
 const SaleSvcRow = React.memo(function SaleSvcRow({ id, name, dur, checked, amount, defPrice, toggle, setAmt }) {
   const disabled = defPrice === 0;
   const [localAmt, setLocalAmt] = useState(amount || "");
