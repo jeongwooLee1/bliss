@@ -701,7 +701,11 @@ def _process_one(rid, biz_id, action, old_rid):
             "no_show_count":      raw.get("no_show_count", 0),
             "naver_reg_dt":       raw.get("reg_datetime", ""),
             "naver_confirmed_dt": raw.get("confirmed_datetime", ""),
-            "naver_cancelled_dt": raw.get("cancelled_datetime", ""),
+            # cancelled_datetime이 없으면 현재 시각으로 채움 (빈값이면 "잘못된취소" 감지 로직에 걸림)
+        "naver_cancelled_dt": raw.get("cancelled_datetime", "") or (
+            datetime.now(timezone(timedelta(hours=9))).isoformat()
+            if raw.get("status") == "naver_cancelled" else ""
+        ),
             "is_scraping_done":   True,
         }
 
