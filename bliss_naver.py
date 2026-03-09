@@ -147,16 +147,26 @@ def db_upsert(rid: str, data: dict):
     if existing:
         # ── 업데이트: Naver API 최신 데이터로 전부 덮어씌움 ──
         row = existing[0]
-        # naver_cancelled 상태인 예약을 confirmed로 되살리지 않음
-        # 단, naver_cancelled_dt(취소일시)가 실제로 있을 때만 차단
-        # (취소일시 없이 잘못 naver_cancelled로 저장된 케이스는 복원 허용)
-        if row.get("status") == "naver_cancelled" and data.get("status") == "confirmed":
+        cur_status = row.get("status", "")
+        new_status = data.get("status", "")
+
+        # [보호1] DB=naver_cancelled → confirmed 재생성: 취소일시 있을 때만 차단
+        if cur_status == "naver_cancelled" and new_status == "confirmed":
             cancelled_dt = (row.get("naver_cancelled_dt") or "").strip()
             if cancelled_dt:
                 log.info(f"  ⏭  #{rid} 이미 naver_cancelled (취소일시:{cancelled_dt}) → confirmed 재생성 차단")
                 return
             else:
                 log.info(f"  ⚠️  #{rid} naver_cancelled이지만 취소일시 없음 → confirmed 복원 허용")
+
+        # [보호2] DB=confirmed(확정됨) → naver_cancelled 덮어쓰기: cancelled_dt 없으면 차단
+        # 네이버 API가 cancelled_datetime 없이 취소코드를 반환하는 오류 케이스 방어
+        if cur_status == "confirmed" and new_status == "naver_cancelled":
+            new_cancelled_dt = (data.get("naver_cancelled_dt") or "").strip()
+            if not new_cancelled_dt:
+                log.warning(f"  ⛔ #{rid} confirmed→naver_cancelled 차단: cancelled_dt 없음 (API 오류 의심)")
+                # status와 cancelled_dt 필드만 제거하고 나머지(이름/시간 등)는 업데이트
+                data = {k: v for k, v in data.items() if k not in ("status", "naver_cancelled_dt")}
         # PRESERVE_FIELDS는 Bliss에서 수동 설정한 값 보존
         # 단, cust_id가 비어있는 경우엔 스크래퍼 매칭값으로 채움
         existing_cust_id = (row.get("cust_id") or "").strip()
