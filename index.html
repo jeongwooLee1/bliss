@@ -3240,7 +3240,7 @@ ${naverText}
     <div className="ov" onClick={onClose} style={{alignItems:"flex-start",padding:"8px 0",overflowY:"auto",overflowX:"hidden",WebkitOverflowScrolling:"touch"}}>
       <div ref={modalRef} className="modal-res" onClick={e=>e.stopPropagation()} style={{background:"#fff",
         borderRadius:14,border:"1px solid #ecedf2",
-        width:"100%",maxWidth:"100%",margin:0,
+        margin:"0 auto",
         animation:"slideUp .4s cubic-bezier(.22,1,.36,1)",
         boxShadow:"0 20px 60px rgba(0,0,0,.14),0 4px 16px rgba(0,0,0,.06)"}}>
         {/* ═══ Chrome-style Tabs ═══ */}
@@ -3707,7 +3707,7 @@ ${naverText}
 }
 
 // ═══════════════════════════════════════════
-// Bliss v2.67.2 - realtime extra/discount totals
+// Bliss v2.67.3 - realtime extra/discount totals
 const SaleSvcRow = React.memo(function SaleSvcRow({ id, name, dur, checked, amount, defPrice, toggle, setAmt }) {
   const disabled = defPrice === 0;
   const [localAmt, setLocalAmt] = useState(amount || "");
@@ -4624,7 +4624,7 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
     <div className="card tw">
       <table style={{tableLayout:"fixed",width:"100%"}}><thead><tr>
         <th style={{width:68}}>날짜</th><th style={{width:50}}>시간</th><th style={{width:52}}>매장</th><th style={{width:64}}>고객</th><th style={{width:28,textAlign:"center"}}>성별</th><th style={{width:84}}>연락처</th><th style={{width:"14%"}}>시술</th><th style={{width:46}}>시술자</th><th style={{width:90,color:"#03C75A"}}>예약번호</th><th style={{width:50,color:"#e65100"}}>예약금</th><th style={{width:46}}>상태</th>
-        <th style={{width:90,background:"#F1F8E9",padding:"3px 4px",transition:"width 0.15s",overflow:"hidden"}}>
+        <th style={{width:naverColShow["직원메모"]?90:0,background:"#F1F8E9",padding:naverColShow["직원메모"]?"3px 4px":"0",transition:"width 0.15s",overflow:"hidden"}}>
             <label style={{display:"flex",alignItems:"center",gap:4,cursor:"pointer",fontSize:10,fontWeight:600,color:"#37474F",whiteSpace:"nowrap",overflow:"hidden"}}>
               <input type="checkbox" checked={!!naverColShow["직원메모"]} onChange={()=>toggleNaverCol("직원메모")}
                 style={{width:11,height:11,flexShrink:0,accentColor:"#37474F",cursor:"pointer"}}/>
@@ -4692,11 +4692,11 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
                 const p = ST_PILL[r.status] || {bg:"#F5F5F5", color:"#999", label:r.status};
                 return <span style={{fontSize:10,fontWeight:700,background:p.bg,color:p.color,borderRadius:4,padding:"2px 6px",whiteSpace:"nowrap"}}>{p.label}</span>;
               })()}</td>
-              <td style={{fontSize:10,color:"#555",maxWidth:90,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",background:"#F1F8E9",padding:"4px 6px"}} title={r.ownerComment||""}>
+              <td style={{fontSize:10,color:"#555",maxWidth:naverColShow["직원메모"]?90:0,width:naverColShow["직원메모"]?90:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",background:"#F1F8E9",padding:naverColShow["직원메모"]?"4px 6px":"0"}} title={r.ownerComment||""}>
                   {r.ownerComment ? <span style={{background:"#ECEFF1",color:"#37474F",borderRadius:10,padding:"1px 8px",fontWeight:500,fontSize:10}}>{r.ownerComment}</span> : <span style={{color:"#ccc"}}>-</span>}
                 </td>
               {NAVER_COLS.map(col => (
-                <td key={col.key} style={{fontSize:10,color:"#555",maxWidth:90,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",background:"#F1F8E9",padding:"4px 6px"}} title={getNaverVal(r.requestMsg, col.kws)}>
+                <td key={col.key} style={{fontSize:10,color:"#555",maxWidth:naverColShow[col.key]?90:0,width:naverColShow[col.key]?90:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",background:"#F1F8E9",padding:"4px 6px"}} title={getNaverVal(r.requestMsg, col.kws)}>
                   {(() => {
                     const v = getNaverVal(r.requestMsg, col.kws);
                     if (!v) return <span style={{color:"#ccc"}}>-</span>;
