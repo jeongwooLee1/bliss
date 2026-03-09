@@ -920,10 +920,9 @@ function SuperDashboard({ superData, setSuperData, currentUser, onLogout, onEnte
           <SideContent/>
         </div>
       </div>}
-      <main className="main-c" style={{flex:1,display:"flex",flexDirection:"column",height:"100%",overflow:"hidden"}}>
+      <main className="main-c" style={{flex:1,display:"flex",flexDirection:"column",height:"100%",overflow:"hidden",paddingBottom:0}}>
         {/* Mobile header */}
         <div className="mob-hdr" style={{padding:"10px 16px",background:"#fff",borderBottom:"1px solid #e0e0e0",display:"flex",alignItems:"center",gap:12}}>
-          <button onClick={()=>setSideOpen(true)} style={{background:"none",border:"none",color:"#333",cursor:"pointer",fontSize:20,fontFamily:"inherit"}}><I name="menu" size={20}/></button>
           <span style={{fontSize:14,fontWeight:700,color:"#7c7cc8"}}>Bliss 슈퍼관리자</span>
         </div>
         <div className="page-pad" style={{flex:1,padding:24,overflow:"auto",WebkitOverflowScrolling:"touch"}}>
@@ -7366,7 +7365,10 @@ const CSS = `
   @media(max-width:768px){
     .hide-mobile{display:none!important;}
     .sidebar-d{display:none!important}
-    .main-c{margin-left:0!important}
+    .sidebar-m{display:none!important}
+    .mob-bottom-nav{display:flex!important}
+    .mob-hdr{padding-left:16px!important}
+    .main-c{margin-left:0!important;padding-bottom:56px!important}
     .page-title{font-size:15px;margin-bottom:10px}
     .page-pad{padding:8px 6px 8px!important}
     .grid2{grid-template-columns:1fr!important}
