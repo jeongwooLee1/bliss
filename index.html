@@ -258,7 +258,7 @@ const getNaverVal = (requestMsg, keywords) => {
   return "";
 };
 
-const STATUS_LABEL = { confirmed:"진행", completed:"완료", cancelled:"취소", no_show:"노쇼", pending:"확정대기", naver_cancelled:"취소", naver_changed:"변경" };
+const STATUS_LABEL = { confirmed:"진행", completed:"완료", cancelled:"취소", no_show:"노쇼", pending:"확정대기", naver_cancelled:"네이버 취소", naver_changed:"변경" };
 const DEFAULT_SOURCES = ["네이버","전화","방문","소개","인스타","카카오","기타"];
 const STATUS_KEYS = ["confirmed","completed","cancelled","no_show"];
 const STATUS_CLR_DEFAULT = { confirmed:"#5B9BD5", completed:"#6AB56A", cancelled:"#E8B830", no_show:"#E05252" , naver_cancelled:"#E6A700", naver_changed:"#9E9E9E"};
@@ -4530,7 +4530,10 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
     if (isNaver && !r.isScrapingDone) return false;
     // naver_cancelled는 별도 필터 선택 시에만 표시 (기본 all에서 제외)
     // naver_cancelled도 전체탭에 포함
-    if (statusFilter !== "all" && r.status !== statusFilter) return false;
+    if (statusFilter !== "all") {
+      const cancelGroup = statusFilter === "cancelled" && (r.status === "cancelled" || r.status === "naver_cancelled");
+      if (!cancelGroup && r.status !== statusFilter) return false;
+    }
     if (q) {
       const sq = q.toLowerCase();
       const svc = (data.services||[]).find(s=>s.id===r.serviceId);
@@ -4582,15 +4585,17 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
       const allRes = (data?.reservations||[]).filter(r=>r.type==="reservation"&&(vb==="all"?userBranches.includes(r.bid):r.bid===vb)&&inRange(r.date));
       // 카운트: 네이버 예약은 스크래핑 완료된 것만 포함 (목록과 동일 기준)
       const activeRes = allRes.filter(r=>!(r.source==="naver"||r.source==="네이버")||r.isScrapingDone);
-      const counts = {all: activeRes.length, confirmed:0, pending:0, completed:0, cancelled:0, noshow:0, naver_cancelled:0, naver_changed:0};
-      allRes.forEach(r=>{ if(counts[r.status]!==undefined) counts[r.status]++; });
+      const counts = {all: activeRes.length, confirmed:0, pending:0, completed:0, cancelled:0, noshow:0, naver_changed:0};
+      allRes.forEach(r=>{
+        if(r.status==="naver_cancelled") counts.cancelled++;
+        else if(counts[r.status]!==undefined) counts[r.status]++;
+      });
       const tabs = [
         {k:"all", label:"전체"},
         {k:"confirmed", label:"확정"},
         {k:"pending", label:"대기"},
-        {k:"cancelled", label:"취소"},
+        {k:"cancelled", label:"취소", color:"#e53e3e"},
         {k:"noshow", label:"노쇼"},
-        {k:"naver_cancelled", label:"취소"},
         {k:"naver_changed", label:"변경"},
       ];
       return <div style={{display:"flex",gap:5,marginBottom:10,flexWrap:"wrap"}}>
