@@ -2997,7 +2997,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
   } : (() => {
     const existingTs = item?.tsLog || [];
     const memoLines = (item?.memo || "").split("\n");
-    const isAutoTs = l => /^\[등록:|^\[수정:/.test(l.trim()) || /^\d+\.\d+\s+\d+:\d+\s*(예약)?(접수|변경|확정|취소|신청|확정완료)/.test(l.trim());
+    const isAutoTs = l => /^\[등록:|^\[수정:/.test(l.trim()) || /^\[네이버/.test(l.trim()) || /^\d+\.\d+\s+\d+:\d+\s*(예약)?(접수|변경|확정|취소|신청|확정완료)/.test(l.trim());
     const extractedTs = memoLines.filter(isAutoTs);
     const cleanMemo = memoLines.filter(l => !isAutoTs(l)).join("\n").trim();
     const mergedTs = existingTs.length > 0 ? existingTs : extractedTs;
@@ -3715,7 +3715,7 @@ return f.requestMsg.split("\n").filter(l=>l.trim()).map((line,i)=>{
 }
 
 // ═══════════════════════════════════════════
-// Bliss v2.67.6 - realtime extra/discount totals
+// Bliss v2.69.29 - realtime extra/discount totals
 const SaleSvcRow = React.memo(function SaleSvcRow({ id, name, dur, checked, amount, defPrice, toggle, setAmt }) {
   const disabled = defPrice === 0;
   const [localAmt, setLocalAmt] = useState(amount || "");
@@ -7332,7 +7332,7 @@ const CSS = `
   @keyframes bottomSheet{from{transform:translateY(100%)}to{transform:translateY(0)}}
   @keyframes ovFadeIn{from{opacity:0}to{opacity:1}}
 #place-modal{width:90vw!important;max-width:480px!important;left:50%!important;right:auto!important;transform:translateX(-50%) !important;}
-.res-modal{width:480px!important;max-width:480px!important;}
+.modal-res{width:480px!important;max-width:480px!important;}
   @keyframes slideIn{from{transform:translateX(-100%)}to{transform:translateX(0)}}
   @keyframes naverBlink{0%,100%{background:#fff3e0}50%{background:#ffe0b2}}
   @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
