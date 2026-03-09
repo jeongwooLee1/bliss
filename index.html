@@ -2924,7 +2924,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   );
 }
 
-function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBranch, userBranches, data, setData, setPage }) {
+function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBranch, userBranches, data, setData, setPage, naverColShow={} }) {
   const SVC_LIST = (data?.services || []).slice().sort((a,b)=>(a.sort||0)-(b.sort||0));
   const PROD_LIST = (data?.products || []);
   const CATS = (data?.categories || []).slice().sort((a,b)=>(a.sort||0)-(b.sort||0));
@@ -3599,7 +3599,11 @@ ${naverText}
                   if (f.requestMsg.trim().startsWith("[")) {
                     try {
                       const items = JSON.parse(f.requestMsg);
-                      return items.filter(it=>it.value).map((it,i)=>{
+                      const _ncShow = (lbl) => {
+const col = NAVER_COLS.find(c=>c.kws.some(kw=>lbl.includes(kw)));
+return col ? (naverColShow[col.key] !== false) : true;
+};
+return items.filter(it=>it.value && _ncShow(it.label||"")).map((it,i)=>{
                         if (it.label==="시술메뉴") return <NRow key={i} label="시술메뉴" value={it.value} valueColor="#1B5E20" bold/>;
                         return <div key={i} style={{display:"flex",alignItems:"baseline",gap:8,padding:"3px 0",borderBottom:"1px solid #E8F5E9",minHeight:26}}>
                           <span style={{fontSize:11,color:"#888",fontWeight:500,minWidth:72,flexShrink:0}}>{it.label}</span>
@@ -3609,7 +3613,11 @@ ${naverText}
                     } catch(e) {}
                   }
                   // 기존 텍스트 형식 fallback
-                  return f.requestMsg.split("\n").filter(l=>l.trim()).map((line,i)=>{
+                  const _ncShow2 = (lbl) => {
+const col = NAVER_COLS.find(c=>c.kws.some(kw=>(lbl||"").includes(kw)));
+return col ? (naverColShow[col.key] !== false) : true;
+};
+return f.requestMsg.split("\n").filter(l=>l.trim()).map((line,i)=>{
                     const ci = line.lastIndexOf(": ");
                     const key = ci > -1 ? line.slice(0,ci).trim() : null;
                     const val = ci > -1 ? line.slice(ci+2).trim() : line.trim();
@@ -3707,7 +3715,7 @@ ${naverText}
 }
 
 // ═══════════════════════════════════════════
-// Bliss v2.67.4 - realtime extra/discount totals
+// Bliss v2.67.5 - realtime extra/discount totals
 const SaleSvcRow = React.memo(function SaleSvcRow({ id, name, dur, checked, amount, defPrice, toggle, setAmt }) {
   const disabled = defPrice === 0;
   const [localAmt, setLocalAmt] = useState(amount || "");
@@ -4624,7 +4632,7 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
     <div className="card tw">
       <table style={{tableLayout:"fixed",width:"100%"}}><thead><tr>
         <th style={{width:68}}>날짜</th><th style={{width:50}}>시간</th><th style={{width:52}}>매장</th><th style={{width:64}}>고객</th><th style={{width:28,textAlign:"center"}}>성별</th><th style={{width:84}}>연락처</th><th style={{width:"14%"}}>시술</th><th style={{width:46}}>시술자</th><th style={{width:90,color:"#03C75A"}}>예약번호</th><th style={{width:50,color:"#e65100"}}>예약금</th><th style={{width:46}}>상태</th>
-        <th style={{width:naverColShow["직원메모"]?90:0,background:"#F1F8E9",padding:naverColShow["직원메모"]?"3px 4px":"0",transition:"width 0.15s",overflow:"hidden"}}>
+        <th style={{width:90,background:"#F1F8E9",padding:"3px 4px",transition:"width 0.15s",overflow:"hidden"}}>
             <label style={{display:"flex",alignItems:"center",gap:4,cursor:"pointer",fontSize:10,fontWeight:600,color:"#37474F",whiteSpace:"nowrap",overflow:"hidden"}}>
               <input type="checkbox" checked={!!naverColShow["직원메모"]} onChange={()=>toggleNaverCol("직원메모")}
                 style={{width:11,height:11,flexShrink:0,accentColor:"#37474F",cursor:"pointer"}}/>
@@ -4632,7 +4640,7 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
             </label>
           </th>
         {NAVER_COLS.map(col => (
-          <th key={col.key} style={{width:naverColShow[col.key]?90:0,background:"#F1F8E9",padding:naverColShow[col.key]?"3px 4px":"0",transition:"width 0.15s",overflow:"hidden"}}>
+          <th key={col.key} style={{width:90,background:"#F1F8E9",padding:"3px 4px",transition:"width 0.15s",overflow:"hidden"}}>
             <label style={{display:"flex",alignItems:"center",gap:4,cursor:"pointer",fontSize:10,fontWeight:600,color:"#2E7D32",whiteSpace:"nowrap",overflow:"hidden"}}>
               <input type="checkbox" checked={!!naverColShow[col.key]} onChange={()=>toggleNaverCol(col.key)}
                 style={{width:11,height:11,flexShrink:0,accentColor:"#2E7D32",cursor:"pointer"}}/>
@@ -4692,11 +4700,11 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
                 const p = ST_PILL[r.status] || {bg:"#F5F5F5", color:"#999", label:r.status};
                 return <span style={{fontSize:10,fontWeight:700,background:p.bg,color:p.color,borderRadius:4,padding:"2px 6px",whiteSpace:"nowrap"}}>{p.label}</span>;
               })()}</td>
-              <td style={{fontSize:10,color:"#555",maxWidth:naverColShow["직원메모"]?90:0,width:naverColShow["직원메모"]?90:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",background:"#F1F8E9",padding:naverColShow["직원메모"]?"4px 6px":"0"}} title={r.ownerComment||""}>
+              <td style={{fontSize:10,color:"#555",maxWidth:90,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",background:"#F1F8E9",padding:"4px 6px"}} title={r.ownerComment||""}>
                   {r.ownerComment ? <span style={{background:"#ECEFF1",color:"#37474F",borderRadius:10,padding:"1px 8px",fontWeight:500,fontSize:10}}>{r.ownerComment}</span> : <span style={{color:"#ccc"}}>-</span>}
                 </td>
               {NAVER_COLS.map(col => (
-                <td key={col.key} style={{fontSize:10,color:"#555",maxWidth:naverColShow[col.key]?90:0,width:naverColShow[col.key]?90:0,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",background:"#F1F8E9",padding:"4px 6px"}} title={getNaverVal(r.requestMsg, col.kws)}>
+                <td key={col.key} style={{fontSize:10,color:"#555",maxWidth:90,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",background:"#F1F8E9",padding:"4px 6px"}} title={getNaverVal(r.requestMsg, col.kws)}>
                   {(() => {
                     const v = getNaverVal(r.requestMsg, col.kws);
                     if (!v) return <span style={{color:"#ccc"}}>-</span>;
