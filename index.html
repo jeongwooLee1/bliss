@@ -3707,7 +3707,7 @@ ${naverText}
 }
 
 // ═══════════════════════════════════════════
-// Bliss v2.67.3 - realtime extra/discount totals
+// Bliss v2.67.4 - realtime extra/discount totals
 const SaleSvcRow = React.memo(function SaleSvcRow({ id, name, dur, checked, amount, defPrice, toggle, setAmt }) {
   const disabled = defPrice === 0;
   const [localAmt, setLocalAmt] = useState(amount || "");
@@ -4632,7 +4632,7 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
             </label>
           </th>
         {NAVER_COLS.map(col => (
-          <th key={col.key} style={{width:90,background:"#F1F8E9",padding:"3px 4px",transition:"width 0.15s",overflow:"hidden"}}>
+          <th key={col.key} style={{width:naverColShow[col.key]?90:0,background:"#F1F8E9",padding:naverColShow[col.key]?"3px 4px":"0",transition:"width 0.15s",overflow:"hidden"}}>
             <label style={{display:"flex",alignItems:"center",gap:4,cursor:"pointer",fontSize:10,fontWeight:600,color:"#2E7D32",whiteSpace:"nowrap",overflow:"hidden"}}>
               <input type="checkbox" checked={!!naverColShow[col.key]} onChange={()=>toggleNaverCol(col.key)}
                 style={{width:11,height:11,flexShrink:0,accentColor:"#2E7D32",cursor:"pointer"}}/>
