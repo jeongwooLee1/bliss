@@ -755,7 +755,7 @@ function App() {
         </div>
       </div>}
       <main className="main-c" style={S.main}>
-        <div className="mob-hdr" style={{...S.mobHdr,position:"relative",...(page==="timeline"?{display:"none"}:{})}}>
+        <div className="mob-hdr" style={{...S.mobHdr,position:"relative",...(page==="timeline"||pageHistory.length===0?{display:"none"}:{})}}>
           {pageHistory.length > 0
             ? <button onClick={()=>{
                 setPageHistory(h=>{
