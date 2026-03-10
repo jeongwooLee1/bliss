@@ -5,7 +5,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
   <meta name="apple-mobile-web-app-title" content="Bliss"/>
   <link rel="apple-touch-icon" href="/bliss/icon-192.png"/>
-  <meta name="theme-color" content="#7c7cc8"/><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+  <meta name="theme-color" content="#7c7cc8"/><meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/><meta http-equiv="Pragma" content="no-cache"/><meta http-equiv="Expires" content="0"/>
 <title>Bliss 관리시스템</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
@@ -14,7 +14,15 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>*{margin:0;padding:0;box-sizing:border-box}body,#root{-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none;-webkit-touch-callout:none}input,textarea,select,[contenteditable]{-webkit-user-select:text;-moz-user-select:text;user-select:text}</style>
-</head><body><div id="root"></div><script type="text/babel">
+</head><body><div id="root"></div>
+<script>
+// Safari URL bar hide trick
+window.addEventListener('load', function() {
+  setTimeout(function() {
+    if (window.scrollY === 0) window.scrollTo(0, 1);
+  }, 300);
+});
+</script><script type="text/babel">
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 // ─── Supabase Config ───
 const SB_URL = "https://dpftlrsuqxqqeouwbfjd.supabase.co";
