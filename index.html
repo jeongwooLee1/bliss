@@ -174,7 +174,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.35";
+const BLISS_V = "2.69.36";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -770,7 +770,7 @@ function App() {
             : <span/>
           }
           {bizName && <span style={{fontSize:16,fontWeight:800,color:"#7c7cc8",position:"absolute",left:"50%",transform:"translateX(-50%)"}}>{bizName}</span>}
-          <span style={{marginLeft:"auto"}}/>
+          <span style={{marginLeft:"auto",fontSize:18,fontWeight:900,color:"#ff0000"}}>v{BLISS_V}</span>
         </div>
         <div className="page-pad" style={{flex:1,padding:page==="timeline"?"0":"16px 20px 16px",display:"flex",flexDirection:"column",minHeight:0,overflow:"hidden"}}>
           <div className={page==="timeline"?"":"fade-in"} key={page} style={page==="timeline"?{flex:1,display:"flex",flexDirection:"column",minHeight:0}:{overflow:"auto",flex:1,WebkitOverflowScrolling:"touch"}}>
@@ -931,8 +931,9 @@ function SuperDashboard({ superData, setSuperData, currentUser, onLogout, onEnte
       </div>}
       <main className="main-c" style={{flex:1,display:"flex",flexDirection:"column",height:"100%",overflow:"hidden",paddingBottom:0}}>
         {/* Mobile header */}
-        <div className="mob-hdr" style={{padding:"10px 16px",background:"#fff",borderBottom:"1px solid #e0e0e0",display:"flex",alignItems:"center",gap:12}}>
+        <div className="mob-hdr" style={{padding:"10px 16px",background:"#fff",borderBottom:"1px solid #e0e0e0",display:"flex",alignItems:"center",gap:12,justifyContent:"space-between"}}>
           <span style={{fontSize:14,fontWeight:700,color:"#7c7cc8"}}>Bliss 슈퍼관리자</span>
+          <span style={{fontSize:18,fontWeight:900,color:"#ff0000"}}>v{BLISS_V}</span>
         </div>
         <div className="page-pad" style={{flex:1,padding:24,overflow:"auto",WebkitOverflowScrolling:"touch"}}>
         {/* ── 업체 관리 ── */}
