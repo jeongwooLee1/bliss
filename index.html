@@ -174,7 +174,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.36";
+const BLISS_V = "2.69.37";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -416,7 +416,7 @@ function App() {
         try {
           const cfg = await sb.get("businesses", "&code=eq.__system__");
           if (cfg.length > 0) {
-            const m = JSON.parse(cfg[0].memo || "{}");
+            const m = JSON.parse(cfg[0].settings || "{}");
             if (m.system_gemini_key) { window.__systemGeminiKey = m.system_gemini_key; }
           }
         } catch(e) {}
@@ -483,9 +483,9 @@ function App() {
         // Load business info
         const bizList = await sb.get("businesses", `&id=eq.${bizId}`);
         setCurrentBiz(bizList[0] || { name: "매장" });
-        // businesses.memo에서 gemini_key / ai_rules 복원 (localStorage 삭제 후 복구)
+        // businesses.settings에서 gemini_key / ai_rules 복원 (localStorage 삭제 후 복구)
         try {
-          const memo = JSON.parse(bizList[0]?.memo || "{}");
+          const memo = JSON.parse(bizList[0]?.settings || "{}");
           if (memo.gemini_key) {
             localStorage.setItem("bliss_gemini_key", memo.gemini_key);
             window.__geminiKey = memo.gemini_key;
@@ -835,7 +835,7 @@ function SuperDashboard({ superData, setSuperData, currentUser, onLogout, onEnte
     const isNew = !bizForm.id;
     const biz = isNew ? { ...bizForm, id: "biz_" + uid() } : bizForm;
     if (isNew) {
-      await sb.insert("businesses", { id:biz.id, name:biz.name, code:biz.code, phone:biz.phone||"", memo:biz.memo||"" });
+      await sb.insert("businesses", { id:biz.id, name:biz.name, code:biz.code, phone:biz.phone||"", settings:biz.settings||"" });
       const ownerId = "acc_" + uid();
       await sb.insert("app_users", { id:ownerId, business_id:biz.id, login_id:biz.code, password:"1234", name:biz.name+" 대표", role:"owner", branch_ids:"[]", view_branch_ids:"[]" });
       // Auto-assign group if selected
@@ -847,7 +847,7 @@ function SuperDashboard({ superData, setSuperData, currentUser, onLogout, onEnte
         setSuperData(p => ({...p, businesses:[...p.businesses, biz], users:[...p.users, {id:ownerId, businessId:biz.id, loginId:biz.code, pw:"1234", name:biz.name+" 대표", role:"owner", branches:[], viewBranches:[]}]}));
       }
     } else {
-      await sb.update("businesses", biz.id, { name:biz.name, code:biz.code, phone:biz.phone||"", memo:biz.memo||"" });
+      await sb.update("businesses", biz.id, { name:biz.name, code:biz.code, phone:biz.phone||"", settings:biz.settings||"" });
       // Update group membership
       const curMem = groupMembers.find(m=>m.business_id===biz.id);
       if (bizForm.groupId && (!curMem || curMem.group_id!==bizForm.groupId)) {
@@ -960,7 +960,7 @@ function SuperDashboard({ superData, setSuperData, currentUser, onLogout, onEnte
                   </div>
                 </div>
               </FLD>
-              <FLD label="메모"><input className="inp" style={{width:"100%",maxWidth:160}} value={ (() => { try { const m=JSON.parse(bizForm.memo||"{}"); return m.gemini_key ? "" : (bizForm.memo||""); } catch { return bizForm.memo||""; } })() } onChange={e=>{ try { const m=JSON.parse(bizForm.memo||"{}"); if(m.gemini_key){setBizForm({...bizForm,memo:JSON.stringify({...m,_note:e.target.value})});}else{setBizForm({...bizForm,memo:e.target.value});} } catch { setBizForm({...bizForm,memo:e.target.value}); } }} placeholder="메모"/></FLD>
+              <FLD label="메모"><input className="inp" style={{width:"100%",maxWidth:160}} value={ (() => { try { const m=JSON.parse(bizForm.settings||"{}"); return m.gemini_key ? "" : (bizForm.settings||""); } catch { return bizForm.settings||""; } })() } onChange={e=>{ try { const m=JSON.parse(bizForm.settings||"{}"); if(m.gemini_key){setBizForm({...bizForm,settings:JSON.stringify({...m,_note:e.target.value})});}else{setBizForm({...bizForm,settings:e.target.value});} } catch { setBizForm({...bizForm,settings:e.target.value}); } }} placeholder="메모"/></FLD>
               <button className="btn-p" onClick={saveBiz}>{bizForm.id?"저장":"추가"}</button>
               <button className="btn-s" onClick={()=>setBizForm(null)}>취소</button>
             </div>
@@ -979,7 +979,7 @@ function SuperDashboard({ superData, setSuperData, currentUser, onLogout, onEnte
                   <td style={{fontSize:12,color:"#888"}}>{b.phone||"-"}</td>
                   <td>{grps.length>0 ? <span style={{fontSize:10,color:"#5cb5c5",background:"#5cb5c520",padding:"2px 8px",borderRadius:8}}>{grps.join(", ")}</span> : <span style={{color:"#ccc"}}>-</span>}</td>
                   <td style={{color:"#888"}}>{bizUsers.length}명</td>
-                  <td style={{fontSize:12,color:"#888"}}>{ (() => { try { const m=JSON.parse(b.memo||"{}"); return m.gemini_key ? <span style={{color:"#ccc",fontStyle:"italic"}}>설정값</span> : (b.memo||"-"); } catch { return b.memo||"-"; } })() }</td>
+                  <td style={{fontSize:12,color:"#888"}}>{ (() => { try { const m=JSON.parse(b.settings||"{}"); return m.gemini_key ? <span style={{color:"#ccc",fontStyle:"italic"}}>설정값</span> : (b.settings||"-"); } catch { return b.settings||"-"; } })() }</td>
                   <td style={{display:"flex",gap:4}}>
                     <button className="btn-p" style={{padding:"4px 10px",fontSize:11}} onClick={()=>onEnterBiz(b.id)}>접속</button>
                     <button className="btn-s" style={{padding:"4px 10px",fontSize:11}} onClick={()=>startEditBiz(b)}>수정</button>
@@ -1109,9 +1109,9 @@ function SignupWizard({ onComplete, onBack }) {
       if (!key) {
         const SBU="https://dpftlrsuqxqqeouwbfjd.supabase.co";
         const SBK="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwZnRscnN1cXhxcWVvdXdiZmpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5MDU4MjQsImV4cCI6MjA4NzQ4MTgyNH0.iydEkjtPjZ0jXpUUPJben4IWWneDqLomv-HDlcFayE4";
-        const r=await fetch(SBU+"/rest/v1/businesses?select=memo&code=eq.__system__",{headers:{apikey:SBK,Authorization:"Bearer "+SBK}});
+        const r=await fetch(SBU+"/rest/v1/businesses?select=settings&code=eq.__system__",{headers:{apikey:SBK,Authorization:"Bearer "+SBK}});
         const rows=await r.json();
-        if(rows[0]){const m=JSON.parse(rows[0].memo||"{}");key=m.system_gemini_key||"";if(key)window.__systemGeminiKey=key;}
+        if(rows[0]){const m=JSON.parse(rows[0].settings||"{}");key=m.system_gemini_key||"";if(key)window.__systemGeminiKey=key;}
       }
       if (!key) { setScanMsg("직접 입력 모드로 전환합니다..."); setTimeout(()=>{setScanning(false);setStep(2);},1200); return; }
       setScanMsg("AI 분석 중...");
@@ -1184,7 +1184,7 @@ function SignupWizard({ onComplete, onBack }) {
       if(ex.length>0){alert("이미 등록된 사업자번호입니다.");setSaving(false);return;}
       const bizId="biz_"+uid(),brId="br_"+uid(),oId="acc_"+uid();
       const exp=new Date();exp.setDate(exp.getDate()+14);
-      await sb.insert("businesses",{id:bizId,name:form.bizName.trim(),code:bn,phone:form.phone||"",memo:JSON.stringify({plan:"trial",plan_expire:exp.toISOString().split("T")[0],plan_status:"active",owner_name:form.ownerName||""})});
+      await sb.insert("businesses",{id:bizId,name:form.bizName.trim(),code:bn,phone:form.phone||"",settings:JSON.stringify({plan:"trial",plan_expire:exp.toISOString().split("T")[0],plan_status:"active",owner_name:form.ownerName||""})});
       await sb.insert("branches",{id:brId,business_id:bizId,name:form.bizName.trim(),short:form.bizName.trim().slice(0,5),phone:form.phone||"",address:form.address||"",color:"#FFFFFF",sort:0,use_yn:true});
       await sb.insert("app_users",{id:oId,business_id:bizId,login_id:bn,password:form.pw,name:(form.ownerName||form.bizName.trim())+" 대표",role:"owner",branch_ids:JSON.stringify([brId]),view_branch_ids:JSON.stringify([])});
       setStep(3);
@@ -1296,7 +1296,7 @@ function SuperSystemSettings() {
       try {
         const rows = await sb.get("businesses","&code=eq.__system__");
         if (rows.length > 0) {
-          const m = JSON.parse(rows[0].memo||"{}");
+          const m = JSON.parse(rows[0].settings||"{}");
           setKey(m.system_gemini_key||"");
         }
       } catch(e){}
@@ -1307,11 +1307,11 @@ function SuperSystemSettings() {
   const save = async () => {
     try {
       const rows = await sb.get("businesses","&code=eq.__system__");
-      const memo = JSON.stringify({ system_gemini_key: key.trim() });
+      const settings = JSON.stringify({ system_gemini_key: key.trim() });
       if (rows.length > 0) {
-        await sb.update("businesses", rows[0].id, { memo });
+        await sb.update("businesses", rows[0].id, { settings });
       } else {
-        await sb.insert("businesses",{ id:"biz_system", name:"[시스템]", code:"__system__", phone:"", memo });
+        await sb.insert("businesses",{ id:"biz_system", name:"[시스템]", code:"__system__", phone:"", settings });
       }
       window.__systemGeminiKey = key.trim();
       setSaved(true);
@@ -3088,9 +3088,9 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
     let apiKey = window.__geminiKey || localStorage.getItem("bliss_gemini_key") || "";
     if (!apiKey) {
       try {
-        const r = await fetch(`${SB_URL}/rest/v1/businesses?select=memo&limit=1`, {headers: sbHeaders});
+        const r = await fetch(`${SB_URL}/rest/v1/businesses?select=settings&limit=1`, {headers: sbHeaders});
         const rows = await r.json();
-        const memo = JSON.parse(rows[0]?.memo || "{}");
+        const memo = JSON.parse(rows[0]?.settings || "{}");
         apiKey = memo.gemini_key || "";
         if (apiKey) { window.__geminiKey = apiKey; localStorage.setItem("bliss_gemini_key", apiKey); }
       } catch(e) {}
@@ -6467,10 +6467,10 @@ function AdminAISettings({ data, sb, bizId }) {
   // 마운트 시 Supabase에서 gemini_key + ai_rules 복원 (localStorage 삭제 후 복구)
   useEffect(() => {
     if (!bizId) return;
-    fetch(`${SB_URL}/rest/v1/businesses?id=eq.${bizId}&select=memo`, { headers: sbHeaders })
+    fetch(`${SB_URL}/rest/v1/businesses?id=eq.${bizId}&select=settings`, { headers: sbHeaders })
       .then(r => r.json()).then(rows => {
         try {
-          const memo = JSON.parse(rows[0]?.memo || "{}");
+          const memo = JSON.parse(rows[0]?.settings || "{}");
           // gemini_key 복원 (화면 state + localStorage 모두)
           if (memo.gemini_key) {
             setApiKey(memo.gemini_key);
@@ -6494,18 +6494,18 @@ function AdminAISettings({ data, sb, bizId }) {
     const trimmed = apiKey.trim();
     localStorage.setItem("bliss_gemini_key", trimmed);
     window.__geminiKey = trimmed;
-    // 서버(bliss_naver.py)가 읽을 수 있도록 Supabase businesses.memo에도 저장
+    // 서버(bliss_naver.py)가 읽을 수 있도록 Supabase businesses.settings에도 저장
     if (bizId) {
       try {
-        const r = await fetch(`${SB_URL}/rest/v1/businesses?id=eq.${bizId}&select=memo`, { headers: sbHeaders });
+        const r = await fetch(`${SB_URL}/rest/v1/businesses?id=eq.${bizId}&select=settings`, { headers: sbHeaders });
         const rows = await r.json();
         let memo = {};
-        try { memo = JSON.parse((rows[0]?.memo) || "{}"); } catch { memo = {}; }
+        try { memo = JSON.parse((rows[0]?.settings) || "{}"); } catch { memo = {}; }
         memo.gemini_key = trimmed;
         await fetch(`${SB_URL}/rest/v1/businesses?id=eq.${bizId}`, {
           method: "PATCH",
           headers: { ...sbHeaders, "Prefer": "return=minimal" },
-          body: JSON.stringify({ memo: JSON.stringify(memo) })
+          body: JSON.stringify({ settings: JSON.stringify(memo) })
         });
         console.log("✅ Gemini key Supabase 동기화 완료");
       } catch(e) { console.warn("Supabase gemini_key 저장 실패:", e); }
@@ -6519,15 +6519,15 @@ function AdminAISettings({ data, sb, bizId }) {
     // Supabase에도 저장 (캐시 삭제 후 복구용)
     if (bizId) {
       try {
-        const r = await fetch(`${SB_URL}/rest/v1/businesses?id=eq.${bizId}&select=memo`, { headers: sbHeaders });
+        const r = await fetch(`${SB_URL}/rest/v1/businesses?id=eq.${bizId}&select=settings`, { headers: sbHeaders });
         const rows = await r.json();
         let memo = {};
-        try { memo = JSON.parse(rows[0]?.memo || "{}"); } catch {}
+        try { memo = JSON.parse(rows[0]?.settings || "{}"); } catch {}
         memo.ai_rules = next;
         await fetch(`${SB_URL}/rest/v1/businesses?id=eq.${bizId}`, {
           method: "PATCH",
           headers: { ...sbHeaders, "Prefer": "return=minimal" },
-          body: JSON.stringify({ memo: JSON.stringify(memo) })
+          body: JSON.stringify({ settings: JSON.stringify(memo) })
         });
       } catch(e) { console.warn("AI 규칙 Supabase 저장 실패:", e); }
     }
