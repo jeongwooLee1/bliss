@@ -759,10 +759,10 @@ function App() {
               }} style={{...S.menuBtn,display:"flex",alignItems:"center",gap:2,color:"#7c7cc8",fontWeight:700}}>
                 <I name="chevron-left" size={22}/><span style={{fontSize:14}}>뒤로</span>
               </button>
-            : <button onClick={()=>setSideOpen(true)} style={S.menuBtn}><I name="menu" size={22}/></button>
+            : <span/>
           }
           {bizName && <span style={{fontSize:16,fontWeight:800,color:"#7c7cc8",position:"absolute",left:"50%",transform:"translateX(-50%)"}}>{bizName}</span>}
-          {pageHistory.length > 0 && <button onClick={()=>setSideOpen(true)} style={{...S.menuBtn,marginLeft:"auto"}}><I name="menu" size={22}/></button>}
+          <span style={{marginLeft:"auto"}}/>
         </div>
         <div className="page-pad" style={{flex:1,padding:page==="timeline"?"0":"16px 20px 16px",display:"flex",flexDirection:"column",minHeight:0,overflow:"hidden"}}>
           <div className={page==="timeline"?"":"fade-in"} key={page} style={page==="timeline"?{flex:1,display:"flex",flexDirection:"column",minHeight:0}:{overflow:"auto",flex:1,WebkitOverflowScrolling:"touch"}}>
