@@ -174,7 +174,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.56";
+const BLISS_V = "2.69.57";
 
 // ─── 디자인 토큰 ────────────────────────────────────────────────────────────
 const T = {
@@ -846,34 +846,21 @@ function App() {
   useEffect(() => {
     if (phase !== "app" || !currentBizId) return;
     let channel = null;
-    let pollIv = null;
-    let rtConnected = false;
     const supaClient = _supaClient;
 
-    const poll = async () => {
-      if (isModalOpenRef.current) return; // 모달 열린 동안 폴링 skip
-      try {
-        const rows = await sb.getByBiz("reservations", currentBizId);
-        const parsed = fromDb("reservations", rows);
-        setData(prev => {
-          if (!prev) return prev;
-          const prevJson = JSON.stringify((prev?.reservations||[]).map(r => r.id + "|" + (r._ua||"")));
-          const newJson = JSON.stringify(parsed.map(r => r.id + "|" + (r._ua||"")));
-          if (prevJson === newJson) return prev;
-          return {...prev, reservations: parsed};
-        });
-      } catch(e) { console.log("Poll error:", e); }
+    // iOS PWA: 백그라운드→포그라운드 복귀 시 한번만 fetch
+    const onVisible = async () => {
+      if (!document.hidden) {
+        try {
+          const rows = await sb.getByBiz("reservations", currentBizId);
+          const parsed = fromDb("reservations", rows);
+          setData(prev => prev ? {...prev, reservations: parsed} : prev);
+        } catch(e) {}
+      }
     };
-
-    // 항상 폴링 시작 (30초)
-    poll();
-    pollIv = setInterval(poll, 30000);
-
-    // iOS PWA: 백그라운드→포그라운드 복귀 시 강제 새로고침
-    const onVisible = () => { if (!document.hidden) poll(); };
     document.addEventListener("visibilitychange", onVisible);
 
-    // Realtime 시도 (성공하면 폴링 간격 늘림)
+    // Realtime 구독
     if (supaClient) {
       try {
         channel = supaClient.channel("rt_" + Date.now())
@@ -919,26 +906,11 @@ function App() {
           })
           .subscribe((status) => {
             console.log("RT:", status);
-            if (status === "SUBSCRIBED") {
-              rtConnected = true;
-              clearInterval(pollIv);
-              pollIv = setInterval(poll, 120000); // RT 성공 → 2분 백업 폴링
-              console.log("✅ Realtime ON (백업 폴링 2분)");
-            }
-            if (status === "CLOSED" || status === "TIMED_OUT" || status === "CHANNEL_ERROR") {
-              if (rtConnected) {
-                rtConnected = false;
-                clearInterval(pollIv);
-                pollIv = setInterval(poll, 30000);
-                console.log("⚠️ Realtime 끊김 → Polling 30초");
-              }
-            }
           });
       } catch(e) { console.log("RT setup error:", e); }
     }
 
     return () => {
-      clearInterval(pollIv);
       document.removeEventListener("visibilitychange", onVisible);
       if (channel && supaClient) { try { supaClient.removeChannel(channel); } catch(e){} }
     };
