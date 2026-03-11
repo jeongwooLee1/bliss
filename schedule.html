@@ -112,6 +112,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     maxConsecWork:   ruleConfig.maxConsecWork   ?? 6,  // 최대 연속 근무일
     branchMinStaff:  ruleConfig.branchMinStaff  ?? {},
     noSimultaneousOff: ruleConfig.noSimultaneousOff ?? {},
+    biweeklyConsecOff: ruleConfig.biweeklyConsecOff ?? true, // 2주마다 연속휴무 1회 보장
   };
   const sch = {};
   employees.forEach(e => { sch[e.id] = {}; });
@@ -639,6 +640,71 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     });
   });
 
+  // 6.5) 2주 연속휴무 보장: 2주 단위로 연속 2일 이상 휴무가 없는 직원에게 추가 배정
+  if (rc.biweeklyConsecOff) {
+    // 이번달 날짜가 있는 주만, 2개씩 묶어 2주 블록 구성
+    const activeWeeks2 = activeWeeks.filter(w => w.some(d => !d.isPrev && !d.isNext));
+    const twoWeekBlocks = [];
+    for (let i = 0; i < activeWeeks2.length; i += 2) {
+      twoWeekBlocks.push(activeWeeks2.slice(i, Math.min(i + 2, activeWeeks2.length)));
+    }
+
+    // 2주 블록 내 연속 2일 휴무 여부
+    const hasConsecOff = (empId, days) =>
+      days.some((d, i) => {
+        if (i === 0) return false;
+        const isOff = (ds) => ["휴무","휴무(꼭)"].includes(sch[empId]?.[ds]);
+        return addDays(days[i-1].ds, 1) === d.ds && isOff(days[i-1].ds) && isOff(d.ds);
+      });
+
+    employees.forEach(emp => {
+      const branch = BRANCHES.find(b => b.id === emp.branch);
+      const branchEmps = employees.filter(e => e.branch === emp.branch);
+
+      twoWeekBlocks.forEach(block => {
+        // 블록 내 이번달+이월 날짜 (isPrev 제외)
+        const blockDays = block.flatMap(w => w.filter(d => !d.isPrev));
+        if (blockDays.length < 2) return;
+
+        // 이미 연속 휴무 있으면 스킵
+        if (hasConsecOff(emp.id, blockDays)) return;
+
+        // 기존 휴무날 옆(전날/다음날)에 근무→휴무 전환 시도
+        const offDays = blockDays.filter(d =>
+          ["휴무","휴무(꼭)"].includes(sch[emp.id]?.[d.ds])
+        );
+
+        let done = false;
+        for (const offDay of offDays) {
+          if (done) break;
+          // 전날, 다음날 순서로 시도
+          for (const delta of [-1, 1]) {
+            const candDs = addDays(offDay.ds, delta);
+            const cand = blockDays.find(d => d.ds === candDs);
+            if (!cand) continue;
+            if (sch[emp.id][candDs] !== STATUS.WORK) continue;
+            if (seededDates.has(candDs)) continue;
+
+            // canAssignOff: 퐁당퐁당·3일연속·maxDailyOff·지점minStaff 등 전체 검증
+            if (!canAssignOff(emp, cand, branchEmps, branch)) continue;
+
+            // 전체 minWork 보호 (남자직원 제외 기준)
+            const totalWorking = employees.filter(e => {
+              if (e.isMale) return false;
+              const s = sch[e.id][candDs];
+              return s === STATUS.WORK || isSupport(s) || s === STATUS.SHARE;
+            }).length;
+            if (totalWorking <= rc.minWork) continue;
+
+            sch[emp.id][candDs] = STATUS.OFF;
+            done = true;
+            break;
+          }
+        }
+      });
+    });
+  }
+
   // 7) 하루 최대 휴무 5명 초과 보정: 초과분 직원의 휴무를 근무로 전환
   for (let pass = 0; pass < 10; pass++) {
     let fixed = false;
@@ -945,6 +1011,7 @@ function App() {
     maxWork: 15,       // 일 최대 근무인원
     maxDailyOff: 5,    // 하루 최대 휴무 인원
     maxConsecWork: 6,   // 최대 연속 근무일
+    biweeklyConsecOff: true, // 2주마다 연속휴무 1회 보장
     branchMinStaff: Object.fromEntries(BRANCHES.map(b => [b.id, b.minStaff])),
     // 지점별 동시 휴무 금지: branchId → 동시 휴무 금지 적용 여부
     // 적용 대상: 원장·mustStay 제외 일반직원 전원 (인원 2명 이하 지점)
@@ -1544,7 +1611,7 @@ function App() {
             </div>
 
             {/* 지점별 동시 휴무 금지 */}
-            <div>
+            <div style={{marginBottom:18}}>
               <div style={{fontSize:12,fontWeight:700,color:"#4a2c14",marginBottom:6,borderBottom:"1px solid #f0ebe2",paddingBottom:6}}>🚫 지점별 일반직원 동시 휴무 금지</div>
               <div style={{fontSize:11,color:"#aaa",marginBottom:10}}>ON: 해당 지점 일반직원(원장·mustStay 제외) 전원이 같은 날 동시 휴무 금지</div>
               <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
@@ -1560,6 +1627,17 @@ function App() {
                     </div>
                   );
                 })}
+              </div>
+            </div>
+
+            {/* 2주 연속휴무 보장 */}
+            <div>
+              <div style={{fontSize:12,fontWeight:700,color:"#4a2c14",marginBottom:6,borderBottom:"1px solid #f0ebe2",paddingBottom:6}}>🔁 2주 연속휴무 보장</div>
+              <div style={{fontSize:11,color:"#aaa",marginBottom:10}}>ON: 모든 직원이 2주에 한 번은 연속(2일) 이상 휴무를 갖도록 자동 배정</div>
+              <div onClick={()=>setRule("biweeklyConsecOff", !ruleConfig.biweeklyConsecOff)}
+                style={{display:"inline-flex",alignItems:"center",gap:10,padding:"10px 16px",borderRadius:8,border:`1.5px solid ${ruleConfig.biweeklyConsecOff?"#c0a07a":"#ddd"}`,background:ruleConfig.biweeklyConsecOff?"#fdf8f0":"#faf8f5",cursor:"pointer"}}>
+                <span style={{fontSize:12,fontWeight:700,color:ruleConfig.biweeklyConsecOff?"#7a4a18":"#aaa"}}>2주 연속휴무 보장</span>
+                <span style={{fontSize:11,background:ruleConfig.biweeklyConsecOff?"#c0a07a":"#ddd",color:"#fff",borderRadius:4,padding:"2px 8px",fontWeight:700}}>{ruleConfig.biweeklyConsecOff?"ON":"OFF"}</span>
               </div>
             </div>
           </div>
