@@ -174,7 +174,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.53";
+const BLISS_V = "2.69.54";
 
 // ─── 디자인 토큰 ────────────────────────────────────────────────────────────
 const T = {
@@ -4714,6 +4714,12 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
   const today = todayStr();
   const dateAnchorRef = React.useRef(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [isMobile, setIsMobile] = useState(()=>window.innerWidth<768);
+  React.useEffect(()=>{
+    const fn=()=>setIsMobile(window.innerWidth<768);
+    window.addEventListener("resize",fn);
+    return ()=>window.removeEventListener("resize",fn);
+  },[]);
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
@@ -4827,11 +4833,11 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
 
   return <div>
     {/* ── 헤더 ── */}
-    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
       <h2 className="page-title" style={{margin:0}}>예약 목록</h2>
       <div style={{display:"flex",gap:6,alignItems:"center"}}>
-        {/* 밀도 조절 */}
-        <div style={{display:"flex",borderRadius:T.radius.md,border:"1px solid "+T.border,overflow:"hidden"}}>
+        {/* 밀도 조절 - 모바일 숨김 */}
+        {!isMobile && <div style={{display:"flex",borderRadius:T.radius.md,border:"1px solid "+T.border,overflow:"hidden"}}>
           {Object.entries(DENSITY).map(([k,v])=>(
             <button key={k} onClick={()=>setDensity(k)} style={{
               padding:"5px 10px",border:"none",cursor:"pointer",fontFamily:"inherit",
@@ -4840,20 +4846,19 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
               color:density===k?T.bgCard:T.textSub,transition:"all .15s"
             }}>{v.label}</button>
           ))}
-        </div>
-        {/* 컬럼 설정 */}
-        <div style={{position:"relative"}}>
+        </div>}
+        {/* 컬럼 설정 - 모바일 숨김 */}
+        {!isMobile && <div style={{position:"relative"}}>
           <Btn variant="ghost" size="sm" onClick={()=>setShowColPanel(p=>!p)} style={{gap:T.sp.xs}}>
             <I name="settings" size={13}/> 컬럼
           </Btn>
           {showColPanel && <div style={{position:"absolute",right:0,top:34,zIndex:200,background:T.bgCard,border:"1px solid "+T.border,borderRadius:T.radius.lg,padding:"14px 16px",boxShadow:T.shadow.md,minWidth:180}}>
-            {/* ── 타임라인 블록 표시 항목 ── */}
             <div style={{fontSize:T.fs.xs,fontWeight:T.fw.bolder,color:T.primary,marginBottom:6,display:"flex",alignItems:"center",gap:T.sp.xs}}>
               <I name="clock" size={11}/> 타임라인 블록
             </div>
             {[
-              ...NAVER_COLS.map(c=>({k:c.key,label:c.label,src:"naver"})),
-              {k:"직원메모", label:"직원메모", src:"naver"},
+              ...NAVER_COLS.map(c=>({k:c.key,label:c.label})),
+              {k:"직원메모", label:"직원메모"},
             ].map(({k,label})=>(
               <label key={k} style={{display:"flex",alignItems:"center",gap:T.sp.sm,padding:"3px 0",cursor:"pointer",fontSize:T.fs.sm,color:T.text}}>
                 <input type="checkbox" checked={naverColShow[k]!==false} onChange={()=>setNaverColShow({...naverColShow,[k]:naverColShow[k]===false})}
@@ -4862,18 +4867,12 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
               </label>
             ))}
             <div style={{borderTop:"1px solid "+T.border,margin:"10px 0"}}/>
-            {/* ── 목록 카드 표시 컬럼 ── */}
             <div style={{fontSize:T.fs.xs,fontWeight:T.fw.bolder,color:T.primary,marginBottom:6,display:"flex",alignItems:"center",gap:T.sp.xs}}>
               <I name="list" size={11}/> 목록 카드
             </div>
             {[
-              {k:"phone",     label:"연락처"},
-              {k:"staff",     label:"시술자"},
-              {k:"service",   label:"시술"},
-              {k:"prepaid",   label:"예약금"},
-              {k:"naver_id",  label:"예약번호"},
-              {k:"naver_info",label:"네이버 정보"},
-              {k:"memo",      label:"직원메모"},
+              {k:"phone",label:"연락처"},{k:"staff",label:"시술자"},{k:"service",label:"시술"},
+              {k:"prepaid",label:"예약금"},{k:"naver_id",label:"예약번호"},{k:"naver_info",label:"네이버 정보"},{k:"memo",label:"직원메모"},
             ].map(({k,label})=>(
               <label key={k} style={{display:"flex",alignItems:"center",gap:T.sp.sm,padding:"3px 0",cursor:"pointer",fontSize:T.fs.sm,color:T.text}}>
                 <input type="checkbox" checked={!!showCols[k]} onChange={()=>setShowCols({...showCols,[k]:!showCols[k]})}
@@ -4882,7 +4881,7 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
               </label>
             ))}
           </div>}
-        </div>
+        </div>}
         <Btn variant="ghost" size="sm" onClick={handleRefresh} disabled={refreshing} style={{gap:T.sp.xs}}>
           <I name="refresh-cw" size={13} style={{animation:refreshing?"spin 1s linear infinite":undefined}}/>{refreshing?"...":"새로고침"}
         </Btn>
@@ -4890,22 +4889,43 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
     </div>
 
     {/* ── 필터 바 ── */}
-    <div style={{display:"flex",gap:T.sp.sm,marginBottom:8,alignItems:"center",flexWrap:"wrap"}}>
-      <button ref={dateAnchorRef} onClick={()=>setShowSheet(true)} style={{...SS,background:T.primaryLt,borderColor:T.primary+"44",color:T.primaryDk,fontWeight:T.fw.bold,minWidth:140}}>
-        <I name="calendar" size={14} color={T.primary}/>
-        <span>{dateLabel}</span>
-        <span style={{fontSize:T.fs.xs,marginLeft:"auto",opacity:.6}}>▼</span>
-      </button>
-      <select style={{...SS,flex:1,minWidth:100,appearance:"auto"}} value={vb} onChange={e=>setVb(e.target.value)}>
-        <option value="all">전체 매장</option>
-        {(data.branches||[]).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
-      </select>
-      <div style={{position:"relative",flex:2,minWidth:160}}>
-        <span style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",color:T.gray400}}><I name="search" size={14}/></span>
-        <input style={{width:"100%",height:36,borderRadius:T.radius.md,border:"1px solid "+T.border,paddingLeft:36,paddingRight:32,fontSize:T.fs.sm,outline:"none",boxSizing:"border-box",fontFamily:"inherit",color:T.text}} placeholder="고객명, 연락처, 시술, 시술자" value={q} onChange={e=>setQ(e.target.value)}/>
-        {q&&<button onClick={()=>setQ("")} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",color:T.gray400,fontSize:T.fs.lg,lineHeight:1}}>×</button>}
+    {isMobile ? (
+      <div style={{display:"flex",flexDirection:"column",gap:6,marginBottom:8}}>
+        <div style={{display:"flex",gap:6}}>
+          <button ref={dateAnchorRef} onClick={()=>setShowSheet(true)} style={{...SS,flex:1,background:T.primaryLt,borderColor:T.primary+"44",color:T.primaryDk,fontWeight:T.fw.bold}}>
+            <I name="calendar" size={14} color={T.primary}/>
+            <span style={{flex:1,textAlign:"left"}}>{dateLabel}</span>
+            <span style={{fontSize:T.fs.xs,opacity:.6}}>▼</span>
+          </button>
+          <select style={{...SS,flex:1,appearance:"auto"}} value={vb} onChange={e=>setVb(e.target.value)}>
+            <option value="all">전체 매장</option>
+            {(data.branches||[]).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
+          </select>
+        </div>
+        <div style={{position:"relative"}}>
+          <span style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",color:T.gray400}}><I name="search" size={14}/></span>
+          <input style={{width:"100%",height:36,borderRadius:T.radius.md,border:"1px solid "+T.border,paddingLeft:36,paddingRight:32,fontSize:T.fs.sm,outline:"none",boxSizing:"border-box",fontFamily:"inherit",color:T.text}} placeholder="고객명, 연락처, 시술, 시술자" value={q} onChange={e=>setQ(e.target.value)}/>
+          {q&&<button onClick={()=>setQ("")} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",color:T.gray400,fontSize:T.fs.lg,lineHeight:1}}>×</button>}
+        </div>
       </div>
-    </div>
+    ) : (
+      <div style={{display:"flex",gap:T.sp.sm,marginBottom:8,alignItems:"center",flexWrap:"wrap"}}>
+        <button ref={dateAnchorRef} onClick={()=>setShowSheet(true)} style={{...SS,background:T.primaryLt,borderColor:T.primary+"44",color:T.primaryDk,fontWeight:T.fw.bold,minWidth:140}}>
+          <I name="calendar" size={14} color={T.primary}/>
+          <span>{dateLabel}</span>
+          <span style={{fontSize:T.fs.xs,marginLeft:"auto",opacity:.6}}>▼</span>
+        </button>
+        <select style={{...SS,flex:1,minWidth:100,appearance:"auto"}} value={vb} onChange={e=>setVb(e.target.value)}>
+          <option value="all">전체 매장</option>
+          {(data.branches||[]).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
+        </select>
+        <div style={{position:"relative",flex:2,minWidth:160}}>
+          <span style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",color:T.gray400}}><I name="search" size={14}/></span>
+          <input style={{width:"100%",height:36,borderRadius:T.radius.md,border:"1px solid "+T.border,paddingLeft:36,paddingRight:32,fontSize:T.fs.sm,outline:"none",boxSizing:"border-box",fontFamily:"inherit",color:T.text}} placeholder="고객명, 연락처, 시술, 시술자" value={q} onChange={e=>setQ(e.target.value)}/>
+          {q&&<button onClick={()=>setQ("")} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",color:T.gray400,fontSize:T.fs.lg,lineHeight:1}}>×</button>}
+        </div>
+      </div>
+    )}
 
     {/* ── 상태 탭 ── */}
     <div style={{display:"flex",gap:5,marginBottom:12,flexWrap:"wrap"}}>
@@ -4931,8 +4951,8 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
     {/* ── 카드 그리드 ── */}
     {res.length===0 ? <Empty msg="예약이 없습니다" icon="calendar"/> :
     <div style={{display:"flex",flexDirection:"column",gap:D.gap}}>
-      {/* 그리드 헤더 */}
-      <div style={{display:"grid",gridTemplateColumns:resGridCols(showCols,density),gap:T.sp.xs,padding:"4px 16px",borderRadius:T.radius.md,background:T.gray200}}>
+      {/* 그리드 헤더 - 데스크톱만 */}
+      {!isMobile && <div style={{display:"grid",gridTemplateColumns:resGridCols(showCols,density),gap:T.sp.xs,padding:"4px 16px",borderRadius:T.radius.md,background:T.gray200}}>
         <span style={{fontSize:T.fs.xs,fontWeight:T.fw.bolder,color:T.textSub}}>날짜·시간</span>
         <span style={{fontSize:T.fs.xs,fontWeight:T.fw.bolder,color:T.textSub}}>매장</span>
         <span style={{fontSize:T.fs.xs,fontWeight:T.fw.bolder,color:T.textSub}}>고객</span>
@@ -4945,7 +4965,7 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
         {showCols.memo    && <span style={{fontSize:T.fs.xs,fontWeight:T.fw.bolder,color:T.textSub}}>메모</span>}
         <span style={{fontSize:T.fs.xs,fontWeight:T.fw.bolder,color:T.textSub,textAlign:"center"}}>상태</span>
         <span></span>
-      </div>
+      </div>}
 
       {/* 카드 행 */}
       {res.map(r => {
@@ -4958,13 +4978,48 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
         const st = ST[r.status]||{bg:T.gray100,color:T.gray500,label:r.status};
         const rowBg = ROW_BG[r.status]||T.bgCard;
         const isNaver = r.source==="naver"||r.source==="네이버";
+        const naverInfoItems = isNaver ? NAVER_COLS.filter(col=>getNaverVal(r.requestMsg,col.kws)).map(col=>({label:col.label,value:getNaverVal(r.requestMsg,col.kws)})) : [];
 
-        // 네이버 정보 파싱
-        const naverInfoItems = isNaver && showCols.naver_info ? NAVER_COLS.filter(col=>{
-          const v = getNaverVal(r.requestMsg, col.kws);
-          return v;
-        }).map(col=>({ label:col.label, value:getNaverVal(r.requestMsg, col.kws) })) : [];
+        const handleClick = ()=>{ if(setPendingOpenRes)setPendingOpenRes(r); if(setPage)setPage("timeline"); };
 
+        /* ── 모바일 카드 ── */
+        if (isMobile) return <div key={r.id} style={{
+          background:rowBg, borderRadius:T.radius.lg,
+          border:"1px solid "+(r.status==="cancelled"||r.status==="no_show"||r.status==="naver_cancelled"?T.danger+"33":T.border),
+          padding:"12px 14px", cursor:"pointer", position:"relative",
+        }} onClick={handleClick}>
+          {/* 상태 뱃지 - 우상단 */}
+          <div style={{position:"absolute",top:10,right:12}}>
+            <Badge color={st.color} bg={st.bg}>{st.label}</Badge>
+          </div>
+          {/* Row1: 날짜+매장 */}
+          <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:5}}>
+            <span style={{fontSize:T.fs.xs,color:T.textSub,fontWeight:T.fw.medium}}>{r.date}</span>
+            <span style={{fontSize:T.fs.md,fontWeight:T.fw.bolder,color:T.primary}}>{r.time}</span>
+            <span style={{fontSize:T.fs.xs,color:T.textSub,background:T.gray100,borderRadius:T.radius.sm,padding:"1px 6px"}}>{br?.short||"-"}</span>
+          </div>
+          {/* Row2: 고객 + 연락처 */}
+          <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
+            {g && <span style={{fontSize:T.fs.nano,fontWeight:T.fw.bolder,borderRadius:T.radius.sm,padding:"1px 4px",background:g==="M"?T.maleLt:T.femaleLt,color:g==="M"?T.male:T.female,flexShrink:0}}>{g==="M"?"남":"여"}</span>}
+            <span style={{fontSize:T.fs.md,fontWeight:T.fw.bolder,color:T.text}}>{r.custName||"-"}</span>
+            {isNaver && <I name="naver" size={11} color={T.naver}/>}
+            {r.custPhone && <span style={{fontSize:T.fs.xs,color:T.primary,marginLeft:4}} onClick={e=>{e.stopPropagation();}}>{r.custPhone}</span>}
+          </div>
+          {/* Row3: 시술 + 시술자 + 예약금 */}
+          <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",marginBottom:naverInfoItems.length?4:0}}>
+            <span style={{fontSize:T.fs.sm,color:T.gray700,fontWeight:T.fw.medium}}>{svcDisplay}</span>
+            {staff && <span style={{fontSize:T.fs.xs,color:T.textSub}}>· {staff.dn}</span>}
+            {r.isPrepaid && r.totalPrice ? <Badge color={T.success} bg={T.successLt} style={{marginLeft:"auto"}}>✓{r.totalPrice.toLocaleString()}원</Badge> : null}
+          </div>
+          {/* Row4: 네이버 정보 태그 */}
+          {naverInfoItems.length>0 && <div style={{display:"flex",flexWrap:"wrap",gap:3,marginTop:2}}>
+            {naverInfoItems.map(item=>(
+              <span key={item.label} style={{fontSize:T.fs.nano,padding:"1px 6px",borderRadius:T.radius.full,background:T.primaryLt,color:T.primaryDk,fontWeight:T.fw.bold,whiteSpace:"nowrap"}}>{item.label}: {item.value}</span>
+            ))}
+          </div>}
+        </div>;
+
+        /* ── 데스크톱 행 ── */
         return <div key={r.id} style={{
           display:"grid", gridTemplateColumns:resGridCols(showCols,density),
           gap:T.sp.xs, alignItems:"center",
@@ -4975,48 +5030,31 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
           transition:"box-shadow .15s",
           cursor:"pointer",
         }}
-          onClick={()=>{ if(setPendingOpenRes)setPendingOpenRes(r); if(setPage)setPage("timeline"); }}
+          onClick={handleClick}
           onMouseEnter={e=>e.currentTarget.style.boxShadow=T.shadow.md}
           onMouseLeave={e=>e.currentTarget.style.boxShadow="none"}
         >
-          {/* 날짜·시간 */}
           <div>
             <div style={{fontSize:T.fs.xs,color:T.textSub}}>{r.date}</div>
             <div style={{fontSize:D.nameSize,fontWeight:T.fw.bolder,color:T.primary}}>{r.time}</div>
           </div>
-
-          {/* 매장 */}
           <div style={{fontSize:T.fs.sm,fontWeight:T.fw.medium,color:T.text}}>{br?.short||"-"}</div>
-
-          {/* 고객 */}
           <div style={{display:"flex",alignItems:"center",gap:6}}>
             {g && <span style={{fontSize:T.fs.nano,fontWeight:T.fw.bolder,borderRadius:T.radius.sm,padding:"1px 4px",background:g==="M"?T.maleLt:T.femaleLt,color:g==="M"?T.male:T.female,flexShrink:0}}>{g==="M"?"남":"여"}</span>}
             <span style={{fontSize:D.nameSize,fontWeight:T.fw.bolder,color:T.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.custName||"-"}</span>
             {isNaver && <I name="naver" size={10} color={T.naver} style={{flexShrink:0}}/>}
           </div>
-
-          {/* 시술 */}
           {showCols.service && <div style={{fontSize:T.fs.xs,color:T.gray700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{svcDisplay}</div>}
-
-          {/* 시술자 */}
           {showCols.staff && <div style={{fontSize:T.fs.xs,color:T.textSub}}>{staff?.dn||"-"}</div>}
-
-          {/* 연락처 */}
           {showCols.phone && <div style={{fontSize:T.fs.xs,color:T.primary,whiteSpace:"nowrap"}} onClick={e=>e.stopPropagation()}>{r.custPhone||"-"}</div>}
-
-          {/* 예약금 */}
           {showCols.prepaid && <div>
             {r.isPrepaid && r.totalPrice ? <Badge color={T.success} bg={T.successLt}>✓{r.totalPrice.toLocaleString()}원</Badge> : <span style={{color:T.gray300,fontSize:T.fs.xs}}>-</span>}
           </div>}
-
-          {/* 예약번호 */}
           {showCols.naver_id && <div style={{fontSize:T.fs.xs}} onClick={e=>e.stopPropagation()}>
             {r.reservationId
               ? <a href={`https://partner.booking.naver.com/bizes/1523676/booking-list-view/bookings/${r.reservationId}`} target="_blank" rel="noreferrer" style={{color:T.naver,textDecoration:"none",fontWeight:T.fw.medium}}>{r.reservationId}</a>
               : <span style={{color:T.gray300}}>-</span>}
           </div>}
-
-          {/* 네이버 정보 */}
           {showCols.naver_info && <div style={{display:"flex",flexWrap:"wrap",gap:3}}>
             {naverInfoItems.length>0
               ? naverInfoItems.map(item=>(
@@ -5024,19 +5062,13 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
                 ))
               : <span style={{color:T.gray300,fontSize:T.fs.xs}}>-</span>}
           </div>}
-
-          {/* 메모 */}
           {showCols.memo && <div style={{fontSize:T.fs.xs,color:T.textSub,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.ownerComment||"-"}</div>}
-
-          {/* 상태 */}
           <div style={{textAlign:"center"}}>
             <Badge color={st.color} bg={st.bg}>{st.label}</Badge>
           </div>
-
-          {/* 액션 */}
           <div style={{display:"flex",gap:T.sp.xs,justifyContent:"flex-end"}} onClick={e=>e.stopPropagation()}>
             <Btn variant="ghost" size="sm" title="타임라인에서 열기"
-              onClick={()=>{ if(setPendingOpenRes)setPendingOpenRes(r); if(setPage)setPage("timeline"); }}
+              onClick={handleClick}
               style={{width:26,height:26,padding:0,borderRadius:T.radius.sm}}>
               <I name="calendar" size={11}/>
             </Btn>
