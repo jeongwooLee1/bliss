@@ -890,7 +890,12 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-function Loading({msg}) { return <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"100vh",background:"#f8f8f8",color:"#888",fontFamily:"'Pretendard',sans-serif",gap:12}}><div style={{fontSize:24}}><I name="loader" size={24} color="#7c7cc8"/></div><div>{msg||"로딩 중..."}</div></div>; }
+function Loading({msg}) {
+  return <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"100vh",background:T.bg,color:T.textSub,fontFamily:"'Pretendard',sans-serif",gap:T.sp.md}}>
+    <Spinner size={28}/>
+    <div style={{fontSize:T.fs.md}}>{msg||"로딩 중..."}</div>
+  </div>;
+}
 
 // ═══════════════════════════════════════════
 // SUPER ADMIN DASHBOARD
@@ -1490,7 +1495,7 @@ function Login({ users, onLogin, onSignup }) {
             <span style={{fontSize:12,color:"#999"}}>아직 계정이 없으신가요? </span>
             <button onClick={()=>setShowSignup(true)} style={{background:"none",border:"none",fontSize:12,color:"#7c7cc8",fontWeight:700,cursor:"pointer",fontFamily:"inherit",textDecoration:"underline"}}>무료 체험 시작 →</button>
           </div>
-          <div style={{fontSize:10,color:"#bbb",textAlign:"center",marginTop:4}}>v{BLISS_V}</div><div style={{fontSize:20,color:"#ff0000",textAlign:"center",fontWeight:900,marginTop:4}}>v{BLISS_V}</div>
+          <div style={{fontSize:10,color:"#bbb",textAlign:"center",marginTop:4}}>v{BLISS_V}</div>
         </div>
       </div>
     </div>
@@ -1550,7 +1555,7 @@ function Sidebar({ nav, page, setPage, role, branchNames, onLogout, bizName="", 
     <div style={{padding:12,borderTop:"1px solid #e0e0e0",display:"flex",flexDirection:"column",gap:6}}>
       {isSuper && <button onClick={onBackToSuper} style={{width:"100%",padding:"8px 14px",borderRadius:4,border:"1px solid #7c7cc8",background:"#7c7cc810",color:"#7c7cc8",cursor:"pointer",fontSize:12,fontWeight:600,fontFamily:"inherit",textAlign:"center"}}><I name="arrowL" size={14}/> 관리자 대시보드</button>}
       <button onClick={onLogout} style={{width:"100%",padding:"8px 14px",borderRadius:4,border:"1px solid #d0d0d0",background:"#fff",color:"#888",cursor:"pointer",fontSize:12,fontWeight:600,fontFamily:"inherit",textAlign:"center"}}>로그아웃</button>
-      <div style={{fontSize:10,color:"#bbb",textAlign:"center",marginTop:2}}>v{BLISS_V}</div><div style={{fontSize:20,color:"#ff0000",textAlign:"center",fontWeight:900,marginTop:4}}>v{BLISS_V}</div>
+      <div style={{fontSize:10,color:"#bbb",textAlign:"center",marginTop:2}}>v{BLISS_V}</div>
     </div>
   </>;
 }
