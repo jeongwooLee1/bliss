@@ -174,7 +174,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.44";
+const BLISS_V = "2.69.45";
 
 // ─── 디자인 토큰 ────────────────────────────────────────────────────────────
 const T = {
@@ -234,9 +234,9 @@ const Btn = ({ children, variant="primary", size="md", disabled, onClick, style=
     opacity: disabled ? 0.5 : 1 };
   const sizes = { sm:{padding:"4px 10px",fontSize:T.fs.sm}, md:{padding:"7px 14px",fontSize:T.fs.md}, lg:{padding:"10px 20px",fontSize:T.fs.lg} };
   const variants = {
-    primary:   { background:T.primary,   color:"#fff" },
+    primary:   { background:T.primary,   color:T.bgCard },
     secondary: { background:T.gray200,   color:T.gray800 },
-    danger:    { background:T.danger,    color:"#fff" },
+    danger:    { background:T.danger,    color:T.bgCard },
     ghost:     { background:"transparent", color:T.primary, border:`1px solid ${T.border}` },
     outline:   { background:"transparent", color:T.primary, border:`1px solid ${T.primary}` },
   };
@@ -265,7 +265,7 @@ const Card = ({ children, style={}, ...p }) => (
 const Input = ({ style={}, ...p }) => (
   <input style={{ width:"100%", padding:"8px 12px", borderRadius:T.radius.md,
     border:`1px solid ${T.border}`, fontSize:T.fs.md, fontFamily:"inherit",
-    outline:"none", background:"#fff", color:T.text, boxSizing:"border-box", ...style }} {...p}/>
+    outline:"none", background:T.bgCard, color:T.text, boxSizing:"border-box", ...style }} {...p}/>
 );
 
 // 구분선
@@ -874,7 +874,7 @@ function App() {
       </aside>
       {sideOpen && <div className="sidebar-m" style={{position:"fixed",inset:0,zIndex:300}}>
         <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,.5)"}} onClick={()=>setSideOpen(false)}/>
-        <div style={{position:"relative",width:260,height:"100%",background:"#fff",display:"flex",flexDirection:"column",animation:"slideIn .5s cubic-bezier(.22,1,.36,1)"}}>
+        <div style={{position:"relative",width:260,height:"100%",background:T.bgCard,display:"flex",flexDirection:"column",animation:"slideIn .5s cubic-bezier(.22,1,.36,1)"}}>
           <Sidebar nav={nav} page={page} setPage={p=>{setPage(p);setSideOpen(false)}} role={role} branchNames={branchNames} onLogout={handleLogout} bizName={bizName} isSuper={isSuper} onBackToSuper={handleBackToSuper} />
         </div>
       </div>}
@@ -933,10 +933,10 @@ class ErrorBoundary extends React.Component {
         <div style={{fontSize:13,color:"#c00",marginBottom:8,fontFamily:"monospace",maxWidth:600,wordBreak:"break-all"}}>{this.state.error.message}</div>
         <pre style={{fontSize:T.fs.xs,color:T.textSub,maxWidth:700,maxHeight:180,overflow:"auto",background:T.gray200,padding:8,borderRadius:6,marginBottom:16,textAlign:"left"}}>{stack.slice(0,1500)}</pre>
         <pre style={{fontSize:T.fs.xs,color:T.textMuted,maxWidth:700,maxHeight:100,overflow:"auto",background:"#f5f5f5",padding:8,borderRadius:6,marginBottom:20,textAlign:"left"}}>{component.slice(0,500)}</pre>
-        <button onClick={()=>window.location.reload()} style={{padding:"10px 24px",background:T.primary,color:"#fff",border:"none",borderRadius:T.radius.md,fontSize:T.fs.md,cursor:"pointer",fontWeight:T.fw.bold}}>
+        <button onClick={()=>window.location.reload()} style={{padding:"10px 24px",background:T.primary,color:T.bgCard,border:"none",borderRadius:T.radius.md,fontSize:T.fs.md,cursor:"pointer",fontWeight:T.fw.bold}}>
           새로고침
         </button>
-        <div style={{marginTop:12,fontSize:11,color:"#bbb"}}>문제가 계속되면 Ctrl+Shift+R (강제 새로고침)</div>
+        <div style={{marginTop:12,fontSize:11,color:T.gray400}}>문제가 계속되면 Ctrl+Shift+R (강제 새로고침)</div>
       </div>;
     }
     return this.props.children;
@@ -1000,7 +1000,7 @@ function SuperDashboard({ superData, setSuperData, currentUser, onLogout, onEnte
   };
   const seedBizTemplates = async (bizId) => {
     const prefix = bizId.replace("biz_","");
-    const br = { id:`br_${prefix}_1`, business_id:bizId, name:"본점", short:"본점", phone:"", address:"", color:"#FFFFFF", sort:0, use_yn:true };
+    const br = { id:`br_${prefix}_1`, business_id:bizId, name:"본점", short:"본점", phone:"", address:"", color:T.bgCard, sort:0, use_yn:true };
     await sb.insert("branches", br);
     await sb.insert("rooms", { id:`rm_${prefix}_1`, business_id:bizId, branch_id:br.id, name:"담당자1", color:"", sort_order:0 });
     const cats = ["왁싱","페이셜","바디","기타"];
@@ -1039,7 +1039,7 @@ function SuperDashboard({ superData, setSuperData, currentUser, onLogout, onEnte
       ))}
     </div>
     <div style={{padding:12,borderTop:"1px solid "+T.border}}>
-      <button onClick={onLogout} style={{width:"100%",padding:"8px 14px",borderRadius:T.radius.sm,border:"1px solid #d0d0d0",background:"#fff",color:T.textSub,cursor:"pointer",fontSize:T.fs.sm,fontWeight:T.fw.bold,fontFamily:"inherit"}}>로그아웃</button>
+      <button onClick={onLogout} style={{width:"100%",padding:"8px 14px",borderRadius:T.radius.sm,border:"1px solid #d0d0d0",background:T.bgCard,color:T.textSub,cursor:"pointer",fontSize:T.fs.sm,fontWeight:T.fw.bold,fontFamily:"inherit"}}>로그아웃</button>
     </div>
   </>;
 
@@ -1048,19 +1048,19 @@ function SuperDashboard({ superData, setSuperData, currentUser, onLogout, onEnte
       <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet"/>
       <style>{CSS}</style>
       {/* Desktop sidebar */}
-      <aside className="sidebar-d" style={{width:220,background:"#fff",borderRight:"1px solid "+T.border,display:"flex",flexDirection:"column"}}>
+      <aside className="sidebar-d" style={{width:220,background:T.bgCard,borderRight:"1px solid "+T.border,display:"flex",flexDirection:"column"}}>
         <SideContent/>
       </aside>
       {/* Mobile sidebar overlay */}
       {sideOpen && <div className="sidebar-m" style={{position:"fixed",inset:0,zIndex:300}}>
         <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,.5)"}} onClick={()=>setSideOpen(false)}/>
-        <div style={{position:"relative",width:260,height:"100%",background:"#fff",display:"flex",flexDirection:"column",animation:"slideIn .5s cubic-bezier(.22,1,.36,1)"}}>
+        <div style={{position:"relative",width:260,height:"100%",background:T.bgCard,display:"flex",flexDirection:"column",animation:"slideIn .5s cubic-bezier(.22,1,.36,1)"}}>
           <SideContent/>
         </div>
       </div>}
       <main className="main-c" style={{flex:1,display:"flex",flexDirection:"column",height:"100%",overflow:"hidden",paddingBottom:0}}>
         {/* Mobile header */}
-        <div className="mob-hdr" style={{padding:"10px 16px",background:"#fff",borderBottom:"1px solid "+T.border,display:"flex",alignItems:"center",gap:12,justifyContent:"space-between"}}>
+        <div className="mob-hdr" style={{padding:"10px 16px",background:T.bgCard,borderBottom:"1px solid "+T.border,display:"flex",alignItems:"center",gap:12,justifyContent:"space-between"}}>
           <span style={{fontSize:T.fs.md,fontWeight:T.fw.bolder,color:T.primary}}>Bliss 슈퍼관리자</span>
           <span style={{fontSize:T.fs.xl,fontWeight:900,color:"#ff0000"}}>v{BLISS_V}</span>
         </div>
@@ -1093,7 +1093,7 @@ function SuperDashboard({ superData, setSuperData, currentUser, onLogout, onEnte
               <button className="btn-p" onClick={saveBiz}>{bizForm.id?"저장":"추가"}</button>
               <button className="btn-s" onClick={()=>setBizForm(null)}>취소</button>
             </div>
-            {!bizForm.id && <div style={{marginTop:8,fontSize:11,color:"#999"}}>* 대표 아이디로 대표 계정이 자동 생성됩니다 (초기 비밀번호: 1234)</div>}
+            {!bizForm.id && <div style={{marginTop:8,fontSize:11,color:T.gray500}}>* 대표 아이디로 대표 계정이 자동 생성됩니다 (초기 비밀번호: 1234)</div>}
           </div>}
           <div className="card tw">
             <table><thead><tr>
@@ -1117,7 +1117,7 @@ function SuperDashboard({ superData, setSuperData, currentUser, onLogout, onEnte
                   </td>
                 </tr>;
               })}
-              {businesses.length===0 && <tr><td colSpan={7} style={{textAlign:"center",color:"#999",padding:40}}>등록된 업체가 없습니다</td></tr>}
+              {businesses.length===0 && <tr><td colSpan={7} style={{textAlign:"center",color:T.gray500,padding:40}}>등록된 업체가 없습니다</td></tr>}
             </tbody></table>
           </div>
         </div>}
@@ -1165,7 +1165,7 @@ function SuperUsers({ users, businesses, superData, setSuperData }) {
 
   return <div>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:8}}>
-      <h2 style={{fontSize:T.fs.xl,fontWeight:T.fw.black,color:T.text}}><I name="user" size={18}/> 전체 사용자 <span style={{fontSize:13,fontWeight:T.fw.normal,color:"#999"}}>{users.length}명</span></h2>
+      <h2 style={{fontSize:T.fs.xl,fontWeight:T.fw.black,color:T.text}}><I name="user" size={18}/> 전체 사용자 <span style={{fontSize:13,fontWeight:T.fw.normal,color:T.gray500}}>{users.length}명</span></h2>
       <button className="btn-p" onClick={startAdd}><I name="plus" size={12}/> 사용자 추가</button>
     </div>
 
@@ -1314,7 +1314,7 @@ function SignupWizard({ onComplete, onBack }) {
       const bizId="biz_"+uid(),brId="br_"+uid(),oId="acc_"+uid();
       const exp=new Date();exp.setDate(exp.getDate()+14);
       await sb.insert("businesses",{id:bizId,name:form.bizName.trim(),code:bn,phone:form.phone||"",settings:JSON.stringify({plan:"trial",plan_expire:exp.toISOString().split("T")[0],plan_status:"active",owner_name:form.ownerName||""})});
-      await sb.insert("branches",{id:brId,business_id:bizId,name:form.bizName.trim(),short:form.bizName.trim().slice(0,5),phone:form.phone||"",address:form.address||"",color:"#FFFFFF",sort:0,use_yn:true});
+      await sb.insert("branches",{id:brId,business_id:bizId,name:form.bizName.trim(),short:form.bizName.trim().slice(0,5),phone:form.phone||"",address:form.address||"",color:T.bgCard,sort:0,use_yn:true});
       await sb.insert("app_users",{id:oId,business_id:bizId,login_id:bn,password:form.pw,name:(form.ownerName||form.bizName.trim())+" 대표",role:"owner",branch_ids:JSON.stringify([brId]),view_branch_ids:JSON.stringify([])});
       setStep(3);
       setTimeout(()=>onComplete({id:oId,businessId:bizId,loginId:bn,pw:form.pw,name:(form.ownerName||form.bizName.trim())+" 대표",role:"owner",branches:[brId],viewBranches:[]}),1800);
@@ -1322,8 +1322,8 @@ function SignupWizard({ onComplete, onBack }) {
     finally{setSaving(false);}
   };
 
-  const inp={width:"100%",padding:"12px 14px",fontSize:15,borderRadius:10,border:"1px solid "+T.border,outline:"none",fontFamily:"inherit",boxSizing:"border-box",background:"#fff"};
-  const lbl={fontSize:11,color:"#999",fontWeight:T.fw.bold,marginBottom:5,display:"block"};
+  const inp={width:"100%",padding:"12px 14px",fontSize:15,borderRadius:10,border:"1px solid "+T.border,outline:"none",fontFamily:"inherit",boxSizing:"border-box",background:T.bgCard};
+  const lbl={fontSize:11,color:T.gray500,fontWeight:T.fw.bold,marginBottom:5,display:"block"};
 
   if (scanning) return (
     <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:20,minHeight:260}}>
@@ -1341,7 +1341,7 @@ function SignupWizard({ onComplete, onBack }) {
         <div style={{fontSize:13,color:T.textMuted,marginTop:4}}>찍으면 정보를 자동으로 채워드립니다</div>
       </div>
       <button onClick={()=>camRef.current&&camRef.current.click()}
-        style={{padding:"16px 0",borderRadius:T.radius.lg,border:"none",background:"linear-gradient(135deg,#7c7cc8,#9b9be0)",color:"#fff",fontSize:15,fontWeight:T.fw.black,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
+        style={{padding:"16px 0",borderRadius:T.radius.lg,border:"none",background:"linear-gradient(135deg,#7c7cc8,#9b9be0)",color:T.bgCard,fontSize:15,fontWeight:T.fw.black,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
         <span style={{fontSize:20}}>📷</span> 카메라로 촬영
       </button>
       <input ref={camRef} type="file" accept="image/*" capture="environment" style={{display:"none"}} onChange={e=>handleFile(e.target.files&&e.target.files[0])}/>
@@ -1350,7 +1350,7 @@ function SignupWizard({ onComplete, onBack }) {
         <span style={{fontSize:T.fs.lg}}>🖼️</span> 갤러리에서 선택
       </button>
       <input ref={fileRef} type="file" accept="image/*" style={{display:"none"}} onChange={e=>handleFile(e.target.files&&e.target.files[0])}/>
-      <button onClick={()=>setStep(2)} style={{padding:"12px 0",borderRadius:10,border:"1px solid "+T.border,background:"#fff",color:T.textSub,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>직접 입력하기</button>
+      <button onClick={()=>setStep(2)} style={{padding:"12px 0",borderRadius:10,border:"1px solid "+T.border,background:T.bgCard,color:T.textSub,fontSize:13,cursor:"pointer",fontFamily:"inherit"}}>직접 입력하기</button>
       <button onClick={onBack} style={{background:"none",border:"none",fontSize:T.fs.sm,color:"#ccc",cursor:"pointer",fontFamily:"inherit",padding:4,textAlign:"center"}}>← 로그인으로</button>
     </div>
   );
@@ -1394,7 +1394,7 @@ function SignupWizard({ onComplete, onBack }) {
         🎁 가입 후 <b>14일 무료 체험</b> · 모든 기능 이용 가능
       </div>
       <button onClick={submit} disabled={saving}
-        style={{width:"100%",padding:16,borderRadius:T.radius.lg,border:"none",background:saving?"#c5c5e8":"linear-gradient(135deg,#7c7cc8,#9b9be0)",color:"#fff",fontSize:T.fs.lg,fontWeight:T.fw.black,cursor:saving?"not-allowed":"pointer",fontFamily:"inherit",marginBottom:8}}>
+        style={{width:"100%",padding:16,borderRadius:T.radius.lg,border:"none",background:saving?"#c5c5e8":"linear-gradient(135deg,#7c7cc8,#9b9be0)",color:T.bgCard,fontSize:T.fs.lg,fontWeight:T.fw.black,cursor:saving?"not-allowed":"pointer",fontFamily:"inherit",marginBottom:8}}>
         {saving?"처리 중...":"시작하기 →"}
       </button>
     </div>
@@ -1448,14 +1448,14 @@ function SuperSystemSettings() {
     } catch(e) { alert("저장 실패: "+e.message); }
   };
 
-  if (loading) return <div style={{padding:40,textAlign:"center",color:"#999"}}>로딩 중...</div>;
+  if (loading) return <div style={{padding:40,textAlign:"center",color:T.gray500}}>로딩 중...</div>;
 
   return (
     <div style={{maxWidth:520,margin:"0 auto",padding:24}}>
       <div style={{fontSize:15,fontWeight:T.fw.black,color:T.text,marginBottom:4}}>시스템 설정</div>
-      <div style={{fontSize:T.fs.sm,color:"#999",marginBottom:24}}>일반 사용자에게는 표시되지 않는 개발자 전용 설정입니다.</div>
+      <div style={{fontSize:T.fs.sm,color:T.gray500,marginBottom:24}}>일반 사용자에게는 표시되지 않는 개발자 전용 설정입니다.</div>
 
-      <div style={{background:"#fff",border:"1px solid #e8e8e8",borderRadius:T.radius.lg,padding:20,display:"flex",flexDirection:"column",gap:16}}>
+      <div style={{background:T.bgCard,border:"1px solid #e8e8e8",borderRadius:T.radius.lg,padding:20,display:"flex",flexDirection:"column",gap:16}}>
         <div>
           <div style={{fontSize:13,fontWeight:T.fw.bolder,color:"#444",marginBottom:4}}>Gemini API 키 (시스템)</div>
           <div style={{fontSize:11,color:T.textMuted,marginBottom:10}}>
@@ -1470,7 +1470,7 @@ function SuperSystemSettings() {
               style={{flex:1,padding:"10px 12px",fontSize:13,borderRadius:T.radius.md,border:"1px solid "+T.border,outline:"none",fontFamily:"inherit"}}
             />
             <button onClick={save}
-              style={{padding:"10px 20px",borderRadius:T.radius.md,border:"none",background:T.primary,color:"#fff",fontSize:13,fontWeight:T.fw.bolder,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>
+              style={{padding:"10px 20px",borderRadius:T.radius.md,border:"none",background:T.primary,color:T.bgCard,fontSize:13,fontWeight:T.fw.bolder,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap"}}>
               {saved ? "✓ 저장됨" : "저장"}
             </button>
           </div>
@@ -1488,7 +1488,7 @@ function SuperSystemSettings() {
             ].map(p=>(
               <div key={p.id} style={{border:"1px solid #e8e8e8",borderRadius:T.radius.md,padding:"10px 12px",textAlign:"center"}}>
                 <div style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder,color:p.color}}>{p.name}</div>
-                <div style={{fontSize:11,color:"#999",marginTop:2}}>{p.desc}</div>
+                <div style={{fontSize:11,color:T.gray500,marginTop:2}}>{p.desc}</div>
               </div>
             ))}
           </div>
@@ -1651,7 +1651,7 @@ function MiniCal({ selDate, onSelect, onClose }) {
       if (rect.left < 8) { ref.current.style.left = "0"; ref.current.style.transform = "none"; }
     }
   }, []);
-  return <div ref={ref} style={{position:"absolute",top:"100%",left:"50%",transform:"translateX(-50%)",zIndex:100,background:"#fff",border:"1px solid #d0d0d0",borderRadius:T.radius.md,boxShadow:"0 8px 24px rgba(0,0,0,.15)",padding:10,width:250,marginTop:4}}>
+  return <div ref={ref} style={{position:"absolute",top:"100%",left:"50%",transform:"translateX(-50%)",zIndex:100,background:T.bgCard,border:"1px solid #d0d0d0",borderRadius:T.radius.md,boxShadow:"0 8px 24px rgba(0,0,0,.15)",padding:10,width:250,marginTop:4}}>
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
       <button onClick={prevM} style={{background:"none",border:"none",cursor:"pointer",padding:4,color:"#666"}}><I name="chevL" size={14}/></button>
       <span style={{fontSize:13,fontWeight:T.fw.bolder,color:T.text}}>{y}년 {m+1}월</span>
@@ -2467,7 +2467,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
             const naverUrl = bizId ? (resId ? `https://partner.booking.naver.com/bizes/${bizId}/booking-list-view/bookings/${resId}` : `https://partner.booking.naver.com/bizes/${bizId}/booking-list-view`) : null;
             return naverUrl ? <a href={naverUrl} target="_blank" rel="noopener noreferrer"
               onClick={e=>e.stopPropagation()}
-              style={{fontSize:11,color:"#fff",fontWeight:T.fw.bolder,background:"#03C75A",padding:"4px 10px",borderRadius:6,textDecoration:"none",flexShrink:0,whiteSpace:"nowrap"}}>네이버 확정</a> : null;
+              style={{fontSize:11,color:T.bgCard,fontWeight:T.fw.bolder,background:"#03C75A",padding:"4px 10px",borderRadius:6,textDecoration:"none",flexShrink:0,whiteSpace:"nowrap"}}>네이버 확정</a> : null;
           })()}
         </div>;
       })()}
@@ -2475,7 +2475,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       <div ref={scrollRef} className="timeline-scroll" style={{flex:1,overflow:"auto",minHeight:0,overscrollBehavior:"none"}}>
 
         {/* Top Bar - sticky */}
-        <div ref={topbarRef} className="tl-topbar" style={{position:"sticky",top:0,left:0,zIndex:30,borderBottom:"1px solid "+T.border,background:"#fff",padding:"6px 12px",display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",minWidth:"100%",boxSizing:"border-box",overflow:"visible"}}>
+        <div ref={topbarRef} className="tl-topbar" style={{position:"sticky",top:0,left:0,zIndex:30,borderBottom:"1px solid "+T.border,background:T.bgCard,padding:"6px 12px",display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",minWidth:"100%",boxSizing:"border-box",overflow:"visible"}}>
         {/* Row 1: Date nav + settings + branch */}
         <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0,flexWrap:"wrap",maxWidth:"100%"}}>
           <button onClick={()=>changeDate(-1)} style={{background:"none",border:"none",cursor:"pointer",fontSize:T.fs.sm,color:"#666",padding:"2px 4px",flexShrink:0}}><I name="chevL" size={14}/></button>
@@ -2485,8 +2485,8 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
             {showCal && <MiniCal selDate={selDate} onSelect={d=>{setSelDate(d);setShowCal(false);}} onClose={()=>setShowCal(false)}/>}
           </div>
           <button onClick={()=>changeDate(1)} style={{background:"none",border:"none",cursor:"pointer",fontSize:T.fs.sm,color:"#666",padding:"2px 4px",flexShrink:0}}><I name="chevR" size={14}/></button>
-          <button onClick={()=>setSelDate(todayStr())} style={{padding:"0 10px",height:32,fontSize:T.fs.sm,border:"1px solid #d0d0d0",borderRadius:6,background:"#fff",color:"#666",cursor:"pointer",fontFamily:"inherit",flexShrink:0,display:"flex",alignItems:"center"}} className="hide-mobile">오늘</button>
-          <button onClick={()=>setShowQuickBook(true)} style={{padding:"0 12px",height:32,fontSize:T.fs.sm,border:"none",borderRadius:T.radius.xl,background:"linear-gradient(135deg,#4285f4,#9b72cb,#d96570)",color:"#fff",cursor:"pointer",fontFamily:"inherit",flexShrink:0,display:"flex",alignItems:"center",gap:5,fontWeight:T.fw.bolder,boxShadow:"0 2px 8px rgba(66,133,244,.25)"}}>
+          <button onClick={()=>setSelDate(todayStr())} style={{padding:"0 10px",height:32,fontSize:T.fs.sm,border:"1px solid #d0d0d0",borderRadius:6,background:T.bgCard,color:"#666",cursor:"pointer",fontFamily:"inherit",flexShrink:0,display:"flex",alignItems:"center"}} className="hide-mobile">오늘</button>
+          <button onClick={()=>setShowQuickBook(true)} style={{padding:"0 12px",height:32,fontSize:T.fs.sm,border:"none",borderRadius:T.radius.xl,background:"linear-gradient(135deg,#4285f4,#9b72cb,#d96570)",color:T.bgCard,cursor:"pointer",fontFamily:"inherit",flexShrink:0,display:"flex",alignItems:"center",gap:5,fontWeight:T.fw.bolder,boxShadow:"0 2px 8px rgba(66,133,244,.25)"}}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff" style={{flexShrink:0}}><path d="M12 2L13.09 8.26L18 6L14.74 10.91L21 12L14.74 13.09L18 18L13.09 15.74L12 22L10.91 15.74L6 18L9.26 13.09L3 12L9.26 10.91L6 6L10.91 8.26L12 2Z"/></svg> AI Book
           </button>
           {/* 수동 새로고침 버튼 */}
@@ -2532,7 +2532,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
             </svg>
             {rtPendingCount > 0 && <span style={{
               position:"absolute", top:-5, right:-5,
-              background:"#4285f4", color:"#fff",
+              background:"#4285f4", color:T.bgCard,
               borderRadius:"50%", width:16, height:16,
               fontSize:9, fontWeight:T.fw.bolder,
               display:"flex", alignItems:"center", justifyContent:"center",
@@ -2571,8 +2571,8 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
         {/* Timeline Grid */}
         <div style={{display:"flex",minWidth:"fit-content",position:"relative"}}>
           {/* Time Labels */}
-          <div className="tl-time-col" style={{width:timeLabelsW,flexShrink:0,position:"sticky",left:0,zIndex:20,background:"#fff",borderRight:"1px solid #eee"}}>
-            <div style={{height:headerH,borderBottom:"1px solid #eee",position:"sticky",top:topbarH,zIndex:25,background:"#fff"}}/>
+          <div className="tl-time-col" style={{width:timeLabelsW,flexShrink:0,position:"sticky",left:0,zIndex:20,background:T.bgCard,borderRight:"1px solid #eee"}}>
+            <div style={{height:headerH,borderBottom:"1px solid #eee",position:"sticky",top:topbarH,zIndex:25,background:T.bgCard}}/>
             <div style={{position:"relative",height:totalRows*rowH,...gridBg}}>
               {hoverCell && hoverCell.rowIdx>=0 && <div style={{position:"absolute",top:hoverCell.rowIdx*rowH,left:0,right:0,height:rowH,background:"rgba(124,124,200,0.08)",zIndex:1,pointerEvents:"none"}}/>}
               {timeLabels.map(({i, isHour, m, text}) => {
@@ -2582,7 +2582,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                 </div>;
               })}
               {nowY > 0 && <div style={{position:"absolute",top:nowY-9,left:0,right:0,display:"flex",alignItems:"center",justifyContent:"center",zIndex:6,pointerEvents:"none"}}>
-                <span style={{fontSize:T.fs.xs,fontWeight:T.fw.black,color:T.danger,background:"#fff",padding:"1px 3px",borderRadius:3,lineHeight:1}}>
+                <span style={{fontSize:T.fs.xs,fontWeight:T.fw.black,color:T.danger,background:T.bgCard,padding:"1px 3px",borderRadius:3,lineHeight:1}}>
                   {(now.getHours()>12?now.getHours()-12:now.getHours()||12)}:{String(now.getMinutes()).padStart(2,"0")}
                 </span>
               </div>}
@@ -2727,9 +2727,9 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                         {block.type==="reservation" && !block.isSchedule && <>
                           <div style={{display:"flex",alignItems:"center",gap:2,overflow:"hidden",whiteSpace:"nowrap",flexWrap:"nowrap"}}>
                             {/* 태그 - 이름 앞에 */}
-                            {isNaverCancelled && <span style={{fontSize:Math.max(6,blockFs-2),padding:"1px 3px",borderRadius:2,background:"#E6A700",color:"#fff",fontWeight:T.fw.bolder,lineHeight:1,flexShrink:0}}>취소</span>}
-                            {isNaverUnassigned && <span style={{fontSize:Math.max(6,blockFs-2),padding:"1px 3px",borderRadius:2,background:"#FF9800",color:"#fff",fontWeight:T.fw.bolder,lineHeight:1,flexShrink:0}}>미배정</span>}
-                            {isNaverPending && !isNaverUnassigned && <span style={{fontSize:Math.max(6,blockFs-2),padding:"1px 3px",borderRadius:2,background:"#FF9800",color:"#fff",fontWeight:T.fw.bolder,lineHeight:1,flexShrink:0,animation:"pendingBlink 1.5s infinite"}}>대기</span>}
+                            {isNaverCancelled && <span style={{fontSize:Math.max(6,blockFs-2),padding:"1px 3px",borderRadius:2,background:"#E6A700",color:T.bgCard,fontWeight:T.fw.bolder,lineHeight:1,flexShrink:0}}>취소</span>}
+                            {isNaverUnassigned && <span style={{fontSize:Math.max(6,blockFs-2),padding:"1px 3px",borderRadius:2,background:"#FF9800",color:T.bgCard,fontWeight:T.fw.bolder,lineHeight:1,flexShrink:0}}>미배정</span>}
+                            {isNaverPending && !isNaverUnassigned && <span style={{fontSize:Math.max(6,blockFs-2),padding:"1px 3px",borderRadius:2,background:"#FF9800",color:T.bgCard,fontWeight:T.fw.bolder,lineHeight:1,flexShrink:0,animation:"pendingBlink 1.5s infinite"}}>대기</span>}
                             {block.selectedTags?.slice(0,3).map(tid=>{
                               const tg=tags.find(t=>t.id===tid);
                               if(!tg) return null;
@@ -2738,7 +2738,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                               const txt=(0.299*r+0.587*g+0.114*b)/255>0.55?"#333":"#fff";
                               return <span key={tid} style={{fontSize:Math.max(6,blockFs-2),padding:"1px 4px",borderRadius:2,background:bg,color:txt,fontWeight:T.fw.bolder,lineHeight:1,flexShrink:0}}>{tg.name}</span>;
                             })}
-                            {block.selectedTags?.length>3 && <span style={{fontSize:Math.max(6,blockFs-2),color:"#fff",background:"#999",borderRadius:2,padding:"1px 2px",flexShrink:0}}>+{block.selectedTags.length-3}</span>}
+                            {block.selectedTags?.length>3 && <span style={{fontSize:Math.max(6,blockFs-2),color:T.bgCard,background:T.gray500,borderRadius:2,padding:"1px 2px",flexShrink:0}}>+{block.selectedTags.length-3}</span>}
                             {/* 이름 */}
                             <span style={{fontWeight:T.fw.bold,color:isNaverCancelled?"#999":"#333",overflow:"hidden",textOverflow:"ellipsis",textDecoration:isNaverCancelled?"line-through":"none",flexShrink:1,minWidth:0}}>
                               {block.custGender && <span style={{color:block.custGender==="M"?"#4a7cc8":"#e57373"}}>{block.custGender==="M"?"남":"여"}</span>} {block.custName}
@@ -2758,7 +2758,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                             if (!naverParts.length && !memo) return null;
                             return <div style={{marginTop:2,fontSize:Math.max(6,blockFs-2),color:T.gray700,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:h>=90?3:2,WebkitBoxOrient:"vertical"}}>
                               {naverParts.map((v,i) => <span key={i}>{i>0 && <span style={{color:"#ccc"}}> / </span>}{v}</span>)}
-                              {naverParts.length>0 && memo && effectiveNaverColShow["직원메모"] && <span style={{color:"#bbb"}}> · </span>}
+                              {naverParts.length>0 && memo && effectiveNaverColShow["직원메모"] && <span style={{color:T.gray400}}> · </span>}
                               {memo && effectiveNaverColShow["직원메모"] && <span style={{color:"#1565C0"}}>{memo}</span>}
                             </div>;
                           })()}
@@ -2776,7 +2776,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                             display:"flex",alignItems:"flex-start",justifyContent:"center",opacity:0,transition:"opacity .15s",zIndex:3}}>
                           <div style={{width:24,height:4,borderRadius:2,background:color,marginTop:4}}/>
                         </div>}
-                        {isBeingResized && <div style={{position:"absolute",bottom:2,right:4,fontSize:Math.max(6,blockFs-2),fontWeight:T.fw.bolder,color,background:"#fff",padding:"0 3px",borderRadius:2}}>
+                        {isBeingResized && <div style={{position:"absolute",bottom:2,right:4,fontSize:Math.max(6,blockFs-2),fontWeight:T.fw.bolder,color,background:T.bgCard,padding:"0 3px",borderRadius:2}}>
                           {blockDur}분
                         </div>}
                       </div>
@@ -2804,12 +2804,12 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
         left:scrollRef.current?.getBoundingClientRect().left+dragPos.x-50,
         top:scrollRef.current?.getBoundingClientRect().top+dragPos.y-15,
         width:colW-10,padding:"5px 8px",
-        background:"#fff",color:T.text,borderRadius:T.radius.md,fontSize:T.fs.xs,fontWeight:T.fw.bold,
+        background:T.bgCard,color:T.text,borderRadius:T.radius.md,fontSize:T.fs.xs,fontWeight:T.fw.bold,
         borderLeft:`3px solid ${BLOCK_COLORS[dragBlock.type]||"#7c7cc8"}`,
         boxShadow:"0 8px 24px rgba(0,0,0,.2)",pointerEvents:"none",zIndex:100,opacity:.95}}>
         <div style={{fontSize:9,color:T.primary,fontWeight:T.fw.bolder}}>{dragBlock.time} → {dragSnap?.time||"?"}</div>
         <div>{dragBlock.custGender && <span style={{color:dragBlock.custGender==="M"?"#4a7cc8":"#e57373"}}>{dragBlock.custGender==="M"?"남":"여"}</span>} {dragBlock.custName}</div>
-        <div style={{fontSize:8,color:"#999"}}>{allRooms.find(r=>r.id===dragSnap?.roomId)?.name||""}</div>
+        <div style={{fontSize:8,color:T.gray500}}>{allRooms.find(r=>r.id===dragSnap?.roomId)?.name||""}</div>
       </div>}
 
       {/* 이동/리사이즈 확인 팝업 */}
@@ -2820,13 +2820,13 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
           ? `${name}: ${orig.time} → ${d.time}`
           : `${name}: ${orig.dur}분 → ${d.dur}분`;
         return <div className="ov" style={{zIndex:9998}} onClick={()=>_mc(cancelChange)}>
-          <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:6,boxShadow:"0 12px 40px rgba(0,0,0,0.2)",padding:"20px 24px",
+          <div onClick={e=>e.stopPropagation()} style={{background:T.bgCard,borderRadius:6,boxShadow:"0 12px 40px rgba(0,0,0,0.2)",padding:"20px 24px",
             fontFamily:"inherit",minWidth:260,maxWidth:340,textAlign:"center",animation:"slideUp .6s cubic-bezier(.22,1,.36,1)"}}>
             <div style={{fontSize:T.fs.md,fontWeight:T.fw.bolder,marginBottom:6}}>{type==="move"?"예약 이동":"시간 변경"}</div>
             <div style={{fontSize:13,color:T.gray700,marginBottom:16}}>{desc}</div>
             <div style={{display:"flex",gap:10,justifyContent:"center"}}>
               <button onClick={()=>_mc(cancelChange)} style={{flex:1,padding:"10px 0",fontSize:13,fontWeight:T.fw.bold,borderRadius:T.radius.md,border:"1px solid #ddd",background:"#f5f5f5",color:"#666",cursor:"pointer",fontFamily:"inherit"}}>취소</button>
-              <button onClick={confirmChange} style={{flex:1,padding:"10px 0",fontSize:13,fontWeight:T.fw.bolder,borderRadius:T.radius.md,border:"none",background:T.primary,color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>완료</button>
+              <button onClick={confirmChange} style={{flex:1,padding:"10px 0",fontSize:13,fontWeight:T.fw.bolder,borderRadius:T.radius.md,border:"none",background:T.primary,color:T.bgCard,cursor:"pointer",fontFamily:"inherit"}}>완료</button>
             </div>
           </div>
         </div>;
@@ -2898,7 +2898,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
           style={{position:"fixed",bottom:0,left:0,right:0,
-          background:"#fff",borderRadius:"16px 16px 0 0",padding:"20px 20px 32px",boxShadow:"0 -8px 32px rgba(0,0,0,.15)",zIndex:100,
+          background:T.bgCard,borderRadius:"16px 16px 0 0",padding:"20px 20px 32px",boxShadow:"0 -8px 32px rgba(0,0,0,.15)",zIndex:100,
           maxHeight:"80vh",overflowY:"auto",animation:"bottomSheet .4s cubic-bezier(.22,1,.36,1)",willChange:"transform"}}>
           <div style={{width:36,height:4,borderRadius:2,background:"#ddd",margin:"0 auto 16px",cursor:"grab"}}/>
           <div style={{fontSize:T.fs.md,fontWeight:T.fw.bolder,color:T.text,marginBottom:12}}><I name="settings" size={14}/> 타임라인 설정</div>
@@ -2936,9 +2936,9 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
           ].map(r=><div key={r.label} style={{background:"#f8f8fc",borderRadius:10,padding:"10px 12px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
             <span style={{fontSize:T.fs.sm,color:T.gray700,fontWeight:T.fw.bold}}>{r.label}</span>
             <div style={{display:"flex",alignItems:"center",gap:6}}>
-              <button onClick={r.dec} style={{width:32,height:32,border:"1px solid #ddd",borderRadius:T.radius.md,background:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}><I name="minus" size={16} color="#555"/></button>
+              <button onClick={r.dec} style={{width:32,height:32,border:"1px solid #ddd",borderRadius:T.radius.md,background:T.bgCard,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}><I name="minus" size={16} color="#555"/></button>
               <span style={{fontSize:13,color:T.primary,fontWeight:T.fw.bolder,width:36,textAlign:"center"}}>{r.val}{r.suffix||""}</span>
-              <button onClick={r.inc} style={{width:32,height:32,border:"1px solid #ddd",borderRadius:T.radius.md,background:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}><I name="plus" size={16} color="#555"/></button>
+              <button onClick={r.inc} style={{width:32,height:32,border:"1px solid #ddd",borderRadius:T.radius.md,background:T.bgCard,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}><I name="plus" size={16} color="#555"/></button>
             </div>
           </div>)}
           </div>
@@ -2968,9 +2968,9 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
 
       {/* 알람 팝업 */}
       {alarmPopup && <div className="ov" onClick={()=>_mc(()=>setAlarmPopup(null))} style={{zIndex:9999}}>
-        <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:T.radius.lg,padding:0,width:"90%",maxWidth:400,
+        <div onClick={e=>e.stopPropagation()} style={{background:T.bgCard,borderRadius:T.radius.lg,padding:0,width:"90%",maxWidth:400,
           boxShadow:"0 16px 48px rgba(0,0,0,.25)",animation:"slideUp .6s cubic-bezier(.22,1,.36,1)",overflow:"hidden"}}>
-          <div style={{background:"linear-gradient(135deg,#FF6B00,#FF9800)",padding:"20px 24px",color:"#fff",textAlign:"center"}}>
+          <div style={{background:"linear-gradient(135deg,#FF6B00,#FF9800)",padding:"20px 24px",color:T.bgCard,textAlign:"center"}}>
             <div style={{fontSize:40,marginBottom:8}}><I name="bell" size={16} color="#FF9800"/></div>
             <div style={{fontSize:T.fs.xl,fontWeight:T.fw.black}}>알람</div>
             <div style={{fontSize:T.fs.md,marginTop:4,opacity:.9}}>{alarmPopup.time}</div>
@@ -2981,7 +2981,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
             </div>}
             {alarmPopup.memo ? <div style={{fontSize:T.fs.md,color:T.text,lineHeight:1.8,whiteSpace:"pre-wrap",
               background:"#FFF8F0",border:"1px solid #FFE0B2",borderRadius:T.radius.md,padding:16}}>{alarmPopup.memo}</div>
-              : <div style={{fontSize:13,color:"#999",textAlign:"center",padding:12}}>메모 내용 없음</div>}
+              : <div style={{fontSize:13,color:T.gray500,textAlign:"center",padding:12}}>메모 내용 없음</div>}
           </div>
           <div style={{padding:"0 24px 20px",textAlign:"center"}}>
             <button className="btn-p" onClick={()=>_mc(()=>setAlarmPopup(null))}
@@ -2992,7 +2992,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
 
       {/* 반복일정 삭제 옵션 팝업 */}
       {deletePopup && <div className="ov" onClick={()=>_mc(()=>setDeletePopup(null))} style={{zIndex:9998}}>
-        <div onClick={e=>e.stopPropagation()} style={{background:"#fff",borderRadius:T.radius.lg,width:"90%",maxWidth:340,
+        <div onClick={e=>e.stopPropagation()} style={{background:T.bgCard,borderRadius:T.radius.lg,width:"90%",maxWidth:340,
           boxShadow:"0 16px 48px rgba(0,0,0,.25)",animation:"slideUp .6s cubic-bezier(.22,1,.36,1)",overflow:"hidden"}}>
           <div style={{padding:"20px 24px 12px",borderBottom:"1px solid #eee"}}>
             <div style={{fontSize:T.fs.md,fontWeight:T.fw.bolder,color:T.text}}>반복 일정 삭제</div>
@@ -3010,13 +3010,13 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                 onMouseOver={e=>e.currentTarget.style.background="#f5f5f5"}
                 onMouseOut={e=>e.currentTarget.style.background="transparent"}>
                 <div style={{fontSize:13,fontWeight:T.fw.bold,color:opt.mode==="all"?"#e57373":"#333"}}>{opt.label}</div>
-                <div style={{fontSize:T.fs.xs,color:"#999",marginTop:2}}>{opt.desc}</div>
+                <div style={{fontSize:T.fs.xs,color:T.gray500,marginTop:2}}>{opt.desc}</div>
               </button>
             ))}
           </div>
           <div style={{padding:"8px 24px 16px"}}>
             <button onClick={()=>_mc(()=>setDeletePopup(null))}
-              style={{width:"100%",padding:"10px",fontSize:T.fs.sm,border:"1px solid #ddd",borderRadius:6,background:"#fff",
+              style={{width:"100%",padding:"10px",fontSize:T.fs.sm,border:"1px solid #ddd",borderRadius:6,background:T.bgCard,
                 color:T.textSub,cursor:"pointer",fontFamily:"inherit"}}>취소</button>
           </div>
         </div>
@@ -3339,35 +3339,35 @@ ${naverText}
 
   return (
     <div className="ov" onClick={onClose} style={{alignItems:"flex-start",padding:"8px 0",overflowY:"auto",overflowX:"hidden",WebkitOverflowScrolling:"touch"}}>
-      <div ref={modalRef} className="modal-res" onClick={e=>e.stopPropagation()} style={{background:"#fff",
-        borderRadius:14,border:"1px solid #ecedf2",
+      <div ref={modalRef} className="modal-res" onClick={e=>e.stopPropagation()} style={{background:T.bgCard,
+        borderRadius:T.radius.xl,border:`1px solid ${T.border}`,
         margin:"0 auto",
         animation:"slideUp .4s cubic-bezier(.22,1,.36,1)",
-        boxShadow:"0 20px 60px rgba(0,0,0,.14),0 4px 16px rgba(0,0,0,.06)"}}>
+        boxShadow:T.shadow.lg}}>
         {/* ═══ Chrome-style Tabs ═══ */}
-        <div style={{display:"flex",alignItems:"stretch",borderBottom:"1.5px solid #f0f1f4",background:"#fff",borderRadius:"14px 14px 0 0",position:"relative"}}>
+        <div style={{display:"flex",alignItems:"stretch",borderBottom:`1.5px solid ${T.gray200}`,background:T.bgCard,borderRadius:`${T.radius.xl}px ${T.radius.xl}px 0 0`,position:"relative"}}>
           {/* 예약 탭 */}
           <button className="res-tab-btn" onClick={()=>{setIsSchedule(false);setF(p=>({...p,isSchedule:false,selectedTags:[],type:"reservation"}));if(modalRef.current)modalRef.current.scrollTop=0}}
-            style={{flex:1,padding:"16px 20px",fontSize:15,fontWeight:isSchedule?500:700,cursor:"pointer",fontFamily:"inherit",
-              border:"none",borderBottom:isSchedule?"none":"2.5px solid #7c7cc8",marginBottom:isSchedule?0:-1.5,
-              background:"transparent",color:isSchedule?"#aab":"#7c7cc8",letterSpacing:"-.01em"}}>
+            style={{flex:1,padding:"16px 20px",fontSize:T.fs.lg,fontWeight:isSchedule?T.fw.medium:T.fw.bolder,cursor:"pointer",fontFamily:"inherit",
+              border:"none",borderBottom:isSchedule?"none":`2.5px solid ${T.primary}`,marginBottom:isSchedule?0:-1.5,
+              background:"transparent",color:isSchedule?T.textMuted:T.primary,letterSpacing:"-.01em"}}>
             <I name="calendar" size={13}/> 예약
           </button>
           {/* 내부일정 탭 */}
           <button className="res-tab-btn" onClick={()=>{setIsSchedule(true);setF(p=>({...p,isSchedule:true,selectedTags:[],type:"reservation"}));if(modalRef.current)modalRef.current.scrollTop=0}}
-            style={{flex:1,padding:"16px 20px",fontSize:15,fontWeight:isSchedule?700:500,cursor:"pointer",fontFamily:"inherit",
+            style={{flex:1,padding:"16px 20px",fontSize:T.fs.lg,fontWeight:isSchedule?T.fw.bolder:T.fw.medium,cursor:"pointer",fontFamily:"inherit",
               border:"none",borderBottom:isSchedule?"2.5px solid #e17055":"none",marginBottom:isSchedule?-1.5:0,
-              background:"transparent",color:isSchedule?"#e17055":"#aab",letterSpacing:"-.01em"}}>
+              background:"transparent",color:isSchedule?"#e17055":T.textMuted,letterSpacing:"-.01em"}}>
             <I name="clipboard" size={13}/> 내부일정
           </button>
-          {/* 닫기 버튼 — 우상단 고정 */}
+          {/* 닫기 버튼 */}
           <button onClick={onClose}
             style={{position:"absolute",top:10,right:12,width:30,height:30,borderRadius:"50%",
-              background:"#f5f6f8",border:"none",color:"#9098a8",cursor:"pointer",
+              background:T.gray200,border:"none",color:T.gray500,cursor:"pointer",
               fontSize:T.fs.md,display:"flex",alignItems:"center",justifyContent:"center",
               transition:"background .15s,color .15s"}}
-            onMouseOver={e=>{e.currentTarget.style.background="#ffe5e5";e.currentTarget.style.color="#d94f4f"}}
-            onMouseOut={e=>{e.currentTarget.style.background="#f5f6f8";e.currentTarget.style.color="#9098a8"}}>✕</button>
+            onMouseOver={e=>{e.currentTarget.style.background=T.dangerLt;e.currentTarget.style.color=T.danger}}
+            onMouseOut={e=>{e.currentTarget.style.background=T.gray200;e.currentTarget.style.color=T.gray500}}>✕</button>
         </div>
 
         <div style={{padding:"20px 24px 8px"}} className="form-col">
@@ -3375,12 +3375,12 @@ ${naverText}
           {/* ═══ 네이버 예약 상태 배너 ═══ */}
           {f.status === "naver_changed" && <div style={{background:"#E8F4FD",borderRadius:T.radius.md,padding:"8px 12px",marginBottom:12,display:"flex",alignItems:"center",gap:8}}>
             <span style={{fontSize:13,fontWeight:T.fw.bolder,color:"#1976D2"}}>변경</span>
-            {f.reservationId && <span style={{fontSize:13,color:"#999",marginLeft:"auto"}}>#{f.reservationId}</span>}
+            {f.reservationId && <span style={{fontSize:13,color:T.gray500,marginLeft:"auto"}}>#{f.reservationId}</span>}
           </div>}
           {f.status === "naver_cancelled" && <div style={{background:"#FFF8E1",borderRadius:T.radius.md,padding:"8px 12px",marginBottom:12,display:"flex",alignItems:"center",gap:8,boxShadow:"0 2px 8px rgba(230,167,0,.15)"}}>
             <span style={{fontSize:T.fs.lg}}><I name="alert" size={16} color="#E65100"/></span>
             <span style={{fontSize:13,fontWeight:T.fw.bolder,color:"#E6A700"}}>취소</span>
-            {f.reservationId && <span style={{fontSize:13,color:"#999",marginLeft:"auto"}}>#{f.reservationId}</span>}
+            {f.reservationId && <span style={{fontSize:13,color:T.gray500,marginLeft:"auto"}}>#{f.reservationId}</span>}
           </div>}
           {f.status === "pending" && !(f.memo && f.memo.includes("확정완료")) && <div style={{background:"#FFF3E0",borderRadius:T.radius.md,padding:"8px 12px",marginBottom:12,display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",animation:"naverBlink 1.5s infinite",boxShadow:"0 2px 8px rgba(255,152,0,.15)"}}>
             <span style={{fontSize:T.fs.lg}}><I name="bell" size={16} color="#E65100"/></span>
@@ -3393,7 +3393,7 @@ ${naverText}
               const naverUrl2 = bizId ? (resId ? `https://partner.booking.naver.com/bizes/${bizId}/booking-list-view/bookings/${resId}` : `https://partner.booking.naver.com/bizes/${bizId}/booking-list-view`) : null;
               return naverUrl2 ? <a href={naverUrl2} target="_blank" rel="noopener noreferrer"
                 onClick={e=>e.stopPropagation()}
-                style={{fontSize:13,color:"#fff",fontWeight:T.fw.bolder,background:"#03C75A",padding:"5px 12px",borderRadius:6,textDecoration:"none",display:"inline-flex",alignItems:"center",gap:3}}>네이버 확정 <I name="chevR" size={11} color="#fff"/></a> : null;
+                style={{fontSize:13,color:T.bgCard,fontWeight:T.fw.bolder,background:"#03C75A",padding:"5px 12px",borderRadius:6,textDecoration:"none",display:"inline-flex",alignItems:"center",gap:3}}>네이버 확정 <I name="chevR" size={11} color="#fff"/></a> : null;
               })()}
             </div>
           </div>}
@@ -3458,7 +3458,7 @@ ${naverText}
                     {tag.name}
                     {tag.dur > 0 && <span style={{fontSize:13,opacity:0.6}}>({tag.dur}분)</span>}
                   </button>;
-                }) : <span style={{fontSize:13,color:"#999",padding:8}}>태그관리에서 내부일정태그를 등록하세요</span>}
+                }) : <span style={{fontSize:13,color:T.gray500,padding:8}}>태그관리에서 내부일정태그를 등록하세요</span>}
               </div>
               {(f.selectedTags||[]).length > 0 && tagDurTotal>0 && <div style={{marginTop:4,fontSize:13,color:"#e17055",fontWeight:T.fw.bolder,textAlign:"right"}}>합산 {tagDurTotal}분</div>}
             </FLD>
@@ -3474,7 +3474,7 @@ ${naverText}
                   <input className="inp inp-search" style={{flex:1,minHeight:40,borderRadius:10,paddingLeft:36}} value={custSearch} onChange={e=>{setCustSearch(e.target.value);setShowCustDropdown(true)}}
                     placeholder="고객명, 전화번호, 차량번호 (2글자 이상)" onFocus={()=>setShowCustDropdown(true)}/>
                 </div>
-                {showCustDropdown && custSearch.length >= 2 && <div style={{position:"absolute",top:"100%",left:0,right:0,background:"#fff",borderRadius:T.radius.md,maxHeight:220,overflow:"auto",zIndex:10,marginTop:4,boxShadow:"0 8px 24px rgba(0,0,0,.12)"}}>
+                {showCustDropdown && custSearch.length >= 2 && <div style={{position:"absolute",top:"100%",left:0,right:0,background:T.bgCard,borderRadius:T.radius.md,maxHeight:220,overflow:"auto",zIndex:10,marginTop:4,boxShadow:"0 8px 24px rgba(0,0,0,.12)"}}>
                   {custResults.map(c=><div key={c.id} onClick={()=>{selectCust(c);setF(p=>({...p,isNewCust:false}))}}
                     style={{padding:"8px 12px",cursor:"pointer",borderBottom:"1px solid #e0e0e030",display:"flex",gap:8,alignItems:"center",fontSize:13}}
                     onMouseOver={e=>e.currentTarget.style.background="#f0f0f0"} onMouseOut={e=>e.currentTarget.style.background="transparent"}>
@@ -3482,7 +3482,7 @@ ${naverText}
                     <span style={{fontWeight:T.fw.bold}}>{c.name}</span>
                     <span style={{color:T.textSub}}>{c.phone}</span>
                   </div>)}
-                  {custResults.length===0 && <div style={{padding:"10px 12px",fontSize:13,color:"#999",textAlign:"center"}}>검색결과 없음</div>}
+                  {custResults.length===0 && <div style={{padding:"10px 12px",fontSize:13,color:T.gray500,textAlign:"center"}}>검색결과 없음</div>}
                   <div onClick={()=>{setF(p=>({...p,isNewCust:true,custId:null,custName:custSearch.replace(/[0-9\-]/g,"").trim(),custPhone:custSearch.replace(/[^0-9]/g,"")}));setCustSearch("");setShowCustDropdown(false)}}
                     style={{padding:"10px 12px",cursor:"pointer",display:"flex",gap:8,alignItems:"center",fontSize:13,
                       background:"#d0d0d020",borderTop:"1px solid "+T.border,color:T.danger,fontWeight:T.fw.bolder}}
@@ -3496,9 +3496,9 @@ ${naverText}
             {/* 고객 정보 */}
             <div className="cust-row" style={{display:"grid",gridTemplateColumns:"1fr 1fr 60px",gap:8}}>
               <div><input className={"inp inp-cust"} value={f.custName} onChange={e=>set("custName",e.target.value)} placeholder="고객명"
-                style={f.isNewCust?{borderColor:"#e57373",background:"#ffeef0"}:{}}/></div>
+                style={f.isNewCust?{borderColor:T.danger,background:"#ffeef0"}:{}}/></div>
               <div><input className={"inp inp-cust"} value={f.custPhone} onChange={e=>set("custPhone",e.target.value)} placeholder="010"
-                style={f.isNewCust?{borderColor:"#e57373",background:"#ffeef0"}:{}}/></div>
+                style={f.isNewCust?{borderColor:T.danger,background:"#ffeef0"}:{}}/></div>
               <div>
                 <div style={{display:"flex",gap:2,height:40}}>
                   <button onClick={()=>set("custGender",f.custGender==="F"?"":"F")} style={{flex:1,fontSize:13,fontWeight:T.fw.bold,border:"none",borderRadius:T.radius.md,cursor:"pointer",fontFamily:"inherit",
@@ -3560,7 +3560,7 @@ ${naverText}
               </div>
               <div className={"tags-acc-body"+(showSvcPicker?" open":"")}>
               <div style={{maxHeight:280,overflow:"auto"}}>
-                {SVC_LIST.length===0 && <div style={{padding:12,fontSize:13,color:"#999",textAlign:"center"}}>시술 상품이 없습니다 (관리설정 → 시술상품관리에서 등록)</div>}
+                {SVC_LIST.length===0 && <div style={{padding:12,fontSize:13,color:T.gray500,textAlign:"center"}}>시술 상품이 없습니다 (관리설정 → 시술상품관리에서 등록)</div>}
                 {SVC_LIST.length>0 && SVC_LIST.map(svc=>{
                       const sel = (f.selectedServices||[]).includes(svc.id);
                       const genderDep = svc.priceF !== svc.priceM;
@@ -3573,7 +3573,7 @@ ${naverText}
                         {sel && <span style={{color:T.primary,fontWeight:T.fw.bolder,fontSize:13,flexShrink:0}}>✓</span>}
                         {catName && <span style={{fontSize:13,color:T.primary,background:"#f0f0ff",borderRadius:3,padding:"1px 4px",flexShrink:0}}>{catName}</span>}
                         <span style={{flex:1,fontSize:13,fontWeight:sel?600:400,color:sel?"#333":"#666"}}>{svc.name}</span>
-                        <span style={{fontSize:13,color:"#999"}}>{svc.dur}분</span>
+                        <span style={{fontSize:13,color:T.gray500}}>{svc.dur}분</span>
                         <span style={{fontSize:13,color:price===null?"#ccc":"#ef5350",fontWeight:T.fw.bold,width:55,textAlign:"right"}}>{price===null?"성별?":price>0?fmt(price):"-"}</span>
                       </div>;
                     })}
@@ -3771,19 +3771,21 @@ return f.requestMsg.split("\n").filter(l=>l.trim()).map((line,i)=>{
 
           {/* Action Buttons - 한 줄 (pinned bottom) */}
         </div>
-        <div style={{padding:"14px 20px",background:"#fafafa",borderRadius:"0 0 14px 14px"}}>
+        <div style={{padding:"14px 20px",background:T.gray100,borderRadius:"0 0 14px 14px"}}>
             {/* 예약상태 버튼 */}
             {item?.id && !isSchedule && <div style={{display:"flex",gap:6,marginBottom:10,justifyContent:"center"}}>
               <div style={{display:"flex",gap:4}}>
               {STATUS_KEYS.map(k=>{const sc=getStatusClr();const sel=f.status===k;return <button key={k} onClick={()=>set("status",k)}
-                style={{padding:"4px 20px",borderRadius:20,border:sel?`1.5px solid ${sc[k]}`:"1.5px solid #e8e8ee",
-                  background:sel?sc[k]:"transparent",color:sel?"#fff":sc[k],fontSize:11,fontWeight:sel?700:500,cursor:"pointer",fontFamily:"inherit",
+                style={{padding:"4px 20px",borderRadius:20,border:sel?`1.5px solid ${sc[k]}`:`1.5px solid ${T.border}`,
+                  background:sel?sc[k]:"transparent",color:sel?"#fff":sc[k],fontSize:T.fs.xs,fontWeight:sel?T.fw.bolder:T.fw.medium,cursor:"pointer",fontFamily:"inherit",
                   transition:"all .15s",letterSpacing:-0.2,whiteSpace:"nowrap"}}>
                 {STATUS_LABEL[k]}</button>})}
               </div>
             </div>}
             <div style={{display:"flex",gap:8,alignItems:"center",padding:"14px 24px 20px"}}>
-            {!isReadOnly && <><button className="btn-p" style={{padding:"10px 26px",background:isSchedule?"#e17055":"#7c7cc8",boxShadow:isSchedule?"0 4px 14px rgba(225,112,85,.35)":"0 4px 14px rgba(124,124,200,.35)"}} onClick={()=>{
+            {!isReadOnly && <><Btn
+                style={{padding:"10px 26px",background:isSchedule?"#e17055":T.primary,boxShadow:isSchedule?"0 4px 14px rgba(225,112,85,.35)":`0 4px 14px rgba(124,124,200,.35)`}}
+                onClick={()=>{
                 const now = new Date();
                 const ts = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")} ${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`;
                 const prevLog = f.tsLog || [];
@@ -3792,22 +3794,19 @@ return f.requestMsg.split("\n").filter(l=>l.trim()).map((line,i)=>{
                   : item?.id
                     ? [...prevLog, `[수정: ${ts}]`]
                     : prevLog;
-                // 저장 직전 자동 태그 처리
                 let autoTags = [...(f.selectedTags || [])];
-                // 예약금완료 태그 — isPrepaid만으로 판단 (totalPrice 유무 무관)
                 if (f.isPrepaid && !autoTags.includes(PREPAID_TAG_ID)) autoTags = [...autoTags, PREPAID_TAG_ID];
                 if (!f.isPrepaid && autoTags.includes(PREPAID_TAG_ID)) autoTags = autoTags.filter(id => id !== PREPAID_TAG_ID);
                 const memoToSave = (f.memo||"").split("\n").filter(l => { const t=l.trim(); return !(/^\[등록:|^\[수정:/.test(t)) && !(/^\d+\.\d+\s+\d+:\d+\s*(예약)?(접수|변경|확정|취소|신청|확정완료)/.test(t)); }).join("\n").trim();
                 onSave({...f, memo: memoToSave, tsLog: newLog, selectedTags: autoTags});
-              }}>{item?.id?"저장":"등록"}</button>
+              }}>{item?.id?"저장":"등록"}</Btn>
             {!isSchedule && f.type === "reservation" && (
-              <button onClick={()=>setShowSaleForm(true)}
-                style={{padding:"10px 18px",borderRadius:T.radius.md,border:"1.5px solid #7c7cc8",background:"transparent",color:T.primary,fontWeight:T.fw.bold,fontSize:13,cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap",transition:"background .14s"}}>
+              <Btn variant="outline" onClick={()=>setShowSaleForm(true)} style={{padding:"10px 18px",whiteSpace:"nowrap"}}>
                 {existingSale ? <><I name="wallet" size={12}/> 매출확인</> : <><I name="wallet" size={12}/> 매출등록</>}
-              </button>
+              </Btn>
             )}
-            {item?.id && !item?.reservationId && <button onClick={()=>onDeleteRequest?.(item)} title="삭제" style={{marginLeft:"auto",padding:"8px 10px",borderRadius:T.radius.md,border:"none",background:"transparent",color:T.danger,cursor:"pointer",display:"flex",alignItems:"center",transition:"background .15s"}} onMouseEnter={e=>e.currentTarget.style.background="#ffeaea"} onMouseLeave={e=>e.currentTarget.style.background="transparent"}><I name="trash" size={17}/></button>}</>}
-            {isReadOnly && <span style={{fontSize:13,color:"#999",display:"flex",alignItems:"center",gap:4}}><I name="eye" size={12}/> 열람 전용 (타 지점)</span>}
+            {item?.id && !item?.reservationId && <button onClick={()=>onDeleteRequest?.(item)} title="삭제" style={{marginLeft:"auto",padding:"8px 10px",borderRadius:T.radius.md,border:"none",background:"transparent",color:T.danger,cursor:"pointer",display:"flex",alignItems:"center",transition:"background .15s"}} onMouseEnter={e=>e.currentTarget.style.background=T.dangerLt} onMouseLeave={e=>e.currentTarget.style.background="transparent"}><I name="trash" size={17}/></button>}</>}
+            {isReadOnly && <span style={{fontSize:T.fs.sm,color:T.textSub,display:"flex",alignItems:"center",gap:4}}><I name="eye" size={12}/> 열람 전용 (타 지점)</span>}
           </div>
         </div>
       </div>
@@ -4307,7 +4306,7 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
         {/* 결제 정리 */}
         <div style={{padding:"14px 16px",borderTop:"2px solid #e0e0e0",background:"#fafafa"}}>
           {/* 금액 브레이크다운 */}
-          <div style={{marginBottom:12,padding:"10px 14px",background:"#fff",borderRadius:T.radius.md,border:"1px solid #e8e8e8"}}>
+          <div style={{marginBottom:12,padding:"10px 14px",background:T.bgCard,borderRadius:T.radius.md,border:"1px solid #e8e8e8"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 0"}}>
               <span style={{fontSize:T.fs.sm,color:T.gray700}}><I name="scissors" size={12}/> 시술 합계</span>
               <span style={{fontSize:13,fontWeight:T.fw.bolder,color:T.primary}}>{fmt(svcTotal)}원</span>
@@ -4339,7 +4338,7 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
 
           {/* 결제수단 분배 */}
           {grandTotal > 0 && <div className="sale-pay-row" style={{display:"flex",gap:16,flexWrap:"wrap"}}>
-            {svcPayTotal > 0 && <div style={{flex:1,minWidth:0,padding:"8px 12px",background:"#fff",borderRadius:T.radius.md,border:"1px solid "+T.border}}>
+            {svcPayTotal > 0 && <div style={{flex:1,minWidth:0,padding:"8px 12px",background:T.bgCard,borderRadius:T.radius.md,border:"1px solid "+T.border}}>
               <div style={{fontSize:T.fs.xs,fontWeight:T.fw.bolder,color:T.primary,marginBottom:6}}><I name="scissors" size={12}/> 시술 결제 <span style={{color:T.danger,fontWeight:T.fw.black}}>{fmt(svcPayTotal)}원</span></div>
               <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
                 {[
@@ -4359,7 +4358,7 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
                 </div>)}
               </div>
             </div>}
-            {prodPayTotal > 0 && <div style={{flex:1,minWidth:0,padding:"8px 12px",background:"#fff",borderRadius:T.radius.md,border:"1px solid "+T.border}}>
+            {prodPayTotal > 0 && <div style={{flex:1,minWidth:0,padding:"8px 12px",background:T.bgCard,borderRadius:T.radius.md,border:"1px solid "+T.border}}>
               <div style={{fontSize:T.fs.xs,fontWeight:T.fw.bolder,color:"#6bab9e",marginBottom:6}}><I name="pkg" size={12}/> 제품 결제 <span style={{color:T.danger,fontWeight:T.fw.black}}>{fmt(prodPayTotal)}원</span></div>
               <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
                 {[
@@ -4380,7 +4379,7 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
               </div>
             </div>}
           </div>}
-          {grandTotal > 0 && <div style={{fontSize:9,color:"#bbb",marginTop:6}}>결제수단 버튼 클릭 → 전액 입력 / 추가 수단 클릭 → 금액 입력 시 첫 수단에서 차감</div>}
+          {grandTotal > 0 && <div style={{fontSize:9,color:T.gray400,marginTop:6}}>결제수단 버튼 클릭 → 전액 입력 / 추가 수단 클릭 → 금액 입력 시 첫 수단에서 차감</div>}
         </div>
 
         {/* 매출 메모 */}
@@ -4534,7 +4533,7 @@ function SmartDatePicker({ open, onClose, anchorEl, startDate, endDate, onApply,
     return <div style={{position:"fixed",inset:0,zIndex:3000}} onMouseDown={e=>{if(e.target===e.currentTarget)onClose();}}>
       <div onMouseDown={e=>e.stopPropagation()} style={{
         position:"fixed",top:pos.top,left:pos.left,
-        background:"#fff",borderRadius:T.radius.lg,boxShadow:"0 8px 32px rgba(0,0,0,.18)",
+        background:T.bgCard,borderRadius:T.radius.lg,boxShadow:"0 8px 32px rgba(0,0,0,.18)",
         padding:"16px 20px 14px",zIndex:3001,minWidth:500}}>
         {/* 프리셋 버튼 */}
         <div style={{display:"flex",gap:4,marginBottom:14,flexWrap:"wrap"}}>
@@ -4550,18 +4549,18 @@ function SmartDatePicker({ open, onClose, anchorEl, startDate, endDate, onApply,
         </div>
         {/* 월 네비 + 2달 캘린더 */}
         <div style={{display:"flex",alignItems:"center",gap:8}}>
-          <button onClick={prevM} style={{width:28,height:28,border:"1px solid "+T.border,borderRadius:6,background:"#fff",cursor:"pointer",fontSize:T.fs.lg,color:"#666",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>‹</button>
+          <button onClick={prevM} style={{width:28,height:28,border:"1px solid "+T.border,borderRadius:6,background:T.bgCard,cursor:"pointer",fontSize:T.fs.lg,color:"#666",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>‹</button>
           <div style={{display:"flex",gap:24,flex:1}}>
             <CalGrid y={months[0].y} m={months[0].m}/>
             <div style={{width:1,background:T.gray200,alignSelf:"stretch"}}/>
             <CalGrid y={months[1].y} m={months[1].m}/>
           </div>
-          <button onClick={nextM} style={{width:28,height:28,border:"1px solid "+T.border,borderRadius:6,background:"#fff",cursor:"pointer",fontSize:T.fs.lg,color:"#666",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>›</button>
+          <button onClick={nextM} style={{width:28,height:28,border:"1px solid "+T.border,borderRadius:6,background:T.bgCard,cursor:"pointer",fontSize:T.fs.lg,color:"#666",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>›</button>
         </div>
         {/* 하단 버튼 */}
         <div style={{display:"flex",gap:8,marginTop:14,justifyContent:"flex-end"}}>
-          <button onClick={onClose} style={{height:32,padding:"0 16px",borderRadius:7,border:"1px solid "+T.border,background:"#fff",fontSize:13,cursor:"pointer",color:"#666",fontFamily:"inherit"}}>취소</button>
-          <button onClick={doApply} style={{height:32,padding:"0 20px",borderRadius:7,border:"none",background:T.primary,fontSize:13,cursor:"pointer",color:"#fff",fontFamily:"inherit",fontWeight:T.fw.bolder}}>적용</button>
+          <button onClick={onClose} style={{height:32,padding:"0 16px",borderRadius:7,border:"1px solid "+T.border,background:T.bgCard,fontSize:13,cursor:"pointer",color:"#666",fontFamily:"inherit"}}>취소</button>
+          <button onClick={doApply} style={{height:32,padding:"0 20px",borderRadius:7,border:"none",background:T.primary,fontSize:13,cursor:"pointer",color:T.bgCard,fontFamily:"inherit",fontWeight:T.fw.bolder}}>적용</button>
         </div>
       </div>
     </div>;
@@ -4570,7 +4569,7 @@ function SmartDatePicker({ open, onClose, anchorEl, startDate, endDate, onApply,
   // ── 모바일 바텀시트 ──
   return <div style={{position:"fixed",inset:0,zIndex:3000,display:"flex",flexDirection:"column",justifyContent:"flex-end"}} onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
     <div style={{position:"absolute",inset:0,background:"rgba(0,0,0,0.45)"}} onClick={onClose}/>
-    <div style={{position:"relative",background:"#fff",borderRadius:"16px 16px 0 0",padding:"0 0 32px",maxHeight:"90vh",overflowY:"auto"}}>
+    <div style={{position:"relative",background:T.bgCard,borderRadius:"16px 16px 0 0",padding:"0 0 32px",maxHeight:"90vh",overflowY:"auto"}}>
       <div style={{display:"flex",justifyContent:"center",padding:"12px 0 4px"}}><div style={{width:36,height:4,borderRadius:2,background:T.gray300}}/></div>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 20px 14px"}}>
         <span style={{fontSize:T.fs.lg,fontWeight:T.fw.bolder,color:"#222"}}>날짜 선택</span>
@@ -4588,8 +4587,8 @@ function SmartDatePicker({ open, onClose, anchorEl, startDate, endDate, onApply,
       <div style={{padding:"0 16px"}}><CalGrid y={months[0].y} m={months[0].m}/></div>
       {selStart&&<div style={{padding:"14px 20px 0",textAlign:"center",color:T.textSub,fontSize:13}}>{selStart}{selEnd&&selEnd!==selStart?` ~ ${selEnd}`:""}</div>}
       <div style={{display:"flex",gap:10,padding:"16px 20px 0"}}>
-        <button onClick={onClose} style={{flex:1,height:46,border:"1.5px solid #ddd",borderRadius:T.radius.md,background:"#fff",fontSize:T.fs.md,cursor:"pointer",color:T.gray700,fontFamily:"inherit"}}>취소</button>
-        <button onClick={doApply} style={{flex:2,height:46,border:"none",borderRadius:T.radius.md,background:T.primary,fontSize:T.fs.md,cursor:"pointer",color:"#fff",fontFamily:"inherit",fontWeight:T.fw.bolder}}>적용</button>
+        <button onClick={onClose} style={{flex:1,height:46,border:"1.5px solid #ddd",borderRadius:T.radius.md,background:T.bgCard,fontSize:T.fs.md,cursor:"pointer",color:T.gray700,fontFamily:"inherit"}}>취소</button>
+        <button onClick={doApply} style={{flex:2,height:46,border:"none",borderRadius:T.radius.md,background:T.primary,fontSize:T.fs.md,cursor:"pointer",color:T.bgCard,fontFamily:"inherit",fontWeight:T.fw.bolder}}>적용</button>
       </div>
     </div>
   </div>;
@@ -4678,7 +4677,7 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
     periodKey==="1day" || startDate===endDate ? fmtShort(startDate) :
     `${fmtShort(startDate)} ~ ${fmtShort(endDate)}`;
 
-  const SS = {height:38,borderRadius:T.radius.md,border:"1px solid "+T.border,background:"#fff",fontSize:13,padding:"0 14px",cursor:"pointer",fontFamily:"inherit",color:T.text,display:"flex",alignItems:"center",gap:6,outline:"none",boxShadow:"0 1px 4px rgba(0,0,0,.08)",boxSizing:"border-box"};
+  const SS = {height:38,borderRadius:T.radius.md,border:"1px solid "+T.border,background:T.bgCard,fontSize:13,padding:"0 14px",cursor:"pointer",fontFamily:"inherit",color:T.text,display:"flex",alignItems:"center",gap:6,outline:"none",boxShadow:"0 1px 4px rgba(0,0,0,.08)",boxSizing:"border-box"};
 
   return <div>
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:0}}>
@@ -4702,9 +4701,9 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
     {/* 검색 */}
     <div style={{display:"flex",gap:8,marginBottom:8,alignItems:"center"}}>
       <div style={{position:"relative",flex:1}}>
-        <span style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",color:"#bbb"}}><I name="search" size={15}/></span>
+        <span style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",color:T.gray400}}><I name="search" size={15}/></span>
         <input style={{width:"100%",height:38,borderRadius:T.radius.md,border:"1px solid "+T.border,paddingLeft:42,paddingRight:36,fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:"inherit",color:T.text,boxShadow:"0 1px 4px rgba(0,0,0,.08)"}} placeholder="고객명, 연락처, 시술, 시술자" value={q} onChange={e=>setQ(e.target.value)}/>
-        {q && <button onClick={()=>setQ("")} style={{position:"absolute",right:14,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",color:"#bbb",fontSize:T.fs.xl,lineHeight:1}}>×</button>}
+        {q && <button onClick={()=>setQ("")} style={{position:"absolute",right:14,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",color:T.gray400,fontSize:T.fs.xl,lineHeight:1}}>×</button>}
       </div>
     </div>
     {/* 상태 필터 - 네이버 스타일 pill */}
@@ -4816,7 +4815,7 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
                   naver_cancelled:{bg:"#FFF0F0", color:"#E05252", label:"취소"},
                   naver_changed: {bg:"#E8F4FD", color:"#1976D2", label:"변경"},
                 };
-                const p = ST_PILL[r.status] || {bg:"#F5F5F5", color:"#999", label:r.status};
+                const p = ST_PILL[r.status] || {bg:"#F5F5F5", color:T.gray500, label:r.status};
                 return <Badge color={p.color} bg={p.bg}>{p.label}</Badge>;
               })()}</td>
               <td style={{fontSize:T.fs.xs,color:T.gray700,maxWidth:90,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",background:"#F1F8E9",padding:"4px 6px"}} title={r.ownerComment||""}>
@@ -4905,7 +4904,7 @@ function SalesPage({ data, setData, userBranches, isMaster, setPage }) {
     </div>
     {/* Filters */}
     <div style={{display:"flex",gap:8,marginBottom:10,flexWrap:"wrap",alignItems:"center"}}>
-      {(()=>{ const ss={height:38,borderRadius:T.radius.md,border:"1px solid "+T.border,background:"#fff",fontSize:13,padding:"0 14px",cursor:"pointer",fontFamily:"inherit",color:"#444",display:"flex",alignItems:"center",gap:5,outline:"none",boxShadow:"0 1px 4px rgba(0,0,0,.08)",boxSizing:"border-box"};
+      {(()=>{ const ss={height:38,borderRadius:T.radius.md,border:"1px solid "+T.border,background:T.bgCard,fontSize:13,padding:"0 14px",cursor:"pointer",fontFamily:"inherit",color:"#444",display:"flex",alignItems:"center",gap:5,outline:"none",boxShadow:"0 1px 4px rgba(0,0,0,.08)",boxSizing:"border-box"};
         const fmtShort = (ds) => { if(!ds) return ""; const d=new Date(ds); const dow=["일","월","화","수","목","금","토"][d.getDay()]; return `${String(d.getFullYear()).slice(2)}.${d.getMonth()+1}.${d.getDate()}.${dow}`; };
         const dateLabel = periodKey==="all"?"전체":periodKey==="1day"||startDate===endDate?fmtShort(startDate):`${fmtShort(startDate)} ~ ${fmtShort(endDate)}`;
         return <>
@@ -4923,11 +4922,11 @@ function SalesPage({ data, setData, userBranches, isMaster, setPage }) {
     </div>
     <div style={{display:"flex",gap:8,marginBottom:14,alignItems:"center"}}>
       <div style={{position:"relative",flex:1}}>
-        <span style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",color:"#bbb"}}><I name="search" size={15}/></span>
+        <span style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",color:T.gray400}}><I name="search" size={15}/></span>
         <input style={{width:"100%",height:38,borderRadius:T.radius.md,border:"1px solid "+T.border,paddingLeft:42,paddingRight:36,fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:"inherit",color:T.text,boxShadow:"0 1px 4px rgba(0,0,0,.08)"}} placeholder="고객명, 연락처, 매니저, 고객번호, 메모" value={q} onChange={e=>setQ(e.target.value)}/>
-        {q && <button onClick={()=>setQ("")} style={{position:"absolute",right:14,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",color:"#bbb",fontSize:T.fs.xl,lineHeight:1}}>×</button>}
+        {q && <button onClick={()=>setQ("")} style={{position:"absolute",right:14,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",color:T.gray400,fontSize:T.fs.xl,lineHeight:1}}>×</button>}
       </div>
-      <span style={{fontSize:13,color:"#999",whiteSpace:"nowrap"}}>{sales.length}건</span>
+      <span style={{fontSize:13,color:T.gray500,whiteSpace:"nowrap"}}>{sales.length}건</span>
     </div>
     {/* Sales Table - like existing admin */}
     <div className="card tw">
@@ -4997,7 +4996,7 @@ function SalesPage({ data, setData, userBranches, isMaster, setPage }) {
   </div>;
 }
 
-function Z() { return <span style={{color:"#bbb"}}>0</span>; }
+function Z() { return <span style={{color:T.gray400}}>0</span>; }
 
 // ═══════════════════════════════════════════
 // STATISTICS
@@ -5091,7 +5090,7 @@ function StatsPage({ data, userBranches, isMaster, role }) {
               <div style={{width:"100%",height:`${Math.max((d.prod/maxChart)*80,0)}px`,background:"#6bab9e",borderRadius:"4px 4px 0 0",transition:"height .3s"}}/>
               <div style={{width:"100%",height:`${Math.max((d.svc/maxChart)*80,2)}px`,background:T.primary,borderRadius:"0 0 4px 4px",transition:"height .3s"}}/>
             </div>
-            <span style={{fontSize:T.fs.xs,color:"#999"}}>{d.label}</span>
+            <span style={{fontSize:T.fs.xs,color:T.gray500}}>{d.label}</span>
           </div>
         ))}
       </div>
@@ -5146,9 +5145,9 @@ function StatsPage({ data, userBranches, isMaster, role }) {
 
 function SC({label,val,sub,clr}) {
   return <div style={{padding:16,borderRadius:10,background:"linear-gradient(135deg,#fff,#f0f0f0)",border:"1px solid "+T.border}}>
-    <div style={{fontSize:11,color:"#999",fontWeight:T.fw.bold}}>{label}</div>
+    <div style={{fontSize:11,color:T.gray500,fontWeight:T.fw.bold}}>{label}</div>
     <div style={{fontSize:20,fontWeight:T.fw.black,color:clr,letterSpacing:-.5,marginTop:4}}>{val}</div>
-    <div style={{fontSize:T.fs.xs,color:"#bbb",marginTop:2}}>{sub}</div>
+    <div style={{fontSize:T.fs.xs,color:T.gray400,marginTop:2}}>{sub}</div>
   </div>;
 }
 
@@ -5187,7 +5186,7 @@ function CustomersPage({ data, setData, userBranches, isMaster }) {
     </div>
     <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap",alignItems:"center"}}>
       <div style={{position:"relative",flex:1,minWidth:180}}>
-        <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:"#999",fontSize:T.fs.md}}><I name="search" size={14} color="#999"/></span>
+        <span style={{position:"absolute",left:10,top:"50%",transform:"translateY(-50%)",color:T.gray500,fontSize:T.fs.md}}><I name="search" size={14} color="#999"/></span>
         <input className="inp" style={{paddingLeft:32}} placeholder="이름, 전화번호, 메모 검색..." value={q} onChange={e=>setQ(e.target.value)}/>
       </div>
       {<select className="inp" style={{maxWidth:140,width:"auto"}} value={vb} onChange={e=>setVb(e.target.value)}>
@@ -5241,18 +5240,18 @@ function CustomersPage({ data, setData, userBranches, isMaster }) {
                           {pkgSvcs.map(s=><option key={s.id} value={s.id}>{s.name} ({s.pkgCount}회)</option>)}
                         </select>}
                       </div>
-                      {pkgs.length===0 ? <div style={{fontSize:11,color:"#999",padding:4}}>보유 다회권 없음</div> :
+                      {pkgs.length===0 ? <div style={{fontSize:11,color:T.gray500,padding:4}}>보유 다회권 없음</div> :
                         <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                           {pkgs.map(p=>{
                             const remain = p.total_count - p.used_count;
                             const pct = (remain/p.total_count)*100;
-                            return <div key={p.id} style={{border:"1px solid "+T.border,borderRadius:T.radius.md,padding:"8px 12px",background:"#fff",minWidth:140}}>
+                            return <div key={p.id} style={{border:"1px solid "+T.border,borderRadius:T.radius.md,padding:"8px 12px",background:T.bgCard,minWidth:140}}>
                               <div style={{fontSize:11,fontWeight:T.fw.bolder,color:T.text}}>{p.service_name}</div>
                               <div style={{display:"flex",alignItems:"center",gap:6,marginTop:4}}>
                                 <div style={{flex:1,height:6,background:"#eee",borderRadius:3,overflow:"hidden"}}>
                                   <div style={{width:pct+"%",height:"100%",background:pct>30?"linear-gradient(90deg,#4285f4,#9b72cb)":"#e57373",borderRadius:3,transition:"width .3s"}}/>
                                 </div>
-                                <span style={{fontSize:T.fs.sm,fontWeight:T.fw.black,color:pct>30?"#7c7cc8":"#e57373"}}>{remain}<span style={{fontSize:9,color:"#999"}}>/{p.total_count}</span></span>
+                                <span style={{fontSize:T.fs.sm,fontWeight:T.fw.black,color:pct>30?"#7c7cc8":"#e57373"}}>{remain}<span style={{fontSize:9,color:T.gray500}}>/{p.total_count}</span></span>
                               </div>
                               <div style={{display:"flex",gap:4,marginTop:6}}>
                                 <button onClick={()=>{
@@ -5265,7 +5264,7 @@ function CustomersPage({ data, setData, userBranches, isMaster }) {
                                   if(!confirm("다회권을 삭제하시겠습니까?")) return;
                                   sb.del("customer_packages", p.id).catch(console.error);
                                   setData(prev=>({...prev, custPackages:(prev.custPackages||[]).map(x=>x.id===p.id?null:x).filter(Boolean)}));
-                                }} style={{fontSize:9,padding:"2px 6px",borderRadius:T.radius.sm,border:"1px solid #e57373",background:"#fff",color:T.danger,cursor:"pointer",fontFamily:"inherit"}}>삭제</button>
+                                }} style={{fontSize:9,padding:"2px 6px",borderRadius:T.radius.sm,border:"1px solid #e57373",background:T.bgCard,color:T.danger,cursor:"pointer",fontFamily:"inherit"}}>삭제</button>
                               </div>
                             </div>;
                           })}
@@ -5273,7 +5272,7 @@ function CustomersPage({ data, setData, userBranches, isMaster }) {
                     </div>;
                   })()}
                   <div style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder,color:T.primary,marginBottom:8}}><I name="clipboard" size={12}/> 매출 내역 ({custSales.length}건)</div>
-                  {custSales.length===0 ? <div style={{fontSize:11,color:"#999",padding:8}}>매출 기록 없음</div> :
+                  {custSales.length===0 ? <div style={{fontSize:11,color:T.gray500,padding:8}}>매출 기록 없음</div> :
                     <table style={{width:"100%",fontSize:11}}><thead><tr style={{background:"#e8e8f8"}}>
                       <th>날짜</th><th>매장</th><th>담당자</th><th>시술합계</th><th>제품합계</th><th>총합계</th><th>메모</th>
                     </tr></thead><tbody>
@@ -5410,14 +5409,14 @@ function UserEditRow({ init, regBranches, allBranches, onSave, onCancel, isNew }
     return <div style={{position:"relative"}}>
       <div onClick={()=>setOpen(!open)} className="inp" style={{width:140,cursor:"pointer",fontSize:11,display:"flex",justifyContent:"space-between",alignItems:"center",minHeight:30}}>
         <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:selected.length?"#333":"#aaa"}}>{label}</span>
-        <span style={{fontSize:8,color:"#999"}}>{open?<I name="chevU" size={12}/>:<I name="chevD" size={12}/>}</span>
+        <span style={{fontSize:8,color:T.gray500}}>{open?<I name="chevU" size={12}/>:<I name="chevD" size={12}/>}</span>
       </div>
-      {open && <div style={{position:"absolute",top:"100%",left:0,right:0,background:"#fff",border:"1px solid #d0d0d0",borderRadius:T.radius.sm,zIndex:50,maxHeight:160,overflowY:"auto",boxShadow:"0 4px 12px rgba(0,0,0,.1)"}}>
+      {open && <div style={{position:"absolute",top:"100%",left:0,right:0,background:T.bgCard,border:"1px solid #d0d0d0",borderRadius:T.radius.sm,zIndex:50,maxHeight:160,overflowY:"auto",boxShadow:"0 4px 12px rgba(0,0,0,.1)"}}>
         {regBranches.map(b => {
           const on = selected.includes(b.id);
           return <div key={b.id} onClick={()=>toggle(b.id)} style={{padding:"6px 10px",fontSize:11,cursor:"pointer",display:"flex",alignItems:"center",gap:6,background:on?color+"10":"transparent"}}>
             <div style={{width:14,height:14,borderRadius:3,border:`1.5px solid ${on?color:"#ccc"}`,background:on?color:"transparent",display:"flex",alignItems:"center",justifyContent:"center"}}>
-              {on && <span style={{color:"#fff",fontSize:9,fontWeight:T.fw.bolder}}><I name="check" size={10}/></span>}
+              {on && <span style={{color:T.bgCard,fontSize:9,fontWeight:T.fw.bolder}}><I name="check" size={10}/></span>}
             </div>
             <span style={{color:on?color:T.gray700}}>{b.short||b.name}</span>
           </div>;
@@ -5435,7 +5434,7 @@ function UserEditRow({ init, regBranches, allBranches, onSave, onCancel, isNew }
     </select></td>
     <td>{f.role==="owner" ? <span style={{fontSize:11,color:T.primary}}>전체 지점</span> :
       <MultiSelect selected={f.branches||[]} onChange={v=>set("branches",v)} color="#7c7cc8"/>}</td>
-    <td>{f.role==="owner" ? <span style={{fontSize:11,color:"#999"}}>-</span> :
+    <td>{f.role==="owner" ? <span style={{fontSize:11,color:T.gray500}}>-</span> :
       <MultiSelect selected={f.viewBranches||[]} onChange={v=>set("viewBranches",v)} color="#5cb5c5"/>}</td>
     <td style={{display:"flex",gap:4}}>
       <button className="btn-p" style={{padding:"4px 10px",fontSize:11}} onClick={()=>onSave(f.role==="owner"?{...f,branches:allBranches.map(b=>b.id)}:f)}>{isNew?"추가":"저장"}</button>
@@ -5499,7 +5498,7 @@ function AdminPlaces({ data, setData, bizId }) {
 
   const updateField = (id, field, value) => {
     setData(prev => {
-      const updated = (prev.branchSettings || (data.branches||[]).map(b=>({...b,color:"#FFFFFF",useYn:true}))).map(b => b.id===id ? {...b, [field]:value} : b);
+      const updated = (prev.branchSettings || (data.branches||[]).map(b=>({...b,color:T.bgCard,useYn:true}))).map(b => b.id===id ? {...b, [field]:value} : b);
       return {...prev, branchSettings: updated, branches: updated};
     });
     setEdited(prev => ({...prev, [id]: true}));
@@ -5513,9 +5512,9 @@ function AdminPlaces({ data, setData, bizId }) {
     const bName = prompt("지점명을 입력하세요", "");
     if(!bName || !bName.trim()) return;
     const newId = "br_" + uid();
-    const newBranch = {id:newId, name:bName.trim(), short:bName.trim(), phone:"", address:"", color:"#FFFFFF", useYn:true, business_id:bizId};
+    const newBranch = {id:newId, name:bName.trim(), short:bName.trim(), phone:"", address:"", color:T.bgCard, useYn:true, business_id:bizId};
     setData(prev => ({...prev, branchSettings:[...(prev.branchSettings||[]), newBranch], branches:[...(prev.branches||[]), newBranch]}));
-    sb.insert("branches", {id:newId, business_id:bizId||_activeBizId, name:bName.trim(), short:bName.trim(), phone:"", address:"", color:"#FFFFFF", sort:branches.length, use_yn:true}).catch(console.error);
+    sb.insert("branches", {id:newId, business_id:bizId||_activeBizId, name:bName.trim(), short:bName.trim(), phone:"", address:"", color:T.bgCard, sort:branches.length, use_yn:true}).catch(console.error);
     setEdited(prev => ({...prev, [newId]: true}));
   };
   const deleteBranch = (id) => {
@@ -5618,8 +5617,8 @@ function AdminPlaces({ data, setData, bizId }) {
               <td><select className="inp" value={b.useYn!==false?"사용":"미사용"} onChange={e=>updateField(b.id,"useYn",e.target.value==="사용")} style={{background:"transparent",border:"1px solid #d0d0d0",fontSize:11}}><option>사용</option><option>미사용</option></select></td>
               <td><button className={edited[b.id]?"btn-p btn-sm":"btn-s btn-sm"} onClick={()=>applyRow(b.id)} style={{padding:"4px 10px"}}>적용</button></td>
               <td>{deleteId===b.id ? <div style={{display:"flex",gap:3}}>
-                <button onClick={()=>deleteBranch(b.id)} style={{padding:"2px 8px",fontSize:T.fs.xs,fontWeight:T.fw.bolder,borderRadius:T.radius.sm,border:"none",background:T.danger,color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>확인</button>
-                <button onClick={()=>setDeleteId(null)} style={{padding:"2px 6px",fontSize:T.fs.xs,borderRadius:T.radius.sm,border:"1px solid #d0d0d0",background:"#fff",color:T.textSub,cursor:"pointer",fontFamily:"inherit"}}>취소</button>
+                <button onClick={()=>deleteBranch(b.id)} style={{padding:"2px 8px",fontSize:T.fs.xs,fontWeight:T.fw.bolder,borderRadius:T.radius.sm,border:"none",background:T.danger,color:T.bgCard,cursor:"pointer",fontFamily:"inherit"}}>확인</button>
+                <button onClick={()=>setDeleteId(null)} style={{padding:"2px 6px",fontSize:T.fs.xs,borderRadius:T.radius.sm,border:"1px solid #d0d0d0",background:T.bgCard,color:T.textSub,cursor:"pointer",fontFamily:"inherit"}}>취소</button>
               </div> : <button onClick={()=>setDeleteId(b.id)} style={{background:"none",border:"none",cursor:"pointer",color:T.danger}}><I name="trash" size={13}/></button>}</td>
             </tr>
           ))}
@@ -5674,7 +5673,7 @@ function AdminPlaces({ data, setData, bizId }) {
             }}}
             style={{position:"fixed",left:"50%",top:"5vh",zIndex:1000,transform:"translateX(-50%)",
             width:"90vw",maxWidth:"480px",
-            background:"#fff",borderRadius:T.radius.xl,overflow:"hidden",
+            background:T.bgCard,borderRadius:T.radius.xl,overflow:"hidden",
             boxShadow:"0 20px 60px rgba(0,0,0,.2)"}}>
             {/* Header */}
             <div style={{padding:"14px 16px",background:`linear-gradient(135deg, ${b.color||"#f0f0f0"}18, ${b.color||"#f0f0f0"}08)`,
@@ -5703,7 +5702,7 @@ function AdminPlaces({ data, setData, bizId }) {
                   <input value={b.naverEmail||""} onChange={e=>updateField(b.id,"naverEmail",e.target.value)}
                     placeholder="example@gmail.com" style={{...INP,flex:1}}/>
                 </div>
-                <div style={{padding:"0 16px 6px 72px",fontSize:T.fs.xs,color:"#bbb",lineHeight:1.3}}>
+                <div style={{padding:"0 16px 6px 72px",fontSize:T.fs.xs,color:T.gray400,lineHeight:1.3}}>
                   네이버 예약 알림을 수신할 Gmail 주소를 입력하세요.
                 </div>
               </div>
@@ -5714,22 +5713,22 @@ function AdminPlaces({ data, setData, bizId }) {
                   <input type="number" min={0} value={b.naverColCount??1}
                     onChange={e=>updateField(b.id,"naverColCount",Math.max(0,parseInt(e.target.value)||0))}
                     style={{width:64,padding:"7px 10px",fontSize:15,fontWeight:T.fw.bolder,borderRadius:T.radius.md,border:"1px solid #d0d0d0",textAlign:"center",outline:"none",fontFamily:"inherit"}}/>
-                  <span style={{fontSize:11,color:"#bbb"}}>0 = 네이버 미사용</span>
+                  <span style={{fontSize:11,color:T.gray400}}>0 = 네이버 미사용</span>
                 </div>
               </div>
             </div>
             {/* Footer */}
             <div style={{display:"flex",gap:8,padding:"10px 16px",background:"#fafafa",borderTop:"1px solid #f0f0f0"}}>
               {deleteId===b.id ? <>
-                <button onClick={()=>{deleteBranch(b.id);setExpandedCard(null);}} style={{flex:1,padding:"10px",fontSize:13,fontWeight:T.fw.bolder,borderRadius:T.radius.md,border:"none",background:"#ff3b30",color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>삭제 확인</button>
-                <button onClick={()=>setDeleteId(null)} style={{flex:1,padding:"10px",fontSize:13,borderRadius:T.radius.md,border:"1px solid #d0d0d0",background:"#fff",color:T.textSub,cursor:"pointer",fontFamily:"inherit"}}>취소</button>
+                <button onClick={()=>{deleteBranch(b.id);setExpandedCard(null);}} style={{flex:1,padding:"10px",fontSize:13,fontWeight:T.fw.bolder,borderRadius:T.radius.md,border:"none",background:"#ff3b30",color:T.bgCard,cursor:"pointer",fontFamily:"inherit"}}>삭제 확인</button>
+                <button onClick={()=>setDeleteId(null)} style={{flex:1,padding:"10px",fontSize:13,borderRadius:T.radius.md,border:"1px solid #d0d0d0",background:T.bgCard,color:T.textSub,cursor:"pointer",fontFamily:"inherit"}}>취소</button>
               </> : <>
                 <button onClick={()=>setDeleteId(b.id)} style={{padding:"10px 14px",fontSize:T.fs.sm,borderRadius:T.radius.md,border:"none",background:"#ff3b3010",color:"#ff3b30",cursor:"pointer",fontFamily:"inherit",fontWeight:T.fw.bold}}>
                   <I name="trash" size={11}/> 삭제
                 </button>
                 <div style={{flex:1}}/>
                 {edited[b.id] && <button onClick={()=>applyRow(b.id)}
-                  style={{padding:"10px 24px",fontSize:13,fontWeight:T.fw.bolder,borderRadius:T.radius.md,border:"none",background:T.primary,color:"#fff",cursor:"pointer",fontFamily:"inherit"}}>저장</button>}
+                  style={{padding:"10px 24px",fontSize:13,fontWeight:T.fw.bolder,borderRadius:T.radius.md,border:"none",background:T.primary,color:T.bgCard,cursor:"pointer",fontFamily:"inherit"}}>저장</button>}
               </>}
             </div>
           </div>
@@ -5743,14 +5742,14 @@ function AdminPlaces({ data, setData, bizId }) {
             onClick={()=>{cardRects.current[b.id]=document.querySelector(`[data-bid="${b.id}"]`)?.getBoundingClientRect(); setExpandedCard(b.id);}}
             data-bid={b.id}
             style={{
-              borderRadius:6,padding:"14px",background:"#fff",cursor:"pointer",
+              borderRadius:6,padding:"14px",background:T.bgCard,cursor:"pointer",
               boxShadow:"0 1px 3px rgba(0,0,0,.06), 0 2px 8px rgba(0,0,0,.04)",
               borderLeft:`4px solid ${b.color||"#ddd"}`,
               WebkitTapHighlightColor:"transparent"
             }}>
             <div style={{fontSize:T.fs.md,fontWeight:T.fw.bolder,color:"#222",marginBottom:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.name||"새 지점"}</div>
-            <div style={{fontSize:11,color:"#999",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.phone||"전화번호 미등록"}</div>
-            <div style={{fontSize:T.fs.xs,color:"#bbb",marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.address||"주소 미등록"}</div>
+            <div style={{fontSize:11,color:T.gray500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.phone||"전화번호 미등록"}</div>
+            <div style={{fontSize:T.fs.xs,color:T.gray400,marginTop:2,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.address||"주소 미등록"}</div>
             {b.naverEmail && <div style={{marginTop:6,fontSize:9,color:"#03c75a",fontWeight:T.fw.bold,display:"flex",alignItems:"center",gap:3}}>
               <span style={{width:5,height:5,borderRadius:"50%",background:"#03c75a",display:"inline-block"}}/>네이버 연동
             </div>}
@@ -5770,7 +5769,7 @@ function AdminHeader({title, count, color="#7c7cc8", desc="", onAdd, addLabel, o
   return <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14,flexWrap:"wrap",gap:8}}>
     <div>
       <h3 style={{fontSize:T.fs.md,fontWeight:T.fw.bolder,color}}>{title}</h3>
-      <p style={{fontSize:11,color:"#999",marginTop:2}}>{desc || (count!=null ? `총 ${count}개` : "")}</p>
+      <p style={{fontSize:11,color:T.gray500,marginTop:2}}>{desc || (count!=null ? `총 ${count}개` : "")}</p>
     </div>
     <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
       {onDownload && <button className="btn-s btn-sm" onClick={onDownload}><I name="download" size={12}/> 내려받기</button>}
@@ -5858,7 +5857,7 @@ function AdminWorkers({ data, setData }) {
         {rooms.map((r,i) => {
           if(editId===r.id) return <tr key={r.id} style={{background:"#f5f5ff"}}>
             <td><input type="checkbox" checked={selected.has(r.id)} onChange={()=>toggleOne(r.id)}/></td>
-            <td style={{color:"#999"}}>{i+1}</td>
+            <td style={{color:T.gray500}}>{i+1}</td>
             <td><input className="inp" value={editData.name} onChange={e=>setEditData(p=>({...p,name:e.target.value}))} style={{width:"100%"}}/></td>
             <td><select className="inp" value={editData.branch_id} onChange={e=>setEditData(p=>({...p,branch_id:e.target.value}))}>
               {regBranches.map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
@@ -5868,7 +5867,7 @@ function AdminWorkers({ data, setData }) {
           </tr>;
           return <tr key={r.id}>
             <td><input type="checkbox" checked={selected.has(r.id)} onChange={()=>toggleOne(r.id)}/></td>
-            <td style={{color:"#999"}}>{i+1}</td>
+            <td style={{color:T.gray500}}>{i+1}</td>
             <td style={{fontWeight:T.fw.bold}}>{r.name}</td>
             <td>{branchName(r.branch_id)}</td>
             <td>{r.color ? <div style={{width:24,height:16,borderRadius:3,background:r.color,border:"1px solid #d0d0d080"}}/> : <span style={{color:"#ccc"}}>-</span>}</td>
@@ -6097,7 +6096,7 @@ function AdminSaleItems({ data, setData }) {
       </div>
     </div>}
     <div style={{marginBottom:8}}>
-      <div style={{fontSize:T.fs.xs,color:T.textSub,marginBottom:4}}>카테고리 <span style={{color:"#bbb",fontSize:9}}>(드래그로 순서 변경)</span></div>
+      <div style={{fontSize:T.fs.xs,color:T.textSub,marginBottom:4}}>카테고리 <span style={{color:T.gray400,fontSize:9}}>(드래그로 순서 변경)</span></div>
       <div style={{display:"flex",gap:4,flexWrap:"wrap",alignItems:"center",padding:"6px 8px",background:T.gray100,borderRadius:T.radius.md,minHeight:36}} onDragOver={e=>e.preventDefault()}>
         <button className={filterCat==="all"?"btn-p btn-sm":"btn-s btn-sm"} onClick={()=>setFilterCat("all")} style={{fontSize:T.fs.xs}}>전체 ({services.length})</button>
         {cats.map((cat,i)=><button key={cat.id}
@@ -6117,7 +6116,7 @@ function AdminSaleItems({ data, setData }) {
           style={{fontSize:T.fs.xs,cursor:"grab",opacity:catDragOver===i?0.5:1,outline:catDragOver===i?"2px dashed #7c7cc8":"none"}}
           >{cat.name} ({services.filter(s=>s.cat===cat.id).length})</button>)}
         {selected.size > 0 && <button className="btn-d btn-sm" onClick={bulkDelete} style={{fontSize:T.fs.xs,marginLeft:"auto",padding:"4px 12px"}}><I name="trash" size={12}/> 선택 삭제 ({selected.size})</button>}
-        <button onClick={resetSort} style={{fontSize:9,marginLeft:selected.size>0?"4px":"auto",padding:"3px 8px",border:"1px solid #ccc",borderRadius:T.radius.sm,background:"#fff",color:T.textSub,cursor:"pointer"}}>순서 리셋</button>
+        <button onClick={resetSort} style={{fontSize:9,marginLeft:selected.size>0?"4px":"auto",padding:"3px 8px",border:"1px solid #ccc",borderRadius:T.radius.sm,background:T.bgCard,color:T.textSub,cursor:"pointer"}}>순서 리셋</button>
       </div>
     </div>
     <div className="tw admin-tw" style={{maxHeight:"calc(100vh - 340px)",overflow:"auto"}}>
@@ -6130,7 +6129,7 @@ function AdminSaleItems({ data, setData }) {
           const isEdit = editId === svc.id;
           if (isEdit) return <tr key={svc.id} ref={drag.rowRef(i)} style={{background:"#f5f5ff"}}>
             <td><input type="checkbox" checked={selected.has(svc.id)} onChange={()=>toggleOne(svc.id)}/></td>
-            <td><DragHandle onTouchStart={drag.onTouchStart(i)}/></td><td style={{color:"#999"}}>{i+1}</td>
+            <td><DragHandle onTouchStart={drag.onTouchStart(i)}/></td><td style={{color:T.gray500}}>{i+1}</td>
             <td><select className="inp" value={editData.cat} onChange={e=>setEditData(p=>({...p,cat:e.target.value}))} style={{width:"100%",padding:"4px 6px",fontSize:11}}>{cats.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></td>
             <td>{inp(editData.name, v=>setEditData(p=>({...p,name:v})))}</td>
             <td>{inp(editData.priceF, v=>setEditData(p=>({...p,priceF:v})), "100%", "number")}</td>
@@ -6138,7 +6137,7 @@ function AdminSaleItems({ data, setData }) {
             <td>{inp(editData.dur, v=>setEditData(p=>({...p,dur:v})), "100%", "number")}</td>
             <td>{inp(editData.note||"", v=>setEditData(p=>({...p,note:v})))}</td>
             <td style={{textAlign:"center"}}><label style={{fontSize:9,display:"flex",alignItems:"center",gap:2}}><input type="checkbox" checked={!!editData.isPackage} onChange={e=>setEditData(p=>({...p,isPackage:e.target.checked}))}/>{editData.isPackage?editData.pkgCount+"회":""}</label>
-            {editData.isPackage && <div style={{display:"flex",gap:2,marginTop:2}}>{inp(editData.pkgCount||5,v=>setEditData(p=>({...p,pkgCount:v})),30,"number")}<span style={{fontSize:8,color:"#999"}}>회</span></div>}</td>
+            {editData.isPackage && <div style={{display:"flex",gap:2,marginTop:2}}>{inp(editData.pkgCount||5,v=>setEditData(p=>({...p,pkgCount:v})),30,"number")}<span style={{fontSize:8,color:T.gray500}}>회</span></div>}</td>
             <td style={{textAlign:"center"}}><div style={{display:"flex",gap:3,justifyContent:"center"}}>
               <button className="btn-p btn-sm" onClick={saveEdit} style={{padding:"2px 8px",fontSize:T.fs.xs}}>저장</button>
               <button className="btn-s btn-sm" onClick={()=>setEditId(null)} style={{padding:"2px 6px",fontSize:T.fs.xs}}>취소</button>
@@ -6148,14 +6147,14 @@ function AdminSaleItems({ data, setData }) {
             style={{background:drag.touchOverIdx===i?"#ede8ff":undefined}}>
             <td><input type="checkbox" checked={selected.has(svc.id)} onChange={()=>toggleOne(svc.id)}/></td>
             <td><DragHandle onTouchStart={drag.onTouchStart(i)}/></td>
-            <td style={{color:"#999"}}>{i+1}</td>
+            <td style={{color:T.gray500}}>{i+1}</td>
             <td><span className="badge" style={{background:"#f0f0ff",color:T.primary}}>{cats.find(c=>c.id===svc.cat)?.name||"-"}</span></td>
-            <td style={{fontWeight:T.fw.medium,fontSize:T.fs.sm}}>{svc.name}{svc.isPackage && <span style={{marginLeft:4,fontSize:8,background:T.primary,color:"#fff",borderRadius:3,padding:"1px 4px",verticalAlign:"middle"}}>{svc.pkgCount}회권</span>}</td>
+            <td style={{fontWeight:T.fw.medium,fontSize:T.fs.sm}}>{svc.name}{svc.isPackage && <span style={{marginLeft:4,fontSize:8,background:T.primary,color:T.bgCard,borderRadius:3,padding:"1px 4px",verticalAlign:"middle"}}>{svc.pkgCount}회권</span>}</td>
             <td style={{textAlign:"right",color:T.primary,fontWeight:T.fw.bold,fontSize:T.fs.sm}}>{svc.priceF>0?fmt(svc.priceF)+"원":"-"}</td>
             <td style={{textAlign:"right",color:"#4a7cc8",fontWeight:T.fw.bold,fontSize:T.fs.sm}}>{svc.priceM>0?fmt(svc.priceM)+"원":"-"}</td>
             <td style={{textAlign:"center",color:T.textSub,fontSize:11}}>{svc.dur}분</td>
             <td style={{fontSize:11,color:T.textSub}}>{svc.note||""}</td>
-            <td style={{textAlign:"center"}}>{svc.isPackage ? <span style={{fontSize:9,background:T.primary,color:"#fff",borderRadius:3,padding:"1px 4px"}}>{svc.pkgCount}회</span> : <span style={{fontSize:9,color:"#ccc"}}>-</span>}</td>
+            <td style={{textAlign:"center"}}>{svc.isPackage ? <span style={{fontSize:9,background:T.primary,color:T.bgCard,borderRadius:3,padding:"1px 4px"}}>{svc.pkgCount}회</span> : <span style={{fontSize:9,color:"#ccc"}}>-</span>}</td>
             <td style={{textAlign:"center"}}><div style={{display:"flex",gap:4,justifyContent:"center"}}>
               <button onClick={()=>startEdit(svc)} style={{background:"none",border:"none",cursor:"pointer",color:T.primary,fontSize:13}}><I name="edit" size={13}/></button>
               {delConfirm===svc.id
@@ -6242,7 +6241,7 @@ function AdminProductItems({ data, setData }) {
         <tbody>{items.map((it,i)=>{
           if (editId===it.id) return <tr key={it.id} ref={drag.rowRef(i)} style={{background:"#f5f5ff"}}>
             <td><input type="checkbox" checked={selected.has(it.id)} onChange={()=>toggleOne(it.id)}/></td>
-            <td><DragHandle onTouchStart={drag.onTouchStart(i)}/></td><td style={{color:"#999"}}>{i+1}</td>
+            <td><DragHandle onTouchStart={drag.onTouchStart(i)}/></td><td style={{color:T.gray500}}>{i+1}</td>
             <td><input className="inp" value={editData.name} onChange={e=>setEditData(p=>({...p,name:e.target.value}))} style={{width:"100%"}}/></td>
             <td><input className="inp" type="number" value={editData.price} onChange={e=>setEditData(p=>({...p,price:Number(e.target.value)||0}))} style={{width:"100%",textAlign:"right"}}/></td>
             <td style={{textAlign:"center"}}><div style={{display:"flex",gap:3,justifyContent:"center"}}>
@@ -6253,7 +6252,7 @@ function AdminProductItems({ data, setData }) {
           return <tr key={it.id} ref={drag.rowRef(i)} draggable onDragStart={()=>drag.onDragStart(i)} onDragEnter={()=>drag.onDragEnter(i)} onDragEnd={drag.onDragEnd} onDragOver={e=>e.preventDefault()}
             style={{background:drag.touchOverIdx===i?"#ede8ff":undefined}}>
             <td><input type="checkbox" checked={selected.has(it.id)} onChange={()=>toggleOne(it.id)}/></td>
-            <td><DragHandle onTouchStart={drag.onTouchStart(i)}/></td><td style={{color:"#999"}}>{i+1}</td>
+            <td><DragHandle onTouchStart={drag.onTouchStart(i)}/></td><td style={{color:T.gray500}}>{i+1}</td>
             <td style={{fontWeight:T.fw.medium,fontSize:T.fs.sm}}>{it.name}</td>
             <td style={{textAlign:"right",color:"#6bab9e",fontWeight:T.fw.bold,fontSize:T.fs.sm}}>{it.price>0?fmt(it.price)+"원":"-"}</td>
             <td style={{textAlign:"center"}}><div style={{display:"flex",gap:4,justifyContent:"center"}}>
@@ -6345,7 +6344,7 @@ function AdminResSources({ data, setData }) {
     </div>}
 
     <div className="card" style={{padding:12,marginBottom:14}}>
-      <div style={{fontSize:T.fs.xs,color:T.textSub,marginBottom:6}}>미리보기 <span style={{color:"#bbb",fontSize:9}}>(드래그로 순서 변경)</span></div>
+      <div style={{fontSize:T.fs.xs,color:T.textSub,marginBottom:6}}>미리보기 <span style={{color:T.gray400,fontSize:9}}>(드래그로 순서 변경)</span></div>
       <div style={{display:"flex",flexWrap:"wrap",gap:6,padding:8,background:T.gray100,borderRadius:T.radius.md,minHeight:36}} onDragOver={e=>e.preventDefault()}>
         {sources.filter(s=>s.useYn!==false).map((s,i)=>{
           const clr = s.color||"#7c7cc8";
@@ -6388,7 +6387,7 @@ function AdminResSources({ data, setData }) {
         const isEdit = editId===src.id;
         if (isEdit) return <tr key={src.id} ref={drag.rowRef(i)} style={{background:"#f5f5ff"}}>
           <td><input type="checkbox" checked={selected.has(src.id)} onChange={()=>toggleOne(src.id)}/></td>
-          <td><DragHandle onTouchStart={drag.onTouchStart(i)}/></td><td style={{color:"#999"}}>{i+1}</td>
+          <td><DragHandle onTouchStart={drag.onTouchStart(i)}/></td><td style={{color:T.gray500}}>{i+1}</td>
           <td><input className="inp" value={editData.name} onChange={e=>setEditData(p=>({...p,name:e.target.value}))} style={{width:"100%",...inpS}}/></td>
           <td><div style={{display:"flex",alignItems:"center",gap:2}}>
             <input type="color" value={editData.color||"#7c7cc8"} onChange={e=>setEditData(p=>({...p,color:e.target.value}))} style={{width:20,height:18,border:"none",cursor:"pointer"}}/>
@@ -6405,7 +6404,7 @@ function AdminResSources({ data, setData }) {
           style={{opacity:src.useYn===false?0.45:1,background:drag.touchOverIdx===i?"#ede8ff":undefined}}>
           <td>{SYSTEM_SRC_IDS.includes(src.id)?<span title="기본 경로" style={{color:"#ccc",fontSize:T.fs.xs}}>🔒</span>:<input type="checkbox" checked={selected.has(src.id)} onChange={()=>toggleOne(src.id)}/>}</td>
           <td><DragHandle onTouchStart={drag.onTouchStart(i)}/></td>
-          <td style={{color:"#999"}}>{i+1}</td>
+          <td style={{color:T.gray500}}>{i+1}</td>
           <td style={{fontWeight:T.fw.bold,fontSize:T.fs.sm}}>
             {(()=>{
               const clr=src.color||"#7c7cc8"; const h=clr.replace("#",""); const r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16); const txtC=(0.299*r+0.587*g+0.114*b)/255>0.55?"#333":"#fff";
@@ -6418,14 +6417,14 @@ function AdminResSources({ data, setData }) {
           <td style={{textAlign:"center"}}>{src.color?<div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>
             <div style={{width:24,height:16,borderRadius:3,background:src.color,border:"1px solid #d0d0d080"}}/>
             <span style={{fontSize:8,color:T.textSub,fontFamily:"monospace"}}>{src.color}</span>
-          </div>:<span style={{color:"#bbb",fontSize:T.fs.xs}}>—</span>}</td>
+          </div>:<span style={{color:T.gray400,fontSize:T.fs.xs}}>—</span>}</td>
           <td style={{textAlign:"center"}}><button onClick={()=>toggleUse(src.id)}
             style={{fontSize:T.fs.xs,padding:"2px 6px",borderRadius:T.radius.sm,border:"1px solid "+(src.useYn===false?"#e57373":"#d0d0d0"),cursor:"pointer",fontFamily:"inherit",
               background:src.useYn===false?"#e5737320":"transparent",color:src.useYn===false?"#e8a0a0":"#888"}}>{src.useYn===false?"미사용":"사용"}</button></td>
-          <td style={{textAlign:"center",color:"#bbb",fontSize:T.fs.xs}}>{i+1}</td>
+          <td style={{textAlign:"center",color:T.gray400,fontSize:T.fs.xs}}>{i+1}</td>
           <td style={{textAlign:"center"}}><div style={{display:"flex",gap:3,justifyContent:"center"}}>
             <button onClick={()=>startEdit(src)} style={{background:"none",border:"none",cursor:"pointer",color:T.primary,fontSize:T.fs.sm}}><I name="edit" size={13}/></button>
-            {SYSTEM_SRC_IDS.includes(src.id) ? <span title="삭제 불가" style={{color:"#e0e0e0",fontSize:T.fs.sm}}><I name="trash" size={13}/></span> : delConfirm===src.id
+            {SYSTEM_SRC_IDS.includes(src.id) ? <span title="삭제 불가" style={{color:T.border,fontSize:T.fs.sm}}><I name="trash" size={13}/></span> : delConfirm===src.id
               ? <><button className="btn-d btn-sm" onClick={()=>deleteSource(src.id)} style={{padding:"1px 5px",fontSize:9}}>확인</button><button className="btn-s btn-sm" onClick={()=>setDelConfirm(null)} style={{padding:"1px 4px",fontSize:9}}>취소</button></>
               : (SYSTEM_SRC_IDS.includes(src.id) ? <span title="기본 경로는 삭제할 수 없습니다" style={{color:"#ddd",fontSize:T.fs.sm,cursor:"not-allowed"}}><I name="trash" size={13}/></span> : <button onClick={()=>setDelConfirm(src.id)} style={{background:"none",border:"none",cursor:"pointer",color:T.danger,fontSize:T.fs.sm}}><I name="trash" size={13}/></button>)}
           </div></td>
@@ -6502,7 +6501,7 @@ function AdminNotiSettings({ data, setData }) {
       </button>)}
     </div>
 
-    {!selBranch ? <div style={{padding:20,color:"#999",textAlign:"center"}}>지점을 선택하세요</div> : <>
+    {!selBranch ? <div style={{padding:20,color:T.gray500,textAlign:"center"}}>지점을 선택하세요</div> : <>
 
     <div className="card" style={{padding:20,maxWidth:540}}>
       <div style={{fontSize:13,fontWeight:T.fw.bolder,marginBottom:12,color:T.text}}>NHN Cloud 알림톡 API — {branch?.name}</div>
@@ -6541,7 +6540,7 @@ function AdminNotiSettings({ data, setData }) {
         <div key={k} style={{display:"flex",gap:8,alignItems:"center",marginBottom:8}}>
           <div style={{width:120}}>
             <div style={{fontSize:11,fontWeight:T.fw.bold,color:T.gray700}}>{label}</div>
-            <div style={{fontSize:9,color:"#bbb"}}>{desc}</div>
+            <div style={{fontSize:9,color:T.gray400}}>{desc}</div>
           </div>
           <input className="inp" value={cfg[k]||""} onChange={e=>up(k,e.target.value)} placeholder="템플릿 코드" style={{flex:1,padding:"6px 10px",fontSize:T.fs.sm}}/>
         </div>
@@ -6723,23 +6722,23 @@ function AdminAISettings({ data, sb, bizId }) {
     <div className="card" style={{padding:20,maxWidth:500,marginTop:16}}>
       <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
         <span style={{fontSize:13,fontWeight:T.fw.bolder,color:T.text}}>AI 분석 커스텀 규칙</span>
-        <span style={{fontSize:T.fs.xs,color:T.primary,background:"#ede9fe",padding:"2px 6px",borderRadius:10,fontWeight:T.fw.bold}}>{rules.length}개</span>
+        <span style={{fontSize:T.fs.xs,color:T.primary,background:T.primaryLt,padding:"2px 6px",borderRadius:10,fontWeight:T.fw.bold}}>{rules.length}개</span>
       </div>
-      <div style={{fontSize:11,color:"#999",marginBottom:14,lineHeight:1.6}}>
+      <div style={{fontSize:11,color:T.gray500,marginBottom:14,lineHeight:1.6}}>
         네이버 예약정보 AI 분석 시 아래 규칙이 프롬프트에 추가됩니다.<br/>
         <span style={{color:"#e17055",fontWeight:T.fw.bold}}>❌ 금지</span> 또는 <span style={{color:"#2E7D32",fontWeight:T.fw.bold}}>✅ 강제</span> 방식으로 작성하세요.
       </div>
       {/* 규칙 목록 */}
-      {rules.length === 0 && <div style={{fontSize:T.fs.sm,color:"#bbb",textAlign:"center",padding:"12px 0",borderRadius:T.radius.md,background:"#fafafa",marginBottom:12}}>아직 등록된 규칙이 없습니다</div>}
+      {rules.length === 0 && <div style={{fontSize:T.fs.sm,color:T.gray400,textAlign:"center",padding:"12px 0",borderRadius:T.radius.md,background:"#fafafa",marginBottom:12}}>아직 등록된 규칙이 없습니다</div>}
       {rules.map((r,i)=><div key={i} style={{display:"flex",alignItems:"flex-start",gap:6,marginBottom:6,padding:"8px 10px",background:"#f8f8ff",borderRadius:T.radius.md,border:"1px solid #e8e8f0"}}>
         {editIdx===i
           ? <><input className="inp" value={editVal} onChange={e=>setEditVal(e.target.value)}
               onKeyDown={e=>{if(e.key==="Enter")saveEdit();if(e.key==="Escape"){setEditIdx(null);}}}
               autoFocus style={{flex:1,padding:"4px 8px",fontSize:T.fs.sm,borderRadius:6}}/>
-            <button onClick={saveEdit} style={{padding:"4px 10px",fontSize:11,fontWeight:T.fw.bolder,background:T.primary,color:"#fff",border:"none",borderRadius:6,cursor:"pointer"}}>저장</button>
+            <button onClick={saveEdit} style={{padding:"4px 10px",fontSize:11,fontWeight:T.fw.bolder,background:T.primary,color:T.bgCard,border:"none",borderRadius:6,cursor:"pointer"}}>저장</button>
             <button onClick={()=>setEditIdx(null)} style={{padding:"4px 8px",fontSize:11,background:"#eee",color:"#666",border:"none",borderRadius:6,cursor:"pointer"}}>취소</button></>
           : <><span style={{flex:1,fontSize:T.fs.sm,color:T.text,lineHeight:1.6,wordBreak:"break-all"}}>{r}</span>
-            <button onClick={()=>startEdit(i)} style={{padding:"3px 8px",fontSize:T.fs.xs,background:"#ede9fe",color:T.primary,border:"none",borderRadius:5,cursor:"pointer",flexShrink:0}}>수정</button>
+            <button onClick={()=>startEdit(i)} style={{padding:"3px 8px",fontSize:T.fs.xs,background:T.primaryLt,color:T.primary,border:"none",borderRadius:5,cursor:"pointer",flexShrink:0}}>수정</button>
             <button onClick={()=>deleteRule(i)} style={{padding:"3px 8px",fontSize:T.fs.xs,background:"#fee2e2",color:"#ef4444",border:"none",borderRadius:5,cursor:"pointer",flexShrink:0}}>삭제</button></>}
       </div>)}
       {/* 새 규칙 입력 */}
@@ -6749,14 +6748,14 @@ function AdminAISettings({ data, sb, bizId }) {
           placeholder='예: 허벅지/다리안쪽 언급 시 "다리반" 시술 선택, "바디도움" 태그 사용 금지'
           style={{flex:1,padding:"8px 12px",fontSize:T.fs.sm,borderRadius:T.radius.md}}/>
         <button onClick={addRule}
-          style={{padding:"8px 16px",fontSize:T.fs.sm,fontWeight:T.fw.bolder,background:T.primary,color:"#fff",border:"none",borderRadius:T.radius.md,cursor:"pointer",flexShrink:0}}>추가</button>
+          style={{padding:"8px 16px",fontSize:T.fs.sm,fontWeight:T.fw.bolder,background:T.primary,color:T.bgCard,border:"none",borderRadius:T.radius.md,cursor:"pointer",flexShrink:0}}>추가</button>
       </div>
     </div>
 
     <div className="card" style={{padding:20,maxWidth:500,marginTop:16}}>
       <div style={{fontSize:13,fontWeight:T.fw.bolder,marginBottom:8,color:T.text}}>사용 안내</div>
       <div style={{fontSize:11,color:"#666",lineHeight:1.8}}>
-        타임라인 상단의 <span style={{background:"#ede9fe",color:T.primary,padding:"2px 6px",borderRadius:T.radius.sm,fontWeight:T.fw.bolder,fontSize:T.fs.xs}}>✨ AI Book</span> 버튼으로 사용합니다.<br/>
+        타임라인 상단의 <span style={{background:T.primaryLt,color:T.primary,padding:"2px 6px",borderRadius:T.radius.sm,fontWeight:T.fw.bolder,fontSize:T.fs.xs}}>✨ AI Book</span> 버튼으로 사용합니다.<br/>
         • <strong>텍스트</strong>: 카톡 메시지 붙여넣기 또는 직접 입력<br/>
         • <strong>음성</strong>: 마이크로 말하면 자동 인식<br/>
         • <strong>이미지</strong>: 캡처/사진 업로드로 자동 인식<br/>
@@ -6871,7 +6870,7 @@ function QuickBookModal({ onClose, onParsed, data }) {
 
   const sparkle = <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 2L13.09 8.26L18 6L14.74 10.91L21 12L14.74 13.09L18 18L13.09 15.74L12 22L10.91 15.74L6 18L9.26 13.09L3 12L9.26 10.91L6 6L10.91 8.26L12 2Z" fill="url(#gsp)"/><defs><linearGradient id="gsp" x1="3" y1="2" x2="21" y2="22"><stop stopColor="#4285f4"/><stop offset="0.5" stopColor="#9b72cb"/><stop offset="1" stopColor="#d96570"/></linearGradient></defs></svg>;
 
-  return <div style={{position:"fixed",inset:0,zIndex:500,background:"#fff",display:"flex",flexDirection:"column"}}>
+  return <div style={{position:"fixed",inset:0,zIndex:500,background:T.bgCard,display:"flex",flexDirection:"column"}}>
     <style>{`@keyframes qb-spin{to{transform:rotate(360deg)}}@keyframes qb-pulse{0%,100%{transform:scale(1);opacity:.7}50%{transform:scale(1.15);opacity:1}}@keyframes qb-fade{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}@keyframes qb-breathe{0%{transform:scale(1) rotate(0deg);opacity:.85}15%{transform:scale(1.18) rotate(8deg);opacity:1}30%{transform:scale(.95) rotate(-5deg);opacity:.75}45%{transform:scale(1.22) rotate(12deg);opacity:.95}60%{transform:scale(1.05) rotate(-3deg);opacity:.8}75%{transform:scale(1.3) rotate(6deg);opacity:1}90%{transform:scale(.98) rotate(-8deg);opacity:.7}100%{transform:scale(1) rotate(0deg);opacity:.85}}@keyframes qb-glow{0%{box-shadow:0 0 15px #4285f420,0 0 30px #9b72cb10}33%{box-shadow:0 0 25px #9b72cb30,0 0 45px #d9657015}66%{box-shadow:0 0 20px #d9657025,0 0 40px #4285f410}100%{box-shadow:0 0 15px #4285f420,0 0 30px #9b72cb10}}.qb-field:focus{border-color:#7c7cc850!important;background:#fff!important}`}</style>
 
     {/* Top bar */}
@@ -6892,14 +6891,14 @@ function QuickBookModal({ onClose, onParsed, data }) {
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" style={{animation:"qb-breathe 6s ease-in-out infinite"}}><path d="M12 2L13.09 8.26L18 6L14.74 10.91L21 12L14.74 13.09L18 18L13.09 15.74L12 22L10.91 15.74L6 18L9.26 13.09L3 12L9.26 10.91L6 6L10.91 8.26L12 2Z" fill="url(#gsp)"/></svg>
         </div>
         <div style={{fontSize:T.fs.xl,fontWeight:T.fw.bolder,color:T.text}}>어떤 예약을 등록할까요?</div>
-        <div style={{fontSize:13,color:"#999",textAlign:"center",lineHeight:1.6}}>카톡 메시지 붙여넣기, 음성, 채팅 캡처<br/>무엇이든 AI가 분석해드려요</div>
+        <div style={{fontSize:13,color:T.gray500,textAlign:"center",lineHeight:1.6}}>카톡 메시지 붙여넣기, 음성, 채팅 캡처<br/>무엇이든 AI가 분석해드려요</div>
       </div>}
 
       {/* Image preview */}
       {imgPreview && !result && !loading && <div style={{animation:"qb-fade .3s ease",marginTop:16}}>
         <div style={{position:"relative",borderRadius:6,overflow:"hidden",border:"1px solid #eee",display:"inline-block"}}>
           <img src={imgPreview} style={{maxWidth:"100%",maxHeight:240,display:"block",objectFit:"contain"}} alt=""/>
-          <button onClick={()=>{setImgData(null);setImgPreview(null);}} style={{position:"absolute",top:8,right:8,width:28,height:28,borderRadius:6,background:"rgba(0,0,0,.5)",color:"#fff",border:"none",cursor:"pointer",fontSize:T.fs.md,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+          <button onClick={()=>{setImgData(null);setImgPreview(null);}} style={{position:"absolute",top:8,right:8,width:28,height:28,borderRadius:6,background:"rgba(0,0,0,.5)",color:T.bgCard,border:"none",cursor:"pointer",fontSize:T.fs.md,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
         </div>
       </div>}
 
@@ -6916,8 +6915,8 @@ function QuickBookModal({ onClose, onParsed, data }) {
           <svg width="28" height="28" viewBox="0 0 24 24" fill="#d96570"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
         </div>
         <div style={{fontSize:32,fontWeight:T.fw.bolder,color:"#d96570",fontFamily:"monospace"}}>{Math.floor(recordSec/60)}:{String(recordSec%60).padStart(2,"0")}</div>
-        <div style={{fontSize:13,color:"#999"}}>듣고 있어요...</div>
-        <button onClick={stopVoice} style={{marginTop:8,padding:"10px 32px",fontSize:13,fontWeight:T.fw.bold,background:"#d96570",color:"#fff",border:"none",borderRadius:24,cursor:"pointer",fontFamily:"inherit"}}>완료</button>
+        <div style={{fontSize:13,color:T.gray500}}>듣고 있어요...</div>
+        <button onClick={stopVoice} style={{marginTop:8,padding:"10px 32px",fontSize:13,fontWeight:T.fw.bold,background:"#d96570",color:T.bgCard,border:"none",borderRadius:24,cursor:"pointer",fontFamily:"inherit"}}>완료</button>
       </div>}
 
       {/* Error */}
@@ -6925,14 +6924,14 @@ function QuickBookModal({ onClose, onParsed, data }) {
 
       {/* Results */}
       {result && <div style={{paddingTop:12,paddingBottom:100,animation:"qb-fade .3s ease"}}>
-        <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:14}}>{sparkle}<span style={{fontSize:T.fs.md,fontWeight:T.fw.bolder,color:T.text}}>분석 완료</span><span style={{fontSize:11,color:"#bbb",marginLeft:4}}>수정 가능</span></div>
+        <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:14}}>{sparkle}<span style={{fontSize:T.fs.md,fontWeight:T.fw.bolder,color:T.text}}>분석 완료</span><span style={{fontSize:11,color:T.gray400,marginLeft:4}}>수정 가능</span></div>
         <div style={{display:"flex",flexDirection:"column",gap:10}}>
           {[["custName","고객명"],["custPhone","전화번호"],["date","날짜"],["time","시간"],["memo","시술/메모"],["source","예약경로"]].map(([key,label])=>
-            <div key={key}><div style={{fontSize:11,color:"#999",marginBottom:4,fontWeight:500}}>{label}</div>
+            <div key={key}><div style={{fontSize:11,color:T.gray500,marginBottom:4,fontWeight:500}}>{label}</div>
             <input value={result[key]||""} onChange={e=>editResult(key,e.target.value)} className="qb-field"
               style={{width:"100%",padding:"11px 14px",fontSize:T.fs.md,border:"1.5px solid #e8e8e8",borderRadius:10,fontFamily:"inherit",color:T.text,outline:"none",background:"#fafafa",transition:"all .15s"}}/></div>
           )}
-          <div><div style={{fontSize:11,color:"#999",marginBottom:4,fontWeight:500}}>성별</div>
+          <div><div style={{fontSize:11,color:T.gray500,marginBottom:4,fontWeight:500}}>성별</div>
             <div style={{display:"flex",gap:6}}>{[["","미정"],["M","남"],["F","여"]].map(([v,l])=>
               <button key={v} onClick={()=>editResult("custGender",v)} style={{padding:"8px 20px",fontSize:13,fontWeight:result.custGender===v?600:400,background:result.custGender===v?"#7c7cc812":"#f5f5f5",color:result.custGender===v?"#7c7cc8":"#aaa",border:result.custGender===v?"1.5px solid #7c7cc840":"1.5px solid #eee",borderRadius:T.radius.md,cursor:"pointer",fontFamily:"inherit"}}>{l}</button>
             )}</div>
@@ -6944,23 +6943,23 @@ function QuickBookModal({ onClose, onParsed, data }) {
             const toggleTag = (id) => editResult("matchedTagIds", mTags.includes(id)?mTags.filter(x=>x!==id):[...mTags,id]);
             const toggleSvc = (id) => editResult("matchedServiceIds", mSvcs.includes(id)?mSvcs.filter(x=>x!==id):[...mSvcs,id]);
             if (!tags.length && !svcs.length) return null;
-            return <>{tags.length>0 && <div><div style={{fontSize:11,color:"#999",marginBottom:6,fontWeight:500}}>서비스</div><div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+            return <>{tags.length>0 && <div><div style={{fontSize:11,color:T.gray500,marginBottom:6,fontWeight:500}}>서비스</div><div style={{display:"flex",flexWrap:"wrap",gap:6}}>
               {tags.map(t=><button key={t.id} onClick={()=>toggleTag(t.id)} style={{padding:"7px 14px",fontSize:T.fs.sm,fontWeight:mTags.includes(t.id)?600:400,background:mTags.includes(t.id)?(t.color||"#7c7cc8")+"15":"#f5f5f5",color:mTags.includes(t.id)?t.color||"#7c7cc8":"#bbb",border:mTags.includes(t.id)?`1.5px solid ${(t.color||"#7c7cc8")}40`:"1.5px solid #eee",borderRadius:T.radius.md,cursor:"pointer",fontFamily:"inherit"}}>{t.name}</button>)}
             </div></div>}
-            {svcs.length>0 && <div><div style={{fontSize:11,color:"#999",marginBottom:6,fontWeight:500}}>시술</div><div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+            {svcs.length>0 && <div><div style={{fontSize:11,color:T.gray500,marginBottom:6,fontWeight:500}}>시술</div><div style={{display:"flex",flexWrap:"wrap",gap:6}}>
               {svcs.map(s=><button key={s.id} onClick={()=>toggleSvc(s.id)} style={{padding:"7px 14px",fontSize:T.fs.sm,fontWeight:mSvcs.includes(s.id)?600:400,background:mSvcs.includes(s.id)?"#7c7cc815":"#f5f5f5",color:mSvcs.includes(s.id)?"#7c7cc8":"#bbb",border:mSvcs.includes(s.id)?"1.5px solid #7c7cc840":"1.5px solid #eee",borderRadius:T.radius.md,cursor:"pointer",fontFamily:"inherit"}}>{s.name}</button>)}
             </div></div>}</>;
           })()}
         </div>
         <div style={{display:"flex",gap:10,marginTop:20}}>
           <button onClick={reset} style={{flex:1,padding:"13px 0",fontSize:13,fontWeight:T.fw.medium,background:"#f5f5f5",color:T.textSub,border:"none",borderRadius:T.radius.lg,cursor:"pointer",fontFamily:"inherit"}}>다시</button>
-          <button onClick={()=>onParsed(result)} style={{flex:2,padding:"13px 0",fontSize:T.fs.md,fontWeight:T.fw.bold,background:"linear-gradient(135deg,#4285f4,#9b72cb)",color:"#fff",border:"none",borderRadius:T.radius.lg,cursor:"pointer",fontFamily:"inherit"}}>예약폼에 적용</button>
+          <button onClick={()=>onParsed(result)} style={{flex:2,padding:"13px 0",fontSize:T.fs.md,fontWeight:T.fw.bold,background:"linear-gradient(135deg,#4285f4,#9b72cb)",color:T.bgCard,border:"none",borderRadius:T.radius.lg,cursor:"pointer",fontFamily:"inherit"}}>예약폼에 적용</button>
         </div>
       </div>}
     </div>
 
     {/* Bottom input bar */}
-    {!isListening && !loading && !result && <div style={{flexShrink:0,padding:"8px 12px 16px",borderTop:"1px solid #f0f0f0",background:"#fff"}}>
+    {!isListening && !loading && !result && <div style={{flexShrink:0,padding:"8px 12px 16px",borderTop:"1px solid #f0f0f0",background:T.bgCard}}>
       <div style={{display:"flex",alignItems:"flex-end",gap:4,background:"#f0f0f5",borderRadius:24,padding:"6px 6px 6px 16px"}}>
         <textarea ref={inputRef} value={input} onChange={e=>{setInput(e.target.value);e.target.style.height="auto";e.target.style.height=Math.min(e.target.scrollHeight,120)+"px";}}
           onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();handleSubmit();}}}
@@ -6982,7 +6981,7 @@ function QuickBookModal({ onClose, onParsed, data }) {
           <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
         </button>}
       </div>
-      {imgPreview && <div style={{marginTop:6,fontSize:11,color:"#999",paddingLeft:16}}>📎 이미지 첨부됨</div>}
+      {imgPreview && <div style={{marginTop:6,fontSize:11,color:T.gray500,paddingLeft:16}}>📎 이미지 첨부됨</div>}
     </div>}
   </div>;
 }
@@ -7156,7 +7155,7 @@ function AdminServiceTags({ data, setData }) {
 
     {/* 미리보기 — 드래그앤드롭 순서 변경 가능 */}
     <div className="card" style={{padding:12,marginBottom:14}}>
-      <div style={{fontSize:T.fs.xs,color:T.textSub,marginBottom:6}}>미리보기 <span style={{color:"#bbb",fontSize:9}}>(드래그로 순서 변경)</span></div>
+      <div style={{fontSize:T.fs.xs,color:T.textSub,marginBottom:6}}>미리보기 <span style={{color:T.gray400,fontSize:9}}>(드래그로 순서 변경)</span></div>
       <div style={{display:"flex",flexWrap:"wrap",gap:6,padding:8,background:T.gray100,borderRadius:T.radius.md,minHeight:36}} onDragOver={e=>e.preventDefault()}>
         {previewTags.map((t,i)=>(
           <span key={t.id}
@@ -7172,7 +7171,7 @@ function AdminServiceTags({ data, setData }) {
             {t.name}{t.dur>0&&<span style={{fontSize:8,opacity:.7}}>({t.dur}분)</span>}
           </span>
         ))}
-        {previewTags.length===0 && <span style={{color:"#bbb",fontSize:11}}>태그를 추가하세요</span>}
+        {previewTags.length===0 && <span style={{color:T.gray400,fontSize:11}}>태그를 추가하세요</span>}
       </div>
     </div>
 
@@ -7190,7 +7189,7 @@ function AdminServiceTags({ data, setData }) {
         const isSys = SYSTEM_TAG_IDS.includes(tag.id);
         if(editId===tag.id) return <tr key={tag.id} ref={drag.rowRef(i)} style={{background:"#f5f5ff"}}>
           <td>{isSys?<span style={{color:"#ccc",fontSize:T.fs.xs}}>🔒</span>:<input type="checkbox" checked={selected.has(tag.id)} onChange={()=>toggleOne(tag.id)}/>}</td>
-          <td><DragHandle onTouchStart={drag.onTouchStart(i)}/></td><td style={{color:"#999"}}>{i+1}</td>
+          <td><DragHandle onTouchStart={drag.onTouchStart(i)}/></td><td style={{color:T.gray500}}>{i+1}</td>
           <td><input className="inp" value={editData.name} onChange={e=>setEditData(p=>({...p,name:e.target.value}))} style={{width:"100%",...inpS}}/></td>
           <td><input className="inp" type="number" value={editData.dur} onChange={e=>setEditData(p=>({...p,dur:Number(e.target.value)||0}))} style={{width:50,...inpS}}/></td>
           <td><div style={{display:"flex",alignItems:"center",gap:3}}>
@@ -7200,7 +7199,7 @@ function AdminServiceTags({ data, setData }) {
             {editData.color && <span style={{...tagPillStyle(editData.color,true),fontSize:9,pointerEvents:"none"}}>{editData.name||"미리"}</span>}
           </div></td>
           <td style={{textAlign:"center"}}><select className="inp" style={{width:55,...inpS}} value={editData.useYn===false?"N":"Y"} onChange={e=>setEditData(p=>({...p,useYn:e.target.value==="Y"}))}><option value="Y">사용</option><option value="N">미사용</option></select></td>
-          <td style={{textAlign:"center",color:"#bbb",fontSize:T.fs.xs}}>{i+1}</td>
+          <td style={{textAlign:"center",color:T.gray400,fontSize:T.fs.xs}}>{i+1}</td>
           <td style={{textAlign:"center"}}><div style={{display:"flex",gap:3,justifyContent:"center"}}>
             <button className="btn-p btn-sm" onClick={saveEdit} style={{padding:"1px 6px",fontSize:9}}>저장</button>
             <button className="btn-s btn-sm" onClick={()=>setEditId(null)} style={{padding:"1px 4px",fontSize:9}}>취소</button>
@@ -7210,7 +7209,7 @@ function AdminServiceTags({ data, setData }) {
           style={{opacity:tag.useYn===false?0.45:1,background:drag.touchOverIdx===i?"#ede8ff":undefined}}>
           <td>{isSys?<span title="시스템 태그" style={{color:"#ccc",fontSize:T.fs.xs}}>🔒</span>:<input type="checkbox" checked={selected.has(tag.id)} onChange={()=>toggleOne(tag.id)}/>}</td>
           <td><DragHandle onTouchStart={drag.onTouchStart(i)}/></td>
-          <td style={{color:"#999"}}>{i+1}</td>
+          <td style={{color:T.gray500}}>{i+1}</td>
           <td style={{fontWeight:T.fw.bold,fontSize:T.fs.sm}}>
             <span style={tagPillStyle(tag.color,tag.useYn)}>{tag.name}</span>
           </td>
@@ -7218,14 +7217,14 @@ function AdminServiceTags({ data, setData }) {
           <td style={{textAlign:"center"}}>{tag.color?<div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:4}}>
             <div style={{width:28,height:18,borderRadius:T.radius.sm,background:tag.color}}/>
             <span style={{fontSize:8,color:T.textSub,fontFamily:"monospace"}}>{tag.color}</span>
-          </div>:<span style={{color:"#bbb",fontSize:T.fs.xs}}>—</span>}</td>
+          </div>:<span style={{color:T.gray400,fontSize:T.fs.xs}}>—</span>}</td>
           <td style={{textAlign:"center"}}><button onClick={()=>toggleUse(tag.id)}
             style={{fontSize:T.fs.xs,padding:"2px 6px",borderRadius:T.radius.sm,border:"1px solid "+(tag.useYn===false?"#e57373":"#d0d0d0"),cursor:"pointer",fontFamily:"inherit",
               background:tag.useYn===false?"#e5737320":"transparent",color:tag.useYn===false?"#e8a0a0":"#888"}}>{tag.useYn===false?"미사용":"사용"}</button></td>
-          <td style={{textAlign:"center",color:"#bbb",fontSize:T.fs.xs}}>{i+1}</td>
+          <td style={{textAlign:"center",color:T.gray400,fontSize:T.fs.xs}}>{i+1}</td>
           <td style={{textAlign:"center"}}><div style={{display:"flex",gap:3,justifyContent:"center"}}>
             <button onClick={()=>startEdit(tag)} style={{background:"none",border:"none",cursor:"pointer",color:T.primary,fontSize:T.fs.sm}}><I name="edit" size={13}/></button>
-            {isSys ? <span title="삭제 불가" style={{color:"#e0e0e0",fontSize:T.fs.sm}}><I name="trash" size={13}/></span> : delConfirm===tag.id
+            {isSys ? <span title="삭제 불가" style={{color:T.border,fontSize:T.fs.sm}}><I name="trash" size={13}/></span> : delConfirm===tag.id
               ? <><button className="btn-d btn-sm" onClick={()=>deleteTag(tag.id)} style={{padding:"1px 5px",fontSize:9}}>확인</button><button className="btn-s btn-sm" onClick={()=>setDelConfirm(null)} style={{padding:"1px 4px",fontSize:9}}>취소</button></>
               : <button onClick={()=>setDelConfirm(tag.id)} style={{background:"none",border:"none",cursor:"pointer",color:T.danger,fontSize:T.fs.sm}}><I name="trash" size={13}/></button>}
           </div></td>
@@ -7247,7 +7246,7 @@ function EyeDrop({ onPick, size=20 }) {
       if (r?.sRGBHex) onPick(r.sRGBHex);
     } catch(e) {}
   };
-  return <button onClick={pick} title="화면에서 색상 추출" style={{width:size,height:size,border:"1px solid #d0d0d0",borderRadius:4,background:"#fff",cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center",padding:0,flexShrink:0}}>
+  return <button onClick={pick} title="화면에서 색상 추출" style={{width:size,height:size,border:"1px solid #d0d0d0",borderRadius:4,background:T.bgCard,cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center",padding:0,flexShrink:0}}>
     <svg width={size-6} height={size-6} viewBox="0 0 16 16" fill="none" stroke="#666" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M13.5 2.5l-1-1-2 2-1-1-6 6-.5 3.5 3.5-.5 6-6-1-1 2-2z"/><path d="M3.5 9.5l3 3"/></svg>
   </button>;
 }
@@ -7277,10 +7276,10 @@ function FLD({ label, children }) {
 // Palette: #5cb5c5(teal) #7c7cc8(slate) #d0d0d0(pink) #f0f0f0(blush)
 const S = {
   root: { display:"flex", height:"100dvh", fontFamily:"'Pretendard',-apple-system,BlinkMacSystemFont,'Noto Sans KR',sans-serif", background:T.gray100, color:T.text, overflow:"hidden", position:"fixed", top:0, left:0, right:0, bottom:0 },
-  sidebar: { width:200, background:"#fff", borderRight:"1px solid "+T.border, display:"flex", flexDirection:"column", position:"fixed", top:0, left:0, bottom:0, zIndex:50 },
-  main: { flex:1, marginLeft:200, display:"flex", flexDirection:"column", height:"100%", minHeight:0, background:"#fff", overflow:"hidden" },
-  mobHdr: { padding:"10px 16px", background:"#fff", display:"flex", alignItems:"center", gap:12 },
-  menuBtn: { background:"none", border:"none", color:"#333", cursor:"pointer", fontSize:20, fontFamily:"inherit" },
+  sidebar: { width:200, background:T.bgCard, borderRight:"1px solid "+T.border, display:"flex", flexDirection:"column", position:"fixed", top:0, left:0, bottom:0, zIndex:50 },
+  main: { flex:1, marginLeft:200, display:"flex", flexDirection:"column", height:"100%", minHeight:0, background:T.bgCard, overflow:"hidden" },
+  mobHdr: { padding:"10px 16px", background:T.bgCard, display:"flex", alignItems:"center", gap:12 },
+  menuBtn: { background:"none", border:"none", color:T.text, cursor:"pointer", fontSize:20, fontFamily:"inherit" },
 };
 
 const CSS = `
