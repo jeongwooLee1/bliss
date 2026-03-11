@@ -174,7 +174,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.47";
+const BLISS_V = "2.69.48";
 
 // ─── 디자인 토큰 ────────────────────────────────────────────────────────────
 const T = {
@@ -293,6 +293,56 @@ const Empty = ({ msg="데이터가 없습니다", icon="inbox" }) => (
 // 로딩 스피너
 const Spinner = ({ size=20, color=T.primary }) => (
   <I name="loader" size={size} color={color} style={{animation:"spin 1s linear infinite"}}/>
+);
+
+// ─── DataTable ───────────────────────────────────────────────────────────────
+// 테이블 래퍼 컴포넌트. thead/tbody/tr/td 는 그대로 children으로 전달.
+// card=true(기본): "card tw" wrapper / card=false: "tw" only
+// maxH: 최대 높이 지정 시 세로 스크롤
+// Usage:
+//   <DataTable card maxH="calc(100vh - 300px)">
+//     <thead><tr><th>...</th></tr></thead>
+//     <tbody>{rows}</tbody>
+//   </DataTable>
+const DataTable = ({ children, maxH, card=true, style={}, className="" }) => (
+  <div
+    className={`${card ? "card " : ""}tw${className ? " "+className : ""}`}
+    style={{
+      overflowX: "auto",
+      overflowY: maxH ? "auto" : "visible",
+      maxHeight: maxH,
+      ...style,
+    }}
+  >
+    <table>{children}</table>
+  </div>
+);
+
+// ─── GridLayout ──────────────────────────────────────────────────────────────
+// 반응형 CSS grid 래퍼
+// cols: "1fr 1fr" | 2 (숫자=균등 분할) | "repeat(auto-fit,minmax(160px,1fr))"
+const GridLayout = ({ cols=2, gap=T.sp.md, children, style={}, className="" }) => {
+  const tpl = typeof cols === "number"
+    ? `repeat(${cols}, 1fr)`
+    : cols;
+  return (
+    <div className={className} style={{display:"grid",gridTemplateColumns:tpl,gap,...style}}>
+      {children}
+    </div>
+  );
+};
+
+// ─── StatCard ────────────────────────────────────────────────────────────────
+const StatCard = ({ label, value, sub, icon, color=T.primary, style={} }) => (
+  <div style={{background:T.bgCard,borderRadius:T.radius.lg,border:`1px solid ${T.border}`,
+    padding:`${T.sp.lg}px`,boxShadow:T.shadow.sm,display:"flex",flexDirection:"column",gap:4,...style}}>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+      <span style={{fontSize:T.fs.xs,fontWeight:T.fw.bolder,color:T.textSub,letterSpacing:.3}}>{label}</span>
+      {icon && <I name={icon} size={16} color={color+"88"}/>}
+    </div>
+    <div style={{fontSize:T.fs.xxl,fontWeight:T.fw.black,color,lineHeight:1.2}}>{value}</div>
+    {sub && <div style={{fontSize:T.fs.xs,color:T.textMuted}}>{sub}</div>}
+  </div>
 );
 const uid = () => Math.random().toString(36).substr(2, 9);
 
@@ -1115,8 +1165,7 @@ function SuperDashboard({ superData, setSuperData, currentUser, onLogout, onEnte
             </div>
             {!bizForm.id && <div style={{marginTop:8,fontSize:11,color:T.gray500}}>* 대표 아이디로 대표 계정이 자동 생성됩니다 (초기 비밀번호: 1234)</div>}
           </div>}
-          <div className="card tw">
-            <table><thead><tr>
+          <DataTable card><thead><tr>
               <th>업체명</th><th>대표 아이디</th><th>전화</th><th>그룹</th><th>계정수</th><th>메모</th><th>관리</th>
             </tr></thead><tbody>
               {businesses.map(b=>{
@@ -1138,8 +1187,7 @@ function SuperDashboard({ superData, setSuperData, currentUser, onLogout, onEnte
                 </tr>;
               })}
               {businesses.length===0 && <tr><td colSpan={7} style={{textAlign:"center",color:T.gray500,padding:40}}>등록된 업체가 없습니다</td></tr>}
-            </tbody></table>
-          </div>
+            </tbody></DataTable>
         </div>}
 
         {/* ── 사용자 ── */}
@@ -1208,8 +1256,7 @@ function SuperUsers({ users, businesses, superData, setSuperData }) {
       </div>
     </div>}
 
-    <div className="card tw">
-      <table><thead><tr>
+    <DataTable card><thead><tr>
         <th>이름</th><th>아이디</th><th>유형</th><th>업체</th><th>비밀번호</th><th style={{width:120}}>관리</th>
       </tr></thead><tbody>
         {users.map(u=>{
@@ -1226,8 +1273,7 @@ function SuperUsers({ users, businesses, superData, setSuperData }) {
             </td>
           </tr>;
         })}
-      </tbody></table>
-    </div>
+      </tbody></DataTable>
   </div>;
 }
 
@@ -1395,20 +1441,20 @@ function SignupWizard({ onComplete, onBack }) {
         <label style={lbl}>상호명 <span style={{color:T.danger}}>*</span></label>
         <input style={inp} value={form.bizName} onChange={e=>set("bizName",e.target.value)} placeholder="예: 하우스왁싱 강남점"/>
       </div>
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+      <GridLayout cols={2} gap={10}>
         <div><label style={lbl}>대표자명</label><input style={inp} value={form.ownerName} onChange={e=>set("ownerName",e.target.value)} placeholder="홍길동"/></div>
         <div><label style={lbl}>전화번호</label><input style={inp} value={form.phone} onChange={e=>set("phone",e.target.value)} placeholder="02-0000-0000"/></div>
-      </div>
+      </GridLayout>
       <div>
         <label style={lbl}>사업장 주소</label>
         <input style={inp} value={form.address} onChange={e=>set("address",e.target.value)} placeholder="서울특별시 강남구..."/>
       </div>
       <div style={{borderTop:"1px solid #f0f0f0",paddingTop:14}}>
         <div style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder,color:T.gray700,marginBottom:10}}>🔐 비밀번호 설정</div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+        <GridLayout cols={2} gap={10}>
           <div><label style={lbl}>비밀번호 <span style={{color:T.danger}}>*</span></label><input style={inp} type="password" value={form.pw} onChange={e=>set("pw",e.target.value)} placeholder="4자리 이상"/></div>
           <div><label style={lbl}>비밀번호 확인 <span style={{color:T.danger}}>*</span></label><input style={{...inp,borderColor:form.pw2&&form.pw!==form.pw2?"#e57373":"#e0e0e0"}} type="password" value={form.pw2} onChange={e=>set("pw2",e.target.value)} placeholder="동일하게 입력"/></div>
-        </div>
+        </GridLayout>
       </div>
       <div style={{background:"#f0fff4",border:"1px solid #a5d6a7",borderRadius:10,padding:"10px 14px",fontSize:T.fs.sm,color:"#2e7d32"}}>
         🎁 가입 후 <b>14일 무료 체험</b> · 모든 기능 이용 가능
@@ -1500,7 +1546,7 @@ function SuperSystemSettings() {
 
         <div style={{borderTop:"1px solid #f0f0f0",paddingTop:14}}>
           <div style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder,color:T.textSub,marginBottom:8}}>요금제 안내</div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
+          <GridLayout cols={3} gap={8}>
             {[
               {name:"체험",id:"trial",color:"#9e9e9e",desc:"14일 무료"},
               {name:"Basic",id:"basic",color:"#42a5f5",desc:"지점 1 · 직원 3"},
@@ -1511,7 +1557,7 @@ function SuperSystemSettings() {
                 <div style={{fontSize:11,color:T.gray500,marginTop:2}}>{p.desc}</div>
               </div>
             ))}
-          </div>
+          </GridLayout>
           <div style={{fontSize:11,color:"#ccc",marginTop:10}}>* 결제 연동은 추후 구현 예정</div>
         </div>
       </div>
@@ -2953,7 +2999,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
               </div>
             </div>;
           })()}
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+          <GridLayout cols={2} gap={8}>
           {[
             {label:"줄간격",val:rowH,dec:()=>setRowH(h=>Math.max(6,h-2)),inc:()=>setRowH(h=>Math.min(30,h+2))},
             {label:"열너비",val:colW,dec:()=>setColW(w=>Math.max(80,w-20)),inc:()=>setColW(w=>Math.min(300,w+20))},
@@ -2969,7 +3015,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
               <button onClick={r.inc} style={{width:32,height:32,border:"1px solid #ddd",borderRadius:T.radius.md,background:T.bgCard,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}><I name="plus" size={16} color="#555"/></button>
             </div>
           </div>)}
-          </div>
+          </GridLayout>
           <div style={{background:"#f8f8fc",borderRadius:10,padding:"10px 12px",marginTop:8,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
             <span style={{fontSize:T.fs.sm,color:T.gray700,fontWeight:T.fw.bold}}>시간단위</span>
             <div style={{display:"flex",gap:4}}>
@@ -2980,7 +3026,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
           </div>
           <div style={{marginTop:8}}>
             <span style={{fontSize:T.fs.sm,color:T.gray700,fontWeight:T.fw.bold,display:"block",marginBottom:6}}>예약상태 색상</span>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+            <GridLayout cols={2} gap={6}>
               {STATUS_KEYS.map(k=><div key={k} style={{background:"#f8f8fc",borderRadius:10,padding:"8px 12px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
                 <span style={{fontSize:T.fs.sm,fontWeight:T.fw.bold,color:statusClr[k]}}>{STATUS_LABEL[k]}</span>
                 <div style={{display:"flex",alignItems:"center",gap:4}}>
@@ -2989,7 +3035,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                   <EyeDrop onPick={c=>setStatusClr(k,c)} size={28}/>
                 </div>
               </div>)}
-            </div>
+            </GridLayout>
           </div>
           </div>
       </>;;})()}</>}
@@ -3522,7 +3568,7 @@ ${naverText}
             </div>
 
             {/* 고객 정보 */}
-            <div className="cust-row" style={{display:"grid",gridTemplateColumns:"1fr 1fr 60px",gap:8}}>
+            <GridLayout className="cust-row" cols="1fr 1fr 60px" gap={8}>
               <div><input className={"inp inp-cust"} value={f.custName} onChange={e=>set("custName",e.target.value)} placeholder="고객명"
                 style={f.isNewCust?{borderColor:T.danger,background:"#ffeef0"}:{}}/></div>
               <div><input className={"inp inp-cust"} value={f.custPhone} onChange={e=>set("custPhone",e.target.value)} placeholder="010"
@@ -3535,7 +3581,7 @@ ${naverText}
                     background:f.custGender==="M"?"#bfc2f0":"#f5f6f8",color:f.custGender==="M"?"#2a2a88":"#aab",transition:"background .15s"}}>남</button>
                 </div>
               </div>
-            </div>
+            </GridLayout>
 
             {/* 예약기간 + 장소/담당자 */}
             <div>
@@ -4296,7 +4342,7 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
         </div>
 
         {/* Main Body - 4 columns: svc left, svc right, prod left, prod right */}
-        <div className="sale-grid" style={{ flex: 1, overflow: "auto", padding: "10px 14px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, alignContent: "start" }}>
+        <GridLayout className="sale-grid" cols={2} gap={14} style={{flex:1,overflow:"auto",padding:"10px 14px",alignContent:"start"}}>
 
           {/* Col 1+2: Services by category (span 2 columns) */}
           <div style={{gridColumn:"span 2"}}>
@@ -4329,7 +4375,7 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
             {PROD_LIST.slice(halfProd).map(p => { const it=items[p.id]||{}; return <SaleProdRow key={p.id} id={p.id} name={p.name} price={p.price||0} checked={!!it.checked} amount={it.amount||0} toggle={toggle} setAmt={setAmt} />; })}
             <SaleExtraRow id="extra_prod" color="#6bab9e" placeholder="추가 제품명 입력" checked={!!(items.extra_prod||{}).checked} amount={(items.extra_prod||{}).amount||0} label={(items.extra_prod||{}).label||""} toggle={toggle} setAmt={setAmt} setLabel={setLabel} />
           </div>
-        </div>
+        </GridLayout>
 
         {/* 결제 정리 */}
         <div style={{padding:"14px 16px",borderTop:"2px solid #e0e0e0",background:"#fafafa"}}>
@@ -5031,8 +5077,7 @@ function SalesPage({ data, setData, userBranches, isMaster, setPage }) {
       <span style={{fontSize:13,color:T.gray500,whiteSpace:"nowrap"}}>{sales.length}건</span>
     </div>
     {/* Sales Table - like existing admin */}
-    <div className="card tw">
-      <table><thead><tr>
+    <DataTable card><thead><tr>
         <th>번호</th><th>지점</th><th>고객번호</th><th>이름</th><th>핸드폰</th><th>매니저</th>
         <th style={{background:"#e0edf5"}}>매출합계</th>
         <th style={{background:"#e0edf5"}}>시술합계</th><th style={{background:"#e0edf5"}}>시술현금</th><th style={{background:"#e0edf5"}}>시술입금</th><th style={{background:"#e0edf5"}}>시술카드</th><th style={{background:"#e0edf5"}}>시술포인트</th>
@@ -5080,8 +5125,7 @@ function SalesPage({ data, setData, userBranches, isMaster, setPage }) {
           <td style={{color:T.danger}}>{fmt(totals.gift)}</td>
           <td colSpan={3}/>
         </tr>}
-      </tbody></table>
-    </div>
+      </tbody></DataTable>
     {showModal && <DetailedSaleForm
       reservation={{id:uid(),bid:userBranches[0],custId:null,custName:"",custPhone:"",custGender:"",
         staffId:(data.staff||[]).find(s=>s.bid===(userBranches[0]))?.id||"",serviceId:null,date:todayStr()}}
@@ -5173,14 +5217,14 @@ function StatsPage({ data, userBranches, isMaster, role }) {
       </div>
     </div>
     {/* Summary Cards */}
-    <div className="stat-cards" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:12,marginBottom:20}}>
+    <GridLayout className="stat-cards" cols="repeat(auto-fit,minmax(160px,1fr))" gap={12} style={{marginBottom:20}}>
       <SC label="총 매출" val={`${fmt(t.total)}원`} sub={`${t.count}건`} clr="#5cb5c5"/>
       <SC label="시술 매출" val={`${fmt(t.svcTotal)}원`} sub="시술 합계" clr="#7c7cc8"/>
       <SC label="제품 매출" val={`${fmt(t.prodTotal)}원`} sub="제품 합계" clr="#6bab9e"/>
       <SC label="상품권" val={`${fmt(t.gift)}원`} sub="상품권 합계" clr="#ef5350"/>
       <SC label="일 평균" val={`${fmt(Math.round(t.total/days))}원`} sub={`${days}일 평균`} clr="#5cb5c5"/>
       <SC label="객단가" val={`${fmt(t.count>0?Math.round(t.total/t.count):0)}원`} sub="건당 평균" clr="#d0d0d0"/>
-    </div>
+    </GridLayout>
     {/* Chart */}
     <div className="card" style={{padding:20,marginBottom:16}}>
       <div style={{fontSize:13,fontWeight:T.fw.bolder,color:T.textSub,marginBottom:16}}>최근 7일 매출 (시술 + 제품)</div>
@@ -5201,7 +5245,7 @@ function StatsPage({ data, userBranches, isMaster, role }) {
         <span style={{fontSize:T.fs.xs,display:"flex",alignItems:"center",gap:4}}><span style={{width:8,height:8,borderRadius:2,background:"#6bab9e"}}/>제품</span>
       </div>
     </div>
-    <div className="stat-charts" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:16}}>
+    <GridLayout className="stat-charts" cols="repeat(auto-fit,minmax(300px,1fr))" gap={16}>
       {/* Payment Breakdown */}
       <div className="card" style={{padding:20}}>
         <div style={{fontSize:13,fontWeight:T.fw.bolder,color:T.textSub,marginBottom:14}}>결제수단별 시술 매출</div>
@@ -5241,17 +5285,12 @@ function StatsPage({ data, userBranches, isMaster, role }) {
           </div>
         ))}
       </div>}
-    </div>
+    </GridLayout>
   </div>;
 }
 
-function SC({label,val,sub,clr}) {
-  return <div style={{padding:16,borderRadius:10,background:"linear-gradient(135deg,#fff,#f0f0f0)",border:"1px solid "+T.border}}>
-    <div style={{fontSize:11,color:T.gray500,fontWeight:T.fw.bold}}>{label}</div>
-    <div style={{fontSize:20,fontWeight:T.fw.black,color:clr,letterSpacing:-.5,marginTop:4}}>{val}</div>
-    <div style={{fontSize:T.fs.xs,color:T.gray400,marginTop:2}}>{sub}</div>
-  </div>;
-}
+// SC → StatCard alias (기존 호환)
+const SC = ({label, val, sub, clr}) => <StatCard label={label} value={val} sub={sub} color={clr}/>;
 
 // ═══════════════════════════════════════════
 // CUSTOMERS
@@ -5296,8 +5335,7 @@ function CustomersPage({ data, setData, userBranches, isMaster }) {
       </select>}
       <span style={{fontSize:T.fs.sm,color:T.textSub}}>{custs.length}명</span>
     </div>
-    <div className="card tw">
-      <table><thead><tr>
+    <DataTable card><thead><tr>
         <th>매장</th><th>고객번호</th><th>이름</th><th>연락처</th><th>성별</th><th>방문수</th><th>최초등록일</th><th>최근방문</th><th>메모</th><th>관리</th>
       </tr></thead><tbody>
         {custs.length===0?<tr><td colSpan={10}><Empty msg="고객 없음" icon="users"/></td></tr>:
@@ -5396,8 +5434,7 @@ function CustomersPage({ data, setData, userBranches, isMaster }) {
               </td></tr>}
             </React.Fragment>;
           })}
-      </tbody></table>
-    </div>
+      </tbody></DataTable>
     {showModal && <CustModal item={editItem} onSave={handleSave} onClose={()=>_mc(()=>{setShowModal(false);setEditItem(null)})} defBranch={userBranches[0]} userBranches={userBranches} branches={data.branches||[]}/>}
   </div>;
 }
@@ -5413,10 +5450,10 @@ function CustModal({ item, onSave, onClose, defBranch, userBranches, branches })
       </div>
       <div className="form-col">
         <FLD label="매장"><select className="inp" value={f.bid} onChange={e=>set("bid",e.target.value)}>{(branches||[]).filter(b=>userBranches.includes(b.id)).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}</select></FLD>
-        <div className="grid2">
+        <GridLayout cols={2} gap={12} className="grid2">
           <FLD label="이름"><input className="inp" value={f.name} onChange={e=>set("name",e.target.value)}/></FLD>
           <FLD label="연락처"><input className="inp" value={f.phone} onChange={e=>set("phone",e.target.value)} placeholder="010-0000-0000"/></FLD>
-        </div>
+        </GridLayout>
         <FLD label="성별"><select className="inp" value={f.gender} onChange={e=>set("gender",e.target.value)}><option value="">선택</option><option value="F">여성</option><option value="M">남성</option></select></FLD>
         <FLD label="메모"><textarea className="inp" rows={2} value={f.memo} onChange={e=>set("memo",e.target.value)}/></FLD>
         <button className="btn-p" style={{width:"100%",justifyContent:"center",padding:12}} onClick={()=>{onSave(f)}}>{item?"수정":"등록"}</button>
@@ -5466,8 +5503,7 @@ function UsersPage({ data, setData, bizId }) {
       <button className="btn-p" onClick={startAdd}><I name="plus" size={12}/> 사용자 추가</button>
       <span style={{fontSize:T.fs.sm,color:T.textSub,display:"flex",alignItems:"center"}}>{users.length}개 계정</span>
     </div>
-    <div className="card tw">
-      <table><thead><tr>
+    <DataTable card><thead><tr>
         <th>이름</th><th>아이디</th><th>비밀번호</th><th>유형</th><th>담당 지점</th><th>열람 지점</th><th>관리</th>
       </tr></thead><tbody>
         {users.map(u => {
@@ -5489,8 +5525,7 @@ function UsersPage({ data, setData, bizId }) {
           </tr>;
         })}
         {editId === "new" && form && <UserEditRow key="new" init={form} regBranches={regBranches} allBranches={data.branches||[]} onSave={save} onCancel={()=>{setEditId(null);setForm(null)}} isNew={true}/>}
-      </tbody></table>
-    </div>
+      </tbody></DataTable>
     <div style={{marginTop:16,padding:12,background:"#f9f9f9",borderRadius:6,fontSize:11,color:T.textSub,lineHeight:1.8}}>
       <b>권한 안내</b><br/>
       · 대표: 전 지점 예약/매출 조회·편집, 사용자·관리설정 접근<br/>
@@ -5682,8 +5717,7 @@ function AdminPlaces({ data, setData, bizId }) {
       {selected.size > 0 && <div style={{marginBottom:8}}><button className="btn-d btn-sm" onClick={bulkDelete} style={{fontSize:T.fs.xs,padding:"4px 12px"}}><I name="trash" size={12}/> 선택 삭제 ({selected.size})</button></div>}
 
       {/* ═══ Desktop: Table ═══ */}
-      {!isMobileView && <div className="tw">
-        <table><thead><tr>
+      {!isMobileView && <DataTable card={false}><thead><tr>
           <th style={{width:30}}><input type="checkbox" checked={allChecked} onChange={toggleAll}/></th>
           <th style={{width:30}}></th>
           <th style={{width:40}}>번호</th>
@@ -5724,8 +5758,7 @@ function AdminPlaces({ data, setData, bizId }) {
               </div> : <button onClick={()=>setDeleteId(b.id)} style={{background:"none",border:"none",cursor:"pointer",color:T.danger}}><I name="trash" size={13}/></button>}</td>
             </tr>
           ))}
-        </tbody></table>
-      </div>}
+        </tbody></DataTable>}
 
       {/* ═══ Mobile: iPhone folder-style cards ═══ */}
       {isMobileView && <>
@@ -5838,7 +5871,7 @@ function AdminPlaces({ data, setData, bizId }) {
       })()}</>}
 
       {/* Collapsed cards grid */}
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+      <GridLayout cols={2} gap={10}>
         {branches.map((b,i) => (
           <div key={b.id} ref={el=>{if(el) cardRects.current[b.id] = el.getBoundingClientRect();}}
             onClick={()=>{cardRects.current[b.id]=document.querySelector(`[data-bid="${b.id}"]`)?.getBoundingClientRect(); setExpandedCard(b.id);}}
@@ -5857,7 +5890,7 @@ function AdminPlaces({ data, setData, bizId }) {
             </div>}
           </div>
         ))}
-      </div>
+      </GridLayout>
       </>}
     </div>
   </div>;
@@ -5951,8 +5984,7 @@ function AdminWorkers({ data, setData }) {
       </div>
     </div>}
     {selected.size > 0 && <div style={{marginBottom:8}}><button className="btn-d btn-sm" onClick={bulkDelete} style={{fontSize:T.fs.xs,padding:"4px 12px"}}><I name="trash" size={12}/> 선택 삭제 ({selected.size})</button></div>}
-    <div className="card tw admin-tw" style={{maxHeight:"calc(100vh - 300px)",overflow:"auto"}}>
-      <table><thead><tr>
+    <DataTable card className="admin-tw" maxH="calc(100vh - 300px)"><thead><tr>
         <th style={{width:30}}><input type="checkbox" checked={allChecked} onChange={toggleAll}/></th>
         <th style={{width:35}}>No</th><th>담당자명</th><th>지점</th><th style={{width:80}}>색상</th><th style={{width:100}}>관리</th>
       </tr></thead><tbody>
@@ -5981,8 +6013,7 @@ function AdminWorkers({ data, setData }) {
             </div></td>
           </tr>;
         })}
-      </tbody></table>
-    </div>
+      </tbody></DataTable>
   </div>;
 }
 
@@ -6221,8 +6252,7 @@ function AdminSaleItems({ data, setData }) {
         <button onClick={resetSort} style={{fontSize:9,marginLeft:selected.size>0?"4px":"auto",padding:"3px 8px",border:"1px solid #ccc",borderRadius:T.radius.sm,background:T.bgCard,color:T.textSub,cursor:"pointer"}}>순서 리셋</button>
       </div>
     </div>
-    <div className="tw admin-tw" style={{maxHeight:"calc(100vh - 340px)",overflow:"auto"}}>
-      <table><thead><tr>
+    <DataTable card={false} className="admin-tw" maxH="calc(100vh - 340px)"><thead><tr>
         <th style={{width:30}}><input type="checkbox" checked={allChecked} onChange={toggleAll}/></th><th style={{width:25}}></th><th style={{width:30}}>No</th><th style={{width:85}}>카테고리</th><th>시술명</th>
         <th style={{width:85,textAlign:"right"}}>여성가</th><th style={{width:85,textAlign:"right"}}>남성가</th>
         <th style={{width:50,textAlign:"center"}}>소요</th><th style={{width:100}}>비고</th><th style={{width:45,textAlign:"center",fontSize:9}}>다회권</th><th style={{width:75,textAlign:"center"}}>관리</th>
@@ -6265,8 +6295,7 @@ function AdminSaleItems({ data, setData }) {
             </div></td>
           </tr>;
         })}
-      </tbody></table>
-    </div>
+      </tbody></DataTable>
   </div>;
 }
 
@@ -6336,8 +6365,7 @@ function AdminProductItems({ data, setData }) {
       </div>
     </div>}
     {selected.size > 0 && <div style={{marginBottom:8}}><button className="btn-d btn-sm" onClick={bulkDelete} style={{fontSize:T.fs.xs,padding:"4px 12px"}}><I name="trash" size={12}/> 선택 삭제 ({selected.size})</button></div>}
-    <div className="tw admin-tw" style={{maxHeight:"calc(100vh - 300px)",overflow:"auto"}}>
-      <table><thead><tr>
+    <DataTable card={false} className="admin-tw" maxH="calc(100vh - 300px)"><thead><tr>
         <th style={{width:30}}><input type="checkbox" checked={allChecked} onChange={toggleAll}/></th><th style={{width:25}}></th><th style={{width:35}}>No</th><th>제품명</th><th style={{width:100,textAlign:"right"}}>가격</th><th style={{width:80,textAlign:"center"}}>관리</th>
       </tr></thead>
         <tbody>{items.map((it,i)=>{
@@ -6365,8 +6393,7 @@ function AdminProductItems({ data, setData }) {
             </div></td>
           </tr>;
         })}</tbody>
-      </table>
-    </div>
+      </DataTable>
   </div>;
 }
 
@@ -6478,8 +6505,7 @@ function AdminResSources({ data, setData }) {
 
     {selected.size > 0 && <div style={{marginBottom:8}}><button className="btn-d btn-sm" onClick={bulkDelete} style={{fontSize:T.fs.xs,padding:"4px 12px"}}><I name="trash" size={12}/> 선택 삭제 ({selected.size})</button></div>}
 
-    <div className="tw admin-tw" style={{maxHeight:"calc(100vh - 400px)",overflow:"auto"}}>
-      <table><thead><tr>
+    <DataTable card={false} className="admin-tw" maxH="calc(100vh - 400px)"><thead><tr>
         <th style={{width:30}}><input type="checkbox" checked={allChecked} onChange={toggleAll}/></th>
         <th style={{width:22}}></th><th style={{width:25}}>No</th><th>경로명</th>
         <th style={{width:80,textAlign:"center"}}>색상</th><th style={{width:55,textAlign:"center"}}>사용</th>
@@ -6531,8 +6557,7 @@ function AdminResSources({ data, setData }) {
               : (SYSTEM_SRC_IDS.includes(src.id) ? <span title="기본 경로는 삭제할 수 없습니다" style={{color:"#ddd",fontSize:T.fs.sm,cursor:"not-allowed"}}><I name="trash" size={13}/></span> : <button onClick={()=>setDelConfirm(src.id)} style={{background:"none",border:"none",cursor:"pointer",color:T.danger,fontSize:T.fs.sm}}><I name="trash" size={13}/></button>)}
           </div></td>
         </tr>;
-      })}</tbody></table>
-    </div>
+      })}</tbody></DataTable>
   </div>;
 }
 
@@ -7279,8 +7304,7 @@ function AdminServiceTags({ data, setData }) {
 
     {selected.size > 0 && <div style={{marginBottom:8}}><button className="btn-d btn-sm" onClick={bulkDelete} style={{fontSize:T.fs.xs,padding:"4px 12px"}}><I name="trash" size={12}/> 선택 삭제 ({selected.size})</button></div>}
 
-    <div className="tw admin-tw" style={{maxHeight:"calc(100vh - 420px)",overflow:"auto"}}>
-      <table><thead><tr>
+    <DataTable card={false} className="admin-tw" maxH="calc(100vh - 420px)"><thead><tr>
         <th style={{width:30}}><input type="checkbox" checked={allChecked} onChange={toggleAll}/></th>
         <th style={{width:22}}></th><th style={{width:25}}>No</th><th>태그명</th>
         <th style={{width:55,textAlign:"center"}}>소요</th>
@@ -7332,8 +7356,7 @@ function AdminServiceTags({ data, setData }) {
           </div></td>
         </tr>;
       })}
-      </tbody></table>
-    </div>
+      </tbody></DataTable>
   </div>;
 }
 
@@ -7558,11 +7581,12 @@ const CSS = `
   @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 @keyframes pendingBlink{0%,100%{opacity:1}50%{opacity:.5}}
   .fade-in{animation:fadeIn .6s ease}
-  .card{background:#fff;border-radius:8px;border:1px solid #ebebeb;box-shadow:0 2px 8px rgba(0,0,0,.08),0 4px 16px rgba(0,0,0,.05)}
+  .card{background:#fff;border-radius:8px;border:1px solid #ebebeb;box-shadow:0 2px 8px rgba(0,0,0,.06),0 1px 3px rgba(0,0,0,.04)}
   .tw{overflow-x:auto}
   table{width:100%;border-collapse:collapse;font-size:13px}
-  th{text-align:left;padding:8px 10px;color:#555;font-weight:600;font-size:11px;letter-spacing:.3px;border-bottom:2px solid #e0e0e0;white-space:nowrap;position:sticky;top:0;background:#fff;z-index:1}
-  td{padding:7px 10px;border-bottom:1px solid #eee;white-space:nowrap;color:#333}
+  th{text-align:left;padding:8px 10px;color:#555;font-weight:700;font-size:11px;letter-spacing:.3px;border-bottom:2px solid #e0e0e0;white-space:nowrap;position:sticky;top:0;background:#fff;z-index:1}
+  td{padding:7px 10px;border-bottom:1px solid #f0f0f0;white-space:nowrap;color:#333}
+  tr:last-child td{border-bottom:none}
   tr:hover td{background:#f5f5ff}
   .inp{background:#fff;border:none;color:#333;padding:7px 10px;border-radius:8px;font-size:13px;width:100%;font-family:inherit;outline:none;transition:border-color .15s,box-shadow .15s;box-shadow:0 1px 4px rgba(0,0,0,.08),0 2px 8px rgba(0,0,0,.06)}
   .inp:focus{border-color:#7c7cc8;box-shadow:0 0 0 2px rgba(124,124,200,.15),0 2px 8px rgba(0,0,0,.08)}
