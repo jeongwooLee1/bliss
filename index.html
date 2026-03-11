@@ -174,7 +174,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.50";
+const BLISS_V = "2.69.51";
 
 // ─── 디자인 토큰 ────────────────────────────────────────────────────────────
 const T = {
@@ -3745,7 +3745,7 @@ ${naverText}
                     if (!tag) return null;
                     const bg = tag.color || T.primary;
                     const txt = (() => { const h=bg.replace("#",""); const r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16); return (0.299*r+0.587*g+0.114*b)/255>0.55?T.text:T.bgCard; })();
-                    return <span key={tid} style={{fontSize:T.fs.xxs,fontWeight:T.fw.bold,background:bg,color:txt,borderRadius:T.radius.sm0,padding:"1px 8px"}}>{tag.name}</span>;
+                    return <span key={tid} style={{fontSize:T.fs.xxs,fontWeight:T.fw.bold,background:bg,color:txt,borderRadius:0,padding:"1px 8px"}}>{tag.name}</span>;
                   })}
                 </span>
                 <span className={"tags-acc-chev"+(tagsOpen?" open":"")}>▾</span>
@@ -3894,7 +3894,7 @@ return f.requestMsg.split("\n").filter(l=>l.trim()).map((line,i)=>{
             {item?.id && !isSchedule && <div style={{display:"flex",gap:6,marginBottom:10,justifyContent:"center"}}>
               <div style={{display:"flex",gap:T.sp.xs}}>
               {STATUS_KEYS.map(k=>{const sc=getStatusClr();const sel=f.status===k;return <button key={k} onClick={()=>set("status",k)}
-                style={{padding:"4px 20px",borderRadius:T.radius.sm0,border:sel?`1.5px solid ${sc[k]}`:`1.5px solid ${T.border}`,
+                style={{padding:"4px 20px",borderRadius:0,border:sel?`1.5px solid ${sc[k]}`:`1.5px solid ${T.border}`,
                   background:sel?sc[k]:"transparent",color:sel?T.bgCard:sc[k],fontSize:T.fs.xs,fontWeight:sel?T.fw.bolder:T.fw.medium,cursor:"pointer",fontFamily:"inherit",
                   transition:"all .15s",letterSpacing:-0.2,whiteSpace:"nowrap"}}>
                 {STATUS_LABEL[k]}</button>})}
@@ -6664,7 +6664,7 @@ function AdminNotiSettings({ data, setData }) {
 
     <div style={{display:"flex",gap:6,marginBottom:16,flexWrap:"wrap"}}>
       {branches.map(b=><button key={b.id} onClick={()=>setSelBranch(b.id)}
-        style={{padding:"6px 14px",fontSize:T.fs.sm,fontWeight:selBranch===b.id?700:400,borderRadius:T.radius.sm0,cursor:"pointer",fontFamily:"inherit",
+        style={{padding:"6px 14px",fontSize:T.fs.sm,fontWeight:selBranch===b.id?700:400,borderRadius:0,cursor:"pointer",fontFamily:"inherit",
           border:selBranch===b.id?"2px solid #7c7cc8":"1px solid #d0d0d0",
           background:selBranch===b.id?"#7c7cc815":T.bgCard,color:selBranch===b.id?T.primary:T.gray600}}>
         {b.name}
@@ -7058,7 +7058,7 @@ function QuickBookModal({ onClose, onParsed, data }) {
 
       {/* Empty */}
       {!result && !loading && !error && !imgPreview && !isListening && <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:T.sp.md,opacity:.9}}>
-        <div style={{width:64,height:64,borderRadius:T.radius.sm2,background:"linear-gradient(135deg,#4285f412,#9b72cb12,#d9657012)",display:"flex",alignItems:"center",justifyContent:"center",animation:"qb-glow 4s ease infinite"}}>
+        <div style={{width:64,height:64,borderRadius:T.radius.sm,background:"linear-gradient(135deg,#4285f412,#9b72cb12,#d9657012)",display:"flex",alignItems:"center",justifyContent:"center",animation:"qb-glow 4s ease infinite"}}>
           <svg width="32" height="32" viewBox="0 0 24 24" fill="none" style={{animation:"qb-breathe 6s ease-in-out infinite"}}><path d="M12 2L13.09 8.26L18 6L14.74 10.91L21 12L14.74 13.09L18 18L13.09 15.74L12 22L10.91 15.74L6 18L9.26 13.09L3 12L9.26 10.91L6 6L10.91 8.26L12 2Z" fill="url(#gsp)"/></svg>
         </div>
         <div style={{fontSize:T.fs.xl,fontWeight:T.fw.bolder,color:T.text}}>어떤 예약을 등록할까요?</div>
@@ -7081,13 +7081,13 @@ function QuickBookModal({ onClose, onParsed, data }) {
 
       {/* Recording */}
       {isListening && <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:T.sp.md,animation:"qb-fade .3s ease"}}>
-        <div style={{width:72,height:72,borderRadius:T.radius.sm6,background:"linear-gradient(135deg,#d9657020,#9b72cb20)",display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}>
-          <div style={{position:"absolute",inset:-6,borderRadius:T.radius.sm2,border:"2px solid #d9657040",animation:"qb-pulse 1.5s ease infinite"}}/>
+        <div style={{width:72,height:72,borderRadius:T.radius.md,background:"linear-gradient(135deg,#d9657020,#9b72cb20)",display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}>
+          <div style={{position:"absolute",inset:-6,borderRadius:T.radius.sm,border:"2px solid #d9657040",animation:"qb-pulse 1.5s ease infinite"}}/>
           <svg width="28" height="28" viewBox="0 0 24 24" fill={T.female}><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
         </div>
         <div style={{fontSize:32,fontWeight:T.fw.bolder,color:T.female,fontFamily:"monospace"}}>{Math.floor(recordSec/60)}:{String(recordSec%60).padStart(2,"0")}</div>
         <div style={{fontSize:T.fs.sm,color:T.gray500}}>듣고 있어요...</div>
-        <button onClick={stopVoice} style={{marginTop:8,padding:"10px 32px",fontSize:T.fs.sm,fontWeight:T.fw.bold,background:T.female,color:T.bgCard,border:"none",borderRadius:T.radius.sm4,cursor:"pointer",fontFamily:"inherit"}}>완료</button>
+        <button onClick={stopVoice} style={{marginTop:8,padding:"10px 32px",fontSize:T.fs.sm,fontWeight:T.fw.bold,background:T.female,color:T.bgCard,border:"none",borderRadius:T.radius.sm,cursor:"pointer",fontFamily:"inherit"}}>완료</button>
       </div>}
 
       {/* Error */}
@@ -7131,7 +7131,7 @@ function QuickBookModal({ onClose, onParsed, data }) {
 
     {/* Bottom input bar */}
     {!isListening && !loading && !result && <div style={{flexShrink:0,padding:"8px 12px 16px",borderTop:"1px solid #f0f0f0",background:T.bgCard}}>
-      <div style={{display:"flex",alignItems:"flex-end",gap:T.sp.xs,background:T.primaryHover,borderRadius:T.radius.sm4,padding:"6px 6px 6px 16px"}}>
+      <div style={{display:"flex",alignItems:"flex-end",gap:T.sp.xs,background:T.primaryHover,borderRadius:T.radius.sm,padding:"6px 6px 6px 16px"}}>
         <textarea ref={inputRef} value={input} onChange={e=>{setInput(e.target.value);e.target.style.height="auto";e.target.style.height=Math.min(e.target.scrollHeight,120)+"px";}}
           onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();handleSubmit();}}}
           onPaste={handlePaste}
@@ -7225,7 +7225,7 @@ function AdminServiceTags({ data, setData }) {
   const tagPillStyle = (color, useYn) => {
     const bg = color || T.primary;
     return {
-      padding:"4px 10px", borderRadius:T.radius.sm0, border:"none",
+      padding:"4px 10px", borderRadius:0, border:"none",
       background: useYn===false ? T.gray400 : bg,
       color: useYn===false ? T.gray500 : getContrastColor(bg),
       fontSize:T.fs.xxs, fontWeight:T.fw.bold, display:"inline-flex", alignItems:"center", gap:3,
@@ -7485,7 +7485,7 @@ const CSS = `
   /* ══ 모달 리디자인 — Minimal / Linear style ══ */
   /* 기본 */
   .modal-res{font-size:14px;color:#1a1a2e}
-  .modal-res .form-col{display:flex;flex-direction:column;gap:T.sp.mdpx}
+  .modal-res .form-col{display:flex;flex-direction:column;gap:12px}
 
   /* 입력 필드 공통 — 색 없이 중립 */
   .modal-res .inp{
@@ -7564,7 +7564,7 @@ const CSS = `
 
   /* 태그 버튼 — pill */
   .tag-pill{
-    display:inline-flex;align-items:center;gap:T.sp.xspx;
+    display:inline-flex;align-items:center;gap:4px;
     padding:4px 11px;border-radius:20px;border:none;cursor:pointer;
     font-size:12.5px;font-weight:500;font-family:inherit;
     transition:opacity .12s,transform .1s
@@ -7649,7 +7649,7 @@ const CSS = `
   .modal{background:#fff;border-radius:12px;border:1px solid #e0e0e0;padding:22px;width:92%;max-width:500px;max-height:85vh;overflow-y:auto;animation:slideUp .6s cubic-bezier(.22,1,.36,1);box-shadow:0 4px 24px rgba(0,0,0,.16)}
   .close-btn{background:none;border:none;color:#999;cursor:pointer;font-size:16px;font-family:inherit}
   .form-col{display:flex;flex-direction:column;gap:14px}
-  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:T.sp.mdpx}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
   .page-title{font-size:18px;font-weight:800;color:#333;margin-bottom:16px}
   @media(max-width:768px){
     .hide-mobile{display:none!important;}
@@ -7661,9 +7661,9 @@ const CSS = `
     .page-title{font-size:15px;margin-bottom:10px}
     .page-pad{padding:8px 6px 8px!important}
     .grid2{grid-template-columns:1fr!important}
-    .form-col{gap:T.sp.smpx}
-    .sale-grid{grid-template-columns:1fr 1fr!important;gap:T.sp.smpx!important}
-    .sale-pay-row{flex-direction:column!important;gap:T.sp.smpx!important}
+    .form-col{gap:8px}
+    .sale-grid{grid-template-columns:1fr 1fr!important;gap:8px!important}
+    .sale-pay-row{flex-direction:column!important;gap:8px!important}
     .res-time-row{flex-wrap:wrap!important;overflow-x:auto!important}
     .res-time-row .inp{font-size:13px!important;padding:5px 8px!important}
     .res-room-sep{display:none!important}
@@ -7676,7 +7676,7 @@ const CSS = `
     .modal-res{width:100%!important;max-width:100%!important;border-radius:12px!important;margin:0!important}
     .modal-res .form-col{overflow:visible!important}
     .ov{padding:8px 0!important;-webkit-overflow-scrolling:touch!important}
-    .tl-topbar{flex-direction:column!important;gap:T.sp.xspx!important;padding:6px 6px!important;align-items:stretch!important}
+    .tl-topbar{flex-direction:column!important;gap:4px!important;padding:6px 6px!important;align-items:stretch!important}
     .mob-hdr{padding:10px 16px!important}
     .tl-date-label{font-size:15px!important}
     .tl-room-name{font-size:14px!important}
@@ -7685,13 +7685,13 @@ const CSS = `
     .tl-hdr-cell{position:-webkit-sticky!important;position:sticky!important}
 
     .tl-days{width:100%;justify-content:space-between;padding:0 2px}
-    .page-filter{flex-wrap:wrap!important;gap:T.sp.xspx!important}
+    .page-filter{flex-wrap:wrap!important;gap:4px!important}
     .page-filter .inp{max-width:130px!important}
     table{font-size:11px}
     th,td{padding:5px 6px}
     .btn-p,.btn-s,.btn-d{padding:6px 10px;font-size:11px}
     .btn-sm{padding:4px 8px!important;font-size:10px!important}
-    .stat-cards{grid-template-columns:repeat(auto-fit,minmax(100px,1fr))!important;gap:T.sp.smpx!important}
+    .stat-cards{grid-template-columns:repeat(auto-fit,minmax(100px,1fr))!important;gap:8px!important}
     .stat-charts{grid-template-columns:1fr!important}
     .admin-tw{max-height:calc(100vh - 260px)!important}
     .ov{padding:8px!important}
