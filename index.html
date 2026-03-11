@@ -174,65 +174,64 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.49";
+const BLISS_V = "2.69.50";
 
 // ─── 디자인 토큰 ────────────────────────────────────────────────────────────
 const T = {
   // ── 브랜드 ─────────────────────
-  primary:      T.primary,
-  primaryLt:    T.primaryLt,
-  primaryDk:    T.primaryDk,
-  primaryHover: T.primaryHover,
+  primary:      "#7c7cc8",
+  primaryLt:    "#ede9fe",
+  primaryDk:    "#5b5bb8",
+  primaryHover: "#f5f5ff",
   // ── 상태 ──────────────────────
-  danger:     T.danger,
-  dangerLt:   T.dangerLt,
-  success:    T.success,
-  successLt:  T.successLt,
-  successDk:  T.successDk,
-  warning:    T.warning,
-  warningLt:  T.warningLt,
-  info:       T.info,
-  infoLt:     T.infoLt,
-  infoLt2:    T.infoLt2,
+  danger:     "#ef5350",
+  dangerLt:   "#fdecea",
+  success:    "#6ab56a",
+  successLt:  "#e8f5e9",
+  successDk:  "#2e7d32",
+  warning:    "#e8b830",
+  warningLt:  "#fffde7",
+  info:       "#5cb5c5",
+  infoLt:     "#e0f7fa",
+  infoLt2:    "#e8f5f0",
   // ── 의미 색상 ──────────────────
-  male:       T.male,   // 남성
-  maleLt:     T.maleLt,
-  female:     T.female,   // 여성
-  femaleLt:   T.femaleLt,
-  orange:     T.orange,   // 주황 (예약금/상품)
-  orangeLt:   T.orangeLt,
-  purple:     T.purple,   // 보조 보라
-  purpleLt:   T.purpleLt,
-  teal:       T.info,   // = info (alias)
-  tealLt:     T.infoLt2,
+  male:       "#4a7cc8",
+  maleLt:     "#e3f0ff",
+  female:     "#d96570",
+  femaleLt:   "#fce8e8",
+  orange:     "#e65100",
+  orangeLt:   "#fff3e0",
+  purple:     "#9b72cb",
+  purpleLt:   "#ede8ff",
+  teal:       "#5cb5c5",
+  tealLt:     "#e8f5f0",
   // ── 외부 플랫폼 ────────────────
-  naver:      T.naver,
-  kakao:      T.kakao,
-  google:     T.google,
-  instagram:  T.instagram,
+  naver:      "#03c75a",
+  kakao:      "#fee500",
+  google:     "#4285f4",
+  instagram:  "#e4405f",
   // ── 뉴트럴 ────────────────────
-  gray100:    T.gray100,
-  gray200:    T.gray200,
-  gray300:    T.gray300,
-  gray400:    T.gray400,
-  gray500:    T.gray500,
-  gray600:    T.gray600,
-  gray700:    T.gray700,
-  gray800:    T.text,
+  gray100:    "#f8f8f8",
+  gray200:    "#f0f0f0",
+  gray300:    "#e0e0e0",
+  gray400:    "#d0d0d0",
+  gray500:    "#aaaaaa",
+  gray600:    "#888888",
+  gray700:    "#555555",
+  gray800:    "#333333",
   // ── 텍스트 ────────────────────
-  text:       T.text,
-  textSub:    T.gray600,
-  textMuted:  T.gray500,
+  text:       "#333333",
+  textSub:    "#888888",
+  textMuted:  "#aaaaaa",
   // ── 배경 ──────────────────────
-  bg:         T.gray100,
-  bgCard:     T.bgCard,
+  bg:         "#f8f8f8",
+  bgCard:     "#ffffff",
   // ── 테두리 ────────────────────
-  border:     T.gray300,
-  borderFocus:T.primary,
+  border:     "#e0e0e0",
+  borderFocus:"#7c7cc8",
   // ── 라운딩 ────────────────────
   radius: { sm:4, md:8, lg:12, xl:16, full:999 },
   // ── 폰트 크기 ─────────────────
-  //         nano xxs  xs   sm   md   lg   xl  xxl
   fs: { nano:9, xxs:11, xs:12, sm:13, md:14, lg:16, xl:18, xxl:22 },
   // ── 폰트 웨이트 ───────────────
   fw: { normal:400, medium:500, bold:600, bolder:700, black:800 },
