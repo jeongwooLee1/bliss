@@ -174,7 +174,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.59";
+const BLISS_V = "2.69.60";
 
 // ─── 디자인 토큰 ────────────────────────────────────────────────────────────
 const T = {
@@ -7867,7 +7867,7 @@ const CSS = `
     .form-col textarea.inp{height:auto!important}
     .modal-res{width:100%!important;max-width:100%!important;border-radius:12px!important;margin:0!important}
     .modal-res .form-col{overflow:visible!important}
-    .ov{padding:8px 0!important;-webkit-overflow-scrolling:touch!important}
+    .ov{padding:8px 0!important;padding-bottom:calc(64px + env(safe-area-inset-bottom))!important;-webkit-overflow-scrolling:touch!important}
     .tl-topbar{flex-direction:column!important;gap:4px!important;padding:6px 6px!important;align-items:stretch!important}
     .mob-hdr{padding:10px 16px!important}
     .tl-date-label{font-size:15px!important}
