@@ -174,7 +174,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.39";
+const BLISS_V = "2.69.40";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -634,6 +634,10 @@ function App() {
     poll();
     pollIv = setInterval(poll, 30000);
 
+    // iOS PWA: 백그라운드→포그라운드 복귀 시 강제 새로고침
+    const onVisible = () => { if (!document.hidden) poll(); };
+    document.addEventListener("visibilitychange", onVisible);
+
     // Realtime 시도 (성공하면 폴링 간격 늘림)
     if (supaClient) {
       try {
@@ -700,6 +704,7 @@ function App() {
 
     return () => {
       clearInterval(pollIv);
+      document.removeEventListener("visibilitychange", onVisible);
       if (channel && supaClient) { try { supaClient.removeChannel(channel); } catch(e){} }
     };
   }, [phase, currentBizId]);
@@ -3685,7 +3690,7 @@ return f.requestMsg.split("\n").filter(l=>l.trim()).map((line,i)=>{
 }
 
 // ═══════════════════════════════════════════
-// Bliss v2.69.39 - 예약목록 새로고침 버튼 추가
+// Bliss v2.69.40 - iOS PWA 포그라운드 복귀 시 자동 새로고침
 const SaleSvcRow = React.memo(function SaleSvcRow({ id, name, dur, checked, amount, defPrice, toggle, setAmt }) {
   const disabled = defPrice === 0;
   const [localAmt, setLocalAmt] = useState(amount || "");
