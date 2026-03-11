@@ -642,14 +642,13 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
 
   // 6.5) 2주 연속휴무 보장: 2주 단위로 연속 2일 이상 휴무가 없는 직원에게 추가 배정
   if (rc.biweeklyConsecOff) {
-    // 이번달 날짜가 있는 주만, 2개씩 묶어 2주 블록 구성
     const activeWeeks2 = activeWeeks.filter(w => w.some(d => !d.isPrev && !d.isNext));
     const twoWeekBlocks = [];
     for (let i = 0; i < activeWeeks2.length; i += 2) {
       twoWeekBlocks.push(activeWeeks2.slice(i, Math.min(i + 2, activeWeeks2.length)));
     }
 
-    // 2주 블록 내 연속 2일 휴무 여부
+    // 블록 내 날짜 배열에서 연속 2일 휴무 여부
     const hasConsecOff = (empId, days) =>
       days.some((d, i) => {
         if (i === 0) return false;
@@ -657,27 +656,33 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
         return addDays(days[i-1].ds, 1) === d.ds && isOff(days[i-1].ds) && isOff(d.ds);
       });
 
+    // 해당 날짜가 속한 주의 off 수
+    const weekOffCount = (empId, ds) => {
+      const wkIdx = getWeekIdx(ds);
+      return Object.entries(sch[empId]).filter(([s, v]) =>
+        getWeekIdx(s) === wkIdx && ["휴무","휴무(꼭)"].includes(v)
+      ).length;
+    };
+
     employees.forEach(emp => {
       const branch = BRANCHES.find(b => b.id === emp.branch);
       const branchEmps = employees.filter(e => e.branch === emp.branch);
+      const wo = getWeeklyOff(emp); // 주당 휴무 기준
 
       twoWeekBlocks.forEach(block => {
-        // 블록 내 이번달+이월 날짜 (isPrev 제외)
         const blockDays = block.flatMap(w => w.filter(d => !d.isPrev));
         if (blockDays.length < 2) return;
-
-        // 이미 연속 휴무 있으면 스킵
         if (hasConsecOff(emp.id, blockDays)) return;
 
-        // 기존 휴무날 옆(전날/다음날)에 근무→휴무 전환 시도
         const offDays = blockDays.filter(d =>
           ["휴무","휴무(꼭)"].includes(sch[emp.id]?.[d.ds])
         );
 
+        // ── 전략 1: ADD ──
+        // 기존 휴무 옆 날짜에 off 추가 (해당 주 weeklyOff 미달인 경우만)
         let done = false;
         for (const offDay of offDays) {
           if (done) break;
-          // 전날, 다음날 순서로 시도
           for (const delta of [-1, 1]) {
             const candDs = addDays(offDay.ds, delta);
             const cand = blockDays.find(d => d.ds === candDs);
@@ -685,10 +690,11 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
             if (sch[emp.id][candDs] !== STATUS.WORK) continue;
             if (seededDates.has(candDs)) continue;
 
-            // canAssignOff: 퐁당퐁당·3일연속·maxDailyOff·지점minStaff 등 전체 검증
+            // ★ 핵심: 해당 주 weeklyOff 초과 금지
+            if (weekOffCount(emp.id, candDs) >= wo) continue;
+
             if (!canAssignOff(emp, cand, branchEmps, branch)) continue;
 
-            // 전체 minWork 보호 (남자직원 제외 기준)
             const totalWorking = employees.filter(e => {
               if (e.isMale) return false;
               const s = sch[e.id][candDs];
@@ -699,6 +705,54 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
             sch[emp.id][candDs] = STATUS.OFF;
             done = true;
             break;
+          }
+        }
+        if (done) return;
+
+        // ── 전략 2: MOVE ──
+        // 주당 휴무가 꽉 찬 경우: 기존 휴무 하나를 다른 휴무 옆으로 이동
+        // (net off 수 변화 없음 → 주간 초과 없음)
+        for (const week of block) {
+          if (done) break;
+          const wkDays = week.filter(d => !d.isPrev);
+          const wkOffDays = wkDays.filter(d =>
+            sch[emp.id]?.[d.ds] === STATUS.OFF // 휴무(꼭) 제외 — 이동 불가
+          );
+          if (wkOffDays.length < 1) continue;
+
+          for (const targetOff of wkOffDays) {
+            if (done) break;
+            // targetOff 옆 날짜(근무)가 또 다른 휴무의 이웃인지 확인
+            for (const delta of [-1, 1]) {
+              const adjDs = addDays(targetOff.ds, delta);
+              const adjDay = wkDays.find(d => d.ds === adjDs);
+              if (!adjDay) continue;
+              if (sch[emp.id][adjDs] !== STATUS.WORK) continue;
+              // adjDs 옆에 다른 휴무가 있어야 연속이 만들어짐
+              const adjOff = addDays(adjDs, delta);
+              if (!["휴무","휴무(꼭)"].includes(sch[emp.id]?.[adjOff])) continue;
+              if (seededDates.has(adjDs)) continue;
+
+              // targetOff → WORK, adjDs → OFF 임시 적용
+              const sv0 = sch[emp.id][targetOff.ds];
+              const sv1 = sch[emp.id][adjDs];
+              sch[emp.id][targetOff.ds] = STATUS.WORK;
+              sch[emp.id][adjDs]        = STATUS.OFF;
+
+              // adjDs에 OFF가 가능한지 검증
+              const adjOk = canAssignOff(emp, adjDay, branchEmps, branch);
+              // targetOff가 WORK가 되어도 minWork 위반 없음 (오히려 근무 늘어남)
+              const moveMakesConsec = hasConsecOff(emp.id, blockDays);
+
+              if (adjOk && moveMakesConsec) {
+                done = true;
+                break;
+              } else {
+                // 롤백
+                sch[emp.id][targetOff.ds] = sv0;
+                sch[emp.id][adjDs]        = sv1;
+              }
+            }
           }
         }
       });
