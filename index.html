@@ -174,7 +174,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.38";
+const BLISS_V = "2.69.39";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -3685,7 +3685,7 @@ return f.requestMsg.split("\n").filter(l=>l.trim()).map((line,i)=>{
 }
 
 // ═══════════════════════════════════════════
-// Bliss v2.69.38 - 모바일 헤더(메뉴버튼+앱이름) 제거
+// Bliss v2.69.39 - 예약목록 새로고침 버튼 추가
 const SaleSvcRow = React.memo(function SaleSvcRow({ id, name, dur, checked, amount, defPrice, toggle, setAmt }) {
   const disabled = defPrice === 0;
   const [localAmt, setLocalAmt] = useState(amount || "");
@@ -4467,6 +4467,19 @@ function SmartDatePicker({ open, onClose, anchorEl, startDate, endDate, onApply,
 function ReservationList({ data, setData, userBranches, isMaster, setPage, setPendingOpenRes }) {
   const today = todayStr();
   const dateAnchorRef = React.useRef(null);
+  const [refreshing, setRefreshing] = React.useState(false);
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      const bizId = data?.business?.id;
+      if (bizId) {
+        const rows = await sb.getByBiz("reservations", bizId);
+        const parsed = fromDb("reservations", rows);
+        setData(prev => prev ? {...prev, reservations: parsed} : prev);
+      }
+    } catch(e) { console.log("Refresh error:", e); }
+    setRefreshing(false);
+  };
   const _lsResFilter = () => { try { return JSON.parse(localStorage.getItem("bliss_res_filter") || "null") || {}; } catch(e) { return {}; } };
   const [startDate, setStartDateRaw] = useState(() => _lsResFilter().startDate || today);
   const [endDate, setEndDateRaw] = useState(() => { const f=_lsResFilter(); if(f.endDate) return f.endDate; const d=new Date(); d.setDate(d.getDate()+6); return fmtLocal(d); });
@@ -4537,7 +4550,12 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
   const SS = {height:38,borderRadius:8,border:"1px solid #e0e0e0",background:"#fff",fontSize:13,padding:"0 14px",cursor:"pointer",fontFamily:"inherit",color:"#333",display:"flex",alignItems:"center",gap:6,outline:"none",boxShadow:"0 1px 4px rgba(0,0,0,.08)",boxSizing:"border-box"};
 
   return <div>
-    <h2 className="page-title">예약 목록</h2>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:0}}>
+      <h2 className="page-title" style={{margin:0}}>예약 목록</h2>
+      <button onClick={handleRefresh} disabled={refreshing} title="새로고침" style={{background:"none",border:"1px solid #e0e0e0",borderRadius:8,padding:"4px 10px",cursor:"pointer",color:"#888",display:"flex",alignItems:"center",gap:4,fontSize:13}}>
+        {refreshing ? "..." : "↻ 새로고침"}
+      </button>
+    </div>
     {/* 필터 바 - 날짜 + 매장 */}
     <div style={{display:"flex",gap:8,marginBottom:10,alignItems:"center",flexWrap:"wrap"}}>
       <button ref={dateAnchorRef} onClick={()=>setShowSheet(true)} style={{...SS,background:"#f7f7ff",borderColor:"#c5c5f0",color:"#5b5bb8",fontWeight:600,flex:"0 0 auto",minWidth:150}}>
