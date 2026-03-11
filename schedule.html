@@ -1,0 +1,1994 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>하우스왁싱 근무표</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 0; background: #f5f0ea; font-family: 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; }
+  #root { min-height: 100vh; }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<script>
+// window.storage polyfill — localStorage 기반
+window.storage = {
+  get: async (key) => {
+    try {
+      const v = localStorage.getItem('bliss_sch_' + key);
+      return v !== null ? { key, value: v } : null;
+    } catch(e) { return null; }
+  },
+  set: async (key, value) => {
+    try {
+      localStorage.setItem('bliss_sch_' + key, value);
+      return { key, value };
+    } catch(e) { return null; }
+  },
+  delete: async (key) => {
+    try {
+      localStorage.removeItem('bliss_sch_' + key);
+      return { key, deleted: true };
+    } catch(e) { return null; }
+  },
+  list: async (prefix) => {
+    try {
+      const keys = Object.keys(localStorage)
+        .filter(k => k.startsWith('bliss_sch_' + (prefix || '')))
+        .map(k => k.replace('bliss_sch_', ''));
+      return { keys };
+    } catch(e) { return { keys: [] }; }
+  }
+};
+</script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback, useMemo } = React;
+
+
+const BRANCHES = [
+  { id: "nonhyeon", name: "논현&왕십리", color: "#c8793a", minStaff: 4 },
+  { id: "hongdae",  name: "홍대&마곡",   color: "#3a9e8e", minStaff: 2 },
+  { id: "yongsan",  name: "용산",         color: "#8b6fa3", minStaff: 1 },
+  { id: "jamsil",   name: "잠실&위례",   color: "#3a7aaf", minStaff: 2 },
+  { id: "cheonho",  name: "천호",         color: "#a07040", minStaff: 1 },
+];
+
+const EMPLOYEES = [
+  { id:"소연", name:"소연", branch:"nonhyeon", isOwner:false, weeklyOff:2 },
+  { id:"경아", name:"경아", branch:"nonhyeon", isOwner:false, weeklyOff:2 },
+  { id:"수연", name:"수연", branch:"nonhyeon", isOwner:false, weeklyOff:2 },
+  { id:"서현", name:"서현", branch:"nonhyeon", isOwner:false, weeklyOff:2 },
+  { id:"지은", name:"지은(원장)", branch:"hongdae", isOwner:true,  weeklyOff:1, mustStay:true },
+  { id:"현아", name:"현아",       branch:"hongdae", isOwner:false, weeklyOff:2, mustStay:true },
+  { id:"혜경", name:"혜경",       branch:"hongdae", isOwner:false, weeklyOff:2 },
+  { id:"민아", name:"민아",       branch:"hongdae", isOwner:false, weeklyOff:2 },
+  { id:"보령", name:"보령(원장)", branch:"yongsan", isOwner:true,  weeklyOff:1, mustStay:true },
+  { id:"희서", name:"희서",       branch:"yongsan", isOwner:false, weeklyOff:2 },
+  { id:"민정", name:"민정",       branch:"yongsan", isOwner:false, weeklyOff:2 },
+  { id:"유라", name:"유라(원장)", branch:"jamsil",  isOwner:true,  weeklyOff:1, mustStay:true },
+  { id:"소이", name:"소이",       branch:"jamsil",  isOwner:false, weeklyOff:2 },
+  { id:"다해", name:"다해",       branch:"jamsil",  isOwner:false, weeklyOff:2 },
+  { id:"미진", name:"미진(원장)", branch:"cheonho", isOwner:true,  weeklyOff:1, mustStay:true },
+  { id:"수민", name:"수민",       branch:"cheonho", isOwner:false, weeklyOff:2 },
+  // 남자 직원 (일 근무 인원 미포함, 일요일 중 1명만 출근, 휴무 중복 불가)
+  { id:"재윤", name:"재윤", branch:"male", isOwner:false, weeklyOff:2, isMale:true },
+  { id:"주용", name:"주용", branch:"male", isOwner:false, weeklyOff:2, isMale:true },
+];
+
+const STATUS = { WORK:"근무", OFF:"휴무", MUST_OFF:"휴무(꼭)", SUPPORT:"지원", SHARE:"전체쉐어" };
+const S_COLOR = {
+  "근무":     { bg:"#e8f4ec", text:"#1e7a40", border:"#9fd4b4" },
+  "휴무":     { bg:"#ede8f5", text:"#4a2a90", border:"#9070d0", bold:true },
+  "휴무(꼭)": { bg:"#ede8f5", text:"#4a2a90",  border:"#9070d0", bold:true },
+  "지원":     { bg:"#fff4e0", text:"#c87020",  border:"#ffd090" },
+  "전체쉐어":     { bg:"#fffbe8", text:"#a07800",  border:"#f0c000", bold:true },
+};
+// 상태값이 "지원(...)" 형태인지 체크
+function isSupport(s) { return s && (s === "지원" || s.startsWith("지원(")); }
+function getSColor(s) {
+  if (isSupport(s)) return S_COLOR["지원"];
+  return S_COLOR[s] || {bg:"#f8f5f0",text:"#ccc",border:"#eee"};
+}
+
+
+function getDim(y,m){ return new Date(y,m+1,0).getDate(); }
+// timezone-safe 날짜 문자열 생성 (toISOString은 UTC변환으로 날짜 어긋남)
+function fmtDs(y,m,d){ return `${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`; }
+function getDow0Mon(y,m,d){ const w=new Date(y,m,d).getDay(); return w===0?6:w-1; }
+function addDays(ds, n){ const d=new Date(ds); d.setDate(d.getDate()+n); return fmtDs(d.getFullYear(),d.getMonth(),d.getDate()); }
+const DNAMES=["월","화","수","목","금","토","일"];
+
+function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, supportConfig={}, ruleConfig={}, ownerRepeat={}, employees=employees, empReqs={}) {
+  const dim = getDim(year, month);
+  const rc = {
+    minWork:         ruleConfig.minWork         ?? 11,
+    maxWork:         ruleConfig.maxWork         ?? 15,
+    maxDailyOff:     ruleConfig.maxDailyOff     ?? 5,
+    maxConsecWork:   ruleConfig.maxConsecWork   ?? 6,  // 최대 연속 근무일
+    branchMinStaff:  ruleConfig.branchMinStaff  ?? {},
+    noSimultaneousOff: ruleConfig.noSimultaneousOff ?? {},
+  };
+  const sch = {};
+  employees.forEach(e => { sch[e.id] = {}; });
+
+  // 0) 전달 근무표에서 이번달 날짜 이월 데이터 시드
+  //    (예: 3월 마지막 주에 배정된 4월 1~5일 데이터를 4월 autoAssign 시작점으로 사용)
+  if (prevSchData) {
+    employees.forEach(emp => {
+      Object.entries(prevSchData[emp.id] || {}).forEach(([ds, s]) => {
+        // 이번달에 속하는 날짜만 (다음달 이월로 포함됐던 날짜)
+        const d = new Date(ds);
+        if (d.getFullYear() === year && d.getMonth() === month && s && s !== "") {
+          sch[emp.id][ds] = s;
+        }
+      });
+    });
+  }
+
+  // step0에서 시드된 날짜 = 전달 이월로 이미 결정된 날 → 이후 단계에서 건드리지 않음
+  const seededDates = new Set();
+  if (prevSchData) {
+    employees.forEach(emp => {
+      Object.entries(prevSchData[emp.id] || {}).forEach(([ds, s]) => {
+        const d = new Date(ds);
+        if (d.getFullYear() === year && d.getMonth() === month && s && s !== "") {
+          seededDates.add(ds);
+        }
+      });
+    });
+  }
+
+  // 1) 원장 요청 휴무 우선 적용 — 해당 월 + 다음달 이월 날짜 포함
+  const monthStr = `${year}-${String(month+1).padStart(2,"0")}`;
+  const nextYear3b = month === 11 ? year + 1 : year;
+  const nextMonthStr = `${nextYear3b}-${String((month+2 > 12 ? 1 : month+2)).padStart(2,"0")}`;
+  Object.entries(ownerReqs).forEach(([key, status]) => {
+    const [eid, ds] = key.split("__");
+    if (sch[eid] && (ds.startsWith(monthStr) || ds.startsWith(nextMonthStr))) sch[eid][ds] = status;
+  });
+  // 1-a-2) 일반직원 휴무(꼭) 우선 적용 — seededDates에 추가해 이후 단계에서 건드리지 않음
+  Object.entries(empReqs).forEach(([key, status]) => {
+    const [eid, ds] = key.split("__");
+    if (sch[eid] && (ds.startsWith(monthStr) || ds.startsWith(nextMonthStr))) {
+      sch[eid][ds] = status;
+    }
+  });
+
+  // 1-b) 반복 설정: ownerRepeat dows → 이번달 + 이월 날짜 자동 적용 (ownerReqs 우선)
+  employees.filter(e=>e.isOwner).forEach(emp => {
+    const rep = ownerRepeat[emp.id];
+    if (!rep?.enabled || !rep.dows?.length) return;
+    for (let d=1; d<=dim; d++) {
+      const dow = getDow0Mon(year, month, d);
+      if (rep.dows.includes(dow)) {
+        const ds = fmtDs(year, month, d);
+        if (!sch[emp.id][ds]) sch[emp.id][ds] = STATUS.MUST_OFF;
+      }
+    }
+  });
+
+  // 2) 주 단위 처리 — 이번달 1일이 속한 주에 전달 날짜 포함 (이월 처리)
+  const firstDow = getDow0Mon(year, month, 1); // 0=월요일
+  const prevYear = month === 0 ? year - 1 : year;
+  const prevMonth = month === 0 ? 11 : month - 1;
+  const prevDim = getDim(prevYear, prevMonth);
+
+  // 첫 주에 포함될 전달 날짜들 (전달 마지막 firstDow일)
+  const prevDays = [];
+  for (let i = firstDow - 1; i >= 0; i--) {
+    const pd = prevDim - i;
+    const ds = fmtDs(prevYear, prevMonth, pd);
+    prevDays.push({ d: pd, ds, dow: getDow0Mon(prevYear, prevMonth, pd), isPrev: true });
+  }
+
+  const weeks = [];
+  let wk = [...prevDays]; // 첫 주에 전달 날짜 포함
+  for (let d=1; d<=dim; d++) {
+    const ds = fmtDs(year,month,d);
+    const dow = getDow0Mon(year,month,d);
+    wk.push({d, ds, dow, isPrev: false});
+    if (dow===6) { weeks.push(wk); wk=[]; }
+    else if (d===dim) {
+      // 마지막 날이 일요일이 아니면 다음달 이월 날짜를 이 주에 포함해서 push
+      const lastDow2 = dow;
+      const nextYear3 = month===11 ? year+1 : year;
+      const nextMonth3 = month===11 ? 0 : month+1;
+      const toAdd = 6 - lastDow2;
+      for (let nd=1; nd<=toAdd; nd++) {
+        const nds = fmtDs(nextYear3,nextMonth3,nd);
+        const ndow = getDow0Mon(nextYear3,nextMonth3,nd);
+        wk.push({d:nd, ds:nds, dow:ndow, isPrev:false, isNext:true});
+      }
+      weeks.push(wk); wk=[];
+    }
+  }
+
+  // 1일짜리 단독 주: 첫 주에만 적용 (예: 3월 1일이 일요일인 경우)
+  // 마지막 주는 제외 — 8/31처럼 혼자 남은 마지막 날도 배정 필요
+  const ignoredDates = new Set(
+    weeks
+      .filter((w, wi) => wi < weeks.length - 1 && w.filter(d => !d.isPrev && !d.isNext).length <= 1)
+      .flatMap(w => w.filter(d => !d.isPrev && !d.isNext && !seededDates.has(d.ds)).map(d => d.ds))
+  );
+
+  // 이번달 + 이월 날짜 전체 (isPrev 제외, ignoredDates 제외) — step3~7 루프 공통 사용
+  const allDates = weeks.flatMap(w => w.filter(d => !d.isPrev && !ignoredDates.has(d.ds)));
+
+  // 한 주에서 이미 쉰 일수 (전달 이월 날짜 제외 — 이번달 날짜만)
+  // 이월 날짜를 포함하면 첫 주에 toAssign=0이 되어 배정이 안됨
+  const alreadyOffCount = (empId, week) =>
+    week.filter(day => {
+      if (day.isPrev || day.isNext) return false; // 전달/다음달 날짜 제외
+      return ["휴무","휴무(꼭)"].includes(sch[empId][day.ds]);
+    }).length;
+
+  // 주의 실제 월~일 인덱스 계산 (주 경계 판별용)
+  const getWeekIdx = (ds) => {
+    const d = new Date(ds);
+    const dow = (d.getDay()+6)%7; // 0=월
+    const monday = new Date(d); monday.setDate(d.getDate()-dow);
+    return fmtDs(monday.getFullYear(),monday.getMonth(),monday.getDate());
+  };
+
+  // 직원별 설정 헬퍼
+  const getWeeklyOff = (emp) => {
+    const ws = empSettings[emp.id];
+    if (ws) return 7 - ws.weeklyWork; // weeklyWork→weeklyOff 변환
+    return emp.weeklyOff; // 기본값
+  };
+  const isAltPattern = (emp) => empSettings[emp.id]?.altPattern ?? (emp.id === "현아"); // 현아 기본 ON
+
+  // 현아 격주 패턴: 전달 이월 주가 있으면 패턴 반전
+  // firstDow > 0 이면 첫 주가 전달에서 넘어온 주이므로 패턴 반전
+  const hyeonaPhaseShift = firstDow > 0 ? 1 : 0;
+
+  // 이번달에 걸친 주 수 (이번달 날짜가 1일 이상 있는 주만)
+  const activeWeeks = weeks.filter(w => w.some(d => !d.isPrev));
+  // 주 수: 이번달 실제 날짜(!isNext)가 있는 주 수 — 캡 제거 (8/31처럼 6주 케이스 허용)
+  const weekCount = Math.max(4, activeWeeks.filter(w => w.some(d => !d.isPrev && !d.isNext)).length);
+
+  // 공통 헬퍼: 날짜 ds에 휴무 배정 시 제약 통과 여부
+  const canAssignOff = (emp, day, branchEmps, branch, debug=false) => {
+    const ds = day.ds;
+    const d = new Date(ds); // 실제 날짜 기반 계산 (isNext 포함 정확히 처리)
+    const prev1 = new Date(d); prev1.setDate(d.getDate()-1);
+    const prev2 = new Date(d); prev2.setDate(d.getDate()-2);
+    const next1 = new Date(d); next1.setDate(d.getDate()+1);
+    const next2 = new Date(d); next2.setDate(d.getDate()+2);
+    const p1ds = fmtDs(prev1.getFullYear(),prev1.getMonth(),prev1.getDate());
+    const p2ds = fmtDs(prev2.getFullYear(),prev2.getMonth(),prev2.getDate());
+    const n1ds = fmtDs(next1.getFullYear(),next1.getMonth(),next1.getDate());
+    const n2ds = fmtDs(next2.getFullYear(),next2.getMonth(),next2.getDate());
+    // 날짜가 현재 sch에 없으면 prevSchData(전달)에서 조회
+    const getStatus = (empId, dateStr) => {
+      if (sch[empId]?.[dateStr] !== undefined) return sch[empId][dateStr];
+      return prevSchData?.[empId]?.[dateStr] || "";
+    };
+    const p1o = ["휴무","휴무(꼭)"].includes(getStatus(emp.id, p1ds));
+    const p2o = ["휴무","휴무(꼭)"].includes(getStatus(emp.id, p2ds));
+    const n1o = ["휴무","휴무(꼭)"].includes(getStatus(emp.id, n1ds));
+    const n2o = ["휴무","휴무(꼭)"].includes(getStatus(emp.id, n2ds));
+
+    const R = (r) => { if(debug) console.log(`[canOff BLOCK] ${emp.id} ${ds}: ${r}`); return false; };
+    // 3일 연속 방지
+    if (p1o && p2o) return R("3일연속(p2+p1 휴무)");
+    if (p1o && n1o) return R("3일연속(p1+n1 휴무)");
+
+    // 퐁당퐁당 방지 (휴무-근무-휴무)
+    if (p2o && !p1o) return R(`퐁당퐁당(p2=${p2ds}휴무, p1근무)`);  // backward: 이틀전휴-어제근-오늘휴
+    // forward: n1이 실제 배정된 경우에만 체크 (미배정=""이면 !n1o=true로 오탐 방지)
+    const n1Assigned = getStatus(emp.id, n1ds) !== "";
+    if (n1Assigned && !n1o && n2o) return R(`퐁당퐁당(n1근무, n2휴무)`); // 오늘휴-내일근-모레휴
+
+
+    // 전체 하루 최대 휴무 5명 제한 (남자직원 제외 - 별도 집계)
+    if (!emp.isMale) {
+      const totalOffToday = employees.filter(e => !e.isMale && ["휴무","휴무(꼭)"].includes(sch[e.id][ds])).length;
+      if (totalOffToday >= rc.maxDailyOff) return R(`전체휴무${totalOffToday}명 초과`);
+    }
+
+    // 지점 최소 근무인원 보호 (소속 + 지원 인원 합산)
+    if (branch) {
+      if (emp.branch === "nonhyeon") {
+        // 논현: minStaff=4는 지원 포함 기준이므로 휴무 배정 시점(step2)엔
+        // 아직 지원 미배정 → 소속 최소 1명 유지만 체크, minStaff 충족은 step4에서
+        const ownWorking = branchEmps.filter(be =>
+          be.id !== emp.id && !["휴무","휴무(꼭)"].includes(sch[be.id][ds])
+        ).length;
+        if (ownWorking < 1) return false;
+      } else {
+        // 그 외 지점: 소속 + 지원 합산 후 minStaff 체크
+        const ownWorking = branchEmps.filter(be =>
+          !["휴무","휴무(꼭)"].includes(sch[be.id][ds])
+        ).length;
+        const supportIn = employees.filter(e =>
+          e.branch !== branch.id && sch[e.id][ds] === `지원(${branch.name})`
+        ).length;
+        const minS = rc.branchMinStaff[branch.id] ?? branch.minStaff;
+        if (ownWorking + supportIn - 1 < minS) return false;
+      }
+    }
+
+    // 지점별 동시 휴무 금지 (noSimultaneousOff ON인 지점: 일반직원 2명 이하, 남자직원 제외)
+    if (rc.noSimultaneousOff[emp.branch]) {
+      const normals = branchEmps.filter(be => !be.isOwner && !be.mustStay && be.id !== emp.id);
+      if (normals.some(be => ["휴무","휴무(꼭)"].includes(sch[be.id]?.[ds]))) return false;
+    }
+
+    // 남자직원 전원 휴무 금지 (1명은 반드시 근무)
+    if (emp.isMale) {
+      const otherMales = employees.filter(e => e.isMale && e.id !== emp.id);
+      const allOthersOff = otherMales.length > 0 && otherMales.every(e =>
+        ["휴무","휴무(꼭)"].includes(sch[e.id]?.[ds] || "")
+      );
+      if (allOthersOff) return R("남직원 전원휴무 금지");
+    }
+
+    return true;
+  };
+
+  // ══════════════════════════════════════════════════════
+  // 남자직원 전용 배정 로직
+  // 규칙:
+  //   1) 일요일은 1명만 근무 (나머지 휴무)
+  //   2) 퐁당퐁당 금지 (휴무-근무-휴무) — 일요일 강제휴무는 기준 제외
+  //   3) 남직원 전원 휴무인 날 금지
+  //   4) 주 5일 근무 / 2일 휴무
+  //   5) 일 근무인원 카운팅 제외 (별도 처리)
+  //   6) 3일 연속 휴무 금지
+  // ══════════════════════════════════════════════════════
+  const maleEmps = employees.filter(e => e.isMale);
+
+
+
+  if (maleEmps.length > 0) {
+    // ── STEP A: 일요일 배정 ──
+    // isNext 이월 일요일도 포함
+    const sundays = weeks.flatMap(w => w.filter(d => !d.isPrev && d.dow === 6));
+    sundays.forEach(day => {
+      // 수동 배정된 경우 건드리지 않음
+      if (maleEmps.some(e => sch[e.id][day.ds] === STATUS.MUST_OFF)) return;
+      // 이번달 일요일 근무 횟수 적은 직원 우선 (균등 배분)
+      const workCnt = (e) => sundays.filter(s => s.ds < day.ds && sch[e.id][s.ds] === STATUS.WORK).length;
+      const sorted = [...maleEmps].sort((a,b) => workCnt(a) - workCnt(b));
+      // 동수면 직전 일요일 근무자 피하기
+      const prev7 = new Date(day.ds); prev7.setDate(prev7.getDate()-7);
+      const prev7ds = fmtDs(prev7.getFullYear(),prev7.getMonth(),prev7.getDate());
+      const lastWorker = maleEmps.find(e => sch[e.id][prev7ds] === STATUS.WORK);
+      const minCnt = workCnt(sorted[0]);
+      const tied = sorted.filter(e => workCnt(e) === minCnt);
+      const worker = (tied.length > 1 && lastWorker && tied.includes(lastWorker))
+        ? tied.find(e => e !== lastWorker) || tied[0]
+        : tied[0];
+      maleEmps.forEach(e => {
+        sch[e.id][day.ds] = e === worker ? STATUS.WORK : STATUS.OFF;
+      });
+    });
+
+  }
+
+  // 현아 처리: 격주 1일/2일, 기준요일 수(dow=2) 고정 — 2일주는 반드시 수+목
+  // 1일주: 수요일만 / 2일주: 수요일 + 목요일 (같은 요일 고정 패턴)
+  // 격주 패턴 직원 처리 (현아 포함 altPattern=true인 전 직원)
+  employees.filter(e => isAltPattern(e)).forEach(emp => {
+    const weeklyOff = getWeeklyOff(emp);
+    const lo = Math.max(1, weeklyOff - 1); // 적은 주 휴무
+    const hi = weeklyOff;                   // 많은 주 휴무
+    const phaseShift = (emp.id === "현아" ? hyeonaPhaseShift : 0);
+    weeks.forEach((week, wi) => {
+      const thisMonthDays = week.filter(d => !d.isPrev);
+      if (thisMonthDays.length === 0) return;
+      // 이번달 날짜가 1일뿐인 주는 스킵
+      if (thisMonthDays.filter(d => !d.isNext).length <= 1) return;
+      const target = ((wi + phaseShift) % 2 === 0) ? lo : hi;
+      const already = alreadyOffCount(emp.id, week);
+      let needed = Math.max(0, target - already);
+      if (needed <= 0) return;
+      // 현아는 수(2)→목(3) 고정, 나머지는 일반 요일 순
+      const pref = emp.id === "현아"
+        ? [...thisMonthDays.filter(d=>d.dow===2&&!sch[emp.id][d.ds]&&!seededDates.has(d.ds)),
+           ...thisMonthDays.filter(d=>d.dow===3&&!sch[emp.id][d.ds]&&!seededDates.has(d.ds)),
+           ...thisMonthDays.filter(d=>d.dow!==2&&d.dow!==3&&!sch[emp.id][d.ds]&&!seededDates.has(d.ds))]
+        : thisMonthDays.filter(d=>!sch[emp.id][d.ds]&&!seededDates.has(d.ds));
+      const branchEmps = employees.filter(e=>e.branch===emp.branch);
+      const branch = BRANCHES.find(b=>b.id===emp.branch);
+      for (const d of pref) {
+        if (needed <= 0) break;
+        if (!canAssignOff(emp, d, branchEmps, branch)) continue;
+        sch[emp.id][d.ds] = STATUS.OFF;
+        needed--;
+      }
+    });
+  });
+
+
+
+  // 나머지 직원: 월 총 휴무 = 주 수 × weeklyOff, 주 단위로 분산 배정
+  employees.filter(e => !isAltPattern(e)).forEach(emp => {
+    const branch = BRANCHES.find(b => b.id === emp.branch);
+    const branchEmps = employees.filter(e => e.branch === emp.branch);
+    const monthlyTarget = getWeeklyOff(emp) * weekCount;
+    let monthlyRemaining = monthlyTarget
+      - Object.values(sch[emp.id]).filter(s => ["휴무","휴무(꼭)"].includes(s)).length;
+
+    // 주 단위로 최대 weeklyOff 씩 분산, 월 총량 초과 금지
+    activeWeeks.forEach((week, wi) => {
+      if (monthlyRemaining <= 0) return;
+      const thisMonthDays = week.filter(d => !d.isPrev);
+      if (thisMonthDays.length === 0) return;
+      // 이번달 날짜가 1일뿐인 주는 마지막 주가 아닐 때만 스킵 (첫 주 단독 방지)
+      // 마지막 주에 단독 1일(예: 8/31)이 있어도 배정 진행
+      const realDays = thisMonthDays.filter(d => !d.isNext);
+      if (realDays.length <= 1 && wi < activeWeeks.length - 1) return;
+
+      // weekOffNow: 남자직원은 isNext(이월일요일) 포함 카운트 - 일요일도 주 쿼터에 포함
+      // 여직원은 isNext 제외 - 이월 일요일이 쿼터를 잡아먹지 않도록
+      const weekOffNow = thisMonthDays.filter(d =>
+        (emp.isMale || !d.isNext) && ["휴무","휴무(꼭)"].includes(sch[emp.id][d.ds])
+      ).length;
+      const weekTarget = Math.min(getWeeklyOff(emp), monthlyRemaining);
+      let toAssign = Math.max(0, weekTarget - weekOffNow);
+      if (toAssign <= 0) return;
+
+      // 지점 내 요일 분산: 동료 휴무 적은 날 우선 (isNext 동등 취급)
+      // 주차(wi)와 직원별 오프셋으로 요일 우선순위를 매주 회전 → 반복 패턴 방지
+      const empOffset = emp.id.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
+      const rotBase = (wi * 3 + empOffset) % 7; // 매주 3요일씩 회전
+      let cands = thisMonthDays
+        .filter(d => !sch[emp.id][d.ds] && !seededDates.has(d.ds)
+          && !(emp.isMale && d.dow === 6)) // 남자직원 일요일은 sunday 블록에서 배정
+        .sort((a, b) => {
+          const aColleagueOff = branchEmps.filter(be => be.id !== emp.id && ["휴무","휴무(꼭)"].includes(sch[be.id][a.ds])).length;
+          const bColleagueOff = branchEmps.filter(be => be.id !== emp.id && ["휴무","휴무(꼭)"].includes(sch[be.id][b.ds])).length;
+          if (aColleagueOff !== bColleagueOff) return aColleagueOff - bColleagueOff;
+          // 동순위면 주차 기반 요일 회전으로 우선순위 결정
+          const aDowRot = (a.dow - rotBase + 7) % 7;
+          const bDowRot = (b.dow - rotBase + 7) % 7;
+          return aDowRot - bDowRot;
+        });
+
+      // 패턴 반복 방지 (최근 2주와 동일 요일 조합 금지)
+      const prevPatterns = activeWeeks.slice(0, wi).map(pw =>
+        pw.filter(d=>!d.isPrev && ["휴무","휴무(꼭)"].includes(sch[emp.id][d.ds])).map(d=>d.dow).sort().join(",")
+      ).filter(p=>p.length>0);
+
+      for (const day of cands) {
+        if (toAssign <= 0) break;
+        if (!canAssignOff(emp, day, branchEmps, branch)) continue;
+
+        // 패턴 반복 방지: 마지막 배정 시 요일 조합 체크
+        if (prevPatterns.length >= 2 && toAssign === 1) {
+          const alreadyDows = thisMonthDays.filter(d=>d.ds!==day.ds&&["휴무","휴무(꼭)"].includes(sch[emp.id][d.ds])).map(d=>d.dow);
+          const proj = [...alreadyDows, day.dow].sort().join(",");
+          const last2 = prevPatterns.slice(-2);
+          if (last2[0]===proj && last2[1]===proj) continue;
+        }
+
+        sch[emp.id][day.ds] = STATUS.OFF;
+        toAssign--;
+        monthlyRemaining--;
+      }
+    });
+  });
+
+  // ignoredDates는 어떤 단계에서도 값이 없어야 함 (step1에서 ownerReqs가 먼저 들어갈 수 있으므로 클리어)
+  employees.forEach(emp => {
+    ignoredDates.forEach(ds => { delete sch[emp.id][ds]; });
+  });
+
+  // 3) 미지정 → 근무 (이번달 + 이월 날짜 전체)
+  // 남자직원 일요일은 빈칸 유지 → 뒤에서 1명 근무 배치
+  employees.forEach(emp => {
+    allDates.forEach(day => {
+      if (emp.isMale && day.dow === 6) return; // 남자직원 일요일 제외
+      if (!sch[emp.id][day.ds]) sch[emp.id][day.ds] = STATUS.WORK;
+    });
+  });
+
+  // 4) 논현 지원 배정: 논현 근무 인원이 minStaff 미달인 날 지원 우선순위 지점 순으로 배정
+  const nonhyeonBranch = BRANCHES.find(b => b.id === "nonhyeon");
+  const nonhyeonMinStaff = rc.branchMinStaff["nonhyeon"] ?? nonhyeonBranch?.minStaff ?? 4;
+  const nonhyeonLabel = nonhyeonBranch?.name ?? "논현&왕십리";
+  // 지원 우선순위: supportConfig.order = [branchId, ...] (우선순위 순)
+  // mustStay 직원은 자기 지점 이탈 불가 → 지원 불가
+  const supportOrder = supportConfig.order || [];
+
+  for (const _day4 of allDates) {
+    const ds = _day4.ds;
+    const nonhyeonEmps = employees.filter(e => e.branch === "nonhyeon");
+    const supportLabel = `지원(${nonhyeonLabel})`;
+    const nonhyeonBase = nonhyeonEmps.filter(e => {
+      const s = sch[e.id][ds];
+      return s === STATUS.WORK || s === "" || isSupport(s) || s === STATUS.SHARE;
+    }).length;
+    const nonhyeonSupporters = employees.filter(e =>
+      e.branch !== "nonhyeon" && sch[e.id][ds] === supportLabel
+    ).length;
+    const nonhyeonWorking = nonhyeonBase + nonhyeonSupporters;
+    if (nonhyeonWorking >= nonhyeonMinStaff) continue;
+
+    const needed = nonhyeonMinStaff - nonhyeonWorking;
+
+    // 우선순위 지점 순서대로 후보 구성
+    // 같은 지점 내에서는 누적 지원 횟수가 적은 순 → 횟수 같으면 날짜 홀짝으로 균등
+    const candidates = [];
+    const dayIdx = allDates.indexOf(_day4);
+    for (const bId of supportOrder) {
+      const branchEmps = employees.filter(e =>
+        e.branch === bId && !e.mustStay && sch[e.id][ds] === STATUS.WORK
+      );
+      // 지원 횟수 적은 순 정렬 (균등 배분)
+      branchEmps.sort((a, b) => {
+        const ca = Object.values(sch[a.id]).filter(s=>s===supportLabel).length;
+        const cb = Object.values(sch[b.id]).filter(s=>s===supportLabel).length;
+        if (ca !== cb) return ca - cb;
+        return dayIdx % 2 === 0 ? 0 : -1; // 동점이면 날짜 홀짝으로 순서 반전
+      });
+      candidates.push(...branchEmps.map(e => e.id));
+    }
+    // 우선순위 외 나머지 지점 (mustStay 아닌 근무중인 직원)
+    const prioritySet = new Set(supportOrder);
+    const otherCands = employees.filter(e =>
+      e.branch !== "nonhyeon" && !prioritySet.has(e.branch) &&
+      !e.mustStay && sch[e.id][ds] === STATUS.WORK
+    ).map(e => e.id);
+    candidates.push(...otherCands);
+
+    let assigned = 0;
+    for (const eid of candidates) {
+      if (assigned >= needed) break;
+      if (sch[eid][ds] !== STATUS.WORK) continue;
+      sch[eid][ds] = supportLabel;
+      assigned++;
+    }
+  }
+
+  // 5) 최소 10명 미달 날짜 보정: "휴무(꼭)" 아닌 휴무를 근무로 전환
+  //    단, 해당 직원의 주 weeklyOff 보장을 침해하지 않음 (실제 주 경계 기준)
+  for (let pass = 0; pass < 10; pass++) {
+    let fixed = false;
+    for (const _day5 of allDates) {
+      const ds = _day5.ds;
+      const workCount = employees.filter(e => {
+        if (e.isMale) return false; // 남자직원 제외 (violations 기준과 통일)
+        const s = sch[e.id][ds];
+        return s === STATUS.WORK || s === "" || isSupport(s) || s === STATUS.SHARE;
+      }).length;
+      if (workCount >= rc.minWork) continue;
+
+      const needed = rc.minWork - workCount;
+      const wkIdx = getWeekIdx(ds);
+
+      // 이 날 일반휴무인 직원만 대상 (휴무(꼭) 제외, 남자직원 제외, 원장 제외)
+      const candidates = employees.filter(e => !e.isOwner && !e.isMale && sch[e.id][ds] === STATUS.OFF)
+        .sort((a, b) => {
+          // 같은 주에 더 많이 쉰 직원 우선 (여유분 있음)
+          const count = (emp) => Object.entries(sch[emp.id])
+            .filter(([s_ds, s]) => getWeekIdx(s_ds) === wkIdx && (s===STATUS.OFF||s==="휴무(꼭)")).length;
+          return count(b) - count(a);
+        });
+
+      let converted = 0;
+      for (const emp of candidates) {
+        if (converted >= needed) break;
+        // 이 주에 weeklyOff 보다 많이 쉬고 있을 때만 한 개 빼는 것 허용
+        const weekOffNow = Object.entries(sch[emp.id])
+          .filter(([s_ds, s]) => getWeekIdx(s_ds) === wkIdx && (s===STATUS.OFF||s==="휴무(꼭)")).length;
+        if (weekOffNow <= emp.weeklyOff) continue; // 딱 맞거나 부족하면 절대 건드리지 않음
+
+        sch[emp.id][ds] = STATUS.WORK;
+        converted++;
+        fixed = true;
+      }
+    }
+    if (!fixed) break;
+  }
+
+  // 6) 월 총 휴무 미달 보정 패스: 주 수 × weeklyOff 대비 부족분을 남은 날짜에서 보충
+  //    weeks[] 기준 주 경계 사용, 배정마다 weekOffNow 재계산, 연속 2회 제한 적용
+  employees.filter(e => !isAltPattern(e) && !e.isOwner).forEach(emp => {
+    const branch = BRANCHES.find(b => b.id === emp.branch);
+    const branchEmps = employees.filter(e => e.branch === emp.branch);
+    const monthlyTarget = getWeeklyOff(emp) * weekCount;
+    const monthlyOffNow = () => Object.values(sch[emp.id]).filter(s => ["휴무","휴무(꼭)"].includes(s)).length;
+
+    activeWeeks.forEach(week => {
+      const thisMonthDays = week.filter(d => !d.isPrev);
+      if (thisMonthDays.length === 0) return;
+
+      // 이 주 휴무 수를 매번 재계산
+      const weekOffNow = () => thisMonthDays.filter(d => ["휴무","휴무(꼭)"].includes(sch[emp.id][d.ds])).length;
+      // 월 총량 초과 금지, 주당 weeklyOff 초과 금지
+      const weekDeficit = () => Math.min(emp.weeklyOff - weekOffNow(), monthlyTarget - monthlyOffNow());
+      if (weekDeficit() <= 0) return;
+
+      const cands = thisMonthDays
+        .filter(d => sch[emp.id][d.ds] === STATUS.WORK)
+        .sort((a, b) => {
+          if (!!a.isNext !== !!b.isNext) return (a.isNext ? 1 : 0) - (b.isNext ? 1 : 0);
+          const aOff = branchEmps.filter(be=>be.id!==emp.id&&["휴무","휴무(꼭)"].includes(sch[be.id][a.ds])).length;
+          const bOff = branchEmps.filter(be=>be.id!==emp.id&&["휴무","휴무(꼭)"].includes(sch[be.id][b.ds])).length;
+          return aOff - bOff;
+        });
+
+      for (const day of cands) {
+        if (weekDeficit() <= 0) break;
+        if (!canAssignOff(emp, day, branchEmps, branch)) continue;
+
+        // 전체 최소 11명 보호
+        const totalWorking = employees.filter(e => {
+          const s = sch[e.id][day.ds];
+          return s===STATUS.WORK||isSupport(s)||s===STATUS.SHARE;
+        }).length;
+        if (totalWorking <= rc.minWork) continue;
+
+        // 지점 최소 근무 인원 보호
+        const branchWorking = branchEmps.filter(be =>
+          !["휴무","휴무(꼭)"].includes(sch[be.id][day.ds])
+        ).length;
+        if (branch && branchWorking - 1 < (rc.branchMinStaff[branch.id] ?? branch.minStaff)) continue;
+
+        sch[emp.id][day.ds] = STATUS.OFF;
+        // weekOffNow / monthlyOffNow는 함수로 매번 재계산 → 중복 삽입 방지
+      }
+    });
+  });
+
+  // 7) 하루 최대 휴무 5명 초과 보정: 초과분 직원의 휴무를 근무로 전환
+  for (let pass = 0; pass < 10; pass++) {
+    let fixed = false;
+    for (const _day7 of allDates) {
+      const ds = _day7.ds;
+      const offEmps = employees.filter(e => !e.isMale && ["휴무","휴무(꼭)"].includes(sch[e.id][ds])); // 남자직원 별도
+      if (offEmps.length <= rc.maxDailyOff) continue;
+
+      // 초과분만 근무 전환 — 휴무(꼭) 제외, 주간 weeklyOff 초과분 우선 취소
+      const cancelCands = offEmps
+        .filter(e => sch[e.id][ds] === STATUS.OFF) // 휴무(꼭) 제외
+        .sort((a, b) => {
+          // 이 주에 weeklyOff 초과로 쉬는 직원 우선 (여유 있음)
+          const wkIdx = getWeekIdx(ds);
+          const aWk = Object.entries(sch[a.id]).filter(([s,v])=>getWeekIdx(s)===wkIdx&&["휴무","휴무(꼭)"].includes(v)).length;
+          const bWk = Object.entries(sch[b.id]).filter(([s,v])=>getWeekIdx(s)===wkIdx&&["휴무","휴무(꼭)"].includes(v)).length;
+          return bWk - aWk;
+        });
+
+      const excess = offEmps.length - rc.maxDailyOff;
+      let converted = 0;
+      for (const emp of cancelCands) {
+        if (converted >= excess) break;
+        // 주간 최소 weeklyOff 보호
+        const wkIdx = getWeekIdx(ds);
+        const wkOff = Object.entries(sch[emp.id]).filter(([s,v])=>getWeekIdx(s)===wkIdx&&["휴무","휴무(꼭)"].includes(v)).length;
+        if (wkOff <= emp.weeklyOff) continue;
+        sch[emp.id][ds] = STATUS.WORK;
+        converted++;
+        fixed = true;
+      }
+    }
+    if (!fixed) break;
+  }
+
+  // 8) 연속 근무 초과 해소 swap: 초과 직원 ↔ 같은 지점 동료 휴무 교환
+  {
+    const isWork_ = (empId, ds) => {
+      const s = sch[empId]?.[ds];
+      if (!s || s === "") return false;
+      return s === STATUS.WORK || isSupport(s) || s === STATUS.SHARE;
+    };
+
+    // ds 포함 연속 근무 블록의 총 길이
+    const streakLen = (empId, ds) => {
+      if (!isWork_(empId, ds)) return 0;
+      let start = ds;
+      for (let i = 1; i <= 40; i++) {
+        const pd = addDays(ds, -i);
+        if (isWork_(empId, pd)) start = pd; else break;
+      }
+      let len = 0;
+      for (let i = 0; i <= 40; i++) {
+        if (isWork_(empId, addDays(start, i))) len++; else break;
+      }
+      return len;
+    };
+
+    // 직원의 현재 스케줄에 초과 블록이 하나라도 있는지
+    const hasExceed = (empId) =>
+      allDates.filter(d => !d.isPrev && !d.isNext)
+        .some(d => streakLen(empId, d.ds) > rc.maxConsecWork);
+
+    // swap 전용 완화 검증: 3일 연속 휴무만 차단 (퐁당퐁당 허용)
+    const canSwapOff = (empId, ds) => {
+      const isO = (s) => s === "휴무" || s === "휴무(꼭)";
+      const p1 = sch[empId]?.[addDays(ds,-1)] || "";
+      const p2 = sch[empId]?.[addDays(ds,-2)] || "";
+      const n1 = sch[empId]?.[addDays(ds, 1)] || "";
+      if (isO(p1) && isO(p2)) return false;
+      if (isO(p1) && isO(n1)) return false;
+      return true;
+    };
+
+    // 남자직원 일요일 규칙 검증: 일요일엔 정확히 1명만 근무해야 함
+    const isSunday_ = (dateStr) => (new Date(dateStr).getDay()) === 0; // 0=일요일
+    const maleSundayOk = (dateStr) => {
+      if (!isSunday_(dateStr)) return true; // 일요일 아닌 날은 무관
+      const working = employees.filter(e => e.isMale && isWork_(e.id, dateStr)).length;
+      return working === 1;
+    };
+
+    const scanDates = allDates.filter(d => !d.isPrev && !d.isNext);
+
+    for (let round = 0; round < 30; round++) {
+      let swapped = false;
+
+      for (const emp of employees) {
+        if (!hasExceed(emp.id)) continue;
+
+        for (const day of scanDates) {
+          const ds = day.ds;
+          if (!isWork_(emp.id, ds)) continue;
+          if (seededDates.has(ds)) continue;
+          if (streakLen(emp.id, ds) <= rc.maxConsecWork) continue;
+
+          // 같은 지점 동료 중 이날 일반 휴무인 직원
+          const branchEmps = employees.filter(e => e.branch === emp.branch);
+          const colleagues = branchEmps.filter(c =>
+            c.id !== emp.id && sch[c.id]?.[ds] === STATUS.OFF
+          );
+
+          // emp의 교환 가능 휴무날 목록
+          const empOffDays = scanDates.filter(od =>
+            sch[emp.id]?.[od.ds] === STATUS.OFF && !seededDates.has(od.ds)
+          );
+
+          let didSwap = false;
+          for (const col of colleagues) {
+            // col의 연속 블록이 긴 날 근처에 emp 휴무를 넣는 게 유리 → 정렬
+            const sortedOff = [...empOffDays].sort((a, b) =>
+              streakLen(col.id, b.ds) - streakLen(col.id, a.ds)
+            );
+
+            for (const offDay of sortedOff) {
+              if (!isWork_(col.id, offDay.ds)) continue;
+              if (seededDates.has(offDay.ds)) continue;
+              if (sch[col.id]?.[offDay.ds] === STATUS.MUST_OFF) continue;
+
+              // 4개 셀 저장 후 임시 교환
+              const sv = [sch[emp.id][ds], sch[emp.id][offDay.ds], sch[col.id][ds], sch[col.id][offDay.ds]];
+              sch[emp.id][ds]        = STATUS.OFF;
+              sch[emp.id][offDay.ds] = STATUS.WORK;
+              sch[col.id][ds]        = STATUS.WORK;
+              sch[col.id][offDay.ds] = STATUS.OFF;
+
+              // 검증: emp 해당 블록 해소 + col 신규 초과 없음 + 3일연속 없음
+              const empOk  = canSwapOff(emp.id, ds);
+              const colOk  = canSwapOff(col.id, offDay.ds);
+              const empFix = streakLen(emp.id, ds) <= rc.maxConsecWork;
+              const colSafe = streakLen(col.id, ds) <= rc.maxConsecWork;
+
+              if (empOk && colOk && empFix && colSafe &&
+                  maleSundayOk(ds) && maleSundayOk(offDay.ds)) {
+                swapped = true;
+                didSwap = true;
+                break;
+              } else {
+                // 롤백
+                sch[emp.id][ds]        = sv[0];
+                sch[emp.id][offDay.ds] = sv[1];
+                sch[col.id][ds]        = sv[2];
+                sch[col.id][offDay.ds] = sv[3];
+              }
+            }
+            if (didSwap) break;
+          }
+          if (didSwap) break;
+        }
+      }
+      if (!swapped) break;
+    }
+  }
+
+  // 디버그: window.__debugDate 설정 시 해당 날짜 canAssignOff 원인 로깅
+  if (typeof window !== 'undefined' && window.__debugDate) {
+    const dd = window.__debugDate;
+    console.log(`=== 디버그: ${dd} canAssignOff 차단 원인 ===`);
+    employees.forEach(emp => {
+      const be2 = employees.filter(e=>e.branch===emp.branch);
+      const br2 = BRANCHES.find(b=>b.id===emp.branch);
+      const fday = {ds:dd, dow:0, d:0};
+      const ok = canAssignOff(emp, fday, be2, br2, true);
+      if(ok) console.log(`[canOff OK] ${emp.id} ${dd}: 가능`);
+    });
+  }
+  return sch;
+}
+
+function App() {
+  const today = new Date();
+  const [year, setYear] = useState(today.getFullYear());
+  const [month, setMonth] = useState(today.getMonth());
+  const [schHistory, setSchHistory] = useState({}); // { "YYYY-MM": {empId:{ds:status}} }
+  // 현재 월 키
+  const mkKey = (y, m) => `${y}-${String(m+1).padStart(2,"0")}`;
+  const [ownerReqs, setOwnerReqs] = useState({});
+  const [empReqs, setEmpReqs] = useState({});  // 일반직원 휴무(꼭): { "empId__ds": "휴무(꼭)" }
+  const EMP_REQS_KEY = "empReqs_v1";
+  const ownerDragRef = React.useRef({active:false, empId:null, mode:null}); // mode: 'on'|'off'
+  const [ownerSaveStatus, setOwnerSaveStatus] = useState(""); // "", "saving", "saved", "error"
+  const OWNER_STORAGE_KEY = "ownerReqs_v1";
+  const OWNER_REPEAT_KEY  = "ownerRepeat_v1"; // { empId: { enabled: bool, dows: number[] } }
+  // ownerRepeat: 원장별 반복 설정 { [empId]: { enabled: bool, dows: number[] } }
+  const [ownerRepeat, setOwnerRepeat] = useState({});
+
+  // 앱 시작 시 저장된 원장 휴무 + 반복 설정 불러오기
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const r = await window.storage.get(OWNER_STORAGE_KEY);
+        if (r?.value) setOwnerReqs(JSON.parse(r.value));
+      } catch(e) { /* 저장 없음 */ }
+      try {
+        const r2 = await window.storage.get(OWNER_REPEAT_KEY);
+        if (r2?.value) setOwnerRepeat(JSON.parse(r2.value));
+        const r3 = await window.storage.get(EMP_REQS_KEY);
+        if (r3?.value) setEmpReqs(JSON.parse(r3.value));
+      } catch(e) { /* 저장 없음 */ }
+    })();
+  }, []);
+
+  // 반복 설정 저장
+  const saveOwnerRepeat = async (rep) => {
+    try { await window.storage.set(OWNER_REPEAT_KEY, JSON.stringify(rep)); } catch(e) {}
+  };
+
+  const saveEmpReqs = async (reqs) => {
+    try { await window.storage.set(EMP_REQS_KEY, JSON.stringify(reqs)); } catch(e) {}
+  };
+
+  const saveOwnerReqs = async (reqs) => {
+    setOwnerSaveStatus("saving");
+    try {
+      await window.storage.set(OWNER_STORAGE_KEY, JSON.stringify(reqs));
+      setOwnerSaveStatus("saved");
+      setTimeout(() => setOwnerSaveStatus(""), 2000);
+    } catch(e) {
+      setOwnerSaveStatus("error");
+      setTimeout(() => setOwnerSaveStatus(""), 3000);
+    }
+  };
+  const [editCell, setEditCell] = useState(null);
+  const [toast, setToast] = useState(null);
+  const [filterBranch, setFilterBranch] = useState("all");
+  const [showRules, setShowRules] = useState(false);
+  const RULES_KEY = "customRules_v1";
+  const defaultRules = [
+    ["🌍 전체",["주 시작: 월요일","일 근무인원: 최소 11명 ~ 최대 15명","하루 전체 휴무 최대 5명 (남자직원 제외)","휴무 텀: 최대 6일(7일 초과 금지)","연속 2일 휴무: 월 2회 허용","3일 연속 휴무: 절대 금지"]],
+    ["📍 논현&왕십리",["최소 4명 근무 유지 (지원 인원 포함)","논현 소속 최소 1명 항시 논현 근무","인원 부족 시 희서↔민정(용산) 동등 지원"]],
+    ["📍 홍대&마곡",["지은(원장)·현아 타지점 이동 불가","지은 원장: 지정 휴무일 고정","혜경·민아 동시 휴무 금지"]],
+    ["📍 용산",["보령(원장) 타지점 이동 불가","최소 1명 근무 유지","보령: 지정 휴무일 고정"]],
+    ["📍 잠실&위례",["최소 2명 근무 유지"]],
+    ["📍 천호",["미진(원장) 타지점 이동 불가","최소 1명 근무 유지","수민·미진 동시 휴무 금지"]],
+    ["🔄 전체쉐어 순위",["잠실↔천호: ①수민 ②다해/소이 ③용산여유","홍대↔용산: ①민아 ②혜경 ③희서/민정"]],
+  ];
+  const [customRules, setCustomRules] = React.useState(() => {
+    try { const r = localStorage.getItem(RULES_KEY); return r ? JSON.parse(r) : defaultRules; } catch { return defaultRules; }
+  });
+  const saveRules = (r) => { try { localStorage.setItem(RULES_KEY, JSON.stringify(r)); } catch {} };
+  const [editingRule, setEditingRule] = React.useState(null); // {gi, ii} or {gi, title}
+  const [showEmpSettings, setShowEmpSettings] = useState(false);
+  const [showSupportSettings, setShowSupportSettings] = useState(false);
+  const [showOwnerSettings, setShowOwnerSettings] = useState(false);
+  // 직원별 설정: { [empId]: { weeklyWork: 5|6, altPattern: bool } }
+  const [empSettings, setEmpSettings] = useState(() =>
+    Object.fromEntries(EMPLOYEES.map(e => [e.id, {
+      weeklyWork: 7 - e.weeklyOff,
+      altPattern: e.id === "현아",
+    }]))
+  );
+  // 잠금 날짜 Set (전달저장 시 이월 주 날짜 잠금)
+  const [lockedDates, setLockedDates] = useState(new Set());
+  // 커스텀 직원 (동적 추가) — storage 영속
+  const CUSTOM_EMP_KEY = "customEmployees_v1";
+  const [customEmployees, setCustomEmployees] = useState([]);
+  const [showAddEmp, setShowAddEmp] = useState(false);
+  const DELETED_EMP_KEY = "deletedEmpIds_v1";
+  const [deletedEmpIds, setDeletedEmpIds] = useState(new Set());
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const r = await window.storage.get(DELETED_EMP_KEY);
+        if (r?.value) setDeletedEmpIds(new Set(JSON.parse(r.value)));
+      } catch(e) {}
+    })();
+  }, []);
+  const saveDeletedIds = async (ids) => {
+    try { await window.storage.set(DELETED_EMP_KEY, JSON.stringify([...ids])); } catch(e) {}
+  };
+  const [newEmp, setNewEmp] = useState({name:"",branch:"nonhyeon",isOwner:false,weeklyOff:2,isMale:false,mustStay:false});
+  // 커스텀 직원 로드
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const r = await window.storage.get(CUSTOM_EMP_KEY);
+        if (r?.value) {
+          const emps = JSON.parse(r.value);
+          setCustomEmployees(emps);
+          setEmpSettings(prev => {
+            const next = {...prev};
+            emps.forEach(e => { if (!next[e.id]) next[e.id] = {weeklyWork:7-e.weeklyOff, altPattern:false}; });
+            return next;
+          });
+        }
+      } catch(e) {}
+    })();
+  }, []);
+  const saveCustomEmps = async (emps) => {
+    try { await window.storage.set(CUSTOM_EMP_KEY, JSON.stringify(emps)); } catch(e) {}
+  };
+  // 논현 지원 우선순위: 지점 ID 배열 (순서대로 우선)
+  const [supportOrder, setSupportOrder] = useState(["yongsan"]);
+  // 전체 직원 = 기본 + 커스텀
+  // 근무표 표시용: 삭제된 직원도 포함 (기존 근무표 유지)
+  const ALL_EMPLOYEES = React.useMemo(() => [...EMPLOYEES, ...customEmployees], [customEmployees]);
+  // 자동배치용: 삭제된 직원 제외
+  const ACTIVE_EMPLOYEES = React.useMemo(() => ALL_EMPLOYEES.filter(e => !deletedEmpIds.has(e.id)), [ALL_EMPLOYEES, deletedEmpIds]);
+  // 배정 규칙 설정
+  const [showRuleConfig, setShowRuleConfig] = useState(false);
+  const [showSettings, setShowSettings] = useState(false); // 설정 드롭다운
+  const [ruleConfig, setRuleConfig] = useState({
+    minWork: 11,       // 일 최소 근무인원
+    maxWork: 15,       // 일 최대 근무인원
+    maxDailyOff: 5,    // 하루 최대 휴무 인원
+    maxConsecWork: 6,   // 최대 연속 근무일
+    branchMinStaff: Object.fromEntries(BRANCHES.map(b => [b.id, b.minStaff])),
+    // 지점별 동시 휴무 금지: branchId → 동시 휴무 금지 적용 여부
+    // 적용 대상: 원장·mustStay 제외 일반직원 전원 (인원 2명 이하 지점)
+    noSimultaneousOff: Object.fromEntries(
+      BRANCHES.map(b => {
+        const normals = ALL_EMPLOYEES.filter(e => e.branch === b.id && !e.isOwner && !e.mustStay);
+        return [b.id, normals.length <= 2]; // 일반직원 2명 이하 지점만 기본 ON
+      })
+    ),
+  });
+  const setRule = (key, val) => setRuleConfig(p => ({...p, [key]: val}));
+
+  const dim = getDim(year, month);
+  // 월 변경 시: schHistory에 월별로 저장되므로 별도 처리 불필요
+
+  const days = useMemo(() => {
+    const arr = Array.from({length:dim},(_,i)=>{
+      const d=i+1, ds=fmtDs(year,month,d);
+      return {d, ds, dow: getDow0Mon(year,month,d), isNext: false};
+    });
+    // 마지막 날이 일요일(dow=6)이 아니면 다음달 일요일까지 추가
+    const lastDow = getDow0Mon(year, month, dim);
+    if (lastDow !== 6) {
+      const daysToAdd = 6 - lastDow; // 일요일까지 남은 일수
+      const nextYear = month === 11 ? year + 1 : year;
+      const nextMonth = month === 11 ? 0 : month + 1;
+      for (let i = 1; i <= daysToAdd; i++) {
+        const ds = fmtDs(nextYear, nextMonth, i);
+        arr.push({ d: i, ds, dow: getDow0Mon(nextYear, nextMonth, i), isNext: true, nextMonth, nextYear });
+      }
+    }
+    return arr;
+  },[year,month,dim]);
+
+  const curKey = mkKey(year, month);
+  const prevKey = month === 0 ? mkKey(year-1, 11) : mkKey(year, month-1);
+
+  // 전달 근무표 (이월용)
+  const prevSch = schHistory[prevKey] || {};
+
+  // 현재 월 근무표: 전달에서 이번달 날짜로 배정된 이월 데이터를 베이스로 깔고
+  // 현재달 schHistory가 덮어씀 (자동배치/수동편집 우선)
+  const sch = useMemo(() => {
+    const base = {};
+    ALL_EMPLOYEES.forEach(emp => { base[emp.id] = {}; });
+    const curMs = `${year}-${String(month+1).padStart(2,"0")}`;
+    // 1) 전달 schHistory에서 이번달 날짜 시드 (isNext로 배정된 것)
+    //    prevSch 클로저 대신 schHistory[prevKey] 직접 참조 (stale closure 방지)
+    const prevData = schHistory[prevKey] || {};
+    ALL_EMPLOYEES.forEach(emp => {
+      Object.entries(prevData[emp.id] || {}).forEach(([ds, s]) => {
+        if (ds.startsWith(curMs) && s && s !== "") base[emp.id][ds] = s;
+      });
+    });
+    // 2) 이번달 schHistory로 덮어쓰기 (자동배치/수동편집 결과 우선)
+    const cur = schHistory[curKey] || {};
+    ALL_EMPLOYEES.forEach(emp => {
+      Object.entries(cur[emp.id] || {}).forEach(([ds, s]) => {
+        if (s && s !== "") base[emp.id][ds] = s;
+      });
+    });
+    return base;
+  }, [schHistory, curKey, prevKey, year, month]);
+
+  const setSch = (updater) => setSchHistory(prev => {
+    const cur = prev[curKey] || {};
+    const next = typeof updater === 'function' ? updater(cur) : updater;
+    return {...prev, [curKey]: next};
+  });
+
+  const curMonthStr = `${year}-${String(month+1).padStart(2,"0")}`;
+  const nextMonthStr = `${month===11?year+1:year}-${String(month+2>12?1:month+2).padStart(2,"0")}`;
+  const toast_ = (msg,type="ok") => { setToast({msg,type}); setTimeout(()=>setToast(null),2500); };
+
+  const setEmpSetting = (eid, key, val) =>
+    setEmpSettings(p => ({...p, [eid]: {...p[eid], [key]: val}}));
+
+  const getS = (eid, ds) => sch[eid]?.[ds] || "";
+  const setS = (eid, ds, s) => {
+    setSch(p=>({...p,[eid]:{...(p[eid]||{}),[ds]:s}}));
+    // 휴무(꼭) 저장/삭제
+    const key = eid + "__" + ds;
+    const emp = ALL_EMPLOYEES.find(e=>e.id===eid);
+    if (emp && !emp.isOwner) {
+      setEmpReqs(prev => {
+        const next = {...prev};
+        if (s === "휴무(꼭)") next[key] = "휴무(꼭)";
+        else delete next[key];
+        saveEmpReqs(next);
+        return next;
+      });
+    }
+  };
+
+  const dailyCount = (ds) => ALL_EMPLOYEES.filter(e => {
+    if (e.isMale) return false; // 남자직원 일 근무 인원 미포함
+    const s=getS(e.id,ds); return s===STATUS.WORK||isSupport(s)||s===STATUS.SHARE||s==="";
+  }).length;
+
+  const violations = useMemo(()=>{
+    const v=[];
+    days.forEach(day=>{
+      // 해당 날짜에 명시적으로 배정된 직원이 있을 때만 위반 체크 (빈칸 무시)
+      const assigned = ALL_EMPLOYEES.filter(e => getS(e.id,day.ds)!=="");
+      if (assigned.length === 0) return;
+      const c=dailyCount(day.ds);
+      if(c>0&&c<ruleConfig.minWork) v.push(`${day.d}일 ${c}명(최소${ruleConfig.minWork})`);
+      if(c>ruleConfig.maxWork) v.push(`${day.d}일 ${c}명(최대${ruleConfig.maxWork}초과)`);
+      // 남자직원 일요일 동시근무 금지
+      if (day.dow === 6) {
+        const maleWorking = ALL_EMPLOYEES.filter(e=>e.isMale && getS(e.id,day.ds)===STATUS.WORK).length;
+        if (maleWorking > 1) v.push(`${day.d}일(일) 남자직원 ${maleWorking}명 동시근무`);
+      }
+
+    });
+
+    // 연속 근무 초과 직원 검출
+    const isW_ = (empId, ds) => {
+      const s = getS(empId, ds);
+      return s === STATUS.WORK || (s && s.startsWith("지원")) || s === STATUS.SHARE;
+    };
+    ALL_EMPLOYEES.forEach(emp => {
+      let streak = 0; let maxStreak = 0; let streakStart = null;
+      [...days].forEach(day => {
+        if (isW_(emp.id, day.ds)) {
+          if (streak === 0) streakStart = day.d;
+          streak++;
+          if (streak > maxStreak) maxStreak = streak;
+          if (streak === ruleConfig.maxConsecWork + 1) {
+            // maxConsecWork+1일째 되는 순간 딱 1번만 push
+            v.push(`${emp.name} ${streakStart}일~ 연속근무${streak}일 초과`);
+          }
+        } else {
+          streak = 0;
+        }
+      });
+    });
+
+    return v;
+  },[sch,days,ruleConfig]);
+
+  const isWeekBoundary = (dayObj) => {
+    // dayObj can be a number (old) or {d, isNext, dow}
+    const d = typeof dayObj === "object" ? dayObj.d : dayObj;
+    const isNext = typeof dayObj === "object" ? dayObj.isNext : false;
+    if (!isNext && d <= 1) return false;
+    if (isNext) return dayObj.dow === 0; // 다음달 날짜: 월요일이면 주 경계
+    return getDow0Mon(year,month,d)===0;
+  };
+
+  const exportCSV = () => {
+    const header=["직원","지점",...days.map(d=>`${d.d}(${DNAMES[d.dow]})`)];
+    const rows=ALL_EMPLOYEES.map(e=>[e.name,BRANCHES.find(b=>b.id===e.branch)?.name||"",...days.map(d=>getS(e.id,d.ds)||"근무")]);
+    const csv=[header,...rows].map(r=>r.join(",")).join("\n");
+    const a=document.createElement("a");
+    a.href=URL.createObjectURL(new Blob(["\uFEFF"+csv],{type:"text/csv;charset=utf-8;"}));
+    a.download=`근무표_${year}년${month+1}월.csv`; a.click();
+    toast_("CSV 다운로드 완료");
+  };
+
+  const shownBranches = filterBranch==="all" ? BRANCHES : filterBranch==="male" ? [] : BRANCHES.filter(b=>b.id===filterBranch);
+
+  return (
+    <div style={{fontFamily:"'Noto Sans KR',sans-serif",minHeight:"100vh",background:"#f4f2ef",color:"#221810"}}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap');
+        *{box-sizing:border-box;margin:0;padding:0}
+        ::-webkit-scrollbar{height:5px;width:5px}::-webkit-scrollbar-track{background:#ede8e0}::-webkit-scrollbar-thumb{background:#c0a07a;border-radius:3px}
+        .cc{cursor:pointer;transition:filter .12s}
+        .cc:hover{filter:brightness(.9)}
+        @media print{.np{display:none!important}}
+      `}</style>
+
+      {/* Toast */}
+      {toast && <div style={{position:"fixed",bottom:20,left:"50%",transform:"translateX(-50%)",background:toast.type==="err"?"#b03020":"#1e6e3a",color:"#fff",padding:"9px 22px",borderRadius:8,fontSize:13,zIndex:999,boxShadow:"0 4px 14px rgba(0,0,0,.2)"}}>{toast.msg}</div>}
+
+      {/* 셀 편집 모달 */}
+      {editCell && (
+        <>
+          <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.3)",zIndex:200}} onClick={()=>setEditCell(null)}/>
+          <div style={{position:"fixed",top:"50%",left:"50%",transform:"translate(-50%,-50%)",background:"#fff",borderRadius:14,padding:22,zIndex:201,width:260,boxShadow:"0 10px 40px rgba(0,0,0,.2)"}}>
+            <div style={{marginBottom:14}}>
+              <div style={{fontWeight:700,fontSize:15,color:"#221810"}}>{editCell.emp.name}</div>
+              <div style={{fontSize:12,color:"#aaa",marginTop:2}}>{editCell.day.d}일 {DNAMES[editCell.day.dow]}요일</div>
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:7}}>
+              {["근무","휴무","휴무(꼭)","전체쉐어"].map(s=>{
+                const sc=getSColor(s); const active=editCell.cur===s;
+                return (
+                  <button key={s} onClick={()=>{setS(editCell.emp.id,editCell.day.ds,s);setEditCell(null);}} style={{padding:"9px 14px",borderRadius:8,border:`2px solid ${active?sc.border:"#e4ddd6"}`,background:active?sc.bg:"#faf8f5",color:active?sc.text:"#666",fontFamily:"inherit",fontSize:13,fontWeight:active?700:400,cursor:"pointer",textAlign:"left",transition:"all .12s"}}>
+                    {s} {active?"✓":""}
+                  </button>
+                );
+              })}
+              {BRANCHES.map(b=>{
+                const sv=`지원(${b.name})`; const sc=getSColor(sv); const active=editCell.cur===sv;
+                return (
+                  <button key={sv} onClick={()=>{setS(editCell.emp.id,editCell.day.ds,sv);setEditCell(null);}} style={{padding:"9px 14px",borderRadius:8,border:`2px solid ${active?sc.border:"#e4ddd6"}`,background:active?sc.bg:"#faf8f5",color:active?sc.text:"#c87020",fontFamily:"inherit",fontSize:13,fontWeight:active?700:400,cursor:"pointer",textAlign:"left",transition:"all .12s"}}>
+                    지원 → {b.name} {active?"✓":""}
+                  </button>
+                );
+              })}
+            </div>
+            <button onClick={()=>setEditCell(null)} style={{marginTop:12,width:"100%",padding:"8px",border:"1px solid #ddd",borderRadius:8,background:"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:12,color:"#999"}}>닫기</button>
+          </div>
+        </>
+      )}
+
+      {/* 헤더 */}
+      <div className="np" style={{background:"linear-gradient(135deg,#28180e 0%,#4a2c14 100%)",padding:"13px 18px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:50,gap:8}}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <span style={{fontSize:22}}>🌿</span>
+          <div>
+            <div style={{color:"#f5e8d0",fontSize:16,fontWeight:700,letterSpacing:.5}}>HouseWaxing 근무표</div>
+            <div style={{color:"rgba(255,255,255,.4)",fontSize:10}}>{BRANCHES.length}지점 · {ALL_EMPLOYEES.length}명 통합 관리</div>
+          </div>
+        </div>
+        <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
+          <Btn label="⚡ 자동배치" onClick={()=>{setSch(autoAssign(year,month,ownerReqs,prevSch,empSettings,{order:supportOrder},ruleConfig,ownerRepeat,ACTIVE_EMPLOYEES,empReqs));toast_("자동 배치 완료! 세부 조정을 권장합니다.");}} primary/>
+          <Btn label="📅 이월잠금" onClick={()=>{
+            const nextDs = new Set(days.filter(d=>d.isNext).map(d=>d.ds));
+            setLockedDates(nextDs);
+            toast_("이월 주 날짜가 잠금되었습니다.");
+          }} outline/>
+          <Btn label="⬇ CSV" onClick={exportCSV} outline/>
+          <Btn label="🖨 인쇄" onClick={()=>window.print()} outline/>
+          <div style={{position:"relative"}}>
+            <Btn label="⚙️ 설정" onClick={()=>setShowSettings(s=>!s)} outline/>
+            {showSettings && (
+              <>
+                <div style={{position:"fixed",inset:0,zIndex:149}} onClick={()=>setShowSettings(false)}/>
+                <div style={{position:"absolute",top:"calc(100% + 4px)",right:0,background:"#fff",borderRadius:10,boxShadow:"0 6px 24px rgba(0,0,0,.18)",zIndex:150,overflow:"hidden",minWidth:140}}>
+                  {[
+                    {label:"⚙️ 규칙설정", action:()=>{setShowRuleConfig(true);setShowSettings(false);}},
+                    {label:"👑 원장설정", action:()=>{setShowOwnerSettings(true);setShowSettings(false);}},
+                    {label:"👤 직원설정", action:()=>{setShowEmpSettings(true);setShowSettings(false);}},
+                    {label:"🏢 지점지원설정", action:()=>{setShowSupportSettings(true);setShowSettings(false);}},
+                  ].map(({label,action})=>(
+                    <button key={label} onClick={action} style={{display:"block",width:"100%",padding:"11px 16px",border:"none",background:"transparent",textAlign:"left",fontSize:13,cursor:"pointer",fontFamily:"inherit",color:"#3a2010",fontWeight:500,transition:"background .1s"}}
+                      onMouseEnter={e=>e.target.style.background="#f5ede2"} onMouseLeave={e=>e.target.style.background="transparent"}>
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* 배정규칙 모달 - 편집 가능 */}
+      {showRules && (
+        <>
+          <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.45)",zIndex:200}} onClick={()=>setShowRules(false)}/>
+          <div style={{position:"fixed",top:"50%",left:"50%",transform:"translate(-50%,-50%)",background:"#fff",borderRadius:14,padding:24,zIndex:201,width:"min(96vw,820px)",maxHeight:"85vh",overflowY:"auto",boxShadow:"0 10px 40px rgba(0,0,0,.25)"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
+              <div style={{fontWeight:700,fontSize:14,color:"#4a2c14"}}>📋 배정 규칙</div>
+              <div style={{display:"flex",gap:6}}>
+                <button onClick={()=>{setCustomRules(defaultRules);saveRules(defaultRules);}} style={{fontSize:11,padding:"3px 10px",borderRadius:6,border:"1px solid #ddd",background:"#f5f0ea",color:"#888",cursor:"pointer",fontFamily:"inherit"}}>초기화</button>
+                <button onClick={()=>setShowRules(false)} style={{fontSize:16,lineHeight:1,padding:"2px 8px",borderRadius:6,border:"1px solid #ddd",background:"#f5f0ea",color:"#888",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
+              </div>
+            </div>
+            <div style={{fontSize:11,color:"#aaa",marginBottom:14}}>항목을 클릭하면 편집할 수 있습니다.</div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:10,fontSize:12,color:"#5c4028"}}>
+              {customRules.map(([t,items],gi)=>(
+                <div key={gi} style={{background:"#f5ede2",borderRadius:8,padding:10}}>
+                  {/* 그룹 제목 편집 */}
+                  {editingRule?.gi===gi && editingRule?.title ? (
+                    <input autoFocus defaultValue={t} onBlur={e=>{
+                      const next=customRules.map((g,i)=>i===gi?[e.target.value,g[1]]:g);
+                      setCustomRules(next); saveRules(next); setEditingRule(null);
+                    }} onKeyDown={e=>{if(e.key==="Enter")e.target.blur(); if(e.key==="Escape")setEditingRule(null);}}
+                    style={{fontWeight:700,fontSize:12,color:"#8b5c2a",background:"#fff",border:"1px solid #c0a070",borderRadius:4,padding:"2px 6px",width:"100%",fontFamily:"inherit",marginBottom:6}}/>
+                  ):(
+                    <div style={{fontWeight:700,marginBottom:6,color:"#8b5c2a",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}
+                      onClick={()=>setEditingRule({gi,title:true})}>
+                      <span>{t}</span>
+                      <span style={{fontSize:9,color:"#bbb",fontWeight:400}}>✏️</span>
+                    </div>
+                  )}
+                  {/* 항목 편집 */}
+                  {items.map((item,ii)=>(
+                    <div key={ii} style={{marginBottom:3,lineHeight:1.5,display:"flex",alignItems:"flex-start",gap:4}}>
+                      {editingRule?.gi===gi && editingRule?.ii===ii ? (
+                        <input autoFocus defaultValue={item} onBlur={e=>{
+                          const next=customRules.map((g,gi2)=>gi2===gi?[g[0],g[1].map((it,ii2)=>ii2===ii?e.target.value:it)]:g);
+                          setCustomRules(next); saveRules(next); setEditingRule(null);
+                        }} onKeyDown={e=>{if(e.key==="Enter")e.target.blur(); if(e.key==="Escape")setEditingRule(null);}}
+                        style={{flex:1,fontSize:11,background:"#fff",border:"1px solid #c0a070",borderRadius:4,padding:"1px 5px",fontFamily:"inherit"}}/>
+                      ):(
+                        <>
+                          <span style={{color:"#a07040"}}>·</span>
+                          <span style={{flex:1,cursor:"pointer"}} onClick={()=>setEditingRule({gi,ii})}>{item}</span>
+                          <button onClick={()=>{
+                            const next=customRules.map((g,gi2)=>gi2===gi?[g[0],g[1].filter((_,ii2)=>ii2!==ii)]:g);
+                            setCustomRules(next); saveRules(next);
+                          }} style={{fontSize:9,color:"#ccc",background:"none",border:"none",cursor:"pointer",padding:"0 2px",lineHeight:1}}>✕</button>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                  {/* 항목 추가 버튼 */}
+                  <button onClick={()=>{
+                    const next=customRules.map((g,gi2)=>gi2===gi?[g[0],[...g[1],"새 항목"]]:g);
+                    setCustomRules(next); saveRules(next); setEditingRule({gi,ii:items.length});
+                  }} style={{marginTop:6,fontSize:10,color:"#a07040",background:"none",border:"1px dashed #c0a070",borderRadius:4,padding:"2px 8px",cursor:"pointer",fontFamily:"inherit",width:"100%"}}>+ 항목 추가</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* 네비 */}
+      <div className="np" style={{background:"#fff",borderBottom:"1px solid #e4ddd0",padding:"9px 18px",display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+        <button onClick={()=>{if(month===0){setMonth(11);setYear(y=>y-1);}else setMonth(m=>m-1);}} style={navBtn}>◀</button>
+        <span style={{fontSize:18,fontWeight:700,minWidth:110,textAlign:"center"}}>{year}년 {month+1}월</span>
+        <button onClick={()=>{
+          if(month===11){setMonth(0);setYear(y=>y+1);}else setMonth(m=>m+1);
+        }} style={navBtn}>▶</button>
+        <button onClick={()=>{setYear(today.getFullYear());setMonth(today.getMonth());}} style={{...navBtn,color:"#aaa",fontSize:11}}>오늘</button>
+        <div style={{display:"flex",gap:6,alignItems:"center",marginLeft:10,paddingLeft:10,borderLeft:"1px solid #e4ddd0",flexWrap:"wrap"}}>
+          {Object.entries(S_COLOR).map(([s,sc])=>(
+            <div key={s} style={{padding:"2px 7px",background:sc.bg,border:`1px solid ${sc.border}`,borderRadius:5}}>
+              <span style={{fontSize:10,color:sc.text,fontWeight:600}}>{s}</span>
+            </div>
+          ))}
+          <span style={{fontSize:10,color:"#ccc"}}>셀 클릭으로 변경</span>
+        </div>
+        <div style={{marginLeft:"auto",display:"flex",gap:5,flexWrap:"wrap"}}>
+          {[{id:"all",name:"전체",color:"#8b5c2a"},...BRANCHES,{id:"male",name:"남직원",color:"#4a80c0"}].map(b=>(
+            <button key={b.id} onClick={()=>setFilterBranch(b.id)} style={{padding:"4px 10px",borderRadius:20,border:`2px solid ${filterBranch===b.id?b.color:"#e4ddd0"}`,background:filterBranch===b.id?b.color:"transparent",color:filterBranch===b.id?"#fff":"#8b7355",fontSize:11,cursor:"pointer",fontFamily:"inherit",fontWeight:filterBranch===b.id?600:400}}>{b.name}</button>
+          ))}
+        </div>
+      </div>
+
+      {/* 위반 알림 */}
+      {violations.length > 0 && (
+        <div className="np" style={{background:"#fde8e8",borderBottom:"1px solid #f5b3b3",padding:"7px 18px",display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}}>
+          <span style={{fontSize:12,fontWeight:700,color:"#c0392b"}}>⚠ 규칙 위반 ({violations.length}건):</span>
+          {violations.slice(0,6).map((v,i)=><span key={i} style={{fontSize:11,color:"#c0392b",background:"#fde8e8",border:"1px solid #f5b3b3",borderRadius:4,padding:"1px 6px"}}>{v}</span>)}
+        </div>
+      )}
+
+      {/* 메인 테이블 */}
+      <div style={{overflowX:"auto",padding:"0 18px 32px"}}>
+        <table style={{borderCollapse:"separate",borderSpacing:0,minWidth: dim*54+180,marginTop:14}}>
+          <thead>
+            <tr>
+              <th style={{...stickyCol,background:"#f0ebe2",fontSize:11,fontWeight:700,color:"#8b5c2a",textAlign:"left",borderRadius:"6px 0 0 0",border:"1px solid #ddd5c8"}}>직원</th>
+              {days.map(day=>{
+                const isToday=day.ds===fmtDs(today.getFullYear(),today.getMonth(),today.getDate());
+                const isSun=day.dow===6,isSat=day.dow===5;
+                const wb=isWeekBoundary(day);
+                return (
+                  <th key={day.ds} style={{width:50,minWidth:50,padding:"5px 1px",textAlign:"center",fontSize:11,fontWeight:600,background:day.isNext?"#e8e4f0":isToday?"#b0845a":"#f0ebe2",color:day.isNext?"#9080b0":isToday?"#fff":isSun?"#b83020":isSat?"#1e5a9a":"#8b7355",borderLeft:wb?"2.5px solid #b0845a":"1px solid #ddd5c8",borderTop:"1px solid #ddd5c8",borderBottom:"1px solid #ddd5c8",opacity:day.isNext?0.75:1}}>
+                    <div style={{fontWeight:700}}>{day.d}</div>
+                    <div style={{fontSize:9,fontWeight:400}}>{DNAMES[day.dow]}{day.isNext?<span style={{fontSize:8,color:"#b0a0c8"}}>↑다음달</span>:""}</div>
+                  </th>
+                );
+              })}
+            </tr>
+          </thead>
+          <tbody>
+            {shownBranches.map(branch=>{
+              const emps=ALL_EMPLOYEES.filter(e=>e.branch===branch.id);
+              return emps.map((emp,ei)=>(
+                <tr key={emp.id}>
+                  <td style={{...stickyCol,padding:"5px 10px",borderLeft:`3px solid ${branch.color}`,borderBottom:"1px solid #ece5dc",borderRight:"1px solid #ddd5c8",background:ei===0?branch.color+"18":"#faf8f4",borderTop:ei===0?`2px solid ${branch.color}55`:"none"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:6}}>
+                      <div style={{width:7,height:7,borderRadius:"50%",background:branch.color,flexShrink:0}}/>
+                      <div>
+                        <div style={{fontSize:12,fontWeight:emp.isOwner?700:500,lineHeight:1.2,display:"flex",alignItems:"center",gap:4}}>
+                          {emp.name}
+                          {(()=>{
+                            // 지원 횟수 집계 (지점별)
+                            const supportMap = {};
+                            Object.values(sch[emp.id]||{}).forEach(s=>{
+                              if(s&&s.startsWith("지원(")){
+                                const bn=s.replace("지원(","").replace(")","");
+                                supportMap[bn]=(supportMap[bn]||0)+1;
+                              }
+                            });
+                            const entries=Object.entries(supportMap);
+                            if(entries.length===0) return null;
+                            return <span style={{fontSize:8,color:"#c87020",background:"#fff4e0",border:"1px solid #ffd090",borderRadius:3,padding:"1px 3px",fontWeight:600,whiteSpace:"nowrap"}}>
+                              {entries.map(([bn,cnt])=>`${bn}:${cnt}`).join(" ")}
+                            </span>;
+                          })()}
+                        </div>
+                        <div style={{fontSize:9,color:"#b8a898",display:"flex",gap:4,alignItems:"center"}}>
+                          {branch.name}
+                          {(()=>{
+                            const curMs2 = `${year}-${String(month+1).padStart(2,"0")}`;
+                            const workDays = Object.entries(sch[emp.id]||{})
+                              .filter(([ds,s])=>ds.startsWith(curMs2)&&(s===STATUS.WORK||isSupport(s)||s===STATUS.SHARE||s===""))
+                              .length;
+                            const offDays = Object.entries(sch[emp.id]||{})
+                              .filter(([ds,s])=>ds.startsWith(curMs2)&&(s===STATUS.OFF||s===STATUS.MUST_OFF))
+                              .length;
+                            if(!workDays && !offDays) return null;
+                            const violations_ = workDays < 11 || workDays > 15;
+                            return <span style={{fontSize:9,fontWeight:700,color:violations_?"#c0392b":"#7a5030",background:violations_?"#fde8e8":"#f0ebe2",borderRadius:3,padding:"0 3px"}}>
+                              근{workDays}·휴{offDays}
+                            </span>;
+                          })()}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  {days.map(day=>{
+                    const s=getS(emp.id,day.ds);
+                    const sc=getSColor(s);
+                    const wb=isWeekBoundary(day);
+                    const isToday=day.ds===fmtDs(today.getFullYear(),today.getMonth(),today.getDate());
+                    const supportLabel = isSupport(s) && s !== "지원" ? s.replace("지원(","").replace(")","") : null;
+                    return (
+                      <td key={day.ds} className="cc" onClick={()=>{ if(lockedDates.has(day.ds)) return; setEditCell({emp,day,cur:s}); }} style={{padding:"2px 1px",textAlign:"center",borderLeft:wb?"2.5px solid #c0a07a":"1px solid #ece5dc",borderBottom:"1px solid #ece5dc",background:lockedDates.has(day.ds)?"#f5f0fa":day.isNext?"#f0edf8":isToday?"#fdf5e8":"#fff",opacity:day.isNext?0.8:1,cursor:lockedDates.has(day.ds)?"not-allowed":"pointer"}}>
+                        <div style={{
+                          background: s?sc.bg:"transparent",
+                          color: s?sc.text:"#d8d0c8",
+                          border: s==="휴무" || s==="휴무(꼭)" || s==="전체쉐어"
+                            ? `2px solid ${sc.border}`
+                            : s?`1px solid ${sc.border}`:"1px dashed #e8e0d4",
+                          borderRadius: "5px",
+                          padding:"3px 0",fontSize:10,
+                          fontWeight: s==="휴무"||s==="휴무(꼭)" ? 700 : s?600:400,
+                          minWidth:44,
+                          position:"relative",
+                        }}>
+                          {s==="휴무(꼭)" && !emp.isOwner && <span style={{position:"absolute",top:-7,right:2,fontSize:8,color:"#9060d0",lineHeight:"14px",fontWeight:900}}>★</span>}
+                          {isSupport(s) ? (
+                            <div>
+                              <div style={{fontSize:9,fontWeight:700}}>지원</div>
+                              {supportLabel && <div style={{fontSize:8,color:sc.text,fontWeight:600,lineHeight:1.2}}>→{supportLabel}</div>}
+                            </div>
+                          ) : (s||"—")}
+                        </div>
+                      </td>
+                    );
+                  })}
+                </tr>
+              ));
+            })}
+
+            {/* 남자직원 행 - 남직원 필터 또는 전체일 때만 표시 */}
+            {(()=>{
+              const maleColor = "#4a80c0";
+              const maleEmps = ALL_EMPLOYEES.filter(e=>e.isMale);
+              if (!maleEmps.length) return null;
+              if (filterBranch !== "all" && filterBranch !== "male") return null;
+              return maleEmps.map((emp, ei) => (
+                <tr key={emp.id}>
+                  <td style={{...stickyCol,padding:"5px 10px",borderLeft:`3px solid ${maleColor}`,borderBottom:"1px solid #d0e0f0",borderRight:"1px solid #ddd5c8",background:ei===0?maleColor+"18":"#f4f8fd",borderTop:ei===0?`2px solid ${maleColor}55`:"none"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:6}}>
+                      <div style={{width:7,height:7,borderRadius:"50%",background:maleColor,flexShrink:0}}/>
+                      <div>
+                        <div style={{fontSize:12,fontWeight:500}}>{emp.name}</div>
+                        <div style={{fontSize:9,color:"#88a8c8",display:"flex",gap:4,alignItems:"center"}}>
+                          남자직원
+                          {(()=>{
+                            const curMs2 = `${year}-${String(month+1).padStart(2,"0")}`;
+                            const workDays = Object.entries(sch[emp.id]||{})
+                              .filter(([ds,s])=>ds.startsWith(curMs2)&&(s===STATUS.WORK||isSupport(s)||s===STATUS.SHARE||s===""))
+                              .length;
+                            const offDays = Object.entries(sch[emp.id]||{})
+                              .filter(([ds,s])=>ds.startsWith(curMs2)&&(s===STATUS.OFF||s===STATUS.MUST_OFF))
+                              .length;
+                            if(!workDays && !offDays) return null;
+                            return <span style={{fontSize:9,fontWeight:700,color:maleColor,background:maleColor+"18",borderRadius:3,padding:"0 3px"}}>
+                              근{workDays}·휴{offDays}
+                            </span>;
+                          })()}
+                        </div>
+                      </div>
+                    </div>
+                  </td>
+                  {days.map(day=>{
+                    const s=getS(emp.id,day.ds);
+                    const sc=getSColor(s);
+                    const wb=isWeekBoundary(day);
+                    const isSun=day.dow===6;
+                    return (
+                      <td key={day.ds} className="cc" onClick={()=>{ if(lockedDates.has(day.ds)) return; setEditCell({emp,day,cur:s}); }}
+                        style={{padding:"2px 1px",textAlign:"center",borderLeft:wb?"2.5px solid #4a80c0":"1px solid #d0e0f0",borderBottom:"1px solid #d0e0f0",background:isSun?"#eef4fa":day.isNext?"#f0edf8":"#fff",cursor:"pointer"}}>
+                        {s&&s!==""?(
+                          <div style={{margin:"1px",borderRadius:5,padding:"3px 1px",background:sc.bg,border:`1px solid ${sc.border}`,fontSize:10,fontWeight:sc.bold?700:600,color:sc.text,lineHeight:1.2,position:"relative"}}>
+                            {s==="휴무(꼭)" && <span style={{position:"absolute",top:-6,right:1,fontSize:8,color:"#9060d0",fontWeight:900}}>★</span>}
+                            {s}
+                          </div>
+                        ):<span style={{color:"#ddd",fontSize:10}}>—</span>}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ));
+            })()}
+
+            {/* 빈 행 */}
+            <tr><td colSpan={dim+1} style={{height:10,background:"transparent"}}/></tr>
+
+            {/* 일별 총 인원 */}
+            <tr>
+              <td style={{...stickyCol,padding:"6px 10px",fontSize:11,fontWeight:700,color:"#7a5030",background:"#f0ebe2",border:"1px solid #ddd5c8",borderRadius:"0 0 0 6px"}}>일 근무 인원</td>
+              {days.map(day=>{
+                const c=dailyCount(day.ds);
+                const ok=c>=10&&c<=15, wb=isWeekBoundary(day);
+                return (
+                  <td key={day.d} style={{textAlign:"center",fontWeight:700,fontSize:13,padding:"6px 1px",color:c===0?"#ddd":!ok?"#c0392b":c>=13?"#1e7a40":"#7a5030",background:c>0&&!ok?"#fde8e8":"#f0ebe2",borderLeft:wb?"2.5px solid #c0a07a":"1px solid #ddd5c8",borderTop:"1px solid #ddd5c8",borderBottom:"1px solid #ddd5c8"}}>
+                    {c>0?c:""}
+                    {c>0&&!ok&&<div style={{fontSize:8,color:"#c0392b"}}>{c<10?"부족":"초과"}</div>}
+                  </td>
+                );
+              })}
+            </tr>
+
+            {/* 지점별 인원 */}
+            {shownBranches.map(branch=>{
+              const emps=ALL_EMPLOYEES.filter(e=>e.branch===branch.id);
+              return (
+                <tr key={branch.id+"-cnt"}>
+                  <td style={{...stickyCol,padding:"4px 10px",fontSize:10,color:branch.color,fontWeight:700,background:"#faf8f4",borderLeft:`3px solid ${branch.color}`,borderRight:"1px solid #ddd5c8",borderBottom:"1px solid #ece5dc"}}>
+                    {branch.name}
+                  </td>
+                  {days.map(day=>{
+                    // 논현&왕십리: 타지점 지원 인원도 합산
+                    const supportersIn = branch.id==="nonhyeon" ? ALL_EMPLOYEES.filter(e=>e.branch!=="nonhyeon"&&getS(e.id,day.ds)==="지원(논현)").length : 0;
+                    const c=emps.filter(e=>{const s=getS(e.id,day.ds);return !s||s===STATUS.WORK||isSupport(s)||s===STATUS.SHARE;}).length + supportersIn;
+                    const wb=isWeekBoundary(day);
+                    const under=c<branch.minStaff&&Object.keys(sch).length>0;
+                    return (
+                      <td key={day.d} style={{textAlign:"center",fontSize:10,fontWeight:600,padding:"4px 1px",color:under?"#c0392b":branch.color,background:under?"#fde8e8":"transparent",borderLeft:wb?"2.5px solid #c0a07a":"1px solid #ece5dc",borderBottom:"1px solid #ece5dc"}}>
+                        {c}
+                      </td>
+                    );
+                  })}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+
+
+        {/* 규칙 설정 패널 */}
+        {showRuleConfig && (
+          <>
+          <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.45)",zIndex:200}} onClick={()=>setShowRuleConfig(false)}/>
+          <div style={{position:"fixed",top:"50%",left:"50%",transform:"translate(-50%,-50%)",background:"#fff",borderRadius:14,padding:24,zIndex:201,width:"min(96vw,820px)",maxHeight:"85vh",overflowY:"auto",boxShadow:"0 10px 40px rgba(0,0,0,.25)"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
+              <div style={{fontWeight:700,fontSize:14,color:"#4a2c14"}}>⚙️ 배정 규칙 설정</div>
+              <button onClick={()=>setShowRuleConfig(false)} style={{fontSize:16,lineHeight:1,padding:"2px 8px",borderRadius:6,border:"1px solid #ddd",background:"#f5f0ea",color:"#888",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
+            </div>
+            <div style={{fontSize:11,color:"#aaa",marginBottom:18}}>변경 후 자동배치를 다시 실행하면 반영됩니다.</div>
+
+            {/* 전체 규칙 */}
+            <div style={{marginBottom:18}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#4a2c14",marginBottom:10,borderBottom:"1px solid #f0ebe2",paddingBottom:6}}>🌍 전체 근무인원</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:12}}>
+                {[
+                  {key:"minWork", label:"일 최소 근무인원", unit:"명", min:8, max:18},
+                  {key:"maxWork", label:"일 최대 근무인원", unit:"명", min:8, max:18},
+                  {key:"maxDailyOff", label:"하루 최대 휴무", unit:"명", min:1, max:10},
+                ].map(({key, label, unit, min, max}) => (
+                  <div key={key} style={{background:"#faf8f5",borderRadius:8,padding:"10px 14px",minWidth:160,border:"1px solid #e4ddd0"}}>
+                    <div style={{fontSize:11,color:"#888",marginBottom:8}}>{label}</div>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      <button onClick={()=>setRule(key, Math.max(min, ruleConfig[key]-1))}
+                        style={{width:26,height:26,borderRadius:5,border:"1px solid #ddd",background:"#f0ebe2",cursor:"pointer",fontSize:14,fontFamily:"inherit",color:"#5c4028",display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
+                      <span style={{fontSize:16,fontWeight:700,color:"#4a2c14",minWidth:28,textAlign:"center"}}>{ruleConfig[key]}</span>
+                      <button onClick={()=>setRule(key, Math.min(max, ruleConfig[key]+1))}
+                        style={{width:26,height:26,borderRadius:5,border:"1px solid #ddd",background:"#f0ebe2",cursor:"pointer",fontSize:14,fontFamily:"inherit",color:"#5c4028",display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
+                      <span style={{fontSize:11,color:"#aaa"}}>{unit}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 지점별 최소 근무인원 */}
+            <div style={{marginBottom:18}}>
+              <div style={{fontSize:12,fontWeight:700,color:"#4a2c14",marginBottom:10,borderBottom:"1px solid #f0ebe2",paddingBottom:6}}>📍 지점별 최소 근무인원</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:10}}>
+                {BRANCHES.map(b => (
+                  <div key={b.id} style={{background:"#faf8f5",borderRadius:8,padding:"10px 14px",minWidth:140,border:`1.5px solid ${b.color}44`}}>
+                    <div style={{fontSize:11,fontWeight:700,color:b.color,marginBottom:8}}>{b.name}</div>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      <button onClick={()=>setRule("branchMinStaff", {...ruleConfig.branchMinStaff, [b.id]: Math.max(0, (ruleConfig.branchMinStaff[b.id]??b.minStaff)-1)})}
+                        style={{width:26,height:26,borderRadius:5,border:"1px solid #ddd",background:"#f0ebe2",cursor:"pointer",fontSize:14,fontFamily:"inherit",color:"#5c4028"}}>−</button>
+                      <span style={{fontSize:16,fontWeight:700,color:"#4a2c14",minWidth:24,textAlign:"center"}}>{ruleConfig.branchMinStaff[b.id]??b.minStaff}</span>
+                      <button onClick={()=>setRule("branchMinStaff", {...ruleConfig.branchMinStaff, [b.id]: Math.min(10, (ruleConfig.branchMinStaff[b.id]??b.minStaff)+1)})}
+                        style={{width:26,height:26,borderRadius:5,border:"1px solid #ddd",background:"#f0ebe2",cursor:"pointer",fontSize:14,fontFamily:"inherit",color:"#5c4028"}}>+</button>
+                      <span style={{fontSize:11,color:"#aaa"}}>명</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 지점별 동시 휴무 금지 */}
+            <div>
+              <div style={{fontSize:12,fontWeight:700,color:"#4a2c14",marginBottom:6,borderBottom:"1px solid #f0ebe2",paddingBottom:6}}>🚫 지점별 일반직원 동시 휴무 금지</div>
+              <div style={{fontSize:11,color:"#aaa",marginBottom:10}}>ON: 해당 지점 일반직원(원장·mustStay 제외) 전원이 같은 날 동시 휴무 금지</div>
+              <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+                {BRANCHES.map(b => {
+                  const normals = ALL_EMPLOYEES.filter(e => e.branch===b.id && !e.isOwner && !e.mustStay);
+                  const isOn = ruleConfig.noSimultaneousOff[b.id] ?? false;
+                  return (
+                    <div key={b.id} onClick={()=>setRule("noSimultaneousOff",{...ruleConfig.noSimultaneousOff,[b.id]:!isOn})}
+                      style={{display:"flex",alignItems:"center",gap:7,padding:"8px 12px",borderRadius:8,border:`1.5px solid ${isOn?b.color:"#ddd"}`,background:isOn?b.color+"15":"#faf8f5",cursor:normals.length===0?"default":"pointer",opacity:normals.length===0?0.4:1}}>
+                      <span style={{fontSize:11,fontWeight:700,color:isOn?b.color:"#aaa"}}>{b.name}</span>
+                      <span style={{fontSize:10,color:"#bbb"}}>({normals.map(e=>e.name).join("·") || "해당없음"})</span>
+                      <span style={{fontSize:10,background:isOn?b.color:"#ddd",color:"#fff",borderRadius:4,padding:"1px 6px",fontWeight:700,marginLeft:4}}>{isOn?"ON":"OFF"}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+          </>
+        )}
+
+        {/* 직원 설정 모달 */}
+        {showEmpSettings && (
+          <>
+          <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.45)",zIndex:200}} onClick={()=>setShowEmpSettings(false)}/>
+          <div style={{position:"fixed",top:"50%",left:"50%",transform:"translate(-50%,-50%)",background:"#fff",borderRadius:14,padding:24,zIndex:201,width:"min(96vw,820px)",maxHeight:"85vh",overflowY:"auto",boxShadow:"0 10px 40px rgba(0,0,0,.25)"}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
+              <div style={{fontWeight:700,fontSize:14,color:"#4a2c14"}}>👤 직원별 근무 설정</div>
+              <div style={{display:"flex",gap:8,alignItems:"center"}}>
+                <button onClick={()=>setShowAddEmp(true)}
+                  style={{fontSize:12,padding:"5px 12px",borderRadius:7,border:"1.5px solid #c0a07a",background:"#fdf8f0",color:"#7a4a18",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>
+                  ＋ 직원 추가
+                </button>
+                <button onClick={()=>setShowEmpSettings(false)} style={{fontSize:16,lineHeight:1,padding:"2px 8px",borderRadius:6,border:"1px solid #ddd",background:"#f5f0ea",color:"#888",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
+              </div>
+            </div>
+            <div style={{fontSize:11,color:"#aaa",marginBottom:14}}>주 근무일수와 격주 패턴을 설정합니다. 자동배치에 반영됩니다.</div>
+            {BRANCHES.map(branch => {
+              const emps = ALL_EMPLOYEES.filter(e => e.branch === branch.id);
+              return (
+                <div key={branch.id} style={{marginBottom:16}}>
+                  <div style={{fontSize:12,fontWeight:700,color:branch.color,marginBottom:8,borderBottom:`1px solid ${branch.color}33`,paddingBottom:4}}>{branch.name}</div>
+                  <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+                    {emps.map(emp => {
+                      const cfg = empSettings[emp.id] || {weeklyWork:5,altPattern:false};
+                      return (
+                        <div key={emp.id} style={{border:`1px solid #e4ddd0`,borderRadius:8,padding:"8px 12px",minWidth:160,background:"#faf8f5",position:"relative"}}>
+                          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                            <div style={{fontWeight:700,fontSize:12,color:"#3a2010"}}>{emp.name}</div>
+                            <button onClick={()=>{
+                                if (customEmployees.some(ce=>ce.id===emp.id)) {
+                                  const next=customEmployees.filter(ce=>ce.id!==emp.id);
+                                  setCustomEmployees(next); saveCustomEmps(next);
+                                } else {
+                                  const next=new Set([...deletedEmpIds, emp.id]);
+                                  setDeletedEmpIds(next); saveDeletedIds(next);
+                                }
+                              }} style={{fontSize:10,padding:"1px 5px",borderRadius:4,border:"1px solid #f5b3b3",background:"#fde8e8",color:"#c0392b",cursor:"pointer",fontFamily:"inherit"}}>삭제</button>
+                          </div>
+                          {/* 주 근무일수 */}
+                          <div style={{fontSize:11,color:cfg.altPattern?"#ccc":"#888",marginBottom:4}}>
+                            주 근무일수{cfg.altPattern&&<span style={{fontSize:9,color:"#bbb",marginLeft:4}}>(격주패턴 우선)</span>}
+                          </div>
+                          <div style={{display:"flex",gap:4,marginBottom:8}}>
+                            {[5,6].map(n=>(
+                              <button key={n}
+                                onClick={()=>{ if(!cfg.altPattern) setEmpSetting(emp.id,"weeklyWork",n); }}
+                                style={{flex:1,padding:"4px 0",borderRadius:5,
+                                  border:`1.5px solid ${cfg.altPattern?"#eee":cfg.weeklyWork===n?branch.color:"#ddd"}`,
+                                  background:cfg.altPattern?"#f5f5f5":cfg.weeklyWork===n?branch.color+"22":"#fff",
+                                  color:cfg.altPattern?"#ccc":cfg.weeklyWork===n?branch.color:"#999",
+                                  fontSize:11,fontWeight:(!cfg.altPattern&&cfg.weeklyWork===n)?700:400,
+                                  cursor:cfg.altPattern?"not-allowed":"pointer",fontFamily:"inherit"}}>
+                                {n}일<span style={{fontSize:9,display:"block",color:cfg.altPattern?"#ddd":cfg.weeklyWork===n?branch.color:"#bbb"}}>휴무{7-n}일</span>
+                              </button>
+                            ))}
+                          </div>
+                          {/* 격주 패턴 */}
+                          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                            <span style={{fontSize:11,color:"#888"}}>격주패턴</span>
+                            <button onClick={()=>setEmpSetting(emp.id,"altPattern",!cfg.altPattern)}
+                              style={{padding:"3px 10px",borderRadius:5,border:`1.5px solid ${cfg.altPattern?branch.color:"#ddd"}`,background:cfg.altPattern?branch.color+"22":"#fff",color:cfg.altPattern?branch.color:"#bbb",fontSize:10,fontWeight:cfg.altPattern?700:400,cursor:"pointer",fontFamily:"inherit"}}>
+                              {cfg.altPattern?"ON":"OFF"}
+                            </button>
+                          </div>
+                          {cfg.altPattern && (
+                            <div style={{fontSize:9,color:"#aaa",marginTop:3}}>
+                              홀수주 {Math.max(1,7-cfg.weeklyWork-1)}일 / 짝수주 {7-cfg.weeklyWork}일
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          {/* 남자직원 설정 - 천호 아래 */}
+          {(()=>{
+            const maleColor = "#4a80c0";
+            const maleEmps = ALL_EMPLOYEES.filter(e=>e.isMale);
+            if (!maleEmps.length) return null;
+            return (
+              <div style={{marginBottom:16}}>
+                <div style={{fontSize:12,fontWeight:700,color:maleColor,marginBottom:8,borderBottom:`1px solid ${maleColor}33`,paddingBottom:4}}>남자직원</div>
+                <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
+                  {maleEmps.map(emp=>{
+                    const cfg = empSettings[emp.id] || {weeklyWork:5,altPattern:false};
+                    return (
+                      <div key={emp.id} style={{border:`1px solid #b8d0e8`,borderRadius:8,padding:"8px 12px",minWidth:160,background:"#f4f8fd"}}>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+                          <div style={{fontWeight:700,fontSize:12,color:"#2a5080"}}>{emp.name}</div>
+                          <button onClick={()=>{
+                            if (customEmployees.some(ce=>ce.id===emp.id)) {
+                              const next=customEmployees.filter(ce=>ce.id!==emp.id);
+                              setCustomEmployees(next); saveCustomEmps(next);
+                            } else {
+                              const next=new Set([...deletedEmpIds, emp.id]);
+                              setDeletedEmpIds(next); saveDeletedIds(next);
+                            }
+                          }} style={{fontSize:10,padding:"1px 5px",borderRadius:4,border:"1px solid #f5b3b3",background:"#fde8e8",color:"#c0392b",cursor:"pointer",fontFamily:"inherit"}}>삭제</button>
+                        </div>
+                        <div style={{fontSize:11,color:"#888",marginBottom:4}}>주 근무일수</div>
+                        <div style={{display:"flex",gap:4,marginBottom:4}}>
+                          {[5,6].map(n=>(
+                            <button key={n}
+                              onClick={()=>setEmpSetting(emp.id,"weeklyWork",n)}
+                              style={{flex:1,padding:"4px 0",borderRadius:5,
+                                border:`1.5px solid ${cfg.weeklyWork===n?maleColor:"#ddd"}`,
+                                background:cfg.weeklyWork===n?maleColor+"22":"#fff",
+                                color:cfg.weeklyWork===n?maleColor:"#999",
+                                fontSize:11,fontWeight:cfg.weeklyWork===n?700:400,
+                                cursor:"pointer",fontFamily:"inherit"}}>
+                              {n}일<span style={{fontSize:9,display:"block",color:cfg.weeklyWork===n?maleColor:"#bbb"}}>휴무{7-n}일</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
+
+          </div>
+          </>
+        )}
+
+        {/* 지점지원설정 모달 */}
+        {showSupportSettings && (
+          <>
+            <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.45)",zIndex:200}} onClick={()=>setShowSupportSettings(false)}/>
+            <div style={{position:"fixed",top:"50%",left:"50%",transform:"translate(-50%,-50%)",background:"#fff",borderRadius:14,padding:24,zIndex:201,width:"min(96vw,480px)",maxHeight:"85vh",overflowY:"auto",boxShadow:"0 10px 40px rgba(0,0,0,.25)"}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+                <div style={{fontWeight:700,fontSize:14,color:"#4a2c14"}}>🏢 지점지원설정</div>
+                <button onClick={()=>setShowSupportSettings(false)} style={{fontSize:16,lineHeight:1,padding:"2px 8px",borderRadius:6,border:"1px solid #ddd",background:"#f5f0ea",color:"#888",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
+              </div>
+              <div style={{fontSize:12,color:"#aaa",marginBottom:18}}>논현&왕십리 인원 부족 시 지원 나가는 지점 우선순위를 설정하세요.</div>
+              <div style={{fontSize:12,fontWeight:700,color:"#4a2c14",marginBottom:10}}>📌 논현&왕십리 지원 우선순위</div>
+              <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                {BRANCHES.filter(b => b.id !== "nonhyeon").map((b) => {
+                  const idx = supportOrder.indexOf(b.id);
+                  const isOn = idx !== -1;
+                  return (
+                    <div key={b.id}
+                      style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",borderRadius:8,border:`1.5px solid ${isOn ? b.color : "#ddd"}`,background:isOn ? b.color+"18" : "#faf8f5",cursor:"pointer",transition:"all .12s"}}
+                      onClick={()=>{
+                        setSupportOrder(prev => isOn ? prev.filter(id=>id!==b.id) : [...prev, b.id]);
+                      }}>
+                      <div style={{display:"flex",alignItems:"center",gap:8}}>
+                        <div style={{width:10,height:10,borderRadius:"50%",background:isOn?b.color:"#ddd"}}/>
+                        <span style={{fontSize:13,fontWeight:isOn?700:400,color:isOn?b.color:"#aaa"}}>{b.name}</span>
+                      </div>
+                      {isOn
+                        ? <span style={{fontSize:11,background:b.color,color:"#fff",borderRadius:5,padding:"2px 8px",fontWeight:700}}>{supportOrder.indexOf(b.id)+1}순위</span>
+                        : <span style={{fontSize:11,color:"#ccc"}}>미사용</span>
+                      }
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{marginTop:12,fontSize:11,color:"#bbb"}}>순위 변경: 켜진 항목을 해제 후 원하는 순서로 다시 켜세요.</div>
+            </div>
+          </>
+        )}
+
+        {/* 직원 추가 모달 */}
+        {showAddEmp && (
+          <>
+            <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.6)",zIndex:300}} onClick={()=>setShowAddEmp(false)}/>
+            <div style={{position:"fixed",top:"50%",left:"50%",transform:"translate(-50%,-50%)",background:"#fff",borderRadius:14,padding:24,zIndex:301,width:"min(96vw,400px)",boxShadow:"0 10px 40px rgba(0,0,0,.3)"}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18}}>
+                <div style={{fontWeight:700,fontSize:14,color:"#4a2c14"}}>＋ 직원 추가</div>
+                <button onClick={()=>setShowAddEmp(false)} style={{fontSize:16,padding:"2px 8px",borderRadius:6,border:"1px solid #ddd",background:"#f5f0ea",color:"#888",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
+              </div>
+              {/* 이름 */}
+              <div style={{marginBottom:14}}>
+                <div style={{fontSize:11,color:"#888",marginBottom:5,fontWeight:600}}>이름</div>
+                <input value={newEmp.name} onChange={e=>setNewEmp(p=>({...p,name:e.target.value}))}
+                  placeholder="이름 입력"
+                  style={{width:"100%",padding:"8px 10px",borderRadius:7,border:"1.5px solid #e4ddd0",fontSize:13,fontFamily:"inherit",outline:"none"}}/>
+              </div>
+              {/* 지점 */}
+              <div style={{marginBottom:14}}>
+                <div style={{fontSize:11,color:"#888",marginBottom:5,fontWeight:600}}>지점</div>
+                <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                  {[...BRANCHES,{id:"male",name:"남직원",color:"#4a80c0"}].map(b=>(
+                    <button key={b.id} onClick={()=>setNewEmp(p=>({...p,branch:b.id,isMale:b.id==="male"}))}
+                      style={{padding:"5px 12px",borderRadius:7,fontSize:12,fontFamily:"inherit",cursor:"pointer",
+                        border:`1.5px solid ${newEmp.branch===b.id?b.color:"#ddd"}`,
+                        background:newEmp.branch===b.id?b.color+"22":"#faf8f5",
+                        color:newEmp.branch===b.id?b.color:"#aaa",
+                        fontWeight:newEmp.branch===b.id?700:400}}>
+                      {b.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* 주 휴무 */}
+              <div style={{marginBottom:14}}>
+                <div style={{fontSize:11,color:"#888",marginBottom:5,fontWeight:600}}>주 휴무일수</div>
+                <div style={{display:"flex",gap:8}}>
+                  {[1,2].map(n=>(
+                    <button key={n} onClick={()=>setNewEmp(p=>({...p,weeklyOff:n}))}
+                      style={{flex:1,padding:"7px 0",borderRadius:7,fontSize:12,fontFamily:"inherit",cursor:"pointer",
+                        border:`1.5px solid ${newEmp.weeklyOff===n?"#c0a07a":"#ddd"}`,
+                        background:newEmp.weeklyOff===n?"#fdf3e0":"#faf8f5",
+                        color:newEmp.weeklyOff===n?"#7a4a18":"#aaa",
+                        fontWeight:newEmp.weeklyOff===n?700:400}}>
+                      {n}일 휴무
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {/* 옵션 */}
+              <div style={{marginBottom:20,display:"flex",gap:10,flexWrap:"wrap"}}>
+                {[
+                  {key:"isOwner",label:"원장"},
+                  {key:"mustStay",label:"타지점이동불가"},
+                ].map(({key,label})=>(
+                  <button key={key} onClick={()=>setNewEmp(p=>({...p,[key]:!p[key]}))}
+                    style={{padding:"5px 12px",borderRadius:7,fontSize:11,fontFamily:"inherit",cursor:"pointer",
+                      border:`1.5px solid ${newEmp[key]?"#8b5c2a":"#ddd"}`,
+                      background:newEmp[key]?"#f5e8d0":"#faf8f5",
+                      color:newEmp[key]?"#7a4a18":"#aaa",fontWeight:newEmp[key]?700:400}}>
+                    {newEmp[key]?"✓ ":""}{label}
+                  </button>
+                ))}
+              </div>
+              {/* 추가 버튼 */}
+              <button
+                disabled={!newEmp.name.trim()}
+                onClick={()=>{
+                  const id = newEmp.name.trim();
+                  if (!id) return;
+                  if (ALL_EMPLOYEES.some(e=>e.id===id)) { alert("이미 같은 이름의 직원이 있습니다."); return; }
+                  const emp = {...newEmp, id, name:id};
+                  const next = [...customEmployees, emp];
+                  setCustomEmployees(next); saveCustomEmps(next);
+                  setEmpSettings(prev=>({...prev, [id]:{weeklyWork:7-emp.weeklyOff, altPattern:false}}));
+                  setNewEmp({name:"",branch:"nonhyeon",isOwner:false,weeklyOff:2,isMale:false,mustStay:false});
+                  setShowAddEmp(false);
+                }}
+                style={{width:"100%",padding:"10px 0",borderRadius:8,fontSize:13,fontFamily:"inherit",cursor:"pointer",fontWeight:700,
+                  background:newEmp.name.trim()?"#c0a07a":"#e4ddd0",
+                  color:newEmp.name.trim()?"#2d1a08":"#aaa",border:"none"}}>
+                추가하기
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* 원장 설정 모달 */}
+        {showOwnerSettings && (
+          <>
+            <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.45)",zIndex:200}} onClick={()=>setShowOwnerSettings(false)}/>
+            <div onMouseUp={()=>{ ownerDragRef.current.active=false; }} onMouseLeave={()=>{ ownerDragRef.current.active=false; }}
+              style={{position:"fixed",top:"50%",left:"50%",transform:"translate(-50%,-50%)",background:"#fff",borderRadius:14,padding:24,zIndex:201,width:"min(96vw,900px)",maxHeight:"85vh",overflowY:"auto",boxShadow:"0 10px 40px rgba(0,0,0,.25)"}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+                <div style={{fontWeight:700,fontSize:14,color:"#4a2c14"}}>👑 원장 지정 휴무 설정</div>
+                <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                  {ownerSaveStatus==="saved" && <span style={{fontSize:11,color:"#6b9e6b"}}>✓ 저장됨</span>}
+                  {ownerSaveStatus==="saving" && <span style={{fontSize:11,color:"#aaa"}}>저장중...</span>}
+                  {ownerSaveStatus==="error" && <span style={{fontSize:11,color:"#c06060"}}>저장 실패</span>}
+                  <button onClick={()=>{ saveOwnerReqs(ownerReqs); }}
+                    style={{fontSize:11,padding:"4px 10px",borderRadius:6,border:"1px solid #c0a07a",background:"#fdf8f0",color:"#7a4a18",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>
+                    💾 저장
+                  </button>
+                  <button onClick={()=>{ if(window.confirm("이번달 원장 휴무 설정을 초기화할까요?")){ const next={...ownerReqs}; Object.keys(next).forEach(k=>{if(k.includes("__"+curMonthStr)||k.includes("__"+nextMonthStr)) delete next[k];}); setOwnerReqs(next); saveOwnerReqs(next); }}}
+                    style={{fontSize:11,padding:"4px 10px",borderRadius:6,border:"1px solid #ddd",background:"#faf8f5",color:"#aaa",cursor:"pointer",fontFamily:"inherit"}}>
+                    🗑 초기화
+                  </button>
+                  <button onClick={()=>setShowOwnerSettings(false)}
+                    style={{fontSize:16,lineHeight:1,padding:"2px 8px",borderRadius:6,border:"1px solid #ddd",background:"#f5f0ea",color:"#888",cursor:"pointer",fontFamily:"inherit"}}>
+                    ✕
+                  </button>
+                </div>
+              </div>
+          <div style={{fontSize:12,color:"#aaa",marginBottom:16}}>자동배치 전 원장님 고정 휴무일을 먼저 설정하세요. 요일 버튼으로 매주 반복 지정 또는 날짜 드래그로 개별 선택. 자동배치 시 최우선 적용됩니다.</div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:14}}>
+            {ALL_EMPLOYEES.filter(e=>e.isOwner).map(emp=>{
+              const bc=BRANCHES.find(b=>b.id===emp.branch)?.color||"#888";
+              const myReqs=Object.entries(ownerReqs).filter(([k])=>k.startsWith(emp.id+"__"));
+              // 현재 이 원장의 활성 요일 구하기 (이번달+이월 날짜 기준)
+              const activeDows = new Set(
+                myReqs
+                  .filter(([k,v])=>!!v && (k.includes("__"+curMonthStr)||k.includes("__"+nextMonthStr)))
+                  .map(([k])=>{ const ds=k.split("__")[1]; const d=new Date(ds); return getDow0Mon(d.getFullYear(),d.getMonth(),d.getDate()); })
+              );
+              // 요일이 완전히 채워져 있는지 체크
+              const isDowFull = (dow) => {
+                const matchDays = days.filter(day=>!day.isNext && day.dow===dow);
+                return matchDays.length>0 && matchDays.every(day=>!!ownerReqs[emp.id+"__"+day.ds]);
+              };
+              // 요일 토글: 해당 요일의 이번달 날짜 전체를 on/off
+              const toggleDow = (dow) => {
+                const full = isDowFull(dow);
+                setOwnerReqs(p=>{
+                  const next={...p};
+                  days.filter(day=>!day.isNext && day.dow===dow).forEach(day=>{
+                    const key=emp.id+"__"+day.ds;
+                    if(full){ delete next[key]; } else { next[key]=STATUS.MUST_OFF; }
+                  });
+                  return next;
+                });
+              };
+              return (
+                <div key={emp.id} style={{border:`1.5px solid ${bc}55`,borderRadius:10,padding:12}}>
+                  {/* 이름 행: 이름 + 반복 버튼 우측 정렬 */}
+                  {(()=>{
+                    const rep = ownerRepeat[emp.id] || {enabled:false, dows:[]};
+                    const toggleRepeat = () => {
+                      const activeDows_ = [];
+                      for(let dow=0;dow<7;dow++){ if(isDowFull(dow)) activeDows_.push(dow); }
+                      const newRep = {...ownerRepeat, [emp.id]: {enabled:!rep.enabled, dows:activeDows_}};
+                      setOwnerRepeat(newRep);
+                      saveOwnerRepeat(newRep);
+                    };
+                    const toggleDowWithRepeat = (dow) => {
+                      toggleDow(dow);
+                      if(rep.enabled){
+                        const full_=isDowFull(dow);
+                        const newDows = full_ ? rep.dows.filter(d=>d!==dow) : [...new Set([...rep.dows,dow])];
+                        const newRep={...ownerRepeat,[emp.id]:{...rep,dows:newDows}};
+                        setOwnerRepeat(newRep); saveOwnerRepeat(newRep);
+                      }
+                    };
+                    return (<>
+                      {/* 이름 + 반복 버튼 한 줄 */}
+                      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+                        <div style={{fontWeight:700,fontSize:13,color:bc}}>{emp.name}</div>
+                        <button onClick={toggleRepeat}
+                          title="반복 ON: 매달 같은 요일 자동 휴무 지정"
+                          style={{padding:"3px 10px",fontSize:11,fontWeight:700,borderRadius:5,border:`1.5px solid ${rep.enabled?"#e0a030":"#ddd"}`,background:rep.enabled?"#fff8e8":"#faf8f5",color:rep.enabled?"#c07000":"#aaa",cursor:"pointer",fontFamily:"inherit",transition:"all .12s",whiteSpace:"nowrap"}}>
+                          {rep.enabled?"🔁 반복중":"🔁 반복"}
+                        </button>
+                      </div>
+                      {/* 요일 버튼 */}
+                      <div style={{display:"flex",gap:4,marginBottom:10,alignItems:"center"}}>
+                        {["일","월","화","수","목","금","토"].map((dn,di)=>{ const dow=(di+6)%7;
+                          const full=isDowFull(dow);
+                          return (
+                            <button key={di} onClick={()=>toggleDowWithRepeat(dow)}
+                              style={{flex:1,padding:"4px 0",fontSize:11,fontWeight:700,borderRadius:5,border:`1.5px solid ${full?bc:"#ddd"}`,background:full?bc:"#faf8f5",color:full?"#fff":"#aaa",cursor:"pointer",fontFamily:"inherit",transition:"all .12s"}}>
+                              {dn}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </>);
+                  })()}
+                  {/* 날짜 달력 그리드 (일요일 시작) */}
+                  {(()=>{
+                    // 이번달 날짜만 (isNext 제외)
+                    const thisDays = days; // isNext(이월 주) 포함
+                    // 1일의 일요일 기준 오프셋 (일=0, 월=1, ... 토=6)
+                    const firstDowSun = (getDow0Mon(year,month,1)+1)%7;
+                    // 빈칸 + 날짜 배열
+                    const cells = [];
+                    for(let i=0;i<firstDowSun;i++) cells.push(null);
+                    thisDays.forEach(d=>cells.push(d));
+                    // 7의 배수로 맞춤
+                    while(cells.length%7!==0) cells.push(null);
+                    return (
+                      <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3}}>
+                        {cells.map((day,ci)=>{
+                          if(!day) return <div key={"e"+ci} style={{height:30}}/>;
+                          const key=emp.id+"__"+day.ds;
+                          const on=!!ownerReqs[key];
+                          const isSun=day.dow===6; const isSat=day.dow===5;
+                          return (
+                            <div key={day.ds}
+                              onMouseDown={e=>{
+                                e.preventDefault();
+                                const dr=ownerDragRef.current;
+                                dr.active=true; dr.empId=emp.id;
+                                dr.mode=ownerReqs[key]?'off':'on';
+                                setOwnerReqs(p=>{ if(p[key]){const n={...p};delete n[key];return n;}return{...p,[key]:STATUS.MUST_OFF};});
+                              }}
+                              onMouseEnter={()=>{
+                                const dr=ownerDragRef.current;
+                                if(!dr.active||dr.empId!==emp.id) return;
+                                setOwnerReqs(p=>{
+                                  if(dr.mode==='on') return p[key]?p:{...p,[key]:STATUS.MUST_OFF};
+                                  if(dr.mode==='off'){ if(!p[key]) return p; const n={...p};delete n[key];return n; }
+                                  return p;
+                                });
+                              }}
+                              style={{height:30,borderRadius:5,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:11,fontWeight:700,background:on?bc:day.isNext?"#ede8f5":"#f5f0ea",color:on?"#fff":day.isNext?"#9070d0":isSun?"#e06060":isSat?"#6080c0":"#888",border:`1.5px solid ${on?bc:day.isNext?"#c4b3e0":"#e4ddd0"}`,transition:"all .12s",userSelect:"none",opacity:day.isNext?0.85:1}}>
+                              <div style={{fontSize:11,lineHeight:1}}>{day.d}</div>
+                              {day.isNext&&<div style={{fontSize:7,lineHeight:1,marginTop:1}}>{(month+2>12?1:month+2)}월</div>}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+                  <div style={{marginTop:8,fontSize:11,color:"#b0a090"}}>지정: {myReqs.filter(([k])=>k.includes("__"+curMonthStr)||k.includes("__"+nextMonthStr)).length}일</div>
+                </div>
+              );
+            })}
+          </div>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const stickyCol = { position:"sticky",left:0,zIndex:5,width:150,minWidth:150,padding:"6px 10px",verticalAlign:"middle" };
+const navBtn = { background:"none",border:"1px solid #e4ddd0",borderRadius:6,padding:"5px 10px",cursor:"pointer",fontSize:13,fontFamily:"inherit",color:"#555" };
+
+function Btn({label,onClick,primary,outline}){
+  return (
+    <button onClick={onClick} style={{background:primary?"#c0a07a":outline?"rgba(255,255,255,.1)":"#f0ebe2",color:primary?"#2d1a08":outline?"#f5e8d0":"#5c4028",border:outline?"1px solid rgba(255,255,255,.25)":"none",borderRadius:6,padding:"7px 14px",fontSize:12,cursor:"pointer",fontFamily:"inherit",fontWeight:primary?700:500}}>
+      {label}
+    </button>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
+</script>
+</body>
+</html>
