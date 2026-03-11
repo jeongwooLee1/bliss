@@ -1822,10 +1822,26 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
         }
       } catch(e) { console.warn("scroll err:", e); }
 
-      // 4. 모달 오픈
-      setModalData({...pendingOpenRes, readOnly: false});
-      setShowModal(true);
-      setPendingOpenRes && setPendingOpenRes(null);
+      // 4. 모달 오픈 (DB에서 fresh 데이터 fetch)
+      const openWithFresh = async () => {
+        let freshData = pendingOpenRes;
+        try {
+          const resId = pendingOpenRes.id;
+          if (resId) {
+            const rows = await sb.get("reservations", resId);
+            if (rows && rows.id) {
+              const parsed = fromDb("reservations", [rows])[0];
+              freshData = {...pendingOpenRes, ...parsed};
+              // data state도 업데이트
+              setData(prev => prev ? {...prev, reservations: (prev.reservations||[]).map(r => r.id === parsed.id ? {...r, ...parsed} : r)} : prev);
+            }
+          }
+        } catch(e) { console.warn("fresh fetch err:", e); }
+        setModalData({...freshData, readOnly: false});
+        setShowModal(true);
+        setPendingOpenRes && setPendingOpenRes(null);
+      };
+      openWithFresh();
     }, 120);
     return ()=>clearTimeout(timer);
   },[pendingOpenRes]);
@@ -2089,11 +2105,22 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
     setShowModal(true);
   };
 
-  const handleBlockClick = (block, e) => {
+  const handleBlockClick = async (block, e) => {
     e.stopPropagation();
     if (isDragging.current || isResizing.current) return;
     const readOnly = !canEdit(block.bid);
-    setModalData({ ...block, readOnly });
+    let freshBlock = block;
+    try {
+      if (block.id) {
+        const rows = await sb.get("reservations", block.id);
+        if (rows && rows.id) {
+          const parsed = fromDb("reservations", [rows])[0];
+          freshBlock = {...block, ...parsed};
+          setData(prev => prev ? {...prev, reservations: (prev.reservations||[]).map(r => r.id === parsed.id ? {...r, ...parsed} : r)} : prev);
+        }
+      }
+    } catch(e) { console.warn("fresh fetch err:", e); }
+    setModalData({ ...freshBlock, readOnly });
     setShowModal(true);
   };
 
