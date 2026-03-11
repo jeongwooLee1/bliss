@@ -174,7 +174,73 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.40";
+const BLISS_V = "2.69.41";
+
+// ─── 디자인 토큰 ────────────────────────────────────────────────────────────
+const T = {
+  primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8",
+  danger:"#ef5350", dangerLt:"#fdecea", success:"#6AB56A", successLt:"#e8f5e9",
+  warning:"#E8B830", warningLt:"#fffde7", info:"#5cb5c5", infoLt:"#e0f7fa",
+  gray100:"#f8f8f8", gray200:"#f0f0f0", gray300:"#e0e0e0", gray400:"#d0d0d0",
+  gray500:"#aaaaaa", gray600:"#888888", gray700:"#555555", gray800:"#333333",
+  text:"#333333", textSub:"#888888", textMuted:"#aaaaaa",
+  bg:"#f8f8f8", bgCard:"#ffffff", border:"#e0e0e0", borderFocus:"#7c7cc8",
+  naver:"#03C75A",
+  radius:{ sm:4, md:8, lg:12, xl:16, full:999 },
+  fs:{ xs:10, sm:12, md:14, lg:16, xl:18, xxl:22 },
+  fw:{ normal:400, medium:500, bold:600, bolder:700, black:800 },
+  sp:{ xs:4, sm:8, md:12, lg:16, xl:20, xxl:24 },
+  shadow:{ sm:"0 1px 4px rgba(0,0,0,.08)", md:"0 2px 12px rgba(0,0,0,.12)", lg:"0 4px 24px rgba(0,0,0,.16)" },
+};
+
+// ─── 공통 UI 컴포넌트 ────────────────────────────────────────────────────────
+const Btn = ({ children, variant="primary", size="md", disabled, onClick, style={}, ...p }) => {
+  const base = { display:"inline-flex", alignItems:"center", justifyContent:"center", gap:6,
+    border:"none", borderRadius:T.radius.md, cursor:disabled?"not-allowed":"pointer",
+    fontFamily:"inherit", fontWeight:T.fw.bolder, transition:"opacity .15s", opacity:disabled?0.5:1 };
+  const sizes = { sm:{padding:"4px 10px",fontSize:T.fs.sm}, md:{padding:"7px 14px",fontSize:T.fs.md}, lg:{padding:"10px 20px",fontSize:T.fs.lg} };
+  const variants = {
+    primary:  { background:T.primary,  color:"#fff" },
+    secondary:{ background:T.gray200,  color:T.gray800 },
+    danger:   { background:T.danger,   color:"#fff" },
+    ghost:    { background:"transparent", color:T.primary, border:"1px solid "+T.border },
+    outline:  { background:"transparent", color:T.primary, border:"1px solid "+T.primary },
+  };
+  return <button onClick={disabled?undefined:onClick} style={{...base,...sizes[size],...variants[variant],...style}} {...p}>{children}</button>;
+};
+const Badge = ({ children, color=T.primary, bg, style={} }) => (
+  <span style={{ display:"inline-flex", alignItems:"center", padding:"2px 8px",
+    borderRadius:T.radius.full, fontSize:T.fs.xs, fontWeight:T.fw.bolder,
+    color, background:bg||color+"22", ...style }}>{children}</span>
+);
+const Card = ({ children, style={}, ...p }) => (
+  <div style={{ background:T.bgCard, borderRadius:T.radius.lg, border:"1px solid "+T.border,
+    padding:T.sp.lg, boxShadow:T.shadow.sm, ...style }} {...p}>{children}</div>
+);
+const Input = ({ style={}, ...p }) => (
+  <input style={{ width:"100%", padding:"8px 12px", borderRadius:T.radius.md,
+    border:"1px solid "+T.border, fontSize:T.fs.md, fontFamily:"inherit",
+    outline:"none", background:"#fff", color:T.text, boxSizing:"border-box", ...style }} {...p}/>
+);
+const Divider = ({ style={} }) => (
+  <div style={{ height:1, background:T.border, margin:T.sp.md+"px 0", ...style }}/>
+);
+const StatusBadge = ({ status, label }) => {
+  const clr = { confirmed:T.primary, completed:T.success, cancelled:T.warning,
+    no_show:T.danger, naver_cancelled:"#E6A700", naver_changed:T.gray500, pending:T.info };
+  const c = clr[status]||T.gray500;
+  return <Badge color={c} bg={c+"22"}>{label||STATUS_LABEL[status]||status}</Badge>;
+};
+const Empty = ({ msg="데이터가 없습니다", icon="inbox" }) => (
+  <div style={{ display:"flex", flexDirection:"column", alignItems:"center",
+    justifyContent:"center", padding:"48px 0", color:T.textMuted, gap:T.sp.md }}>
+    <I name={icon} size={32} color={T.gray400}/>
+    <span style={{ fontSize:T.fs.md }}>{msg}</span>
+  </div>
+);
+const Spinner = ({ size=20, color=T.primary }) => (
+  <I name="loader" size={size} color={color} style={{animation:"spin 1s linear infinite"}}/>
+);
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
