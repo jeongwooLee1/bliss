@@ -711,22 +711,26 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
 
         // ── 전략 2: MOVE ──
         // 주당 휴무가 꽉 찬 경우: 기존 휴무 하나를 다른 휴무 옆으로 이동
-        // (net off 수 변화 없음 → 주간 초과 없음)
+        // ★ targetOff와 adjDs가 반드시 같은 getWeekIdx 주 내에 있어야 함
+        //    (isNext 이월 날짜는 getWeekIdx 기준 다른 주 → 제외)
         for (const week of block) {
           if (done) break;
           const wkDays = week.filter(d => !d.isPrev);
           const wkOffDays = wkDays.filter(d =>
-            sch[emp.id]?.[d.ds] === STATUS.OFF // 휴무(꼭) 제외 — 이동 불가
+            !d.isNext &&                              // isNext 이월 날짜 MOVE 금지
+            sch[emp.id]?.[d.ds] === STATUS.OFF        // 휴무(꼭) 제외 — 이동 불가
           );
           if (wkOffDays.length < 1) continue;
 
           for (const targetOff of wkOffDays) {
             if (done) break;
-            // targetOff 옆 날짜(근무)가 또 다른 휴무의 이웃인지 확인
             for (const delta of [-1, 1]) {
               const adjDs = addDays(targetOff.ds, delta);
               const adjDay = wkDays.find(d => d.ds === adjDs);
               if (!adjDay) continue;
+              if (adjDay.isNext) continue; // isNext 날짜로 이동 금지
+              // ★ getWeekIdx 기준으로도 같은 주인지 검증
+              if (getWeekIdx(targetOff.ds) !== getWeekIdx(adjDs)) continue;
               if (sch[emp.id][adjDs] !== STATUS.WORK) continue;
               // adjDs 옆에 다른 휴무가 있어야 연속이 만들어짐
               const adjOff = addDays(adjDs, delta);
@@ -739,12 +743,16 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
               sch[emp.id][targetOff.ds] = STATUS.WORK;
               sch[emp.id][adjDs]        = STATUS.OFF;
 
-              // adjDs에 OFF가 가능한지 검증
+              // adjDs에 OFF가 가능한지 검증 + 전체 minWork 보호
               const adjOk = canAssignOff(emp, adjDay, branchEmps, branch);
-              // targetOff가 WORK가 되어도 minWork 위반 없음 (오히려 근무 늘어남)
+              const totalWorking2 = employees.filter(e => {
+                if (e.isMale) return false;
+                const s = sch[e.id][adjDs];
+                return s === STATUS.WORK || isSupport(s) || s === STATUS.SHARE;
+              }).length;
               const moveMakesConsec = hasConsecOff(emp.id, blockDays);
 
-              if (adjOk && moveMakesConsec) {
+              if (adjOk && totalWorking2 > rc.minWork && moveMakesConsec) {
                 done = true;
                 break;
               } else {
@@ -758,6 +766,37 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       });
     });
   }
+
+  // 6.6) step 6.5 MOVE 후속 보정: MOVE로 어떤 주 off가 줄었을 경우 복구
+  //      altPattern·원장 제외, 주 단위로 weeklyOff 미달인 경우 off 추가 시도
+  employees.filter(e => !isAltPattern(e) && !e.isOwner && !e.isMale).forEach(emp => {
+    const branch = BRANCHES.find(b => b.id === emp.branch);
+    const branchEmps = employees.filter(e => e.branch === emp.branch);
+    const wo = getWeeklyOff(emp);
+    activeWeeks.forEach(week => {
+      const thisMonthDays = week.filter(d => !d.isPrev && !d.isNext);
+      if (thisMonthDays.length === 0) return;
+      const weekOffNow = week.filter(d => !d.isPrev &&
+        ["휴무","휴무(꼭)"].includes(sch[emp.id]?.[d.ds])
+      ).length;
+      if (weekOffNow >= wo) return; // 충족
+      const needed = wo - weekOffNow;
+      const cands = week.filter(d => !d.isPrev && sch[emp.id][d.ds] === STATUS.WORK && !seededDates.has(d.ds));
+      let added = 0;
+      for (const day of cands) {
+        if (added >= needed) break;
+        if (!canAssignOff(emp, day, branchEmps, branch)) continue;
+        const totalWorking = employees.filter(e => {
+          if (e.isMale) return false;
+          const s = sch[e.id][day.ds];
+          return s === STATUS.WORK || isSupport(s) || s === STATUS.SHARE;
+        }).length;
+        if (totalWorking <= rc.minWork) continue;
+        sch[emp.id][day.ds] = STATUS.OFF;
+        added++;
+      }
+    });
+  });
 
   // 7) 하루 최대 휴무 5명 초과 보정: 초과분 직원의 휴무를 근무로 전환
   for (let pass = 0; pass < 10; pass++) {
