@@ -174,7 +174,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.46";
+const BLISS_V = "2.69.47";
 
 // ─── 디자인 토큰 ────────────────────────────────────────────────────────────
 const T = {
@@ -383,6 +383,26 @@ const getNaverVal = (requestMsg, keywords) => {
     } catch(e) {}
   }
   return "";
+};
+
+// 예약목록 그리드 컬럼 계산
+const resGridCols = (showCols, density) => {
+  const compact = density === "compact";
+  const parts = [
+    compact ? "72px" : "80px",  // 날짜·시간
+    compact ? "48px" : "56px",  // 매장
+    compact ? "80px" : "100px", // 고객
+    showCols.service  ? (compact?"1fr":"1fr")    : null,
+    showCols.staff    ? (compact?"52px":"60px")  : null,
+    showCols.phone    ? (compact?"88px":"100px") : null,
+    showCols.prepaid  ? (compact?"64px":"80px")  : null,
+    showCols.naver_id ? (compact?"80px":"96px")  : null,
+    showCols.naver_info ? "1fr" : null,
+    showCols.memo     ? "80px"  : null,
+    compact ? "48px" : "56px",  // 상태
+    "60px",                     // 액션
+  ].filter(Boolean);
+  return parts.join(" ");
 };
 
 const STATUS_LABEL = { confirmed:"진행", completed:"완료", cancelled:"취소", no_show:"노쇼", pending:"확정대기", naver_cancelled:"네이버 취소", naver_changed:"변경" };
@@ -4615,53 +4635,55 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
         const parsed = fromDb("reservations", rows);
         setData(prev => prev ? {...prev, reservations: parsed} : prev);
       }
-    } catch(e) { console.log("Refresh error:", e); }
+    } catch(e) {}
     setRefreshing(false);
   };
-  const _lsResFilter = () => { try { return JSON.parse(localStorage.getItem("bliss_res_filter") || "null") || {}; } catch(e) { return {}; } };
-  const [startDate, setStartDateRaw] = useState(() => _lsResFilter().startDate || today);
-  const [endDate, setEndDateRaw] = useState(() => { const f=_lsResFilter(); if(f.endDate) return f.endDate; const d=new Date(); d.setDate(d.getDate()+6); return fmtLocal(d); });
-  const [periodKey, setPeriodKeyRaw] = useState(() => _lsResFilter().periodKey || "7days");
+
+  // ── 필터 상태 (localStorage 유지) ──────────────────
+  const _ls = () => { try { return JSON.parse(localStorage.getItem("bliss_res_filter")||"null")||{}; } catch(e){return{};} };
+  const _save = (patch) => { try { localStorage.setItem("bliss_res_filter", JSON.stringify({..._ls(),...patch})); } catch(e){} };
+  const [startDate, setStartDateRaw] = useState(()=>_ls().startDate||today);
+  const [endDate,   setEndDateRaw]   = useState(()=>{ const f=_ls(); if(f.endDate)return f.endDate; const d=new Date(); d.setDate(d.getDate()+6); return fmtLocal(d); });
+  const [periodKey, setPeriodKeyRaw] = useState(()=>_ls().periodKey||"7days");
+  const [vb,        setVbRaw]        = useState(()=>_ls().vb||"all");
+  const [statusFilter, setStatusFilterRaw] = useState(()=>_ls().statusFilter||"all");
+  const setStartDate = v => { setStartDateRaw(v); _save({startDate:v}); };
+  const setEndDate   = v => { setEndDateRaw(v);   _save({endDate:v});   };
+  const setPeriodKey = v => { setPeriodKeyRaw(v); _save({periodKey:v}); };
+  const setVb        = v => { setVbRaw(v);        _save({vb:v});        };
+  const setStatusFilter = v => { setStatusFilterRaw(v); _save({statusFilter:v}); };
   const [showSheet, setShowSheet] = useState(false);
-  const [vb, setVbRaw] = useState(() => _lsResFilter().vb || "all");
   const [q, setQ] = useState("");
-  const [statusFilter, setStatusFilterRaw] = useState(() => _lsResFilter().statusFilter || "all");
-  const _saveResFilter = (patch) => { try { const cur=_lsResFilter(); localStorage.setItem("bliss_res_filter", JSON.stringify({...cur,...patch})); } catch(e){} };
-  const setStartDate = (v) => { setStartDateRaw(v); _saveResFilter({startDate:v}); };
-  const setEndDate = (v) => { setEndDateRaw(v); _saveResFilter({endDate:v}); };
-  const setPeriodKey = (v) => { setPeriodKeyRaw(v); _saveResFilter({periodKey:v}); };
-  const setVb = (v) => { setVbRaw(v); _saveResFilter({vb:v}); };
-  const setStatusFilter = (v) => { setStatusFilterRaw(v); _saveResFilter({statusFilter:v}); };
-  // 타임라인 블록에 표시할 네이버 필드 (localStorage 저장)
-  const [naverColShow, setNaverColShow] = React.useState(() => {
-    try { return JSON.parse(localStorage.getItem("bliss_naver_cols") || "null") || {상품:true,시술메뉴:false,유입경로:false,관리부위:false,주차:false,첫방문:false,요청:false,"직원메모":false}; }
-    catch(e) { return {상품:true,시술메뉴:false,유입경로:false,관리부위:false,주차:false,첫방문:false,요청:false,"직원메모":false}; }
-  });
-  const toggleNaverCol = (key) => setNaverColShow(prev => {
-    const next = {...prev, [key]: !prev[key]};
-    localStorage.setItem("bliss_naver_cols", JSON.stringify(next));
-    return next;
-  });
 
-  const periodLabels = {"1day":"오늘","7days":"7일","month":"한달","all":"전체","custom":"직접","prev":"전일","thismonth":"이번달","lastmonth":"지난달"};
+  // ── 밀도 설정 (localStorage 유지) ─────────────────
+  const DENSITY = {
+    compact:     { label:"좁게",   cardPad:"8px 12px",  gap:4,  nameSize:T.fs.sm, metaSize:T.fs.xs, showNaver:false },
+    comfortable: { label:"보통",   cardPad:"12px 16px", gap:6,  nameSize:T.fs.md, metaSize:T.fs.sm, showNaver:true  },
+    spacious:    { label:"넓게",   cardPad:"16px 20px", gap:10, nameSize:T.fs.lg, metaSize:T.fs.sm, showNaver:true  },
+  };
+  const [density, setDensityRaw] = useState(()=>{ try{return localStorage.getItem("bliss_res_density")||"comfortable";}catch(e){return"comfortable";} });
+  const setDensity = v => { setDensityRaw(v); try{localStorage.setItem("bliss_res_density",v);}catch(e){} };
+  const D = DENSITY[density] || DENSITY.comfortable;
 
-  const inRange = (date) => {
-    if (periodKey==="all" || (!startDate && !endDate)) return true;
-    if (startDate && endDate) return date >= startDate && date <= endDate;
+  // ── 표시 컬럼 설정 ────────────────────────────────
+  const [showCols, setShowColsRaw] = useState(()=>{ try{return JSON.parse(localStorage.getItem("bliss_res_cols")||"null")||{phone:true,staff:true,service:true,naver_id:true,prepaid:true,memo:false,naver_info:true};}catch(e){return{phone:true,staff:true,service:true,naver_id:true,prepaid:true,memo:false,naver_info:true};} });
+  const setShowCols = v => { setShowColsRaw(v); try{localStorage.setItem("bliss_res_cols",JSON.stringify(v));}catch(e){} };
+  const [showColPanel, setShowColPanel] = useState(false);
+
+  // ── 필터 로직 ─────────────────────────────────────
+  const inRange = date => {
+    if (periodKey==="all"||(!startDate&&!endDate)) return true;
+    if (startDate&&endDate) return date>=startDate&&date<=endDate;
     return true;
   };
-
   const res = (data?.reservations||[]).filter(r => {
-    if (r.type !== "reservation") return false;
-    if (!(vb==="all" ? userBranches.includes(r.bid) : r.bid===vb)) return false;
-    // 네이버 예약은 스크래핑 완료(이름+연락처+날짜 확보)된 것만 표시
-    const isNaver = (r.source==="naver"||r.source==="네이버");
-    if (isNaver && !r.isScrapingDone) return false;
-    // naver_cancelled는 별도 필터 선택 시에만 표시 (기본 all에서 제외)
-    // naver_cancelled도 전체탭에 포함
-    if (statusFilter !== "all") {
-      const cancelGroup = statusFilter === "cancelled" && (r.status === "cancelled" || r.status === "naver_cancelled");
-      if (!cancelGroup && r.status !== statusFilter) return false;
+    if (r.type!=="reservation") return false;
+    if (!(vb==="all"?userBranches.includes(r.bid):r.bid===vb)) return false;
+    const isNaver = r.source==="naver"||r.source==="네이버";
+    if (isNaver&&!r.isScrapingDone) return false;
+    if (statusFilter!=="all") {
+      const cancelGroup = statusFilter==="cancelled"&&(r.status==="cancelled"||r.status==="naver_cancelled");
+      if (!cancelGroup&&r.status!==statusFilter) return false;
     }
     if (q) {
       const sq = q.toLowerCase();
@@ -4672,183 +4694,255 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
     return inRange(r.date);
   }).sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time));
 
-  const updateStatus = (id,status) => { setData(prev=>({...prev,reservations:(prev?.reservations||[]).map(r=>r.id===id?{...r,status}:r)})); sb.update("reservations",id,{status}).catch(console.error); };
-  const deleteRes = (id) => setData(prev=>({...prev,reservations:(prev?.reservations||[]).filter(r=>r.id!==id)}));
+  const deleteRes = id => setData(prev=>({...prev,reservations:(prev?.reservations||[]).filter(r=>r.id!==id)}));
 
-  const fmtShort = (ds) => {
+  // ── 날짜 라벨 ─────────────────────────────────────
+  const fmtShort = ds => {
     if (!ds) return "";
     const d = new Date(ds);
     const dow = ["일","월","화","수","목","금","토"][d.getDay()];
-    return `${String(d.getFullYear()).slice(2)}.${d.getMonth()+1}.${d.getDate()}.${dow}`;
+    return `${String(d.getFullYear()).slice(2)}.${d.getMonth()+1}.${d.getDate()}(${dow})`;
   };
-  const dateLabel = periodKey==="all" ? "전체" :
-    periodKey==="1day" || startDate===endDate ? fmtShort(startDate) :
-    `${fmtShort(startDate)} ~ ${fmtShort(endDate)}`;
+  const dateLabel = periodKey==="all"?"전체": periodKey==="1day"||startDate===endDate?fmtShort(startDate):`${fmtShort(startDate)} ~ ${fmtShort(endDate)}`;
 
-  const SS = {height:38,borderRadius:T.radius.md,border:"1px solid "+T.border,background:T.bgCard,fontSize:13,padding:"0 14px",cursor:"pointer",fontFamily:"inherit",color:T.text,display:"flex",alignItems:"center",gap:6,outline:"none",boxShadow:"0 1px 4px rgba(0,0,0,.08)",boxSizing:"border-box"};
+  // ── 카운트 ─────────────────────────────────────────
+  const allRes = (data?.reservations||[]).filter(r=>r.type==="reservation"&&(vb==="all"?userBranches.includes(r.bid):r.bid===vb)&&inRange(r.date));
+  const activeRes = allRes.filter(r=>!(r.source==="naver"||r.source==="네이버")||r.isScrapingDone);
+  const counts = {all:activeRes.length,confirmed:0,pending:0,completed:0,cancelled:0,no_show:0,naver_changed:0};
+  activeRes.forEach(r=>{ if(r.status==="naver_cancelled")counts.cancelled++; else if(counts[r.status]!==undefined)counts[r.status]++; });
+
+  // ── 상태 색상 ─────────────────────────────────────
+  const ST = {
+    confirmed:      {bg:T.primaryLt,    color:T.primary,    label:"확정"},
+    completed:      {bg:T.successLt,    color:T.success,    label:"완료"},
+    cancelled:      {bg:T.dangerLt,     color:T.danger,     label:"취소"},
+    no_show:        {bg:T.dangerLt,     color:T.danger,     label:"노쇼"},
+    pending:        {bg:T.warningLt,    color:T.warning,    label:"대기"},
+    naver_cancelled:{bg:T.dangerLt,     color:T.danger,     label:"취소"},
+    naver_changed:  {bg:"#E8F4FD",      color:"#1976D2",    label:"변경"},
+  };
+  const ROW_BG = {
+    naver_cancelled:"#FFFDE7", naver_changed:"#F5F9FF",
+    cancelled:"#FFF5F5", no_show:"#FFF5F5",
+  };
+
+  const SS = {height:36,borderRadius:T.radius.md,border:"1px solid "+T.border,background:T.bgCard,fontSize:T.fs.sm,padding:"0 12px",cursor:"pointer",fontFamily:"inherit",color:T.text,display:"flex",alignItems:"center",gap:6,outline:"none",boxSizing:"border-box"};
+
+  const STATUS_TABS = [
+    {k:"all",      label:"전체"},
+    {k:"confirmed",label:"확정"},
+    {k:"pending",  label:"대기"},
+    {k:"cancelled",label:"취소"},
+    {k:"no_show",  label:"노쇼"},
+    {k:"naver_changed",label:"변경"},
+  ];
 
   return <div>
-    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:0}}>
+    {/* ── 헤더 ── */}
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
       <h2 className="page-title" style={{margin:0}}>예약 목록</h2>
-      <Btn variant="ghost" size="sm" onClick={handleRefresh} disabled={refreshing} title="새로고침" style={{gap:4}}>
-        <I name="refresh-cw" size={14} color={refreshing?T.gray400:T.textSub} style={{animation:refreshing?"spin 1s linear infinite":undefined}}/>{refreshing?"...":"새로고침"}
-      </Btn>
+      <div style={{display:"flex",gap:6,alignItems:"center"}}>
+        {/* 밀도 조절 */}
+        <div style={{display:"flex",borderRadius:T.radius.md,border:"1px solid "+T.border,overflow:"hidden"}}>
+          {Object.entries(DENSITY).map(([k,v])=>(
+            <button key={k} onClick={()=>setDensity(k)} style={{
+              padding:"5px 10px",border:"none",cursor:"pointer",fontFamily:"inherit",
+              fontSize:T.fs.xs,fontWeight:density===k?T.fw.bolder:T.fw.normal,
+              background:density===k?T.primary:T.bgCard,
+              color:density===k?"#fff":T.textSub,transition:"all .15s"
+            }}>{v.label}</button>
+          ))}
+        </div>
+        {/* 컬럼 설정 */}
+        <div style={{position:"relative"}}>
+          <Btn variant="ghost" size="sm" onClick={()=>setShowColPanel(p=>!p)} style={{gap:4}}>
+            <I name="settings" size={13}/> 컬럼
+          </Btn>
+          {showColPanel && <div style={{position:"absolute",right:0,top:34,zIndex:100,background:T.bgCard,border:"1px solid "+T.border,borderRadius:T.radius.lg,padding:"12px 16px",boxShadow:T.shadow.md,minWidth:160}}>
+            <div style={{fontSize:T.fs.xs,fontWeight:T.fw.bolder,color:T.textSub,marginBottom:8}}>표시 항목</div>
+            {[
+              {k:"phone",   label:"연락처"},
+              {k:"staff",   label:"시술자"},
+              {k:"service", label:"시술"},
+              {k:"prepaid", label:"예약금"},
+              {k:"naver_id",label:"네이버 예약번호"},
+              {k:"naver_info",label:"네이버 정보"},
+              {k:"memo",    label:"직원메모"},
+            ].map(({k,label})=>(
+              <label key={k} style={{display:"flex",alignItems:"center",gap:8,padding:"4px 0",cursor:"pointer",fontSize:T.fs.sm,color:T.text}}>
+                <input type="checkbox" checked={!!showCols[k]} onChange={()=>setShowCols({...showCols,[k]:!showCols[k]})}
+                  style={{accentColor:T.primary,width:14,height:14}}/>
+                {label}
+              </label>
+            ))}
+          </div>}
+        </div>
+        <Btn variant="ghost" size="sm" onClick={handleRefresh} disabled={refreshing} style={{gap:4}}>
+          <I name="refresh-cw" size={13} style={{animation:refreshing?"spin 1s linear infinite":undefined}}/>{refreshing?"...":"새로고침"}
+        </Btn>
+      </div>
     </div>
-    {/* 필터 바 - 날짜 + 매장 */}
-    <div style={{display:"flex",gap:8,marginBottom:10,alignItems:"center",flexWrap:"wrap"}}>
-      <button ref={dateAnchorRef} onClick={()=>setShowSheet(true)} style={{...SS,background:"#f7f7ff",borderColor:"#c5c5f0",color:T.primaryDk,fontWeight:T.fw.bold,flex:"0 0 auto",minWidth:150}}>
-        <I name="calendar" size={15} color="#7c7cc8"/>
+
+    {/* ── 필터 바 ── */}
+    <div style={{display:"flex",gap:8,marginBottom:8,alignItems:"center",flexWrap:"wrap"}}>
+      <button ref={dateAnchorRef} onClick={()=>setShowSheet(true)} style={{...SS,background:T.primaryLt,borderColor:T.primary+"44",color:T.primaryDk,fontWeight:T.fw.bold,minWidth:140}}>
+        <I name="calendar" size={14} color={T.primary}/>
         <span>{dateLabel}</span>
-        <span style={{fontSize:T.fs.xs,color:T.textMuted,marginLeft:"auto"}}>▼</span>
+        <span style={{fontSize:T.fs.xs,marginLeft:"auto",opacity:.6}}>▼</span>
       </button>
       <select style={{...SS,flex:1,minWidth:100,appearance:"auto"}} value={vb} onChange={e=>setVb(e.target.value)}>
         <option value="all">전체 매장</option>
         {(data.branches||[]).map(b=><option key={b.id} value={b.id}>{b.name}</option>)}
       </select>
-    </div>
-    {/* 검색 */}
-    <div style={{display:"flex",gap:8,marginBottom:8,alignItems:"center"}}>
-      <div style={{position:"relative",flex:1}}>
-        <span style={{position:"absolute",left:14,top:"50%",transform:"translateY(-50%)",color:T.gray400}}><I name="search" size={15}/></span>
-        <input style={{width:"100%",height:38,borderRadius:T.radius.md,border:"1px solid "+T.border,paddingLeft:42,paddingRight:36,fontSize:13,outline:"none",boxSizing:"border-box",fontFamily:"inherit",color:T.text,boxShadow:"0 1px 4px rgba(0,0,0,.08)"}} placeholder="고객명, 연락처, 시술, 시술자" value={q} onChange={e=>setQ(e.target.value)}/>
-        {q && <button onClick={()=>setQ("")} style={{position:"absolute",right:14,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",color:T.gray400,fontSize:T.fs.xl,lineHeight:1}}>×</button>}
+      <div style={{position:"relative",flex:2,minWidth:160}}>
+        <span style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",color:T.gray400}}><I name="search" size={14}/></span>
+        <input style={{width:"100%",height:36,borderRadius:T.radius.md,border:"1px solid "+T.border,paddingLeft:36,paddingRight:32,fontSize:T.fs.sm,outline:"none",boxSizing:"border-box",fontFamily:"inherit",color:T.text}} placeholder="고객명, 연락처, 시술, 시술자" value={q} onChange={e=>setQ(e.target.value)}/>
+        {q&&<button onClick={()=>setQ("")} style={{position:"absolute",right:10,top:"50%",transform:"translateY(-50%)",background:"none",border:"none",cursor:"pointer",color:T.gray400,fontSize:T.fs.lg,lineHeight:1}}>×</button>}
       </div>
     </div>
-    {/* 상태 필터 - 네이버 스타일 pill */}
-    {(()=>{
-      const allRes = (data?.reservations||[]).filter(r=>r.type==="reservation"&&(vb==="all"?userBranches.includes(r.bid):r.bid===vb)&&inRange(r.date));
-      // 카운트: 네이버 예약은 스크래핑 완료된 것만 포함 (목록과 동일 기준)
-      const activeRes = allRes.filter(r=>!(r.source==="naver"||r.source==="네이버")||r.isScrapingDone);
-      const counts = {all: activeRes.length, confirmed:0, pending:0, completed:0, cancelled:0, noshow:0, naver_changed:0};
-      activeRes.forEach(r=>{
-        if(r.status==="naver_cancelled") counts.cancelled++;
-        else if(counts[r.status]!==undefined) counts[r.status]++;
-      });
-      const tabs = [
-        {k:"all", label:"전체"},
-        {k:"confirmed", label:"확정"},
-        {k:"pending", label:"대기"},
-        {k:"cancelled", label:"취소", color:"#e53e3e"},
-        {k:"noshow", label:"노쇼"},
-        {k:"naver_changed", label:"변경"},
-      ];
-      return <div style={{display:"flex",gap:5,marginBottom:10,flexWrap:"wrap"}}>
-        {tabs.map(({k,label})=>{
-          const active = statusFilter===k;
-          const cnt = counts[k]||0;
-          return <button key={k} onClick={()=>setStatusFilter(k)} style={{
-            height:30,padding:"0 11px",borderRadius:20,border:"1.5px solid",fontSize:13,fontWeight:active?700:500,cursor:"pointer",fontFamily:"inherit",
-            display:"flex",alignItems:"center",gap:5,transition:"all .15s",
-            background: active?(k==="naver_cancelled"?"#E05252":k==="naver_changed"?"#1976D2":"#7c7cc8"):"#fff",
-            borderColor: active?(k==="naver_cancelled"?"#E05252":k==="naver_changed"?"#1976D2":"#7c7cc8"):(k==="naver_cancelled"?"#E0525244":k==="naver_changed"?"#1976D244":"#e0e0e0"),
-            color: active?"#fff":(k==="naver_cancelled"?"#E05252":k==="naver_changed"?"#1976D2":"#555"),
-            boxShadow: active?"0 2px 8px rgba(0,0,0,.2)":"0 1px 3px rgba(0,0,0,.08)",
-          }}>
-            <span>{label}</span>
-            <span style={{
-              fontSize:11,fontWeight:T.fw.bolder,
-              background: active?"rgba(255,255,255,.25)":"#f0f0f0",
-              color: active?"#fff":"#888",
-              borderRadius:10,padding:"1px 6px",lineHeight:"16px",
-            }}>{cnt}</span>
-          </button>;
-        })}
-      </div>;
-    })()}
-    <div className="card tw">
-      <table style={{tableLayout:"fixed",width:"100%"}}><thead><tr>
-        <th style={{width:68}}>날짜</th><th style={{width:50}}>시간</th><th style={{width:52}}>매장</th><th style={{width:64}}>고객</th><th style={{width:28,textAlign:"center"}}>성별</th><th style={{width:84}}>연락처</th><th style={{width:"14%"}}>시술</th><th style={{width:46}}>시술자</th><th style={{width:90,color:"#03C75A"}}>예약번호</th><th style={{width:50,color:"#e65100"}}>예약금</th><th style={{width:46}}>상태</th>
-        <th style={{width:90,background:"#F1F8E9",padding:"3px 4px",transition:"width 0.15s",overflow:"hidden"}}>
-            <label style={{display:"flex",alignItems:"center",gap:4,cursor:"pointer",fontSize:T.fs.xs,fontWeight:T.fw.bold,color:"#37474F",whiteSpace:"nowrap",overflow:"hidden"}}>
-              <input type="checkbox" checked={!!naverColShow["직원메모"]} onChange={()=>toggleNaverCol("직원메모")}
-                style={{width:11,height:11,flexShrink:0,accentColor:"#37474F",cursor:"pointer"}}/>
-              <span>직원메모</span>
-            </label>
-          </th>
-        {NAVER_COLS.map(col => (
-          <th key={col.key} style={{width:90,background:"#F1F8E9",padding:"3px 4px",transition:"width 0.15s",overflow:"hidden"}}>
-            <label style={{display:"flex",alignItems:"center",gap:4,cursor:"pointer",fontSize:T.fs.xs,fontWeight:T.fw.bold,color:"#2E7D32",whiteSpace:"nowrap",overflow:"hidden"}}>
-              <input type="checkbox" checked={!!naverColShow[col.key]} onChange={()=>toggleNaverCol(col.key)}
-                style={{width:11,height:11,flexShrink:0,accentColor:"#2E7D32",cursor:"pointer"}}/>
-              <span>{col.label}</span>
-            </label>
-          </th>
-        ))}
-        <th style={{width:60}}>액션</th>
-      </tr></thead><tbody>
-        {res.length===0?<tr><td colSpan={14+NAVER_COLS.length}><Empty msg="예약이 없습니다" icon="calendar"/></td></tr>:
-          res.map(r=>{
-            const svc=(data.services||[]).find(s=>s.id===r.serviceId);
-            const svcNames=(r.selectedServices||[]).map(sid=>(data.services||[]).find(s=>s.id===sid)?.name).filter(Boolean);
-            const svcDisplay=svcNames.length>0?svcNames.join(", "):(svc?.name||"-");
-            const staff=(data.staff||[]).find(s=>s.id===r.staffId);
-            const br=(data.branches||[]).find(b=>b.id===r.bid);
-            const g=r.custGender||"";
-            const sc=getStatusClr();
-            return <tr key={r.id} style={{
-                background: r.status==="naver_cancelled" ? "#FFF8E1"
-                  : r.status==="naver_changed" ? "#F3F4F6"
-                  : r.status==="cancelled" ? "#FFF0F0"
-                  : r.status==="no_show" ? "#FFF0F0"
-                  : "transparent"
-              }}>
-              <td style={{fontSize:11,color:T.textMuted}}>{r.date}</td>
-              <td style={{fontWeight:T.fw.bolder,color:T.primary}}>{r.time}</td>
-              <td style={{fontSize:11}}>{br?.short}</td>
-              <td style={{fontWeight:T.fw.bold,maxWidth:68,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} title={r.custName||""}>{r.custName||"-"}</td>
-              <td style={{textAlign:"center",padding:"2px"}}>
-                {g ? <span style={{fontSize:T.fs.xs,fontWeight:T.fw.bolder,borderRadius:6,padding:"2px 5px",background:g==="M"?"#E3F2FD":"#FCE4EC",color:g==="M"?"#1565C0":"#C2185B",display:"inline-block"}}>{g==="M"?"남":"여"}</span> : <span style={{color:"#ddd",fontSize:T.fs.xs}}>-</span>}
-              </td>
-              <td style={{color:T.primary,fontSize:T.fs.sm,whiteSpace:"nowrap"}}>{r.custPhone||"-"}</td>
-              <td style={{fontSize:T.fs.sm}}>{svcDisplay}</td>
-              <td style={{fontSize:T.fs.sm}}>{staff?.dn||"-"}</td>
-              
-              <td style={{fontSize:T.fs.xs,color:"#03C75A",whiteSpace:"nowrap"}} onClick={e=>e.stopPropagation()}>
-                {r.reservationId ? <a href={`https://partner.booking.naver.com/bizes/1523676/booking-list-view/bookings/${r.reservationId}`} target="_blank" rel="noreferrer" style={{color:"#03C75A",textDecoration:"none"}}>{r.reservationId}</a> : <span style={{color:"#ccc"}}>-</span>}
-              </td>
 
-              <td style={{fontSize:11,fontWeight:T.fw.bolder,color:"#e65100",textAlign:"center"}}>{(()=>{
-  if(!r.isPrepaid) return <span style={{color:"#ccc"}}>-</span>;
-  const amt = r.totalPrice||0;
-  if(!amt) return <span style={{color:"#ccc"}}>-</span>;
-  return <span style={{background:"#e8f5e9",color:"#2e7d32",borderRadius:6,padding:"2px 6px",fontSize:T.fs.xs}} title={"선불결제: "+(r.npayMethod||"네이버페이")}>✓{amt.toLocaleString()}원</span>;
-})()} </td>
-              <td>{(()=>{
-                const ST_PILL = {
-                  confirmed:     {bg:"#EEF4FB", color:"#5B9BD5", label:"진행"},
-                  completed:     {bg:"#EDFAED", color:"#3a8f3a", label:"완료"},
-                  cancelled:     {bg:"#FFF0F0", color:"#E05252", label:"취소"},
-                  no_show:       {bg:"#FFF0F0", color:"#E05252", label:"노쇼"},
-                  pending:       {bg:"#FFF8E1", color:"#E6A700", label:"확정대기"},
-                  naver_cancelled:{bg:"#FFF0F0", color:"#E05252", label:"취소"},
-                  naver_changed: {bg:"#E8F4FD", color:"#1976D2", label:"변경"},
-                };
-                const p = ST_PILL[r.status] || {bg:"#F5F5F5", color:T.gray500, label:r.status};
-                return <Badge color={p.color} bg={p.bg}>{p.label}</Badge>;
-              })()}</td>
-              <td style={{fontSize:T.fs.xs,color:T.gray700,maxWidth:90,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",background:"#F1F8E9",padding:"4px 6px"}} title={r.ownerComment||""}>
-                  {r.ownerComment ? <span style={{background:"#ECEFF1",color:"#37474F",borderRadius:10,padding:"1px 8px",fontWeight:T.fw.medium,fontSize:T.fs.xs}}>{r.ownerComment}</span> : <span style={{color:"#ccc"}}>-</span>}
-                </td>
-              {NAVER_COLS.map(col => (
-                <td key={col.key} style={{fontSize:T.fs.xs,color:T.gray700,maxWidth:90,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",background:"#F1F8E9",padding:"4px 6px"}} title={getNaverVal(r.requestMsg, col.kws)}>
-                  {(() => {
-                    const v = getNaverVal(r.requestMsg, col.kws);
-                    if (!v) return <span style={{color:"#ccc"}}>-</span>;
-                    const isProduct = col.key === "상품";
-                    const bg = isProduct ? "#FFF3E0" : "#E8F5E9";
-                    const clr = isProduct ? "#E65100" : "#2E7D32";
-                    return <span style={{background:bg,color:clr,borderRadius:10,padding:"1px 8px",fontWeight:T.fw.bold,fontSize:T.fs.xs,whiteSpace:"nowrap"}}>{v}</span>;
-                  })()}
-                </td>
-              ))}
-              <td><div style={{display:"flex",gap:4}}>
-                <Btn variant="ghost" size="sm" title="타임라인에서 열기" onClick={()=>{if(setPendingOpenRes)setPendingOpenRes(r);if(setPage)setPage("timeline");}} style={{width:28,height:28,padding:0,borderRadius:T.radius.sm}}><I name="calendar" size={12}/></Btn>
-                <Btn variant="ghost" size="sm" onClick={()=>deleteRes(r.id)} style={{width:28,height:28,padding:0,borderRadius:T.radius.sm,border:`1px solid ${T.danger}22`,color:T.danger}}><I name="trash" size={12}/></Btn>
-              </div></td>
-            </tr>;
-          })}
-      </tbody></table>
+    {/* ── 상태 탭 ── */}
+    <div style={{display:"flex",gap:5,marginBottom:12,flexWrap:"wrap"}}>
+      {STATUS_TABS.map(({k,label})=>{
+        const active = statusFilter===k;
+        const st = ST[k]||{color:T.gray500};
+        const cnt = counts[k]||0;
+        return <button key={k} onClick={()=>setStatusFilter(k)} style={{
+          height:30,padding:"0 12px",borderRadius:T.radius.full,border:"1.5px solid",
+          fontSize:T.fs.sm,fontWeight:active?T.fw.bolder:T.fw.medium,cursor:"pointer",fontFamily:"inherit",
+          display:"flex",alignItems:"center",gap:5,transition:"all .15s",
+          background:active?st.color:T.bgCard,
+          borderColor:active?st.color:T.border,
+          color:active?"#fff":st.color||T.gray700,
+          boxShadow:active?T.shadow.sm:"none",
+        }}>
+          <span>{label}</span>
+          <span style={{fontSize:T.fs.xs,fontWeight:T.fw.bolder,background:active?"rgba(255,255,255,.25)":T.gray200,color:active?"#fff":T.textSub,borderRadius:T.radius.full,padding:"1px 6px",lineHeight:"16px"}}>{cnt}</span>
+        </button>;
+      })}
     </div>
+
+    {/* ── 카드 그리드 ── */}
+    {res.length===0 ? <Empty msg="예약이 없습니다" icon="calendar"/> :
+    <div style={{display:"flex",flexDirection:"column",gap:D.gap}}>
+      {/* 그리드 헤더 */}
+      <div style={{display:"grid",gridTemplateColumns:resGridCols(showCols,density),gap:4,padding:"4px 16px",borderRadius:T.radius.md,background:T.gray200}}>
+        <span style={{fontSize:T.fs.xs,fontWeight:T.fw.bolder,color:T.textSub}}>날짜·시간</span>
+        <span style={{fontSize:T.fs.xs,fontWeight:T.fw.bolder,color:T.textSub}}>매장</span>
+        <span style={{fontSize:T.fs.xs,fontWeight:T.fw.bolder,color:T.textSub}}>고객</span>
+        {showCols.service && <span style={{fontSize:T.fs.xs,fontWeight:T.fw.bolder,color:T.textSub}}>시술</span>}
+        {showCols.staff   && <span style={{fontSize:T.fs.xs,fontWeight:T.fw.bolder,color:T.textSub}}>시술자</span>}
+        {showCols.phone   && <span style={{fontSize:T.fs.xs,fontWeight:T.fw.bolder,color:T.textSub}}>연락처</span>}
+        {showCols.prepaid && <span style={{fontSize:T.fs.xs,fontWeight:T.fw.bolder,color:T.textSub}}>예약금</span>}
+        {showCols.naver_id && <span style={{fontSize:T.fs.xs,fontWeight:T.fw.bolder,color:T.textSub}}>예약번호</span>}
+        {showCols.naver_info && <span style={{fontSize:T.fs.xs,fontWeight:T.fw.bolder,color:T.textSub}}>네이버 정보</span>}
+        {showCols.memo    && <span style={{fontSize:T.fs.xs,fontWeight:T.fw.bolder,color:T.textSub}}>메모</span>}
+        <span style={{fontSize:T.fs.xs,fontWeight:T.fw.bolder,color:T.textSub,textAlign:"center"}}>상태</span>
+        <span></span>
+      </div>
+
+      {/* 카드 행 */}
+      {res.map(r => {
+        const svcNames = (r.selectedServices||[]).map(sid=>(data.services||[]).find(s=>s.id===sid)?.name).filter(Boolean);
+        const svc = (data.services||[]).find(s=>s.id===r.serviceId);
+        const svcDisplay = svcNames.length>0 ? svcNames.join(", ") : (svc?.name||"-");
+        const staff = (data.staff||[]).find(s=>s.id===r.staffId);
+        const br = (data.branches||[]).find(b=>b.id===r.bid);
+        const g = r.custGender||"";
+        const st = ST[r.status]||{bg:T.gray100,color:T.gray500,label:r.status};
+        const rowBg = ROW_BG[r.status]||T.bgCard;
+        const isNaver = r.source==="naver"||r.source==="네이버";
+
+        // 네이버 정보 파싱
+        const naverInfoItems = isNaver && showCols.naver_info ? NAVER_COLS.filter(col=>{
+          const v = getNaverVal(r.requestMsg, col.kws);
+          return v;
+        }).map(col=>({ label:col.label, value:getNaverVal(r.requestMsg, col.kws) })) : [];
+
+        return <div key={r.id} style={{
+          display:"grid", gridTemplateColumns:resGridCols(showCols,density),
+          gap:4, alignItems:"center",
+          padding:D.cardPad,
+          borderRadius:T.radius.md,
+          background:rowBg,
+          border:"1px solid "+(r.status==="cancelled"||r.status==="no_show"||r.status==="naver_cancelled"?T.danger+"22":T.border),
+          transition:"box-shadow .15s",
+          cursor:"pointer",
+        }}
+          onClick={()=>{ if(setPendingOpenRes)setPendingOpenRes(r); if(setPage)setPage("timeline"); }}
+          onMouseEnter={e=>e.currentTarget.style.boxShadow=T.shadow.md}
+          onMouseLeave={e=>e.currentTarget.style.boxShadow="none"}
+        >
+          {/* 날짜·시간 */}
+          <div>
+            <div style={{fontSize:T.fs.xs,color:T.textSub}}>{r.date}</div>
+            <div style={{fontSize:D.nameSize,fontWeight:T.fw.bolder,color:T.primary}}>{r.time}</div>
+          </div>
+
+          {/* 매장 */}
+          <div style={{fontSize:T.fs.sm,fontWeight:T.fw.medium,color:T.text}}>{br?.short||"-"}</div>
+
+          {/* 고객 */}
+          <div style={{display:"flex",alignItems:"center",gap:6}}>
+            {g && <span style={{fontSize:9,fontWeight:T.fw.bolder,borderRadius:T.radius.sm,padding:"1px 4px",background:g==="M"?"#DBEAFE":"#FCE7F3",color:g==="M"?"#1D4ED8":"#BE185D",flexShrink:0}}>{g==="M"?"남":"여"}</span>}
+            <span style={{fontSize:D.nameSize,fontWeight:T.fw.bolder,color:T.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.custName||"-"}</span>
+            {isNaver && <I name="naver" size={10} color={T.naver} style={{flexShrink:0}}/>}
+          </div>
+
+          {/* 시술 */}
+          {showCols.service && <div style={{fontSize:T.fs.xs,color:T.gray700,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{svcDisplay}</div>}
+
+          {/* 시술자 */}
+          {showCols.staff && <div style={{fontSize:T.fs.xs,color:T.textSub}}>{staff?.dn||"-"}</div>}
+
+          {/* 연락처 */}
+          {showCols.phone && <div style={{fontSize:T.fs.xs,color:T.primary,whiteSpace:"nowrap"}} onClick={e=>e.stopPropagation()}>{r.custPhone||"-"}</div>}
+
+          {/* 예약금 */}
+          {showCols.prepaid && <div>
+            {r.isPrepaid && r.totalPrice ? <Badge color={T.success} bg={T.successLt}>✓{r.totalPrice.toLocaleString()}원</Badge> : <span style={{color:T.gray300,fontSize:T.fs.xs}}>-</span>}
+          </div>}
+
+          {/* 예약번호 */}
+          {showCols.naver_id && <div style={{fontSize:T.fs.xs}} onClick={e=>e.stopPropagation()}>
+            {r.reservationId
+              ? <a href={`https://partner.booking.naver.com/bizes/1523676/booking-list-view/bookings/${r.reservationId}`} target="_blank" rel="noreferrer" style={{color:T.naver,textDecoration:"none",fontWeight:T.fw.medium}}>{r.reservationId}</a>
+              : <span style={{color:T.gray300}}>-</span>}
+          </div>}
+
+          {/* 네이버 정보 */}
+          {showCols.naver_info && <div style={{display:"flex",flexWrap:"wrap",gap:3}}>
+            {naverInfoItems.length>0
+              ? naverInfoItems.map(item=>(
+                  <span key={item.label} style={{fontSize:9,padding:"1px 6px",borderRadius:T.radius.full,background:T.primaryLt,color:T.primaryDk,fontWeight:T.fw.bold,whiteSpace:"nowrap"}}>{item.label}: {item.value}</span>
+                ))
+              : <span style={{color:T.gray300,fontSize:T.fs.xs}}>-</span>}
+          </div>}
+
+          {/* 메모 */}
+          {showCols.memo && <div style={{fontSize:T.fs.xs,color:T.textSub,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.ownerComment||"-"}</div>}
+
+          {/* 상태 */}
+          <div style={{textAlign:"center"}}>
+            <Badge color={st.color} bg={st.bg}>{st.label}</Badge>
+          </div>
+
+          {/* 액션 */}
+          <div style={{display:"flex",gap:4,justifyContent:"flex-end"}} onClick={e=>e.stopPropagation()}>
+            <Btn variant="ghost" size="sm" title="타임라인에서 열기"
+              onClick={()=>{ if(setPendingOpenRes)setPendingOpenRes(r); if(setPage)setPage("timeline"); }}
+              style={{width:26,height:26,padding:0,borderRadius:T.radius.sm}}>
+              <I name="calendar" size={11}/>
+            </Btn>
+            <Btn variant="ghost" size="sm" onClick={()=>deleteRes(r.id)}
+              style={{width:26,height:26,padding:0,borderRadius:T.radius.sm,border:"1px solid "+T.danger+"22",color:T.danger}}>
+              <I name="trash" size={11}/>
+            </Btn>
+          </div>
+        </div>;
+      })}
+    </div>}
+
     <SmartDatePicker open={showSheet} onClose={()=>setShowSheet(false)} anchorEl={dateAnchorRef.current} startDate={startDate} endDate={endDate} mode="res"
       onApply={(s,e,p)=>{ setStartDate(s); setEndDate(e); setPeriodKey(p); setShowSheet(false); }}/>
   </div>;
