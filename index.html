@@ -174,70 +174,123 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.41";
+const BLISS_V = "2.69.42";
 
 // ─── 디자인 토큰 ────────────────────────────────────────────────────────────
 const T = {
-  primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8",
-  danger:"#ef5350", dangerLt:"#fdecea", success:"#6AB56A", successLt:"#e8f5e9",
-  warning:"#E8B830", warningLt:"#fffde7", info:"#5cb5c5", infoLt:"#e0f7fa",
-  gray100:"#f8f8f8", gray200:"#f0f0f0", gray300:"#e0e0e0", gray400:"#d0d0d0",
-  gray500:"#aaaaaa", gray600:"#888888", gray700:"#555555", gray800:"#333333",
-  text:"#333333", textSub:"#888888", textMuted:"#aaaaaa",
-  bg:"#f8f8f8", bgCard:"#ffffff", border:"#e0e0e0", borderFocus:"#7c7cc8",
-  naver:"#03C75A",
-  radius:{ sm:4, md:8, lg:12, xl:16, full:999 },
-  fs:{ xs:10, sm:12, md:14, lg:16, xl:18, xxl:22 },
-  fw:{ normal:400, medium:500, bold:600, bolder:700, black:800 },
-  sp:{ xs:4, sm:8, md:12, lg:16, xl:20, xxl:24 },
-  shadow:{ sm:"0 1px 4px rgba(0,0,0,.08)", md:"0 2px 12px rgba(0,0,0,.12)", lg:"0 4px 24px rgba(0,0,0,.16)" },
+  // 브랜드 컬러
+  primary:    "#7c7cc8",
+  primaryLt:  "#ede9fe",
+  primaryDk:  "#5b5bb8",
+  // 상태 컬러
+  danger:     "#ef5350",
+  dangerLt:   "#fdecea",
+  success:    "#6AB56A",
+  successLt:  "#e8f5e9",
+  warning:    "#E8B830",
+  warningLt:  "#fffde7",
+  info:       "#5cb5c5",
+  infoLt:     "#e0f7fa",
+  // 뉴트럴
+  gray100:    "#f8f8f8",
+  gray200:    "#f0f0f0",
+  gray300:    "#e0e0e0",
+  gray400:    "#d0d0d0",
+  gray500:    "#aaaaaa",
+  gray600:    "#888888",
+  gray700:    "#555555",
+  gray800:    "#333333",
+  // 텍스트
+  text:       "#333333",
+  textSub:    "#888888",
+  textMuted:  "#aaaaaa",
+  // 배경
+  bg:         "#f8f8f8",
+  bgCard:     "#ffffff",
+  // 테두리
+  border:     "#e0e0e0",
+  borderFocus:"#7c7cc8",
+  // 네이버
+  naver:      "#03C75A",
+  // 라운딩
+  radius:     { sm:4, md:8, lg:12, xl:16, full:999 },
+  // 폰트 크기
+  fs:         { xs:10, sm:12, md:14, lg:16, xl:18, xxl:22 },
+  // 폰트 웨이트
+  fw:         { normal:400, medium:500, bold:600, bolder:700, black:800 },
+  // 간격
+  sp:         { xs:4, sm:8, md:12, lg:16, xl:20, xxl:24 },
+  // 그림자
+  shadow:     { sm:"0 1px 4px rgba(0,0,0,.08)", md:"0 2px 12px rgba(0,0,0,.12)", lg:"0 4px 24px rgba(0,0,0,.16)" },
 };
 
 // ─── 공통 UI 컴포넌트 ────────────────────────────────────────────────────────
+
+// 버튼
 const Btn = ({ children, variant="primary", size="md", disabled, onClick, style={}, ...p }) => {
   const base = { display:"inline-flex", alignItems:"center", justifyContent:"center", gap:6,
     border:"none", borderRadius:T.radius.md, cursor:disabled?"not-allowed":"pointer",
-    fontFamily:"inherit", fontWeight:T.fw.bolder, transition:"opacity .15s", opacity:disabled?0.5:1 };
+    fontFamily:"inherit", fontWeight:T.fw.bold, transition:"opacity .15s",
+    opacity: disabled ? 0.5 : 1 };
   const sizes = { sm:{padding:"4px 10px",fontSize:T.fs.sm}, md:{padding:"7px 14px",fontSize:T.fs.md}, lg:{padding:"10px 20px",fontSize:T.fs.lg} };
   const variants = {
-    primary:  { background:T.primary,  color:"#fff" },
-    secondary:{ background:T.gray200,  color:T.gray800 },
-    danger:   { background:T.danger,   color:"#fff" },
-    ghost:    { background:"transparent", color:T.primary, border:"1px solid "+T.border },
-    outline:  { background:"transparent", color:T.primary, border:"1px solid "+T.primary },
+    primary:   { background:T.primary,   color:"#fff" },
+    secondary: { background:T.gray200,   color:T.gray800 },
+    danger:    { background:T.danger,    color:"#fff" },
+    ghost:     { background:"transparent", color:T.primary, border:`1px solid ${T.border}` },
+    outline:   { background:"transparent", color:T.primary, border:`1px solid ${T.primary}` },
   };
   return <button onClick={disabled?undefined:onClick} style={{...base,...sizes[size],...variants[variant],...style}} {...p}>{children}</button>;
 };
+
+// 뱃지
 const Badge = ({ children, color=T.primary, bg, style={} }) => (
   <span style={{ display:"inline-flex", alignItems:"center", padding:"2px 8px",
-    borderRadius:T.radius.full, fontSize:T.fs.xs, fontWeight:T.fw.bolder,
-    color, background:bg||color+"22", ...style }}>{children}</span>
+    borderRadius:T.radius.full, fontSize:T.fs.xs, fontWeight:T.fw.bold,
+    color, background: bg || color+"22", ...style }}>
+    {children}
+  </span>
 );
+
+// 카드
 const Card = ({ children, style={}, ...p }) => (
-  <div style={{ background:T.bgCard, borderRadius:T.radius.lg, border:"1px solid "+T.border,
-    padding:T.sp.lg, boxShadow:T.shadow.sm, ...style }} {...p}>{children}</div>
+  <div style={{ background:T.bgCard, borderRadius:T.radius.lg,
+    border:`1px solid ${T.border}`, padding:T.sp.lg,
+    boxShadow:T.shadow.sm, ...style }} {...p}>
+    {children}
+  </div>
 );
+
+// 입력 필드
 const Input = ({ style={}, ...p }) => (
   <input style={{ width:"100%", padding:"8px 12px", borderRadius:T.radius.md,
-    border:"1px solid "+T.border, fontSize:T.fs.md, fontFamily:"inherit",
+    border:`1px solid ${T.border}`, fontSize:T.fs.md, fontFamily:"inherit",
     outline:"none", background:"#fff", color:T.text, boxSizing:"border-box", ...style }} {...p}/>
 );
+
+// 구분선
 const Divider = ({ style={} }) => (
-  <div style={{ height:1, background:T.border, margin:T.sp.md+"px 0", ...style }}/>
+  <div style={{ height:1, background:T.border, margin:`${T.sp.md}px 0`, ...style }}/>
 );
+
+// 상태 뱃지 (예약 상태)
 const StatusBadge = ({ status, label }) => {
   const clr = { confirmed:T.primary, completed:T.success, cancelled:T.warning,
     no_show:T.danger, naver_cancelled:"#E6A700", naver_changed:T.gray500, pending:T.info };
-  const c = clr[status]||T.gray500;
-  return <Badge color={c} bg={c+"22"}>{label||STATUS_LABEL[status]||status}</Badge>;
+  const c = clr[status] || T.gray500;
+  return <Badge color={c} bg={c+"22"}>{label || STATUS_LABEL[status] || status}</Badge>;
 };
+
+// 빈 상태
 const Empty = ({ msg="데이터가 없습니다", icon="inbox" }) => (
   <div style={{ display:"flex", flexDirection:"column", alignItems:"center",
-    justifyContent:"center", padding:"48px 0", color:T.textMuted, gap:T.sp.md }}>
+    justifyContent:"center", padding:`${T.sp.xxl*2}px 0`, color:T.textMuted, gap:T.sp.md }}>
     <I name={icon} size={32} color={T.gray400}/>
     <span style={{ fontSize:T.fs.md }}>{msg}</span>
   </div>
 );
+
+// 로딩 스피너
 const Spinner = ({ size=20, color=T.primary }) => (
   <I name="loader" size={size} color={color} style={{animation:"spin 1s linear infinite"}}/>
 );
@@ -1460,42 +1513,44 @@ function Login({ users, onLogin, onSignup }) {
     try{if(saveId)localStorage.setItem("savedLoginId",loginId);else localStorage.removeItem("savedLoginId");}catch(e){}
     onLogin(u);
   };
+  const bgGrad = "linear-gradient(135deg,#e8e8f0 0%,#d8d8e8 50%,#c8c8d8 100%)";
+  const cardStyle = {background:T.bgCard,borderRadius:T.radius.lg,border:`1px solid ${T.border}`,boxShadow:T.shadow.lg,animation:"slideUp .6s cubic-bezier(.22,1,.36,1)"};
   if (showSignup) return (
-    <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,overflowY:"auto",WebkitOverflowScrolling:"touch",background:"linear-gradient(135deg,#e8e8f0 0%,#d8d8e8 50%,#c8c8d8 100%)",fontFamily:"'Pretendard',sans-serif",padding:"20px 16px 80px",boxSizing:"border-box",zIndex:9999}}>
+    <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,overflowY:"auto",WebkitOverflowScrolling:"touch",background:bgGrad,fontFamily:"'Pretendard',sans-serif",padding:"20px 16px 80px",boxSizing:"border-box",zIndex:9999}}>
       <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet"/>
       <style>{CSS}</style>
-      <div style={{background:"#fff",borderRadius:12,border:"1px solid #e0e0e0",padding:"28px 24px",width:"92%",maxWidth:460,animation:"slideUp .6s cubic-bezier(.22,1,.36,1)",boxShadow:"0 12px 40px rgba(0,0,0,.15)",marginTop:20}}>
-        <div style={{textAlign:"center",marginBottom:24}}>
-          <div style={{fontSize:24,fontWeight:800,color:"#7c7cc8",letterSpacing:-1}}>Bliss</div>
-          <div style={{fontSize:11,color:"#999",marginTop:4}}>신규 가입</div>
+      <div style={{...cardStyle,padding:"28px 24px",width:"92%",maxWidth:460,marginTop:20}}>
+        <div style={{textAlign:"center",marginBottom:T.sp.xxl}}>
+          <div style={{fontSize:T.fs.xxl,fontWeight:T.fw.black,color:T.primary,letterSpacing:-1}}>Bliss</div>
+          <div style={{fontSize:T.fs.xs,color:T.textMuted,marginTop:4}}>신규 가입</div>
         </div>
         <SignupWizard onComplete={(newUser)=>{ setShowSignup(false); onSignup(newUser); }} onBack={()=>setShowSignup(false)}/>
       </div>
     </div>
   );
   return (
-    <div style={{minHeight:"100vh",width:"100%",display:"flex",alignItems:"center",justifyContent:"center",background:"linear-gradient(135deg,#e8e8f0 0%,#d8d8e8 50%,#c8c8d8 100%)",fontFamily:"'Pretendard',sans-serif",padding:16}}>
+    <div style={{minHeight:"100vh",width:"100%",display:"flex",alignItems:"center",justifyContent:"center",background:bgGrad,fontFamily:"'Pretendard',sans-serif",padding:T.sp.lg}}>
       <link href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css" rel="stylesheet"/>
       <style>{CSS}</style>
-      <div style={{background:"#fff",borderRadius:12,border:"1px solid #e0e0e0",padding:"32px 28px",width:"92%",maxWidth:420,animation:"slideUp .6s cubic-bezier(.22,1,.36,1)",boxShadow:"0 12px 40px rgba(0,0,0,.15)"}}>
+      <div style={{...cardStyle,padding:"32px 28px",width:"92%",maxWidth:420}}>
         <div style={{textAlign:"center",marginBottom:32}}>
-          <div style={{fontSize:28,fontWeight:800,color:"#7c7cc8",letterSpacing:-1}}>Bliss</div>
-          <div style={{fontSize:12,color:"#999",marginTop:8}}>통합 예약 & 매출 관리 시스템</div>
+          <div style={{fontSize:28,fontWeight:T.fw.black,color:T.primary,letterSpacing:-1}}>Bliss</div>
+          <div style={{fontSize:T.fs.sm,color:T.textMuted,marginTop:T.sp.sm}}>통합 예약 & 매출 관리 시스템</div>
         </div>
         <div style={{display:"flex",flexDirection:"column",gap:14}}>
           <FLD label="아이디"><input className="inp" placeholder="아이디 입력" value={loginId} onChange={e=>{setLoginId(e.target.value);setErr("")}}/></FLD>
           <FLD label="비밀번호"><input className="inp" type="password" placeholder="비밀번호 입력" value={pw} onChange={e=>{setPw(e.target.value);setErr("")}} onKeyDown={e=>e.key==="Enter"&&handleLogin()}/></FLD>
-          {err && <div style={{fontSize:12,color:"#e57373",textAlign:"center"}}>{err}</div>}
-          <label style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:"#888",cursor:"pointer"}}>
-            <input type="checkbox" checked={saveId} onChange={e=>setSaveId(e.target.checked)} style={{accentColor:"#7c7cc8",width:14,height:14}}/>
+          {err && <div style={{fontSize:T.fs.sm,color:T.danger,textAlign:"center"}}>{err}</div>}
+          <label style={{display:"flex",alignItems:"center",gap:6,fontSize:T.fs.sm,color:T.textSub,cursor:"pointer"}}>
+            <input type="checkbox" checked={saveId} onChange={e=>setSaveId(e.target.checked)} style={{accentColor:T.primary,width:14,height:14}}/>
             아이디 저장
           </label>
-          <button className="btn-p" style={{width:"100%",padding:13,marginTop:4,fontSize:15}} onClick={handleLogin}>로그인</button>
-          <div style={{borderTop:"1px solid #f0f0f0",marginTop:8,paddingTop:12,textAlign:"center"}}>
-            <span style={{fontSize:12,color:"#999"}}>아직 계정이 없으신가요? </span>
-            <button onClick={()=>setShowSignup(true)} style={{background:"none",border:"none",fontSize:12,color:"#7c7cc8",fontWeight:700,cursor:"pointer",fontFamily:"inherit",textDecoration:"underline"}}>무료 체험 시작 →</button>
+          <Btn onClick={handleLogin} style={{width:"100%",padding:13,fontSize:T.fs.lg,marginTop:4}}>로그인</Btn>
+          <div style={{borderTop:`1px solid ${T.gray200}`,marginTop:T.sp.sm,paddingTop:T.sp.md,textAlign:"center"}}>
+            <span style={{fontSize:T.fs.sm,color:T.textMuted}}>아직 계정이 없으신가요? </span>
+            <button onClick={()=>setShowSignup(true)} style={{background:"none",border:"none",fontSize:T.fs.sm,color:T.primary,fontWeight:T.fw.bolder,cursor:"pointer",fontFamily:"inherit",textDecoration:"underline"}}>무료 체험 시작 →</button>
           </div>
-          <div style={{fontSize:10,color:"#bbb",textAlign:"center",marginTop:4}}>v{BLISS_V}</div>
+          <div style={{fontSize:T.fs.xs,color:T.textMuted,textAlign:"center",marginTop:4}}>v{BLISS_V}</div>
         </div>
       </div>
     </div>
@@ -1511,11 +1566,11 @@ function MobileBottomNav({ nav, page, setPage }) {
     ...(nav.find(n=>n.id==="admin")       ? [{id:"admin",      label:"설정",      icon:"settings"}]  : []),
   ];
   return (
-    <nav className="mob-bottom-nav" style={{position:"fixed",bottom:0,left:0,right:0,height:56,background:"#fff",borderTop:"1px solid #e0e0e0",zIndex:200,display:"flex",alignItems:"center"}}>
+    <nav className="mob-bottom-nav" style={{position:"fixed",bottom:0,left:0,right:0,height:56,background:T.bgCard,borderTop:`1px solid ${T.border}`,zIndex:200,display:"flex",alignItems:"center"}}>
       {items.map(item=>(
-        <button key={item.id} onClick={()=>setPage(item.id)} style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,flex:1,height:"100%",border:"none",background:"none",cursor:"pointer",fontFamily:"inherit",color:page===item.id?"#7c7cc8":"#aaa",transition:"color .1s"}}>
+        <button key={item.id} onClick={()=>setPage(item.id)} style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,flex:1,height:"100%",border:"none",background:"none",cursor:"pointer",fontFamily:"inherit",color:page===item.id?T.primary:T.textMuted,transition:"color .1s"}}>
           <I name={item.icon} size={20}/>
-          <span style={{fontSize:10,fontWeight:page===item.id?700:400}}>{item.label}</span>
+          <span style={{fontSize:T.fs.xs,fontWeight:page===item.id?T.fw.bolder:T.fw.normal}}>{item.label}</span>
         </button>
       ))}
     </nav>
@@ -1532,19 +1587,19 @@ function Sidebar({ nav, page, setPage, role, branchNames, onLogout, bizName="", 
     ...(nav.find(n=>n.id==="admin") ? [{ label:"시스템", items: nav.filter(n=>["users","admin"].includes(n.id)) }] : []),
   ];
   return <>
-    <div style={{padding:"16px 16px 12px",borderBottom:"1px solid #e0e0e0"}}>
-      {bizName ? <div style={{fontSize:16,fontWeight:800,color:"#7c7cc8",letterSpacing:-.5}}>{bizName}</div>
-        : <div style={{fontSize:16,fontWeight:800,color:"#7c7cc8"}}>Bliss</div>}
-      <div style={{fontSize:11,color:"#888",marginTop:4}}>{role==="owner"?"대표 관리자":role==="super"?"슈퍼관리자":branchNames||"직원"}</div>
+    <div style={{padding:`${T.sp.lg}px ${T.sp.lg}px ${T.sp.md}px`,borderBottom:`1px solid ${T.border}`}}>
+      {bizName ? <div style={{fontSize:T.fs.xl,fontWeight:T.fw.black,color:T.primary,letterSpacing:-.5}}>{bizName}</div>
+        : <div style={{fontSize:T.fs.xl,fontWeight:T.fw.black,color:T.primary}}>Bliss</div>}
+      <div style={{fontSize:T.fs.sm,color:T.textSub,marginTop:4}}>{role==="owner"?"대표 관리자":role==="super"?"슈퍼관리자":branchNames||"직원"}</div>
     </div>
     <div style={{flex:1,padding:"8px 0",overflowY:"auto"}}>
       {cats.map((cat,ci) => (
         <div key={ci}>
-          <div style={{fontSize:10,fontWeight:700,color:"#999",padding:"12px 16px 4px",letterSpacing:.5}}>{cat.label}</div>
+          <div style={{fontSize:T.fs.xs,fontWeight:T.fw.bolder,color:T.gray500,padding:`12px ${T.sp.lg}px 4px`,letterSpacing:.5}}>{cat.label}</div>
           {cat.items.map(n=>(
-            <button key={n.id} onClick={()=>setPage(n.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"9px 16px",border:"none",cursor:"pointer",fontSize:13,fontWeight:page===n.id?700:400,
-              background:page===n.id?"#f0f0ff":"transparent",color:page===n.id?"#5a5ac8":"#555",
-              borderLeft:page===n.id?"3px solid #7c7cc8":"3px solid transparent",
+            <button key={n.id} onClick={()=>setPage(n.id)} style={{display:"flex",alignItems:"center",gap:10,padding:`9px ${T.sp.lg}px`,border:"none",cursor:"pointer",fontSize:T.fs.sm,fontWeight:page===n.id?T.fw.bolder:T.fw.normal,
+              background:page===n.id?"#f0f0ff":"transparent",color:page===n.id?T.primaryDk:T.gray700,
+              borderLeft:page===n.id?`3px solid ${T.primary}`:"3px solid transparent",
               fontFamily:"inherit",width:"100%",textAlign:"left",transition:"all .1s"}}>
               <span style={{width:20,display:"inline-flex",alignItems:"center",justifyContent:"center"}}>{n.icon}</span>{n.label}
             </button>
@@ -1552,10 +1607,10 @@ function Sidebar({ nav, page, setPage, role, branchNames, onLogout, bizName="", 
         </div>
       ))}
     </div>
-    <div style={{padding:12,borderTop:"1px solid #e0e0e0",display:"flex",flexDirection:"column",gap:6}}>
-      {isSuper && <button onClick={onBackToSuper} style={{width:"100%",padding:"8px 14px",borderRadius:4,border:"1px solid #7c7cc8",background:"#7c7cc810",color:"#7c7cc8",cursor:"pointer",fontSize:12,fontWeight:600,fontFamily:"inherit",textAlign:"center"}}><I name="arrowL" size={14}/> 관리자 대시보드</button>}
-      <button onClick={onLogout} style={{width:"100%",padding:"8px 14px",borderRadius:4,border:"1px solid #d0d0d0",background:"#fff",color:"#888",cursor:"pointer",fontSize:12,fontWeight:600,fontFamily:"inherit",textAlign:"center"}}>로그아웃</button>
-      <div style={{fontSize:10,color:"#bbb",textAlign:"center",marginTop:2}}>v{BLISS_V}</div>
+    <div style={{padding:T.sp.md,borderTop:`1px solid ${T.border}`,display:"flex",flexDirection:"column",gap:6}}>
+      {isSuper && <Btn variant="outline" size="sm" onClick={onBackToSuper} style={{width:"100%"}}><I name="arrowL" size={14}/> 관리자 대시보드</Btn>}
+      <Btn variant="ghost" size="sm" onClick={onLogout} style={{width:"100%",color:T.textSub}}>로그아웃</Btn>
+      <div style={{fontSize:T.fs.xs,color:T.textMuted,textAlign:"center",marginTop:2}}>v{BLISS_V}</div>
     </div>
   </>;
 }
@@ -3761,7 +3816,7 @@ return f.requestMsg.split("\n").filter(l=>l.trim()).map((line,i)=>{
 }
 
 // ═══════════════════════════════════════════
-// Bliss v2.69.40 - iOS PWA 포그라운드 복귀 시 자동 새로고침
+// Bliss v2.69.39 - 예약목록 새로고침 버튼 추가
 const SaleSvcRow = React.memo(function SaleSvcRow({ id, name, dur, checked, amount, defPrice, toggle, setAmt }) {
   const disabled = defPrice === 0;
   const [localAmt, setLocalAmt] = useState(amount || "");
@@ -4543,7 +4598,7 @@ function SmartDatePicker({ open, onClose, anchorEl, startDate, endDate, onApply,
 function ReservationList({ data, setData, userBranches, isMaster, setPage, setPendingOpenRes }) {
   const today = todayStr();
   const dateAnchorRef = React.useRef(null);
-  const [refreshing, setRefreshing] = React.useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
@@ -4629,7 +4684,7 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:0}}>
       <h2 className="page-title" style={{margin:0}}>예약 목록</h2>
       <button onClick={handleRefresh} disabled={refreshing} title="새로고침" style={{background:"none",border:"1px solid #e0e0e0",borderRadius:8,padding:"4px 10px",cursor:"pointer",color:"#888",display:"flex",alignItems:"center",gap:4,fontSize:13}}>
-        {refreshing ? "..." : "↻ 새로고침"}
+        <I name="refresh-cw" size={14} color={refreshing?"#bbb":"#888"} style={{animation:refreshing?"spin 1s linear infinite":undefined}}/>{refreshing?"...":"새로고침"}
       </button>
     </div>
     {/* 필터 바 - 날짜 + 매장 */}
