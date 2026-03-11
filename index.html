@@ -174,7 +174,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.37";
+const BLISS_V = "2.69.38";
 const uid = () => Math.random().toString(36).substr(2, 9);
 
 // ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
@@ -2343,12 +2343,6 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       {/* Single scroll container */}
       <div ref={scrollRef} className="timeline-scroll" style={{flex:1,overflow:"auto",minHeight:0,overscrollBehavior:"none"}}>
 
-        {/* Mobile header - scrolls away naturally, sticks left on horizontal scroll */}
-        {window.innerWidth<=768 && onMenuClick && <div style={{padding:"2px 16px",display:"flex",alignItems:"center",gap:12,background:"#fff",position:"sticky",left:0,width:"100vw",boxSizing:"border-box"}}>
-          <button onClick={onMenuClick} style={{background:"none",border:"none",cursor:"pointer",padding:4,color:"#333",display:"flex",alignItems:"center"}}><I name="menu" size={22}/></button>
-          {bizName && <span style={{fontSize:18,fontWeight:800,color:"#7c7cc8"}}>{bizName}</span>}
-        </div>}
-
         {/* Top Bar - sticky */}
         <div ref={topbarRef} className="tl-topbar" style={{position:"sticky",top:0,left:0,zIndex:30,borderBottom:"1px solid #e0e0e0",background:"#fff",padding:"6px 12px",display:"flex",alignItems:"center",gap:6,flexWrap:"wrap",minWidth:"100%",boxSizing:"border-box",overflow:"visible"}}>
         {/* Row 1: Date nav + settings + branch */}
@@ -3691,7 +3685,7 @@ return f.requestMsg.split("\n").filter(l=>l.trim()).map((line,i)=>{
 }
 
 // ═══════════════════════════════════════════
-// Bliss v2.69.33 - realtime extra/discount totals
+// Bliss v2.69.38 - 모바일 헤더(메뉴버튼+앱이름) 제거
 const SaleSvcRow = React.memo(function SaleSvcRow({ id, name, dur, checked, amount, defPrice, toggle, setAmt }) {
   const disabled = defPrice === 0;
   const [localAmt, setLocalAmt] = useState(amount || "");
