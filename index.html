@@ -174,7 +174,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.55";
+const BLISS_V = "2.69.56";
 
 // ─── 디자인 토큰 ────────────────────────────────────────────────────────────
 const T = {
@@ -4831,7 +4831,7 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
     {k:"naver_changed",label:"변경"},
   ];
 
-  return <div>
+  return <div className="page-reservations">
     {/* ── 헤더 ── */}
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
       <h2 className="page-title" style={{margin:0}}>예약 목록</h2>
@@ -7845,6 +7845,7 @@ const CSS = `
   .page-title{font-size:18px;font-weight:800;color:#333;margin-bottom:16px}
   @media(max-width:768px){
     .hide-mobile{display:none!important;}
+    .page-reservations{overflow-x:hidden!important;}
     .sidebar-d{display:none!important}
     .sidebar-m{display:none!important}
     .mob-bottom-nav{display:flex!important}
