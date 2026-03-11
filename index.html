@@ -174,7 +174,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.43";
+const BLISS_V = "2.69.44";
 
 // ─── 디자인 토큰 ────────────────────────────────────────────────────────────
 const T = {
@@ -4683,9 +4683,9 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
   return <div>
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:0}}>
       <h2 className="page-title" style={{margin:0}}>예약 목록</h2>
-      <button onClick={handleRefresh} disabled={refreshing} title="새로고침" style={{background:"none",border:"1px solid "+T.border,borderRadius:T.radius.md,padding:"4px 10px",cursor:"pointer",color:T.textSub,display:"flex",alignItems:"center",gap:4,fontSize:13}}>
-        <I name="refresh-cw" size={14} color={refreshing?"#bbb":"#888"} style={{animation:refreshing?"spin 1s linear infinite":undefined}}/>{refreshing?"...":"새로고침"}
-      </button>
+      <Btn variant="ghost" size="sm" onClick={handleRefresh} disabled={refreshing} title="새로고침" style={{gap:4}}>
+        <I name="refresh-cw" size={14} color={refreshing?T.gray400:T.textSub} style={{animation:refreshing?"spin 1s linear infinite":undefined}}/>{refreshing?"...":"새로고침"}
+      </Btn>
     </div>
     {/* 필터 바 - 날짜 + 매장 */}
     <div style={{display:"flex",gap:8,marginBottom:10,alignItems:"center",flexWrap:"wrap"}}>
@@ -4769,7 +4769,7 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
         ))}
         <th style={{width:60}}>액션</th>
       </tr></thead><tbody>
-        {res.length===0?<tr><td colSpan={14+NAVER_COLS.length} style={{textAlign:"center",color:"#bbb",padding:40,fontSize:13}}>예약이 없습니다</td></tr>:
+        {res.length===0?<tr><td colSpan={14+NAVER_COLS.length}><Empty msg="예약이 없습니다" icon="calendar"/></td></tr>:
           res.map(r=>{
             const svc=(data.services||[]).find(s=>s.id===r.serviceId);
             const svcNames=(r.selectedServices||[]).map(sid=>(data.services||[]).find(s=>s.id===sid)?.name).filter(Boolean);
@@ -4817,7 +4817,7 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
                   naver_changed: {bg:"#E8F4FD", color:"#1976D2", label:"변경"},
                 };
                 const p = ST_PILL[r.status] || {bg:"#F5F5F5", color:"#999", label:r.status};
-                return <span style={{fontSize:T.fs.xs,fontWeight:T.fw.bolder,background:p.bg,color:p.color,borderRadius:T.radius.sm,padding:"2px 6px",whiteSpace:"nowrap"}}>{p.label}</span>;
+                return <Badge color={p.color} bg={p.bg}>{p.label}</Badge>;
               })()}</td>
               <td style={{fontSize:T.fs.xs,color:T.gray700,maxWidth:90,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",background:"#F1F8E9",padding:"4px 6px"}} title={r.ownerComment||""}>
                   {r.ownerComment ? <span style={{background:"#ECEFF1",color:"#37474F",borderRadius:10,padding:"1px 8px",fontWeight:T.fw.medium,fontSize:T.fs.xs}}>{r.ownerComment}</span> : <span style={{color:"#ccc"}}>-</span>}
@@ -4835,8 +4835,8 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
                 </td>
               ))}
               <td><div style={{display:"flex",gap:4}}>
-                <button title="타임라인에서 열기" onClick={()=>{if(setPendingOpenRes)setPendingOpenRes(r);if(setPage)setPage("timeline");}} style={{width:28,height:28,borderRadius:6,border:"1px solid #e8e8e8",background:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:T.primary,boxShadow:"0 1px 3px rgba(0,0,0,.08)"}}><I name="calendar" size={12}/></button>
-<button onClick={()=>deleteRes(r.id)} style={{width:28,height:28,borderRadius:6,border:"1px solid #ffe0e0",background:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",color:T.danger,boxShadow:"0 1px 3px rgba(0,0,0,.08)"}}><I name="trash" size={12}/></button>
+                <Btn variant="ghost" size="sm" title="타임라인에서 열기" onClick={()=>{if(setPendingOpenRes)setPendingOpenRes(r);if(setPage)setPage("timeline");}} style={{width:28,height:28,padding:0,borderRadius:T.radius.sm}}><I name="calendar" size={12}/></Btn>
+                <Btn variant="ghost" size="sm" onClick={()=>deleteRes(r.id)} style={{width:28,height:28,padding:0,borderRadius:T.radius.sm,border:`1px solid ${T.danger}22`,color:T.danger}}><I name="trash" size={12}/></Btn>
               </div></td>
             </tr>;
           })}
@@ -4941,7 +4941,7 @@ function SalesPage({ data, setData, userBranches, isMaster, setPage }) {
         <th>등록시간</th>
         <th style={{width:60}}>관리</th>
       </tr></thead><tbody>
-        {sales.length===0?<tr><td colSpan={21} style={{textAlign:"center",color:"#999",padding:40}}>매출 기록 없음</td></tr>:
+        {sales.length===0?<tr><td colSpan={21}><Empty msg="매출 기록 없음" icon="wallet"/></td></tr>:
           sales.map((s,i)=>{
             const br=(data.branches||[]).find(b=>b.id===s.bid);
             const st=s.svcCash+s.svcTransfer+s.svcCard+s.svcPoint;
@@ -5199,7 +5199,7 @@ function CustomersPage({ data, setData, userBranches, isMaster }) {
       <table><thead><tr>
         <th>매장</th><th>고객번호</th><th>이름</th><th>연락처</th><th>성별</th><th>방문수</th><th>최초등록일</th><th>최근방문</th><th>메모</th><th>관리</th>
       </tr></thead><tbody>
-        {custs.length===0?<tr><td colSpan={10} style={{textAlign:"center",color:"#999",padding:40}}>고객 없음</td></tr>:
+        {custs.length===0?<tr><td colSpan={10}><Empty msg="고객 없음" icon="users"/></td></tr>:
           custs.map(c=>{
             const br=(data.branches||[]).find(b=>b.id===c.bid);
             const isDetail = detailCust?.id===c.id;
@@ -7467,17 +7467,17 @@ const CSS = `
   .inp:focus{border-color:#7c7cc8;box-shadow:0 0 0 2px rgba(124,124,200,.15),0 2px 8px rgba(0,0,0,.08)}
 
   select.inp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;padding-right:26px}
-  .badge{display:inline-flex;align-items:center;padding:2px 7px;border-radius:99px;font-size:10px;font-weight:600}
-  .btn-p{background:#7c7cc8;color:#fff;padding:7px 14px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit;display:inline-flex;align-items:center;gap:5px;transition:all .15s;box-shadow:0 1px 3px rgba(0,0,0,.10),0 2px 6px rgba(0,0,0,.07)}
-  .btn-p:hover{background:#6a6ab8}
+  .badge{display:inline-flex;align-items:center;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700}
+  .btn-p{background:#7c7cc8;color:#fff;padding:7px 14px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit;display:inline-flex;align-items:center;gap:5px;transition:all .15s;box-shadow:0 1px 4px rgba(124,124,200,.25),0 2px 8px rgba(124,124,200,.15)}
+  .btn-p:hover{background:#6a6ab8;box-shadow:0 2px 8px rgba(124,124,200,.35)}
   .btn-p:active{transform:scale(.97)}
-  .btn-s{background:#fff;color:#555;padding:7px 14px;border-radius:8px;border:1px solid #e0e0e0;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;display:inline-flex;align-items:center;gap:5px;transition:all .15s;box-shadow:0 1px 4px rgba(0,0,0,.08),0 2px 8px rgba(0,0,0,.06)}
-  .btn-s:hover{background:#ebebeb}
-  .btn-d{background:#e57373;color:#fff;padding:7px 14px;border-radius:4px;border:none;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;transition:all .15s}
-  .btn-d:hover{background:#d32f2f}
-  .btn-sm{padding:5px 10px;font-size:11px}
+  .btn-s{background:#fff;color:#555;padding:7px 14px;border-radius:8px;border:1px solid #e0e0e0;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;display:inline-flex;align-items:center;gap:5px;transition:all .15s;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+  .btn-s:hover{background:#f5f5f5}
+  .btn-d{background:#ef5350;color:#fff;padding:7px 14px;border-radius:8px;border:none;cursor:pointer;font-size:12px;font-weight:700;font-family:inherit;display:inline-flex;align-items:center;gap:5px;transition:all .15s}
+  .btn-d:hover{background:#e53935}
+  .btn-sm{padding:4px 10px;font-size:11px}
   .ov{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.35);backdrop-filter:blur(2px);z-index:200;display:flex;align-items:center;justify-content:center;padding:16px;animation:ovFadeIn .25s}
-  .modal{background:#fff;border-radius:12px;border:1px solid #e0e0e0;padding:22px;width:92%;max-width:500px;max-height:85vh;overflow-y:auto;animation:slideUp .6s cubic-bezier(.22,1,.36,1);box-shadow:0 12px 40px rgba(0,0,0,.18)}
+  .modal{background:#fff;border-radius:12px;border:1px solid #e0e0e0;padding:22px;width:92%;max-width:500px;max-height:85vh;overflow-y:auto;animation:slideUp .6s cubic-bezier(.22,1,.36,1);box-shadow:0 4px 24px rgba(0,0,0,.16)}
   .close-btn{background:none;border:none;color:#999;cursor:pointer;font-size:16px;font-family:inherit}
   .form-col{display:flex;flex-direction:column;gap:14px}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
