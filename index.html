@@ -174,7 +174,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.52";
+const BLISS_V = "2.69.53";
 
 // ─── 디자인 토큰 ────────────────────────────────────────────────────────────
 const T = {
@@ -590,6 +590,8 @@ function App() {
     try { const p = sessionStorage.getItem("bliss_page"); console.log("[SESSION] page restore:", p); return p || "timeline"; } catch(e){ return "timeline"; }
   });
   const [pendingOpenRes, setPendingOpenRes] = useState(null);
+  const [naverColShow, setNaverColShowRaw] = useState(()=>{ try{return JSON.parse(localStorage.getItem("bliss_naver_cols")||"null")||{};}catch(e){return{};} });
+  const setNaverColShow = v => { setNaverColShowRaw(v); try{localStorage.setItem("bliss_naver_cols",JSON.stringify(v));}catch(e){} };
   const setPage = useCallback((p) => {
     console.log("[SESSION] page save:", p);
     setPageRaw(prev => {
@@ -1012,8 +1014,8 @@ function App() {
         </div>
         <div className="page-pad" style={{flex:1,padding:page==="timeline"?"0":"16px 20px 16px",display:"flex",flexDirection:"column",minHeight:0,overflow:"hidden"}}>
           <div className={page==="timeline"?"":"fade-in"} key={page} style={page==="timeline"?{flex:1,display:"flex",flexDirection:"column",minHeight:0}:{overflow:"auto",flex:1,WebkitOverflowScrolling:"touch"}}>
-            {page==="timeline" && <Timeline data={data} setData={setData} userBranches={userBranches} viewBranches={viewBranches} isMaster={isMaster} currentUser={currentUser} setPage={setPage} bizId={currentBizId} onMenuClick={()=>setSideOpen(true)} bizName={bizName} pendingOpenRes={pendingOpenRes} setPendingOpenRes={setPendingOpenRes}/>}
-            {page==="reservations" && <ReservationList data={data} setData={setData} userBranches={userBranches} isMaster={isMaster} setPage={setPage} setPendingOpenRes={setPendingOpenRes}/>}
+            {page==="timeline" && <Timeline data={data} setData={setData} userBranches={userBranches} viewBranches={viewBranches} isMaster={isMaster} currentUser={currentUser} setPage={setPage} bizId={currentBizId} onMenuClick={()=>setSideOpen(true)} bizName={bizName} pendingOpenRes={pendingOpenRes} setPendingOpenRes={setPendingOpenRes} naverColShow={naverColShow}/>}
+            {page==="reservations" && <ReservationList data={data} setData={setData} userBranches={userBranches} isMaster={isMaster} setPage={setPage} setPendingOpenRes={setPendingOpenRes} naverColShow={naverColShow} setNaverColShow={setNaverColShow}/>}
             {page==="sales" && <SalesPage data={data} setData={setData} userBranches={userBranches} isMaster={isMaster} setPage={setPage}/>}
             {page==="stats" && <StatsPage data={data} userBranches={userBranches} isMaster={isMaster} role={role}/>}
             {page==="customers" && <CustomersPage data={data} setData={setData} userBranches={userBranches} isMaster={isMaster}/>}
@@ -1786,12 +1788,8 @@ function MiniCal({ selDate, onSelect, onClose }) {
 }
 
 function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, currentUser, setPage, bizId, onMenuClick, bizName, pendingOpenRes, setPendingOpenRes, naverColShow={} }) {
-  // 타임라인 블록에 표시할 네이버 필드 (naverColShow prop이 없으면 자체 state 사용)
-  const [_naverColShowState, _setNaverColShowState] = React.useState(() => {
-    try { return JSON.parse(localStorage.getItem("bliss_naver_cols") || "null") || {}; }
-    catch(e) { return {}; }
-  });
-  const effectiveNaverColShow = Object.keys(naverColShow).length > 0 ? naverColShow : _naverColShowState;
+  // 타임라인 블록 표시 항목 — App에서 prop으로 받음
+  const effectiveNaverColShow = naverColShow;
   const SVC_LIST = (data?.services || []).slice().sort((a,b)=>(a.sort||0)-(b.sort||0));
   const PROD_LIST = (data?.products || []);
   const [selDate, setSelDate] = useState(todayStr());
@@ -4712,7 +4710,7 @@ function SmartDatePicker({ open, onClose, anchorEl, startDate, endDate, onApply,
   </div>;
 }
 
-function ReservationList({ data, setData, userBranches, isMaster, setPage, setPendingOpenRes }) {
+function ReservationList({ data, setData, userBranches, isMaster, setPage, setPendingOpenRes, naverColShow={}, setNaverColShow }) {
   const today = todayStr();
   const dateAnchorRef = React.useRef(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -4848,18 +4846,36 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
           <Btn variant="ghost" size="sm" onClick={()=>setShowColPanel(p=>!p)} style={{gap:T.sp.xs}}>
             <I name="settings" size={13}/> 컬럼
           </Btn>
-          {showColPanel && <div style={{position:"absolute",right:0,top:34,zIndex:100,background:T.bgCard,border:"1px solid "+T.border,borderRadius:T.radius.lg,padding:"12px 16px",boxShadow:T.shadow.md,minWidth:160}}>
-            <div style={{fontSize:T.fs.xs,fontWeight:T.fw.bolder,color:T.textSub,marginBottom:8}}>표시 항목</div>
+          {showColPanel && <div style={{position:"absolute",right:0,top:34,zIndex:200,background:T.bgCard,border:"1px solid "+T.border,borderRadius:T.radius.lg,padding:"14px 16px",boxShadow:T.shadow.md,minWidth:180}}>
+            {/* ── 타임라인 블록 표시 항목 ── */}
+            <div style={{fontSize:T.fs.xs,fontWeight:T.fw.bolder,color:T.primary,marginBottom:6,display:"flex",alignItems:"center",gap:T.sp.xs}}>
+              <I name="clock" size={11}/> 타임라인 블록
+            </div>
             {[
-              {k:"phone",   label:"연락처"},
-              {k:"staff",   label:"시술자"},
-              {k:"service", label:"시술"},
-              {k:"prepaid", label:"예약금"},
-              {k:"naver_id",label:"네이버 예약번호"},
-              {k:"naver_info",label:"네이버 정보"},
-              {k:"memo",    label:"직원메모"},
+              ...NAVER_COLS.map(c=>({k:c.key,label:c.label,src:"naver"})),
+              {k:"직원메모", label:"직원메모", src:"naver"},
             ].map(({k,label})=>(
-              <label key={k} style={{display:"flex",alignItems:"center",gap:T.sp.sm,padding:"4px 0",cursor:"pointer",fontSize:T.fs.sm,color:T.text}}>
+              <label key={k} style={{display:"flex",alignItems:"center",gap:T.sp.sm,padding:"3px 0",cursor:"pointer",fontSize:T.fs.sm,color:T.text}}>
+                <input type="checkbox" checked={naverColShow[k]!==false} onChange={()=>setNaverColShow({...naverColShow,[k]:naverColShow[k]===false})}
+                  style={{accentColor:T.primary,width:14,height:14}}/>
+                {label}
+              </label>
+            ))}
+            <div style={{borderTop:"1px solid "+T.border,margin:"10px 0"}}/>
+            {/* ── 목록 카드 표시 컬럼 ── */}
+            <div style={{fontSize:T.fs.xs,fontWeight:T.fw.bolder,color:T.primary,marginBottom:6,display:"flex",alignItems:"center",gap:T.sp.xs}}>
+              <I name="list" size={11}/> 목록 카드
+            </div>
+            {[
+              {k:"phone",     label:"연락처"},
+              {k:"staff",     label:"시술자"},
+              {k:"service",   label:"시술"},
+              {k:"prepaid",   label:"예약금"},
+              {k:"naver_id",  label:"예약번호"},
+              {k:"naver_info",label:"네이버 정보"},
+              {k:"memo",      label:"직원메모"},
+            ].map(({k,label})=>(
+              <label key={k} style={{display:"flex",alignItems:"center",gap:T.sp.sm,padding:"3px 0",cursor:"pointer",fontSize:T.fs.sm,color:T.text}}>
                 <input type="checkbox" checked={!!showCols[k]} onChange={()=>setShowCols({...showCols,[k]:!showCols[k]})}
                   style={{accentColor:T.primary,width:14,height:14}}/>
                 {label}
