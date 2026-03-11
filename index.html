@@ -174,7 +174,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.61";
+const BLISS_V = "2.69.62";
 
 // ─── 디자인 토큰 ────────────────────────────────────────────────────────────
 const T = {
@@ -4785,7 +4785,7 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
       return (r.custName||"").toLowerCase().includes(sq)||(r.custPhone||"").includes(sq)||(svc?.name||"").toLowerCase().includes(sq)||(staff?.dn||"").toLowerCase().includes(sq);
     }
     return inRange(r.date);
-  }).sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time));
+  }).sort((a,b)=>b.date.localeCompare(a.date)||b.time.localeCompare(a.time));
 
   const deleteRes = id => setData(prev=>({...prev,reservations:(prev?.reservations||[]).filter(r=>r.id!==id)}));
 
