@@ -174,7 +174,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.64";
+const BLISS_V = "2.69.65";
 
 // ─── 디자인 토큰 ────────────────────────────────────────────────────────────
 const T = {
@@ -3453,7 +3453,7 @@ ${naverText}
   }
 
   return (
-    <div className="ov" onClick={onClose} style={{alignItems:"flex-start",padding:"8px 0",overflowY:"auto",overflowX:"hidden",WebkitOverflowScrolling:"touch"}}>
+    <div className="ov" onClick={onClose} style={{alignItems:"flex-start",padding:"calc(56px + env(safe-area-inset-top) + 8px) 0 0",overflowY:"auto",overflowX:"hidden",WebkitOverflowScrolling:"touch"}}>
       <div ref={modalRef} className="modal-res" onClick={e=>e.stopPropagation()} style={{background:T.bgCard,
         borderRadius:T.radius.xl,border:`1px solid ${T.border}`,
         margin:"0 auto",
