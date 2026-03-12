@@ -174,7 +174,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.62";
+const BLISS_V = "2.69.63";
 
 // ─── 디자인 토큰 ────────────────────────────────────────────────────────────
 const T = {
@@ -4713,6 +4713,7 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
   const today = todayStr();
   const dateAnchorRef = React.useRef(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [listModalData, setListModalData] = useState(null);
   const [isMobile, setIsMobile] = useState(()=>window.innerWidth<768);
   React.useEffect(()=>{
     const fn=()=>setIsMobile(window.innerWidth<768);
@@ -4979,7 +4980,16 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
         const isNaver = r.source==="naver"||r.source==="네이버";
         const naverInfoItems = isNaver ? NAVER_COLS.filter(col=>getNaverVal(r.requestMsg,col.kws)).map(col=>({label:col.label,value:getNaverVal(r.requestMsg,col.kws)})) : [];
 
-        const handleClick = ()=>{ if(setPendingOpenRes)setPendingOpenRes(r); if(setPage)setPage("timeline"); };
+        const HIDDEN_STATUSES = ["naver_cancelled","cancelled","naver_changed","no_show"];
+        const isHidden = HIDDEN_STATUSES.includes(r.status);
+        const handleClick = ()=>{
+          if (isHidden) {
+            setListModalData(r);
+          } else {
+            if(setPendingOpenRes) setPendingOpenRes(r);
+            if(setPage) setPage("timeline");
+          }
+        };
 
         /* ── 모바일 카드 ── */
         if (isMobile) return <div key={r.id} style={{
@@ -5082,6 +5092,26 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
 
     <SmartDatePicker open={showSheet} onClose={()=>setShowSheet(false)} anchorEl={dateAnchorRef.current} startDate={startDate} endDate={endDate} mode="res"
       onApply={(s,e,p)=>{ setStartDate(s); setEndDate(e); setPeriodKey(p); setShowSheet(false); }}/>
+
+    {listModalData && <TimelineModal
+      item={listModalData}
+      onClose={()=>setListModalData(null)}
+      onSave={(updated)=>{
+        setData(prev=>({...prev, reservations:(prev?.reservations||[]).map(r=>r.id===updated.id?{...r,...updated}:r)}));
+        setListModalData(null);
+      }}
+      onDelete={(id)=>{
+        setData(prev=>({...prev, reservations:(prev?.reservations||[]).filter(r=>r.id!==id)}));
+        setListModalData(null);
+      }}
+      onDeleteRequest={()=>setListModalData(null)}
+      naverColShow={naverColShow}
+      selBranch={userBranches[0]}
+      userBranches={userBranches}
+      data={data}
+      setData={setData}
+      setPage={setPage}
+    />}
   </div>;
 }
 
