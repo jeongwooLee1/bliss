@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"/>
+<
+      {onLogout && <div style={{display:"flex",justifyContent:"flex-end",marginBottom:8}}><button onClick={onLogout} style={{padding:"6px 16px",fontSize:T.fs.sm,borderRadius:T.radius.md,border:"1px solid "+T.danger,color:T.danger,background:"none",cursor:"pointer",fontFamily:"inherit"}}>로그아웃</button></div>}!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"/>
   <link rel="manifest" href="/bliss/manifest.json"/>
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
@@ -174,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.98";
+const BLISS_V = "2.69.99";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -1025,7 +1026,7 @@ function App() {
             {page==="stats" && <StatsPage data={data} userBranches={userBranches} isMaster={isMaster} role={role}/>}
             {page==="customers" && <CustomersPage data={data} setData={setData} userBranches={userBranches} isMaster={isMaster}/>}
             {page==="users" && <UsersPage data={data} setData={setData} bizId={currentBizId}/>}
-            {page==="admin" && <AdminPage data={data} setData={setData} bizId={currentBizId} serverV={serverV}/>}
+            {page==="admin" && <AdminPage data={data} setData={setData} bizId={currentBizId} serverV={serverV} onLogout={handleLogout}/>}
           </div>
         </div>
       </main>
@@ -6005,7 +6006,7 @@ function UserEditRow({ init, regBranches, allBranches, onSave, onCancel, isNew }
 // ═══════════════════════════════════════════
 // ADMIN
 // ═══════════════════════════════════════════
-function AdminPage({ data, setData, bizId, serverV }) {
+function AdminPage({ data, setData, bizId, serverV, onLogout }) {
   const [tab, setTabRaw] = useState(() => {
     try { const t = sessionStorage.getItem("bliss_adminTab"); console.log("[SESSION] adminTab restore:", t); return t || "places"; } catch(e){ return "places"; }
   });
