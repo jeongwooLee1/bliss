@@ -174,7 +174,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.97";
+const BLISS_V = "2.69.98";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7000,6 +7000,7 @@ function AdminNoti({ data, sb, bizId, branches }) {
   const [cfg, setCfg] = React.useState({});
   const [saved, setSaved] = React.useState(false);
   const [detailKey, setDetailKey] = React.useState(null); // 상세 편집 중인 항목 key
+  const [apiOpen, setApiOpen] = React.useState(false);
 
   React.useEffect(() => {
     if (!selBranch) return;
@@ -7120,27 +7121,24 @@ function AdminNoti({ data, sb, bizId, branches }) {
     </div>
 
     {/* NHN API 설정 (접기/펼치기) */}
-    {(() => {
-      const [apiOpen, setApiOpen] = React.useState(false);
-      return <div className="card" style={{padding:0, marginBottom:20, overflow:'hidden'}}>
-        <div onClick={() => setApiOpen(p=>!p)} style={{padding:'12px 16px', display:'flex', alignItems:'center',
-          justifyContent:'space-between', cursor:'pointer', userSelect:'none'}}>
-          <span style={{fontSize:T.fs.sm, fontWeight:T.fw.bold, color:T.text}}>⚙️ NHN Cloud API 설정</span>
-          <span style={{color:T.gray400}}>{apiOpen?'▲':'▼'}</span>
-        </div>
-        {apiOpen && <div style={{padding:'0 16px 16px', borderTop:'1px solid '+T.border}}>
-          {[['appKey','App Key','NHN Cloud 콘솔 → Notification → KakaoTalk Bizmessage'],
-            ['secretKey','Secret Key','API 보안 설정에서 생성'],
-            ['senderKey','발신 프로필 키','카카오 채널 연동 후 발급']
-          ].map(([k,label,ph]) => <div key={k} style={{marginTop:10}}>
-            <div style={{fontSize:T.fs.xxs, fontWeight:T.fw.bold, color:T.gray700, marginBottom:3}}>{label}</div>
-            <input className="inp" type={k==='secretKey'?'password':'text'} value={cfg[k]||''} onChange={e=>up(k,e.target.value)}
-              placeholder={ph} style={{width:'100%', padding:'6px 10px', fontSize:T.fs.sm}}/>
-          </div>)}
-          <Btn variant="primary" size="sm" onClick={save} style={{padding:'8px 20px', marginTop:12}}>{saved?'저장됨 ✓':'저장'}</Btn>
-        </div>}
-      </div>;
-    })()}
+    <div className="card" style={{padding:0, marginBottom:20, overflow:'hidden'}}>
+      <div onClick={() => setApiOpen(p=>!p)} style={{padding:'12px 16px', display:'flex', alignItems:'center',
+        justifyContent:'space-between', cursor:'pointer', userSelect:'none'}}>
+        <span style={{fontSize:T.fs.sm, fontWeight:T.fw.bold, color:T.text}}>⚙️ NHN Cloud API 설정</span>
+        <span style={{color:T.gray400}}>{apiOpen?'▲':'▼'}</span>
+      </div>
+      {apiOpen && <div style={{padding:'0 16px 16px', borderTop:'1px solid '+T.border}}>
+        {[['appKey','App Key','NHN Cloud 콘솔 → Notification → KakaoTalk Bizmessage'],
+          ['secretKey','Secret Key','API 보안 설정에서 생성'],
+          ['senderKey','발신 프로필 키','카카오 채널 연동 후 발급']
+        ].map(([k,label,ph]) => <div key={k} style={{marginTop:10}}>
+          <div style={{fontSize:T.fs.xxs, fontWeight:T.fw.bold, color:T.gray700, marginBottom:3}}>{label}</div>
+          <input className="inp" type={k==='secretKey'?'password':'text'} value={cfg[k]||''} onChange={e=>up(k,e.target.value)}
+            placeholder={ph} style={{width:'100%', padding:'6px 10px', fontSize:T.fs.sm}}/>
+        </div>)}
+        <Btn variant="primary" size="sm" onClick={save} style={{padding:'8px 20px', marginTop:12}}>{saved?'저장됨 ✓':'저장'}</Btn>
+      </div>}
+    </div>
 
     {/* 알림 항목 그룹 */}
     {NOTI_GROUPS.map(group => <div key={group.label} style={{marginBottom:24}}>
