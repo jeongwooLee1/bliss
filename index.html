@@ -174,7 +174,21 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.85";
+const BLISS_V = "2.69.86";
+
+// ─── 시술 수량 헬퍼 ────────────────────────
+const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
+const svcNoteDisplay = (note) => (note||'').replace('[qty]','').trim();
+// selectedServices 배열(중복 id 포함) → "케어 x2, 브라질리언" 형태 문자열 배열
+const groupSvcNames = (ids, svcs) => {
+  const counts = {};
+  (ids||[]).forEach(id => { counts[id] = (counts[id]||0)+1; });
+  return Object.entries(counts).map(([id,qty]) => {
+    const s = svcs?.find(x=>x.id===id);
+    const n = s?.name||'?';
+    return qty>1 ? n+' x'+qty : n;
+  });
+};
 
 // ─── 디자인 토큰 ────────────────────────────────────────────────────────────
 const T = {
@@ -2884,7 +2898,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                             </span>
                           </div>
                           {block.selectedServices?.length>0 && <div style={{fontSize:Math.max(6,blockFs-2),color:T.text,fontWeight:T.fw.bold,marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                            {block.selectedServices.map(sid=>SVC_LIST.find(s=>s.id===sid)?.name).filter(Boolean).slice(0,2).join(", ")}
+                            {groupSvcNames(block.selectedServices, SVC_LIST).slice(0,2).join(", ")}
                             {block.selectedServices.length>2 && ` +${block.selectedServices.length-2}`}
                           </div>}
                           {h >= 60 && (()=>{
@@ -3320,9 +3334,23 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
   }, 0);
 
   // 시술 선택 토글
-  const toggleService = (svcId) => {
+  const toggleService = (svcId, delta=1) => {
     setF(p => {
-      const newSvcs = p.selectedServices?.includes(svcId) ? (p.selectedServices||[]).filter(s=>s!==svcId) : [...(p.selectedServices||[]), svcId];
+      const svcObj = SVC_LIST.find(s=>s.id===svcId);
+      const allowQty = svcAllowQty(svcObj);
+      let newSvcs;
+      if (allowQty) {
+        // 수량 허용: delta=+1이면 추가, delta=-1이면 하나 제거
+        const cur = (p.selectedServices||[]);
+        if (delta < 0) {
+          const idx = cur.lastIndexOf(svcId);
+          newSvcs = idx>=0 ? [...cur.slice(0,idx), ...cur.slice(idx+1)] : cur;
+        } else {
+          newSvcs = [...cur, svcId];
+        }
+      } else {
+        newSvcs = p.selectedServices?.includes(svcId) ? (p.selectedServices||[]).filter(s=>s!==svcId) : [...(p.selectedServices||[]), svcId];
+      }
       const svcSum = newSvcs.reduce((sum, sid) => sum + (SVC_LIST.find(s=>s.id===sid)?.dur||0), 0);
       const tagSum = (p.selectedTags||[]).reduce((sum, tid) => sum + (tags.find(t=>t.id===tid)?.dur||0), 0);
       const dur = (svcSum + tagSum) || itemDur;
@@ -3400,6 +3428,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
 - 커플룸 요청 → "커플룸" 태그
 - 남자 관리사 요청 → "남자선생님" 태그
 - 시술메뉴 내용으로 적합한 시술상품 선택
+- 수량 허용 시술(이름 뒤에 [qty] 표시)은 2개 이상이면 같은 id를 반복해서 넣으세요. 예: 케어가 2개면 ["케어id","케어id"]
 - "예약금완료" 태그는 선택하지 마세요. 이 태그는 시스템이 자동 처리합니다.${customRulesBlock}
 
 [예약 기본 정보]
@@ -3407,6 +3436,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
 - 연락처: ${f.custPhone||"미상"}
 - 방문횟수: ${f.visitCount||0}회
 - 예약일시: ${f.date||""} ${f.time||""}
+- 시술상품 목록(수량허용=[qty]): ${(data?.services||[]).map(s=>svcAllowQty(s)?`${s.name}[qty](id:${s.id})`:s.name+`(id:${s.id})`).join(', ')}
 - 시술메뉴(네이버): ${(f.selectedServices||[]).length > 0 ? (f.selectedServices||[]).map(id=>{const s=(data?.services||[]).find(x=>x.id===id);return s?s.name:id;}).join(", ") : "미선택"}
 - customers DB 등록 여부: ${custLinked ? "등록된 고객" : "미등록"}
 
@@ -3718,7 +3748,7 @@ ${naverText}
                 <span style={{fontSize:T.fs.sm,fontWeight:T.fw.bold,color:T.gray700,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
                   시술상품
                   {(f.selectedServices||[]).length > 0
-                    ? <span style={{color:T.primary,fontWeight:T.fw.bolder}}>{(f.selectedServices||[]).map(sid=>SVC_LIST.find(s=>s.id===sid)?.name).filter(Boolean).join(", ")} <span style={{background:"rgba(140,80,220,.12)",borderRadius:T.radius.sm,padding:"1px 6px",fontSize:T.fs.sm}}>{svcDurTotal}분{!hasGender&&hasGenderDep?"":" / "+fmt(svcPriceTotal)+"원"}</span></span>
+                    ? <span style={{color:T.primary,fontWeight:T.fw.bolder}}>{groupSvcNames(f.selectedServices, SVC_LIST).join(", ")} <span style={{background:"rgba(140,80,220,.12)",borderRadius:T.radius.sm,padding:"1px 6px",fontSize:T.fs.sm}}>{svcDurTotal}분{!hasGender&&hasGenderDep?"":" / "+fmt(svcPriceTotal)+"원"}</span></span>
                     : <span style={{color:T.textMuted,fontWeight:T.fw.normal}}>선택하세요</span>}
                 </span>
                 <span className={"tags-acc-chev"+(showSvcPicker?" open":"")}>▾</span>
@@ -3728,19 +3758,26 @@ ${naverText}
                 {SVC_LIST.length===0 && <div style={{padding:12,fontSize:T.fs.sm,color:T.gray500,textAlign:"center"}}>시술 상품이 없습니다 (관리설정 → 시술상품관리에서 등록)</div>}
                 {SVC_LIST.length>0 && SVC_LIST.map(svc=>{
                       const sel = (f.selectedServices||[]).includes(svc.id);
-                      const genderDep = svc.priceF !== svc.priceM;
-                      const price = hasGender ? (f.custGender==="M"?svc.priceM:svc.priceF) : (genderDep ? null : svc.priceF);
-                      const disabled = hasGender && price===0;
-                      const catName = CATS.find(c=>c.id===svc.cat)?.name||"";
-                      return <div key={svc.id} onClick={()=>!disabled&&toggleService(svc.id)}
-                        style={{padding:"6px 10px",cursor:disabled?"default":"pointer",display:"flex",alignItems:"center",gap:6,
-                          borderBottom:"none",opacity:disabled?0.3:1,background:sel?"#7c7cc810":"transparent",borderRadius:T.radius.sm,transition:"background .15s"}}>
-                        {sel && <span style={{color:T.primary,fontWeight:T.fw.bolder,fontSize:T.fs.sm,flexShrink:0}}>✓</span>}
-                        {catName && <span style={{fontSize:T.fs.sm,color:T.primary,background:T.primaryHover,borderRadius:T.radius.sm,padding:"1px 4px",flexShrink:0}}>{catName}</span>}
-                        <span style={{flex:1,fontSize:T.fs.sm,fontWeight:sel?600:400,color:sel?T.text:T.gray600}}>{svc.name}</span>
-                        <span style={{fontSize:T.fs.sm,color:T.gray500}}>{svc.dur}분</span>
-                        <span style={{fontSize:T.fs.sm,color:price===null?T.gray400:T.danger,fontWeight:T.fw.bold,width:55,textAlign:"right"}}>{price===null?"성별?":price>0?fmt(price):"-"}</span>
-                      </div>;
+        const qty = (f.selectedServices||[]).filter(id=>id===svc.id).length;
+        const aqty = svcAllowQty(svc);
+        const genderDep = svc.priceF !== svc.priceM;
+        const price = hasGender ? (f.custGender==="M"?svc.priceM:svc.priceF) : (genderDep ? null : svc.priceF);
+        const disabled = hasGender && price===0;
+        const catName = CATS.find(c=>c.id===svc.cat)?.name||"";
+        return <div key={svc.id} onClick={()=>!disabled&&toggleService(svc.id,1)}
+        style={{padding:"6px 10px",cursor:disabled?"default":"pointer",display:"flex",alignItems:"center",gap:6,
+        borderBottom:"none",opacity:disabled?0.3:1,background:sel?"#7c7cc810":"transparent",borderRadius:T.radius.sm,transition:"background .1s"}}>
+        {sel && !aqty && <span style={{color:T.primary,fontWeight:T.fw.bolder,fontSize:T.fs.sm,flexShrink:0}}>✓</span>}
+        {catName && <span style={{fontSize:T.fs.sm,color:T.primary,background:T.primaryHover,borderRadius:T.radius.sm,padding:"1px 5px"}}>{catName}</span>}
+        <span style={{flex:1,fontSize:T.fs.sm,fontWeight:sel?600:400,color:sel?T.text:T.gray600}}>{svc.name}</span>
+        <span style={{fontSize:T.fs.sm,color:T.gray500}}>{svc.dur}분</span>
+        <span style={{fontSize:T.fs.sm,color:price===null?T.gray400:T.danger,fontWeight:T.fw.bold,width:55,textAlign:"right"}}>{price===null?"성별 필요":price===0?"무료":price?.toLocaleString()+"원"}</span>
+        {aqty && <div style={{display:"flex",alignItems:"center",gap:4}} onClick={e=>e.stopPropagation()}>
+          {qty>0 && <button onClick={()=>toggleService(svc.id,-1)} style={{width:22,height:22,borderRadius:"50%",border:"1px solid "+T.border,background:T.bgCard,cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",color:T.danger}}>−</button>}
+          {qty>0 && <span style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder,color:T.primary,minWidth:16,textAlign:"center"}}>{qty}</span>}
+          <button onClick={()=>toggleService(svc.id,1)} style={{width:22,height:22,borderRadius:"50%",border:"1px solid "+T.border,background:qty>0?T.primary:T.bgCard,cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center",color:qty>0?T.bgCard:T.gray600}}>+</button>
+        </div>}
+        </div>;
                     })}
               </div>{/* maxHeight scroll */}
               </div>{/* tags-acc-body */}
@@ -5068,7 +5105,7 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
 
       {/* 카드 행 */}
       {resFinal.map(r => {
-        const svcNames = (r.selectedServices||[]).map(sid=>(data.services||[]).find(s=>s.id===sid)?.name).filter(Boolean);
+        const svcNames = groupSvcNames(r.selectedServices, data.services||[]);
         const svc = (data.services||[]).find(s=>s.id===r.serviceId);
         const svcDisplay = svcNames.length>0 ? svcNames.join(", ") : (svc?.name||"-");
         const staff = (data.staff||[]).find(s=>s.id===r.staffId);
@@ -6625,7 +6662,11 @@ function AdminSaleItems({ data, setData }) {
       </div>
       <div style={{display:"flex",gap:T.sp.sm,flexWrap:"wrap",alignItems:"center",marginTop:8}}>
         <label style={{fontSize:T.fs.xxs,display:"flex",alignItems:"center",gap:T.sp.xs,cursor:"pointer"}}>
-          <input type="checkbox" checked={newSvc.isPackage} onChange={e=>setNewSvc(p=>({...p,isPackage:e.target.checked}))} style={{accentColor:T.primary}}/>
+          <label style={{display:"flex",alignItems:"center",gap:4,cursor:"pointer",marginRight:8}}>
+              <input type="checkbox" checked={!!(newSvc.note||'').includes('[qty]')} onChange={e=>setNewSvc(p=>({...p,note:e.target.checked?(p.note||'').replace('[qty]','').trim()+' [qty]':(p.note||'').replace('[qty]','').trim()}))} style={{accentColor:T.female}}/> 
+              <span style={{fontWeight:T.fw.bold,color:(newSvc.note||'').includes('[qty]')?T.female:T.gray500}}>수량허용</span>
+            </label>
+            <input type="checkbox" checked={newSvc.isPackage} onChange={e=>setNewSvc(p=>({...p,isPackage:e.target.checked}))} style={{accentColor:T.primary}}/>
           <span style={{fontWeight:T.fw.bold,color:newSvc.isPackage?T.primary:T.gray500}}>다회권</span>
         </label>
         {newSvc.isPackage && <>
@@ -6677,7 +6718,11 @@ function AdminSaleItems({ data, setData }) {
             <td>{inp(editData.dur, v=>setEditData(p=>({...p,dur:v})), "100%", "number")}</td>
             <td>{inp(editData.note||"", v=>setEditData(p=>({...p,note:v})))}</td>
             <td style={{textAlign:"center"}}><label style={{fontSize:T.fs.nano,display:"flex",alignItems:"center",gap:2}}><input type="checkbox" checked={!!editData.isPackage} onChange={e=>setEditData(p=>({...p,isPackage:e.target.checked}))}/>{editData.isPackage?editData.pkgCount+"회":""}</label>
-            {editData.isPackage && <div style={{display:"flex",gap:2,marginTop:2}}>{inp(editData.pkgCount||5,v=>setEditData(p=>({...p,pkgCount:v})),30,"number")}<span style={{fontSize:T.fs.nano,color:T.gray500}}>회</span></div>}</td>
+            {editData.isPackage && <div style={{display:"flex",gap:2,marginTop:2}}>{inp(editData.pkgCount||5,v=>setEditData(p=>({...p,pkgCount:v})),30,"number")}<span style={{fontSize:T.fs.nano,color:T.gray500}}>회</span></div>}</td><td style={{textAlign:"center"}}>
+              <label style={{fontSize:T.fs.nano,display:"flex",alignItems:"center",gap:2,justifyContent:"center"}}>
+              <input type="checkbox" checked={!!(editData.note||'').includes('[qty]')} 
+              onChange={e=>setEditData(p=>({...p,note:e.target.checked?(p.note||'').replace('[qty]','').trim()+' [qty]':(p.note||'').replace('[qty]','').trim()}))} 
+              style={{accentColor:T.female}}/>수량</label></td>
             <td style={{textAlign:"center"}}><div style={{display:"flex",gap:3,justifyContent:"center"}}>
               <Btn variant="primary" size="sm" onClick={saveEdit} style={{padding:"2px 8px",fontSize:T.fs.xs}}>저장</Btn>
               <Btn variant="secondary" size="sm" onClick={()=>setEditId(null)} style={{padding:"2px 6px",fontSize:T.fs.xs}}>취소</Btn>
@@ -6693,7 +6738,7 @@ function AdminSaleItems({ data, setData }) {
             <td style={{textAlign:"right",color:T.primary,fontWeight:T.fw.bold,fontSize:T.fs.sm}}>{svc.priceF>0?fmt(svc.priceF)+"원":"-"}</td>
             <td style={{textAlign:"right",color:T.male,fontWeight:T.fw.bold,fontSize:T.fs.sm}}>{svc.priceM>0?fmt(svc.priceM)+"원":"-"}</td>
             <td style={{textAlign:"center",color:T.textSub,fontSize:T.fs.xxs}}>{svc.dur}분</td>
-            <td style={{fontSize:T.fs.xxs,color:T.textSub}}>{svc.note||""}</td>
+            <td style={{fontSize:T.fs.xxs,color:T.textSub}}>{svcNoteDisplay(svc.note)}{(svc.note||'').includes('[qty]')&&<span style={{marginLeft:4,fontSize:T.fs.nano,background:T.femaleLt||'#fce4ec',color:T.female,borderRadius:T.radius.sm,padding:'1px 4px'}}>수량</span>}</td>
             <td style={{textAlign:"center"}}>{svc.isPackage ? <span style={{fontSize:T.fs.nano,background:T.primary,color:T.bgCard,borderRadius:T.radius.sm,padding:"1px 4px"}}>{svc.pkgCount}회</span> : <span style={{fontSize:T.fs.nano,color:T.gray400}}>-</span>}</td>
             <td style={{textAlign:"center"}}><div style={{display:"flex",gap:T.sp.xs,justifyContent:"center"}}>
               <button onClick={()=>startEdit(svc)} style={{background:"none",border:"none",cursor:"pointer",color:T.primary,fontSize:T.fs.sm}}><I name="edit" size={13}/></button>
