@@ -174,7 +174,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.74";
+const BLISS_V = "2.69.75";
 
 // ─── 디자인 토큰 ────────────────────────────────────────────────────────────
 const T = {
@@ -3164,6 +3164,48 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   );
 }
 
+function usePullToRefresh(containerRef, onRefresh) {
+  const startY = React.useRef(0);
+  const pulling = React.useRef(false);
+  const [pullDist, setPullDist] = React.useState(0);
+  const [refreshing, setRefreshing] = React.useState(false);
+  const THRESHOLD = 72;
+
+  React.useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const onTouchStart = e => {
+      if (el.scrollTop === 0) { startY.current = e.touches[0].clientY; pulling.current = true; }
+    };
+    const onTouchMove = e => {
+      if (!pulling.current) return;
+      const dy = e.touches[0].clientY - startY.current;
+      if (dy > 0) { setPullDist(Math.min(dy * 0.5, THRESHOLD + 20)); }
+    };
+    const onTouchEnd = async () => {
+      if (!pulling.current) return;
+      pulling.current = false;
+      if (pullDist >= THRESHOLD && !refreshing) {
+        setRefreshing(true);
+        setPullDist(THRESHOLD);
+        try { await onRefresh(); } catch(e) {}
+        setRefreshing(false);
+      }
+      setPullDist(0);
+    };
+    el.addEventListener('touchstart', onTouchStart, { passive: true });
+    el.addEventListener('touchmove', onTouchMove, { passive: true });
+    el.addEventListener('touchend', onTouchEnd);
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart);
+      el.removeEventListener('touchmove', onTouchMove);
+      el.removeEventListener('touchend', onTouchEnd);
+    };
+  }, [containerRef, pullDist, refreshing, onRefresh]);
+
+  return { pullDist, refreshing, threshold: THRESHOLD };
+}
+
 function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBranch, userBranches, data, setData, setPage, naverColShow={} }) {
   const SVC_LIST = (data?.services || []).slice().sort((a,b)=>(a.sort||0)-(b.sort||0));
   const PROD_LIST = (data?.products || []);
@@ -3477,12 +3519,18 @@ ${naverText}
   }
 
   const _isMob = window.innerWidth <= 768;
+  const _ptrRef = React.useRef(null);
+  const _ptr = usePullToRefresh(_ptrRef, React.useCallback(async () => {
+    if (data?._reload) await data._reload();
+  }, [data]));
+
   return (
     <div
+      ref={_isMob ? _ptrRef : undefined}
       onClick={_isMob ? undefined : onClose}
       style={_isMob ? {
         position:"fixed",inset:0,zIndex:500,background:T.bgCard,
-        overflowY:"auto",WebkitOverflowScrolling:"touch"
+        overflowY:"auto",WebkitOverflowScrolling:"touch",overscrollBehaviorY:"contain"
       } : {
         position:"fixed",top:0,left:0,right:0,bottom:0,
         background:"rgba(0,0,0,.35)",backdropFilter:"blur(2px)",WebkitBackdropFilter:"blur(2px)",
@@ -3495,6 +3543,19 @@ ${naverText}
         <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px 8px",
           borderBottom:`1px solid ${T.border}`,background:T.bgCard,
           position:"sticky",top:0,zIndex:10}}>
+          {/* Pull-to-refresh 인디케이터 */}
+          {(_ptr.pullDist > 0 || _ptr.refreshing) && (
+            <div style={{position:"absolute",top:_ptr.refreshing?8:_ptr.pullDist/3,left:"50%",transform:"translateX(-50%)",
+              width:32,height:32,borderRadius:"50%",background:T.bgCard,
+              boxShadow:"0 2px 8px rgba(0,0,0,.15)",display:"flex",alignItems:"center",justifyContent:"center",
+              transition:_ptr.refreshing?"none":"transform .1s",zIndex:20}}>
+              <I name="refresh" size={16} style={{
+                color:T.primary,
+                transform:`rotate(${_ptr.refreshing ? 0 : _ptr.pullDist*3}deg)`,
+                animation:_ptr.refreshing?"spin 0.7s linear infinite":"none"
+              }}/>
+            </div>
+          )}
           <button onClick={onClose} style={{display:"flex",alignItems:"center",gap:4,
             background:"none",border:"none",cursor:"pointer",color:T.primary,
             fontWeight:700,fontSize:15,padding:"4px 2px",fontFamily:"inherit"}}>
@@ -5224,7 +5285,10 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
       naverColShow={naverColShow}
       selBranch={userBranches[0]}
       userBranches={userBranches}
-      data={data}
+      data={{...data, _reload: async()=>{
+        const bizId = data?.business?.id;
+        if(bizId){const rows=await sb.getByBiz("reservations",bizId);const parsed=fromDb("reservations",rows);setData(prev=>prev?{...prev,reservations:parsed}:prev);}
+      }}}
       setData={setData}
       setPage={setPage}
     />}
@@ -7959,6 +8023,7 @@ const CSS = `
   .modal-res .btn-p:hover{transform:none !important}
 
 @keyframes slideUp{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:scale(1)}}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
   @keyframes bottomSheet{from{transform:translateY(100%)}to{transform:translateY(0)}}
   @keyframes ovFadeIn{from{opacity:0}to{opacity:1}}
 #place-modal{width:90vw!important;max-width:480px!important;left:50%!important;right:auto!important;transform:translateX(-50%) !important;}
