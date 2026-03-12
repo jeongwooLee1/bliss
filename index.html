@@ -174,7 +174,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.94";
+const BLISS_V = "2.69.95";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -6027,7 +6027,7 @@ function AdminPage({ data, setData, bizId, serverV }) {
     {tab==="prodmgmt" && <AdminProductItems data={data} setData={setData}/>}
     {tab==="svctags" && <AdminServiceTags data={data} setData={setData}/>}
     {tab==="ressrc" && <AdminResSources data={data} setData={setData}/>}
-    {tab==="notiSettings" && <AdminNotiSettings data={data} setData={setData}/>}
+    {tab==="notiSettings" && <AdminNoti data={data} setData={setData}/>}
     {tab==="aisettings" && <AdminAISettings data={data}  sb={sb} bizId={bizId}/>}
   </div>;
 }
