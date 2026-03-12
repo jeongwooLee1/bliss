@@ -174,7 +174,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.86";
+const BLISS_V = "2.69.87";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -2695,7 +2695,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
           <div style={{position:"relative",flexShrink:0}} ref={el => { if(el) el._settingsBtn = el; }}>
             <button onClick={(e)=>{setShowSettings(!showSettings);}} id="settings-btn"
               style={{height:32,padding:"0 12px",border:"none",borderRadius:T.radius.md,background:"transparent",
-                cursor:"pointer",fontSize:T.fs.md,fontWeight:T.fw.medium,color:showSettings?T.primary:T.primary,fontFamily:"inherit"}}>편집</button>
+                cursor:"pointer",fontSize:20,lineHeight:1,color:showSettings?T.primary:T.primary,fontFamily:"inherit",background:"none",border:"none",padding:"2px 4px"}}>✏️</button>
           </div>
           
         </div>
