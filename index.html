@@ -174,7 +174,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.84";
+const BLISS_V = "2.69.85";
 
 // ─── 디자인 토큰 ────────────────────────────────────────────────────────────
 const T = {
@@ -4847,8 +4847,6 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
     if (!(vb==="all"?userBranches.includes(r.bid):r.bid===vb)) return false;
     const isNaver = r.source==="naver"||r.source==="네이버";
     if (isNaver&&!r.isScrapingDone) return false;
-    // 체인 멤버인 naver_changed는 목록에서 숨김 (+ 버튼으로만 표시)
-    if (r.status==="naver_changed" && resByPrev[r.reservationId]) return false;
     if (statusFilter!=="all") {
       const cancelGroup = statusFilter==="cancelled"&&(r.status==="cancelled"||r.status==="naver_cancelled");
       if (!cancelGroup&&r.status!==statusFilter) return false;
@@ -4861,6 +4859,10 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
     }
     return inRange(r.date);
   }).sort((a,b)=>b.date.localeCompare(a.date)||b.time.localeCompare(a.time));
+
+  // 체인 멤버인 naver_changed 숨김: 자신을 prevReservationId로 참조하는 더 최신 예약이 있으면 제외
+  const resNextSet = new Set((data?.reservations||[]).filter(r=>r.prevReservationId).map(r=>r.prevReservationId));
+  const resFinal = res.filter(r => !(r.status==="naver_changed" && resNextSet.has(r.reservationId)));
 
   // ── 변경 히스토리 체인 구성 ─────────────────────────────────────
   // prev_reservation_id로 체인 연결: 최신 예약(naver_changed 아닌 것)이 대표, 이전 것들이 히스토리
@@ -5046,7 +5048,7 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
     </div>
 
     {/* ── 카드 그리드 ── */}
-    {res.length===0 ? <Empty msg="예약이 없습니다" icon="calendar"/> :
+    {resFinal.length===0 ? <Empty msg="예약이 없습니다" icon="calendar"/> :
     <div style={{display:"flex",flexDirection:"column",gap:D.gap}}>
       {/* 그리드 헤더 - 데스크톱만 */}
       {!isMobile && <div style={{display:"grid",gridTemplateColumns:resGridCols(showCols,density),gap:T.sp.xs,padding:"4px 16px",borderRadius:T.radius.md,background:T.gray200}}>
@@ -5065,7 +5067,7 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
       </div>}
 
       {/* 카드 행 */}
-      {res.map(r => {
+      {resFinal.map(r => {
         const svcNames = (r.selectedServices||[]).map(sid=>(data.services||[]).find(s=>s.id===sid)?.name).filter(Boolean);
         const svc = (data.services||[]).find(s=>s.id===r.serviceId);
         const svcDisplay = svcNames.length>0 ? svcNames.join(", ") : (svc?.name||"-");
