@@ -174,7 +174,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.73";
+const BLISS_V = "2.69.74";
 
 // ─── 디자인 토큰 ────────────────────────────────────────────────────────────
 const T = {
@@ -4335,7 +4335,7 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
   const _m = window.innerWidth <= 768;
   return (
     <div onClick={_m?undefined:onClose} style={_m?{
-        position:"fixed",inset:0,zIndex:500,background:T.bgCard,overflowY:"auto",WebkitOverflowScrolling:"touch"
+        position:"fixed",inset:0,zIndex:500,background:T.bgCard,overflowY:"auto",WebkitOverflowScrolling:"touch",overscrollBehaviorY:"none"
       }:{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.35)",backdropFilter:"blur(2px)",WebkitBackdropFilter:"blur(2px)",zIndex:200,display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"20px 16px",overflow:"auto",WebkitOverflowScrolling:"touch",animation:"ovFadeIn .25s"}}>
       {_m&&<div style={{display:"flex",alignItems:"center",padding:"10px 14px 8px",borderBottom:`1px solid ${T.border}`,background:T.bgCard,position:"sticky",top:0,zIndex:10}}>
         <button onClick={onClose} style={{display:"flex",alignItems:"center",gap:4,background:"none",border:"none",cursor:"pointer",color:T.primary,fontWeight:700,fontSize:15,padding:"4px 2px",fontFamily:"inherit"}}>
@@ -5824,7 +5824,7 @@ function CustModal({ item, onSave, onClose, defBranch, userBranches, branches })
   const [f, setF] = useState(item || { id:uid(), bid:defBranch, name:"", phone:"", gender:"", visits:0, lastVisit:null, memo:"", custNum:String(50000+Math.floor(Math.random()*10000)) });
   const set = (k,v) => setF(p=>({...p,[k]:v}));
   const _cm = window.innerWidth<=768;
-  return <div onClick={_cm?undefined:onClose} style={_cm?{position:"fixed",inset:0,zIndex:500,background:T.bgCard,overflowY:"auto",WebkitOverflowScrolling:"touch"}:{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.35)",backdropFilter:"blur(2px)",WebkitBackdropFilter:"blur(2px)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16,animation:"ovFadeIn .25s"}}>
+  return <div onClick={_cm?undefined:onClose} style={_cm?{position:"fixed",inset:0,zIndex:500,background:T.bgCard,overflowY:"auto",WebkitOverflowScrolling:"touch",overscrollBehaviorY:"none"}:{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.35)",backdropFilter:"blur(2px)",WebkitBackdropFilter:"blur(2px)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16,animation:"ovFadeIn .25s"}}>
     {_cm&&<div style={{display:"flex",alignItems:"center",padding:"10px 14px 8px",borderBottom:`1px solid ${T.border}`,background:T.bgCard,position:"sticky",top:0,zIndex:10}}>
       <button onClick={onClose} style={{display:"flex",alignItems:"center",gap:4,background:"none",border:"none",cursor:"pointer",color:T.primary,fontWeight:700,fontSize:15,padding:"4px 2px",fontFamily:"inherit"}}>
         <I name="chevronLeft" size={20}/> 뒤로
