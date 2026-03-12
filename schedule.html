@@ -334,6 +334,33 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     return true;
   };
 
+  // 남자직원 전용 OFF 가능 여부 (퐁당퐁당 제외, 3일연속·전원휴무·지점인원만 체크)
+  const canMaleOff = (emp, day, branchEmps, branch) => {
+    const ds = day.ds;
+    const d = new Date(ds);
+    const p1ds = fmtDs(...[new Date(d)].map(x=>{x.setDate(d.getDate()-1);return[x.getFullYear(),x.getMonth(),x.getDate()]})[0]);
+    const p2ds = fmtDs(...[new Date(d)].map(x=>{x.setDate(d.getDate()-2);return[x.getFullYear(),x.getMonth(),x.getDate()]})[0]);
+    const n1ds = fmtDs(...[new Date(d)].map(x=>{x.setDate(d.getDate()+1);return[x.getFullYear(),x.getMonth(),x.getDate()]})[0]);
+    const isOff = (eId, dateStr) => {
+      const s = sch[eId]?.[dateStr] ?? prevSchData?.[eId]?.[dateStr] ?? "";
+      return ["휴무","휴무(꼭)"].includes(s);
+    };
+    // 3일 연속 휴무 방지 (평일 기준)
+    if (isOff(emp.id, p1ds) && isOff(emp.id, p2ds)) return false;
+    if (isOff(emp.id, p1ds) && isOff(emp.id, n1ds)) return false;
+    // 남자직원 전원 휴무 금지
+    const otherMales = employees.filter(e => e.isMale && e.id !== emp.id);
+    if (otherMales.length > 0 && otherMales.every(e => isOff(e.id, ds))) return false;
+    // 지점 최소 인원 보호
+    if (branch && branch.id !== "nonhyeon") {
+      const ownWorking = branchEmps.filter(be => !["휴무","휴무(꼭)"].includes(sch[be.id]?.[ds]||"")).length;
+      const supportIn = employees.filter(e => e.branch !== branch.id && sch[e.id]?.[ds] === `지원(${branch.name})`).length;
+      const minS = rc.branchMinStaff[branch.id] ?? branch.minStaff;
+      if (ownWorking + supportIn - 1 < minS) return false;
+    }
+    return true;
+  };
+
   // ══════════════════════════════════════════════════════
   // 남자직원 전용 배정 로직
   // 규칙:
@@ -416,7 +443,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
 
         for (const day of cands) {
           if (toAssign <= 0) break;
-          if (!canAssignOff(emp, day, branchEmps, branch)) continue;
+          if (!canMaleOff(emp, day, branchEmps, branch)) continue;
           sch[emp.id][day.ds] = STATUS.OFF;
           toAssign--;
         }
@@ -1128,6 +1155,8 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
 
     // ── 패스 2: 부족 주 채우기 ──
     maleEmps.forEach(emp => {
+      const branch_m = BRANCHES.find(b => b.id === emp.branch);
+      const branchEmps_m = employees.filter(e => e.branch === emp.branch);
       activeWeeks.forEach(week => {
         const wkDays = week.filter(d => !d.isPrev);
         const offNow = wkDays.filter(d =>
@@ -1149,12 +1178,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
         let added = 0;
         for (const day of cands) {
           if (added >= needed) break;
-          // 전체 최소 근무 인원 보호만 체크 (제약 최소화)
-          const totalWorking = employees.filter(e => {
-            const s = sch[e.id][day.ds];
-            return s === STATUS.WORK || isSupport(s) || s === STATUS.SHARE;
-          }).length;
-          if (totalWorking <= rc.minWork) continue;
+          if (!canMaleOff(emp, day, branchEmps_m, branch_m)) continue;
           sch[emp.id][day.ds] = STATUS.OFF;
           added++;
         }
