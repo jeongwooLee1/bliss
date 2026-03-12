@@ -174,7 +174,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.65";
+const BLISS_V = "2.69.66";
 
 // ─── 디자인 토큰 ────────────────────────────────────────────────────────────
 const T = {
@@ -3453,7 +3453,7 @@ ${naverText}
   }
 
   return (
-    <div className="ov" onClick={onClose} style={{alignItems:"flex-start",padding:"calc(56px + env(safe-area-inset-top) + 8px) 0 0",overflowY:"auto",overflowX:"hidden",WebkitOverflowScrolling:"touch"}}>
+    <div className="ov" onClick={onClose} style={{alignItems:"flex-start",padding:"8px 0",overflowY:"auto",overflowX:"hidden",WebkitOverflowScrolling:"touch"}}>
       <div ref={modalRef} className="modal-res" onClick={e=>e.stopPropagation()} style={{background:T.bgCard,
         borderRadius:T.radius.xl,border:`1px solid ${T.border}`,
         margin:"0 auto",
@@ -7897,7 +7897,7 @@ const CSS = `
     .form-col textarea.inp{height:auto!important}
     .modal-res{width:100%!important;max-width:100%!important;border-radius:12px!important;margin:0!important}
     .modal-res .form-col{overflow:visible!important}
-    .ov{padding:8px 0!important;padding-bottom:calc(56px + env(safe-area-inset-bottom))!important;-webkit-overflow-scrolling:touch!important}
+    .ov{top:56px!important;padding:8px 0!important;align-items:flex-start!important;overflow-y:auto!important}
     .tl-topbar{flex-direction:column!important;gap:4px!important;padding:6px 6px!important;align-items:stretch!important}
     .mob-hdr{padding:10px 16px!important}
     .tl-date-label{font-size:15px!important}
@@ -7916,7 +7916,7 @@ const CSS = `
     .stat-cards{grid-template-columns:repeat(auto-fit,minmax(100px,1fr))!important;gap:8px!important}
     .stat-charts{grid-template-columns:1fr!important}
     .admin-tw{max-height:calc(100vh - 260px)!important}
-    .ov{padding:8px!important}
+
     .modal-res span:not(.badge),.modal-res label,.modal-res p{font-size:13px!important}
     .modal-res h3{font-size:15px!important}
     .modal-res button{font-size:13px!important}
