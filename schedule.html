@@ -970,7 +970,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
   //    2회 패스: 1패스(초과 줄이기) → 2패스(부족 채우기)
   //    대상: altPattern·원장 제외 전 직원 (원장은 weeklyOff:1이므로 별도 처리 없음)
   {
-    const targetEmps = employees.filter(e => !isAltPattern(e));
+    const targetEmps = employees.filter(e => !isAltPattern(e) && !e.isMale); // 남자직원은 step9-M 전담
 
     // ── 패스 1: 초과 주 줄이기 (off > weeklyOff) ──
     // 휴무(꼭) 제외, 주간 초과분만 off→work (canAssignOff 무시, 단순 전환)
@@ -1060,7 +1060,8 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       activeWeeks.forEach(week => {
         const wkDays = week.filter(d => !d.isPrev);
         const offDays = wkDays.filter(d =>
-          ["휴무","휴무(꼭)"].includes(sch[emp.id]?.[d.ds])
+          ["휴무","휴무(꼭)"].includes(sch[emp.id]?.[d.ds]) &&
+          d.dow !== 6 // 일요일 OFF는 STEP A 고정배정이므로 쿼터 외
         );
         const excess = offDays.length - wo_m;
         if (excess <= 0) return;
@@ -1087,7 +1088,8 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       activeWeeks.forEach(week => {
         const wkDays = week.filter(d => !d.isPrev);
         const offNow = wkDays.filter(d =>
-          ["휴무","휴무(꼭)"].includes(sch[emp.id]?.[d.ds])
+          ["휴무","휴무(꼭)"].includes(sch[emp.id]?.[d.ds]) &&
+          d.dow !== 6 // 일요일 OFF는 쿼터 외
         ).length;
         const needed = wo_m - offNow;
         if (needed <= 0) return;
