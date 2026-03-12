@@ -1048,6 +1048,86 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     });
   }
 
+  // 9-M) 남자직원 주간 off 수 전용 정규화 (step 9 이후 마지막 실행)
+  //      weeklyOff=2 기준, 일요일 WORK/OFF는 그대로 보존
+  //      패스1: 초과 주 → 강제 WORK (제약 없음)
+  //      패스2: 부족 주 → 가능한 평일 OFF (퐁당퐁당 제외, 최소 minWork 보호)
+  if (maleEmps.length > 0) {
+    const wo_m = 2; // 남자직원 고정 주당 휴무
+
+    // ── 패스 1: 초과 주 줄이기 ──
+    maleEmps.forEach(emp => {
+      activeWeeks.forEach(week => {
+        const wkDays = week.filter(d => !d.isPrev);
+        const offDays = wkDays.filter(d =>
+          ["휴무","휴무(꼭)"].includes(sch[emp.id]?.[d.ds])
+        );
+        const excess = offDays.length - wo_m;
+        if (excess <= 0) return;
+
+        // 일요일·휴무(꼭)·seeded 제외하고 OFF → WORK
+        const cands = offDays
+          .filter(d =>
+            sch[emp.id][d.ds] === STATUS.OFF &&
+            !seededDates.has(d.ds) &&
+            d.dow !== 6 // 일요일 보호
+          )
+          .sort((a, b) => (!!a.isNext !== !!b.isNext ? (a.isNext ? -1 : 1) : 0));
+        let removed = 0;
+        for (const d of cands) {
+          if (removed >= excess) break;
+          sch[emp.id][d.ds] = STATUS.WORK;
+          removed++;
+        }
+      });
+    });
+
+    // ── 패스 2: 부족 주 채우기 ──
+    maleEmps.forEach(emp => {
+      activeWeeks.forEach(week => {
+        const wkDays = week.filter(d => !d.isPrev);
+        const offNow = wkDays.filter(d =>
+          ["휴무","휴무(꼭)"].includes(sch[emp.id]?.[d.ds])
+        ).length;
+        const needed = wo_m - offNow;
+        if (needed <= 0) return;
+
+        // 근무 중인 평일 후보 (일요일 제외, seeded 제외)
+        const cands = wkDays
+          .filter(d =>
+            sch[emp.id]?.[d.ds] === STATUS.WORK &&
+            !seededDates.has(d.ds) &&
+            d.dow !== 6 // 일요일 보호
+          )
+          .sort((a, b) => (!!a.isNext !== !!b.isNext ? (a.isNext ? 1 : -1) : 0));
+
+        let added = 0;
+        for (const day of cands) {
+          if (added >= needed) break;
+          // 퐁당퐁당 방지: 전날 근무, 다음날 근무인지 체크
+          const prevDs = addDays(day.ds, -1);
+          const nextDs = addDays(day.ds, 1);
+          const prevWork = [STATUS.WORK, STATUS.SHARE].includes(sch[emp.id]?.[prevDs]) ||
+            sch[emp.id]?.[prevDs]?.startsWith?.("지원");
+          const nextWork = [STATUS.WORK, STATUS.SHARE].includes(sch[emp.id]?.[nextDs]) ||
+            sch[emp.id]?.[nextDs]?.startsWith?.("지원");
+          // 전날도 근무, 다음날도 근무인 날만 off 가능 (양쪽 이웃이 있어야 퐁당퐁당 발생 가능)
+          // 단순화: 이미 전후에 off가 연속되는 경우만 스킵
+          const prevOff = ["휴무","휴무(꼭)"].includes(sch[emp.id]?.[prevDs]);
+          const nextOff = ["휴무","휴무(꼭)"].includes(sch[emp.id]?.[nextDs]);
+          if (prevOff || nextOff) continue; // 연속 휴무 방지
+          // 전체 최소 근무 보호
+          const totalWorking = employees.filter(e => {
+            const s = sch[e.id][day.ds];
+            return s === STATUS.WORK || isSupport(s) || s === STATUS.SHARE;
+          }).length;
+          if (totalWorking <= rc.minWork + 1) continue; // 여유 1명 확보
+          sch[emp.id][day.ds] = STATUS.OFF;
+          added++;
+        }
+      });
+    });
+  }
 
   // 디버그: window.__debugDate 설정 시 해당 날짜 canAssignOff 원인 로깅
   if (typeof window !== 'undefined' && window.__debugDate) {
