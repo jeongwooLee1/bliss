@@ -47,6 +47,7 @@ window.storage = {
 <body>
 <div id="root"></div>
 <script type="text/babel">
+
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
@@ -381,6 +382,48 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     });
   }
 
+
+  // ── STEP B: 남자직원 평일 주간 OFF 배정 ──
+  // 일요일은 STEP A에서 확정됨. 여기서는 평일(월~토) 중 주당 2일 OFF 배정
+  if (maleEmps.length > 0) {
+    maleEmps.forEach(emp => {
+      const branch = BRANCHES.find(b => b.id === emp.branch);
+      const branchEmps = employees.filter(e => e.branch === emp.branch);
+      const wo = 2; // 평일 주당 OFF 목표
+
+      activeWeeks.forEach(week => {
+        const thisMonthDays = week.filter(d => !d.isPrev);
+        if (thisMonthDays.length === 0) return;
+
+        // 이 주 평일 OFF 현황 (일요일 제외)
+        const weekdayOffNow = thisMonthDays.filter(d =>
+          d.dow !== 6 && ["휴무","휴무(꼭)"].includes(sch[emp.id]?.[d.ds])
+        ).length;
+        let toAssign = Math.max(0, wo - weekdayOffNow);
+        if (toAssign <= 0) return;
+
+        // 평일 중 미배정 날짜 (일요일 제외, seededDates 제외)
+        const cands = thisMonthDays
+          .filter(d => !sch[emp.id][d.ds] && !seededDates.has(d.ds) && d.dow !== 6)
+          .sort((a, b) => {
+            // isNext 후순위
+            if (!!a.isNext !== !!b.isNext) return a.isNext ? 1 : -1;
+            // 동료 OFF 적은 날 우선 (분산)
+            const aOff = branchEmps.filter(be => be.id !== emp.id && ["휴무","휴무(꼭)"].includes(sch[be.id]?.[a.ds])).length;
+            const bOff = branchEmps.filter(be => be.id !== emp.id && ["휴무","휴무(꼭)"].includes(sch[be.id]?.[b.ds])).length;
+            return aOff - bOff;
+          });
+
+        for (const day of cands) {
+          if (toAssign <= 0) break;
+          if (!canAssignOff(emp, day, branchEmps, branch)) continue;
+          sch[emp.id][day.ds] = STATUS.OFF;
+          toAssign--;
+        }
+      });
+    });
+  }
+
   // 현아 처리: 격주 1일/2일, 기준요일 수(dow=2) 고정 — 2일주는 반드시 수+목
   // 1일주: 수요일만 / 2일주: 수요일 + 목요일 (같은 요일 고정 패턴)
   // 격주 패턴 직원 처리 (현아 포함 altPattern=true인 전 직원)
@@ -418,7 +461,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
 
 
   // 나머지 직원: 월 총 휴무 = 주 수 × weeklyOff, 주 단위로 분산 배정
-  employees.filter(e => !isAltPattern(e)).forEach(emp => {
+  employees.filter(e => !isAltPattern(e) && !e.isMale).forEach(emp => { // 남자직원은 STEP B 전담
     const branch = BRANCHES.find(b => b.id === emp.branch);
     const branchEmps = employees.filter(e => e.branch === emp.branch);
     const monthlyTarget = getWeeklyOff(emp) * weekCount;
@@ -2336,7 +2379,7 @@ function Btn({label,onClick,primary,outline}){
   );
 }
 
-const root = ReactDOM.createRoot(document.getElementById('root'));
+const root = ReactDOM.createRoot(document.getElementById("root"));
 root.render(<App />);
 </script>
 </body>
