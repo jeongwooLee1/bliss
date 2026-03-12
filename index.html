@@ -174,7 +174,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.71";
+const BLISS_V = "2.69.72";
 
 // ─── 디자인 토큰 ────────────────────────────────────────────────────────────
 const T = {
@@ -3476,13 +3476,38 @@ ${naverText}
     return <DetailedSaleForm reservation={saleReservation} branchId={branchId} onSubmit={handleSaleSubmit} onClose={() => setShowSaleForm(false)} data={data} setData={setData} />;
   }
 
+  const _isMob = window.innerWidth <= 768;
   return (
-    <div className="ov" onClick={onClose} style={{alignItems:"flex-start",padding:"8px 0",overflowY:"auto",overflowX:"hidden",WebkitOverflowScrolling:"touch"}}>
+    <div
+      onClick={_isMob ? undefined : onClose}
+      style={_isMob ? {
+        position:"fixed",inset:0,zIndex:500,background:T.bgCard,
+        overflowY:"auto",WebkitOverflowScrolling:"touch"
+      } : {
+        position:"fixed",top:0,left:0,right:0,bottom:0,
+        background:"rgba(0,0,0,.35)",backdropFilter:"blur(2px)",WebkitBackdropFilter:"blur(2px)",
+        zIndex:200,display:"flex",alignItems:"flex-start",justifyContent:"center",
+        padding:"8px 0",overflowY:"auto",overflowX:"hidden",WebkitOverflowScrolling:"touch",
+        animation:"ovFadeIn .25s"
+      }}
+    >
+      {_isMob && (
+        <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px 8px",
+          borderBottom:`1px solid ${T.border}`,background:T.bgCard,
+          position:"sticky",top:0,zIndex:10}}>
+          <button onClick={onClose} style={{display:"flex",alignItems:"center",gap:4,
+            background:"none",border:"none",cursor:"pointer",color:T.primary,
+            fontWeight:700,fontSize:15,padding:"4px 2px",fontFamily:"inherit"}}>
+            <I name="chevronLeft" size={20}/> 뒤로
+          </button>
+        </div>
+      )}
       <div ref={modalRef} className="modal-res" onClick={e=>e.stopPropagation()} style={{background:T.bgCard,
-        borderRadius:T.radius.xl,border:`1px solid ${T.border}`,
-        margin:"0 auto",
-        animation:"slideUp .4s cubic-bezier(.22,1,.36,1)",
-        boxShadow:T.shadow.lg}}>
+        borderRadius:_isMob ? 0 : T.radius.xl,
+        border:_isMob ? "none" : `1px solid ${T.border}`,
+        margin:_isMob ? 0 : "0 auto",
+        animation:_isMob ? "none" : "slideUp .4s cubic-bezier(.22,1,.36,1)",
+        boxShadow:_isMob ? "none" : T.shadow.lg}}>
         {/* ═══ Chrome-style Tabs ═══ */}
         <div style={{display:"flex",alignItems:"stretch",borderBottom:`1.5px solid ${T.gray200}`,background:T.bgCard,borderRadius:`${T.radius.xl}px ${T.radius.xl}px 0 0`,position:"relative"}}>
           {/* 예약 탭 */}
@@ -4307,12 +4332,20 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
   const uncatSvcs = SVC_LIST.filter(s => !CATS.find(c=>c.id===s.cat));
   const halfProd = Math.ceil(PROD_LIST.length / 2);
 
+  const _m = window.innerWidth <= 768;
   return (
-    <div className="ov" onClick={onClose} style={{alignItems:"flex-start",padding:"20px 16px",overflow:"auto",WebkitOverflowScrolling:"touch"}}>
+    <div onClick={_m?undefined:onClose} style={_m?{
+        position:"fixed",inset:0,zIndex:500,background:T.bgCard,overflowY:"auto",WebkitOverflowScrolling:"touch"
+      }:{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.35)",backdropFilter:"blur(2px)",WebkitBackdropFilter:"blur(2px)",zIndex:200,display:"flex",alignItems:"flex-start",justifyContent:"center",padding:"20px 16px",overflow:"auto",WebkitOverflowScrolling:"touch",animation:"ovFadeIn .25s"}}>
+      {_m&&<div style={{display:"flex",alignItems:"center",padding:"10px 14px 8px",borderBottom:`1px solid ${T.border}`,background:T.bgCard,position:"sticky",top:0,zIndex:10}}>
+        <button onClick={onClose} style={{display:"flex",alignItems:"center",gap:4,background:"none",border:"none",cursor:"pointer",color:T.primary,fontWeight:700,fontSize:15,padding:"4px 2px",fontFamily:"inherit"}}>
+          <I name="chevronLeft" size={20}/> 뒤로
+        </button>
+      </div>}
       <div onClick={e => e.stopPropagation()} style={{
-        background: T.bgCard, borderRadius: 12, border:"1px solid "+T.border, padding: 0,
-        width: "92%", maxWidth: 1200, margin: "0 auto",
-        animation: "slideUp .6s cubic-bezier(.22,1,.36,1)", boxShadow: "0 12px 40px rgba(0,0,0,.18)"
+        background: T.bgCard, borderRadius: _m?0:12, border:_m?"none":"1px solid "+T.border, padding: 0,
+        width: _m?"100%":"92%", maxWidth: 1200, margin: "0 auto",
+        animation: _m?"none":"slideUp .6s cubic-bezier(.22,1,.36,1)", boxShadow: _m?"none":"0 12px 40px rgba(0,0,0,.18)"
       }}>
         {/* Header */}
         <div style={{ padding: "10px 20px", borderBottom: "1px solid #e0e0e0", display: "flex", alignItems: "center", justifyContent: "space-between", background: T.gray100, gap: 10, borderRadius: "12px 12px 0 0" }}>
@@ -5790,8 +5823,14 @@ function CustomersPage({ data, setData, userBranches, isMaster }) {
 function CustModal({ item, onSave, onClose, defBranch, userBranches, branches }) {
   const [f, setF] = useState(item || { id:uid(), bid:defBranch, name:"", phone:"", gender:"", visits:0, lastVisit:null, memo:"", custNum:String(50000+Math.floor(Math.random()*10000)) });
   const set = (k,v) => setF(p=>({...p,[k]:v}));
-  return <div className="ov" onClick={onClose}>
-    <div className="modal" onClick={e=>e.stopPropagation()}>
+  const _cm = window.innerWidth<=768;
+  return <div onClick={_cm?undefined:onClose} style={_cm?{position:"fixed",inset:0,zIndex:500,background:T.bgCard,overflowY:"auto",WebkitOverflowScrolling:"touch"}:{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,.35)",backdropFilter:"blur(2px)",WebkitBackdropFilter:"blur(2px)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16,animation:"ovFadeIn .25s"}}>
+    {_cm&&<div style={{display:"flex",alignItems:"center",padding:"10px 14px 8px",borderBottom:`1px solid ${T.border}`,background:T.bgCard,position:"sticky",top:0,zIndex:10}}>
+      <button onClick={onClose} style={{display:"flex",alignItems:"center",gap:4,background:"none",border:"none",cursor:"pointer",color:T.primary,fontWeight:700,fontSize:15,padding:"4px 2px",fontFamily:"inherit"}}>
+        <I name="chevronLeft" size={20}/> 뒤로
+      </button>
+    </div>}
+    <div className="modal" onClick={e=>e.stopPropagation()} style={_cm?{borderRadius:0,boxShadow:"none",border:"none",width:"100%",maxWidth:"none"}:{}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
         <h3 style={{fontSize:T.fs.lg,fontWeight:T.fw.bolder}}>{item?"고객 수정":"새 고객"}</h3>
         <button onClick={onClose} className="close-btn"><I name="x" size={16}/></button>
