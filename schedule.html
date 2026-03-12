@@ -981,9 +981,10 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
         const excess = offDaysInWk.length - wo;
         if (excess <= 0) return;
 
-        // 일반 휴무만 취소 (휴무(꼭) 보호), seededDates 보호
+        // 일반 휴무만 취소 (휴무(꼭) 보호), seededDates 보호, 남자직원 일요일 보호
         const cancelCands = offDaysInWk
-          .filter(d => sch[emp.id][d.ds] === STATUS.OFF && !seededDates.has(d.ds))
+          .filter(d => sch[emp.id][d.ds] === STATUS.OFF && !seededDates.has(d.ds)
+            && !(emp.isMale && d.dow === 6)) // 남자직원 일요일은 STEP A 배정 보호
           .sort((a, b) => {
             // isNext 이월 날짜 우선 취소 (이번달 보호)
             if (!!a.isNext !== !!b.isNext) return (a.isNext ? -1 : 1);
@@ -1016,9 +1017,10 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
         const needed = wo - offNow;
         if (needed <= 0) return;
 
-        // 근무 중인 날 후보: isNext 후순위, 전체 off가 적은 날 우선
+        // 근무 중인 날 후보: isNext 후순위, 전체 off가 적은 날 우선, 남자직원 일요일 보호
         const addCands = wkDays
-          .filter(d => sch[emp.id]?.[d.ds] === STATUS.WORK && !seededDates.has(d.ds))
+          .filter(d => sch[emp.id]?.[d.ds] === STATUS.WORK && !seededDates.has(d.ds)
+            && !(emp.isMale && d.dow === 6)) // 남자직원 일요일은 STEP A 배정 보호
           .sort((a, b) => {
             if (!!a.isNext !== !!b.isNext) return (a.isNext ? 1 : -1);
             const aOff = employees.filter(e => !e.isMale && ["휴무","휴무(꼭)"].includes(sch[e.id]?.[a.ds])).length;
