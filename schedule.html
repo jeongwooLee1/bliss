@@ -698,6 +698,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
             const candDs = addDays(offDay.ds, delta);
             const cand = blockDays.find(d => d.ds === candDs);
             if (!cand) continue;
+            if (emp.isMale && cand.dow === 6) continue; // 남자직원 일요일 STEP A 보호
             if (sch[emp.id][candDs] !== STATUS.WORK) continue;
             if (seededDates.has(candDs)) continue;
 
@@ -729,6 +730,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
           const wkDays = week.filter(d => !d.isPrev);
           const wkOffDays = wkDays.filter(d =>
             !d.isNext &&                              // isNext 이월 날짜 MOVE 금지
+            !(emp.isMale && d.dow === 6) &&           // 남자직원 일요일 MOVE 금지
             sch[emp.id]?.[d.ds] === STATUS.OFF        // 휴무(꼭) 제외 — 이동 불가
           );
           if (wkOffDays.length < 1) continue;
