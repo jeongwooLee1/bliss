@@ -952,6 +952,86 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     }
   }
 
+  // 9) 주간 off 수 최종 정규화: step 5/7/8 이후 weeklyOff와 어긋난 주를 강제 교정
+  //    2회 패스: 1패스(초과 줄이기) → 2패스(부족 채우기)
+  //    대상: altPattern·원장 제외 전 직원 (원장은 weeklyOff:1이므로 별도 처리 없음)
+  {
+    const targetEmps = employees.filter(e => !isAltPattern(e));
+
+    // ── 패스 1: 초과 주 줄이기 (off > weeklyOff) ──
+    // 휴무(꼭) 제외, 주간 초과분만 off→work (canAssignOff 무시, 단순 전환)
+    targetEmps.forEach(emp => {
+      const wo = getWeeklyOff(emp);
+      activeWeeks.forEach(week => {
+        const wkDays = week.filter(d => !d.isPrev);
+        const offDaysInWk = wkDays.filter(d =>
+          ["휴무","휴무(꼭)"].includes(sch[emp.id]?.[d.ds])
+        );
+        const excess = offDaysInWk.length - wo;
+        if (excess <= 0) return;
+
+        // 일반 휴무만 취소 (휴무(꼭) 보호), seededDates 보호
+        const cancelCands = offDaysInWk
+          .filter(d => sch[emp.id][d.ds] === STATUS.OFF && !seededDates.has(d.ds))
+          .sort((a, b) => {
+            // isNext 이월 날짜 우선 취소 (이번달 보호)
+            if (!!a.isNext !== !!b.isNext) return (a.isNext ? -1 : 1);
+            // 전체 off 많은 날 우선 취소
+            const aOff = employees.filter(e => !e.isMale && ["휴무","휴무(꼭)"].includes(sch[e.id]?.[a.ds])).length;
+            const bOff = employees.filter(e => !e.isMale && ["휴무","휴무(꼭)"].includes(sch[e.id]?.[b.ds])).length;
+            return bOff - aOff;
+          });
+        let removed = 0;
+        for (const d of cancelCands) {
+          if (removed >= excess) break;
+          sch[emp.id][d.ds] = STATUS.WORK;
+          removed++;
+        }
+      });
+    });
+
+    // ── 패스 2: 부족 주 채우기 (off < weeklyOff) ──
+    // canAssignOff + minWork 검증 통과하는 날에만 off 추가
+    targetEmps.forEach(emp => {
+      const branch = BRANCHES.find(b => b.id === emp.branch);
+      const branchEmps = employees.filter(e => e.branch === emp.branch);
+      const wo = getWeeklyOff(emp);
+
+      activeWeeks.forEach(week => {
+        const wkDays = week.filter(d => !d.isPrev);
+        const offNow = wkDays.filter(d =>
+          ["휴무","휴무(꼭)"].includes(sch[emp.id]?.[d.ds])
+        ).length;
+        const needed = wo - offNow;
+        if (needed <= 0) return;
+
+        // 근무 중인 날 후보: isNext 후순위, 전체 off가 적은 날 우선
+        const addCands = wkDays
+          .filter(d => sch[emp.id]?.[d.ds] === STATUS.WORK && !seededDates.has(d.ds))
+          .sort((a, b) => {
+            if (!!a.isNext !== !!b.isNext) return (a.isNext ? 1 : -1);
+            const aOff = employees.filter(e => !e.isMale && ["휴무","휴무(꼭)"].includes(sch[e.id]?.[a.ds])).length;
+            const bOff = employees.filter(e => !e.isMale && ["휴무","휴무(꼭)"].includes(sch[e.id]?.[b.ds])).length;
+            return aOff - bOff;
+          });
+
+        let added = 0;
+        for (const day of addCands) {
+          if (added >= needed) break;
+          if (!canAssignOff(emp, day, branchEmps, branch)) continue;
+          const totalWorking = employees.filter(e => {
+            if (e.isMale) return false;
+            const s = sch[e.id][day.ds];
+            return s === STATUS.WORK || isSupport(s) || s === STATUS.SHARE;
+          }).length;
+          if (totalWorking <= rc.minWork) continue;
+          sch[emp.id][day.ds] = STATUS.OFF;
+          added++;
+        }
+      });
+    });
+  }
+
   // 디버그: window.__debugDate 설정 시 해당 날짜 canAssignOff 원인 로깅
   if (typeof window !== 'undefined' && window.__debugDate) {
     const dd = window.__debugDate;
