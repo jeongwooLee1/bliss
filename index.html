@@ -4858,6 +4858,20 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
     return m;
   }, [data?.reservations]);
 
+  // prevReservationId → 다음 예약 맵 (역방향)
+  const resByPrev = React.useMemo(()=>{
+    const m = {};
+    (data?.reservations||[]).forEach(r=>{ if(r.prevReservationId) m[r.prevReservationId] = r; });
+    return m;
+  }, [data?.reservations]);
+
+  // 체인의 head(가장 최신) 찾기
+  const getHead = (r) => {
+    let cur = r;
+    while(resByPrev[cur.reservationId]) cur = resByPrev[cur.reservationId];
+    return cur;
+  };
+
   // 각 예약의 히스토리(이전 체인) 가져오기
   const getChain = (r) => {
     const chain = [];
