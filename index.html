@@ -174,7 +174,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.93";
+const BLISS_V = "2.69.94";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -6992,168 +6992,187 @@ function AdminResSources({ data, setData }) {
 }
 
 // ─── 알림톡 설정 (지점별) ───
-function AdminNotiSettings({ data, setData }) {
-  const branches = (data?.branches||[]).filter(b=>b.useYn!==false);
-  const [selBranch, setSelBranch] = useState(branches[0]?.id||"");
-  const branch = branches.find(b=>b.id===selBranch);
-  const [cfg, setCfg] = useState({});
-  const [saved, setSaved] = useState(false);
-  const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState(null);
+function AdminNoti({ data, sb, bizId, branches }) {
+  const [selBranch, setSelBranch] = React.useState(branches?.[0]?.id || null);
+  const branch = branches?.find(b => b.id === selBranch);
 
-  useEffect(()=>{
-    if(branch?.notiConfig) {
-      try { setCfg(typeof branch.notiConfig==="string"?JSON.parse(branch.notiConfig):branch.notiConfig); }
-      catch{ setCfg({}); }
-    } else { setCfg({}); }
-    setTestResult(null);
-  },[selBranch, branch?.notiConfig]);
+  // 설정 저장 키: businesses.settings.noti_{branchId}
+  const [cfg, setCfg] = React.useState({});
+  const [saved, setSaved] = React.useState(false);
+  const [detailKey, setDetailKey] = React.useState(null); // 상세 편집 중인 항목 key
 
-  const up = (k,v) => setCfg(p=>({...p,[k]:v}));
-  const save = () => {
-    if(!selBranch) return;
-    const updated = {...cfg};
-    sb.update("branches", selBranch, {noti_config:JSON.stringify(updated)}).catch(console.error);
-    setData(prev=>({...prev, branches:(prev?.branches||[]).map(b=>b.id===selBranch?{...b,notiConfig:updated}:b)}));
-    setSaved(true); setTimeout(()=>setSaved(false), 2000);
+  React.useEffect(() => {
+    if (!selBranch) return;
+    const raw = branch?.notiConfig || {};
+    setCfg(raw);
+    setDetailKey(null);
+  }, [selBranch]);
+
+  const up = (k, v) => { setCfg(p => ({...p, [k]: v})); setSaved(false); };
+  const save = async () => {
+    if (!selBranch) return;
+    await sb.update('branches', selBranch, { noti_config: JSON.stringify(cfg) }).catch(console.error);
+    setSaved(true); setTimeout(() => setSaved(false), 2000);
   };
 
-  const testConnection = async () => {
-    if(!cfg.appKey||!cfg.secretKey||!cfg.senderKey) return alert("App Key, Secret Key, 발신 프로필 키를 모두 입력하세요");
-    setTesting(true); setTestResult(null);
-    save();
-    try {
-      const res = await sendAlimtalk(null, null, null, "senders", cfg);
-      if(res?.header?.isSuccessful) setTestResult({ok:true,msg:"✅ 연결 성공! 발신 프로필 "+((res.body?.data||[]).length||0)+"개 확인"});
-      else setTestResult({ok:false,msg:"❌ "+(res?.header?.resultMessage||JSON.stringify(res||"응답없음")).slice(0,120)});
-    } catch(e) { setTestResult({ok:false,msg:"❌ "+e.message}); }
-    setTesting(false);
-  };
+  // 알림 항목 정의
+  const NOTI_GROUPS = [
+    { label: '예약 알림', items: [
+      { key: 'rsv_confirm',  label: '예약 확정 알림',     desc: '예약 확정 시 고객에게 발송' },
+      { key: 'rsv_change',   label: '예약 변경 알림',     desc: '예약 변경 시 고객에게 발송' },
+      { key: 'rsv_1day',     label: '예약 1일 전 알림',   desc: '예약 전날 지정 시각에 발송' },
+      { key: 'rsv_today',    label: '예약 당일 알림',     desc: '예약 당일 아침 지정 시각에 발송' },
+      { key: 'rsv_cancel',   label: '예약 취소 알림',     desc: '예약 취소 시 고객에게 발송' },
+      { key: 'rsv_naver',    label: '네이버예약 대기 알림', desc: '네이버 예약 대기 상태 시 발송' },
+    ]},
+    { label: '정액권 알림', items: [
+      { key: 'pkg_pay',      label: '정액권 고객 알림-결제', desc: '정액권 결제 완료 시 발송' },
+      { key: 'pkg_charge',   label: '정액권 고객 알림-충전', desc: '정액권 충전 완료 시 발송' },
+      { key: 'pkg_exp_1m',   label: '정액권 만기 1달 전 알림', desc: '만료 30일 전 발송' },
+      { key: 'pkg_exp_1w',   label: '정액권 만기 1주 전 알림', desc: '만료 7일 전 발송' },
+    ]},
+    { label: '티켓 알림', items: [
+      { key: 'tkt_pay',      label: '티켓 고객 알림-결제', desc: '티켓 결제 완료 시 발송' },
+      { key: 'tkt_charge',   label: '티켓 고객 알림-충전', desc: '티켓 충전 완료 시 발송' },
+      { key: 'tkt_exp_1m',   label: '티켓 만기 1달 전 알림', desc: '만료 30일 전 발송' },
+      { key: 'tkt_exp_1w',   label: '티켓 만기 1주 전 알림', desc: '만료 7일 전 발송' },
+    ]},
+    { label: '포인트 알림', items: [
+      { key: 'pt_earn',      label: '포인트 적립 알림',   desc: '포인트 적립 시 발송' },
+      { key: 'pt_use',       label: '포인트 사용 알림',   desc: '포인트 사용 시 발송' },
+    ]},
+  ];
 
-  const testSend = async () => {
-    if(!cfg.appKey||!cfg.secretKey||!cfg.senderKey) return alert("App Key, Secret Key, 발신 프로필 키를 모두 입력하세요");
-    if(!cfg.testPhone) return alert("테스트 수신번호를 입력하세요");
-    setTesting(true); setTestResult(null);
-    save();
-    try {
-      const res = await sendAlimtalk(cfg.tplReservation||"bliss_reservation", cfg.testPhone, {
-        "#{고객명}":"테스트고객","#{날짜}":"2026-03-03","#{시간}":"14:00","#{장소}":branch?.name||"","#{전화번호}":branch?.phone||""
-      }, null, cfg);
-      if(res?.header?.isSuccessful) setTestResult({ok:true,msg:"✅ 발송 성공!"});
-      else setTestResult({ok:false,msg:"❌ "+(res?.header?.resultMessage||JSON.stringify(res||"응답없음")).slice(0,120)});
-    } catch(e) { setTestResult({ok:false,msg:"❌ "+e.message}); }
-    setTesting(false);
-  };
+  const notiOn = (key) => !!(cfg[key]?.on);
+  const toggleOn = (key) => up(key, {...(cfg[key]||{}), on: !notiOn(key)});
 
+  // ── 상세 편집 화면 ──
+  if (detailKey) {
+    const allItems = NOTI_GROUPS.flatMap(g => g.items);
+    const item = allItems.find(x => x.key === detailKey);
+    const dc = cfg[detailKey] || {};
+    const udc = (k, v) => up(detailKey, {...dc, [k]: v});
+    return <div>
+      <div style={{display:'flex', alignItems:'center', gap:12, marginBottom:20}}>
+        <button onClick={() => setDetailKey(null)} style={{background:'none', border:'none', cursor:'pointer', fontSize:20, color:T.primary}}>←</button>
+        <span style={{fontSize:T.fs.lg, fontWeight:T.fw.bolder, color:T.text}}>{item?.label}</span>
+        <div onClick={() => toggleOn(detailKey)} style={{
+          marginLeft:'auto', width:48, height:26, borderRadius:13, cursor:'pointer', transition:'background .2s',
+          background: notiOn(detailKey) ? T.primary : T.gray300, position:'relative'
+        }}>
+          <div style={{position:'absolute', top:3, left: notiOn(detailKey)?24:3, width:20, height:20, borderRadius:'50%', background:'#fff', transition:'left .2s'}}/>
+        </div>
+      </div>
+      {notiOn(detailKey) && <div className="card" style={{padding:20, display:'flex', flexDirection:'column', gap:14}}>
+        <div>
+          <div style={{fontSize:T.fs.xs, fontWeight:T.fw.bold, color:T.gray700, marginBottom:4}}>템플릿 코드</div>
+          <input className="inp" value={dc.tplCode||''} onChange={e=>udc('tplCode', e.target.value)}
+            placeholder="NHN Cloud 템플릿 코드" style={{width:'100%', padding:'8px 10px', fontSize:T.fs.sm}}/>
+        </div>
+        <div>
+          <div style={{fontSize:T.fs.xs, fontWeight:T.fw.bold, color:T.gray700, marginBottom:4}}>발송 문자 내용</div>
+          <textarea className="inp" value={dc.msg||''} onChange={e=>udc('msg', e.target.value)}
+            placeholder={"변수: #{고객명} #{날짜} #{시간} #{장소} #{시술명} #{전화번호}"}
+            rows={6} style={{width:'100%', padding:'8px 10px', fontSize:T.fs.sm, resize:'vertical', fontFamily:'inherit'}}/>
+        </div>
+        {(detailKey==='rsv_1day'||detailKey==='rsv_today') && <div>
+          <div style={{fontSize:T.fs.xs, fontWeight:T.fw.bold, color:T.gray700, marginBottom:4}}>발송 시각</div>
+          <input type="time" className="inp" value={dc.sendAt||'09:00'} onChange={e=>udc('sendAt', e.target.value)}
+            style={{padding:'6px 10px', fontSize:T.fs.sm}}/>
+        </div>}
+      </div>}
+      <div style={{marginTop:16, display:'flex', gap:8}}>
+        <Btn variant="primary" size="sm" onClick={save} style={{padding:'8px 24px'}}>{saved?'저장됨 ✓':'저장'}</Btn>
+        <Btn variant="secondary" size="sm" onClick={() => setDetailKey(null)} style={{padding:'8px 16px'}}>← 목록</Btn>
+      </div>
+    </div>;
+  }
+
+  // ── 목록 화면 ──
   return <div>
-    <AdminHeader title="알림톡 설정" count={null}/>
+    <AdminHeader title="알림톡/자동 문자" count={null}/>
 
-    <div style={{display:"flex",gap:6,marginBottom:16,flexWrap:"wrap"}}>
-      {branches.map(b=><button key={b.id} onClick={()=>setSelBranch(b.id)}
-        style={{padding:"6px 14px",fontSize:T.fs.sm,fontWeight:selBranch===b.id?700:400,borderRadius:0,cursor:"pointer",fontFamily:"inherit",
-          border:selBranch===b.id?"2px solid #7c7cc8":"1px solid #d0d0d0",
-          background:selBranch===b.id?"#7c7cc815":T.bgCard,color:selBranch===b.id?T.primary:T.gray600}}>
+    {/* 지점 탭 */}
+    <div style={{display:'flex', gap:6, marginBottom:16, flexWrap:'wrap'}}>
+      {(branches||[]).map(b => <button key={b.id} onClick={() => setSelBranch(b.id)}
+        style={{padding:'6px 14px', fontSize:T.fs.sm, fontWeight:selBranch===b.id?700:400,
+        borderRadius:0, cursor:'pointer', fontFamily:'inherit',
+        border:selBranch===b.id?'2px solid #7c7cc8':'1px solid #d0d0d0',
+        background:selBranch===b.id?'#7c7cc815':T.bgCard, color:selBranch===b.id?T.primary:T.gray600}}>
         {b.name}
-        {b.notiConfig?.appKey && <span style={{marginLeft:4,fontSize:T.fs.nano,color:T.success}}>●</span>}
       </button>)}
     </div>
 
-    {!selBranch ? <div style={{padding:20,color:T.gray500,textAlign:"center"}}>지점을 선택하세요</div> : <>
+    {!selBranch ? <div style={{padding:20, color:T.gray500, textAlign:'center'}}>지점을 선택하세요</div> : <>
 
-    <div className="card" style={{padding:20,maxWidth:540}}>
-      <div style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder,marginBottom:12,color:T.text}}>NHN Cloud 알림톡 API — {branch?.name}</div>
-      <div style={{fontSize:T.fs.xxs,color:T.textSub,marginBottom:16,lineHeight:1.6}}>
-        이 지점의 카카오 채널과 연동된 NHN Cloud 설정을 입력하세요.<br/>
-        <a href="https://www.nhncloud.com/kr/service/notification/alimtalk" target="_blank" rel="noopener" style={{color:T.primary,fontWeight:T.fw.bold}}>NHN Cloud 알림톡</a>
+    {/* 카카오 알림톡 배너 */}
+    <div style={{background:'#FEE500', borderRadius:T.radius.lg, padding:'14px 16px', marginBottom:20}}>
+      <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:4}}>
+        <span style={{fontSize:18}}>💬</span>
+        <span style={{fontSize:T.fs.md, fontWeight:T.fw.bolder, color:'#3A1D1D'}}>카카오 알림톡</span>
       </div>
-      {[
-        ["appKey","App Key","NHN Cloud 콘솔 → Notification → KakaoTalk Bizmessage"],
-        ["secretKey","Secret Key","API 보안 설정에서 생성"],
-        ["senderKey","발신 프로필 키","카카오 채널 연동 후 발급"]
-      ].map(([k,label,ph])=>
-        <div key={k} style={{marginBottom:10}}>
-          <div style={{fontSize:T.fs.xxs,fontWeight:T.fw.bold,color:T.gray700,marginBottom:3}}>{label}</div>
-          <input className="inp" type={k==="secretKey"?"password":"text"} value={cfg[k]||""} onChange={e=>up(k,e.target.value)} placeholder={ph} style={{width:"100%",padding:"7px 10px",fontSize:T.fs.sm}}/>
-        </div>
-      )}
-      <div style={{display:"flex",gap:T.sp.sm,marginTop:14}}>
-        <Btn variant="primary" size="sm" onClick={save} style={{padding:"8px 20px"}}>{saved?"저장됨 ✓":"저장"}</Btn>
-        <Btn variant="secondary" size="sm" onClick={testConnection} disabled={testing} style={{padding:"8px 14px",fontSize:T.fs.xxs}}>{testing?"확인 중...":"연결 테스트"}</Btn>
+      <div style={{fontSize:T.fs.xs, color:'#5a4a00', lineHeight:1.5}}>
+        활성화된 알림이 설정한 시간/조건에 맞춰 카카오 알림톡으로 전송됩니다.
       </div>
-      {testResult && <div style={{marginTop:8,fontSize:T.fs.xxs,color:testResult.ok?T.success:T.female,fontWeight:T.fw.bold}}>{testResult.msg}</div>}
+      <div style={{fontSize:T.fs.xs, color:'#a07800', marginTop:4}}>
+        ※ 카카오 알림톡 전송 시 잔여 알림 1건이 차감됩니다.
+      </div>
     </div>
 
-    <div className="card" style={{padding:20,maxWidth:540,marginTop:16}}>
-      <div style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder,marginBottom:12,color:T.text}}>알림톡 템플릿 코드</div>
-      <div style={{fontSize:T.fs.xxs,color:T.textSub,marginBottom:12,lineHeight:1.6}}>
-        NHN Cloud에서 검수 통과한 템플릿 코드를 입력하세요.<br/>
-        {"변수: #{고객명} #{날짜} #{시간} #{장소} #{전화번호} #{시술명}"}
-      </div>
-      {[
-        ["tplReservation","예약 확인 알림","예약 등록 시 자동 발송"],
-        ["tplReminder","시술 후 리마인더","시술 완료 후 지정 간격으로 발송"],
-        ["tplChange","예약 변경 알림","예약 수정/취소 시 발송"]
-      ].map(([k,label,desc])=>
-        <div key={k} style={{display:"flex",gap:T.sp.sm,alignItems:"center",marginBottom:8}}>
-          <div style={{width:120}}>
-            <div style={{fontSize:T.fs.xxs,fontWeight:T.fw.bold,color:T.gray700}}>{label}</div>
-            <div style={{fontSize:T.fs.nano,color:T.gray400}}>{desc}</div>
+    {/* NHN API 설정 (접기/펼치기) */}
+    {(() => {
+      const [apiOpen, setApiOpen] = React.useState(false);
+      return <div className="card" style={{padding:0, marginBottom:20, overflow:'hidden'}}>
+        <div onClick={() => setApiOpen(p=>!p)} style={{padding:'12px 16px', display:'flex', alignItems:'center',
+          justifyContent:'space-between', cursor:'pointer', userSelect:'none'}}>
+          <span style={{fontSize:T.fs.sm, fontWeight:T.fw.bold, color:T.text}}>⚙️ NHN Cloud API 설정</span>
+          <span style={{color:T.gray400}}>{apiOpen?'▲':'▼'}</span>
+        </div>
+        {apiOpen && <div style={{padding:'0 16px 16px', borderTop:'1px solid '+T.border}}>
+          {[['appKey','App Key','NHN Cloud 콘솔 → Notification → KakaoTalk Bizmessage'],
+            ['secretKey','Secret Key','API 보안 설정에서 생성'],
+            ['senderKey','발신 프로필 키','카카오 채널 연동 후 발급']
+          ].map(([k,label,ph]) => <div key={k} style={{marginTop:10}}>
+            <div style={{fontSize:T.fs.xxs, fontWeight:T.fw.bold, color:T.gray700, marginBottom:3}}>{label}</div>
+            <input className="inp" type={k==='secretKey'?'password':'text'} value={cfg[k]||''} onChange={e=>up(k,e.target.value)}
+              placeholder={ph} style={{width:'100%', padding:'6px 10px', fontSize:T.fs.sm}}/>
+          </div>)}
+          <Btn variant="primary" size="sm" onClick={save} style={{padding:'8px 20px', marginTop:12}}>{saved?'저장됨 ✓':'저장'}</Btn>
+        </div>}
+      </div>;
+    })()}
+
+    {/* 알림 항목 그룹 */}
+    {NOTI_GROUPS.map(group => <div key={group.label} style={{marginBottom:24}}>
+      <div style={{fontSize:T.fs.sm, fontWeight:T.fw.bolder, color:T.primary, marginBottom:8, paddingLeft:4}}>{group.label}</div>
+      <div style={{display:'flex', flexDirection:'column', gap:0, background:T.bgCard, borderRadius:T.radius.lg, overflow:'hidden', boxShadow:T.shadow.sm}}>
+        {group.items.map((item, idx) => <div key={item.key}
+          style={{display:'flex', alignItems:'center', padding:'15px 16px',
+            borderBottom: idx < group.items.length-1 ? '1px solid '+T.gray100 : 'none'}}>
+          <div style={{flex:1}}>
+            <div style={{fontSize:T.fs.sm, color:T.text, fontWeight:T.fw.medium}}>{item.label}</div>
           </div>
-          <input className="inp" value={cfg[k]||""} onChange={e=>up(k,e.target.value)} placeholder="템플릿 코드" style={{flex:1,padding:"6px 10px",fontSize:T.fs.sm}}/>
-        </div>
-      )}
-      <Btn variant="primary" size="sm" onClick={save} style={{padding:"8px 20px",marginTop:8}}>{saved?"저장됨 ✓":"저장"}</Btn>
-    </div>
-
-    <div className="card" style={{padding:20,maxWidth:540,marginTop:16}}>
-      <div style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder,marginBottom:12,color:T.text}}>자동 발송 설정</div>
-      {[
-        ["autoReservation","예약 등록 시 알림톡 자동 발송"],
-        ["autoReminder","시술 완료 후 리마인더 발송"]
-      ].map(([k,label])=>
-        <label key={k} style={{display:"flex",alignItems:"center",gap:T.sp.sm,marginBottom:8,cursor:"pointer"}}>
-          <input type="checkbox" checked={!!cfg[k]} onChange={e=>up(k,e.target.checked)} style={{accentColor:T.primary}}/>
-          <span style={{fontSize:T.fs.sm,color:T.gray700}}>{label}</span>
-        </label>
-      )}
-      {cfg.autoReminder && <div style={{display:"flex",gap:T.sp.sm,alignItems:"center",marginTop:4,marginLeft:26}}>
-        <span style={{fontSize:T.fs.xxs,color:T.textSub}}>리마인더 간격:</span>
-        <select className="inp" value={cfg.reminderDays||7} onChange={e=>up("reminderDays",Number(e.target.value))} style={{width:80,padding:"4px 6px",fontSize:T.fs.xxs}}>
-          {[3,5,7,14,21,28,30].map(d=><option key={d} value={d}>{d}일 후</option>)}
-        </select>
-      </div>}
-      <Btn variant="primary" size="sm" onClick={save} style={{padding:"8px 20px",marginTop:14}}>{saved?"저장됨 ✓":"저장"}</Btn>
-    </div>
-
-    <div className="card" style={{padding:20,maxWidth:540,marginTop:16}}>
-      <div style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder,marginBottom:12,color:T.text}}>발송 테스트 — {branch?.name}</div>
-      <div style={{display:"flex",gap:T.sp.sm,alignItems:"center"}}>
-        <input className="inp" value={cfg.testPhone||""} onChange={e=>up("testPhone",e.target.value)} placeholder="010-0000-0000" style={{width:160,padding:"7px 10px",fontSize:T.fs.sm}}/>
-        <Btn variant="secondary" size="sm" onClick={testSend} disabled={testing} style={{padding:"7px 14px",fontSize:T.fs.xxs}}>{testing?"발송 중...":"테스트 발송"}</Btn>
+          {/* ON/OFF 토글 */}
+          <div onClick={() => toggleOn(item.key)} style={{
+            width:44, height:24, borderRadius:12, cursor:'pointer', transition:'background .2s', marginRight:12,
+            background: notiOn(item.key) ? T.primary : T.gray300, position:'relative', flexShrink:0
+          }}>
+            <div style={{position:'absolute', top:2, left: notiOn(item.key)?22:2, width:20, height:20,
+              borderRadius:'50%', background:'#fff', transition:'left .2s',
+              display:'flex', alignItems:'center', justifyContent:'center',
+              fontSize:8, fontWeight:'bold', color: notiOn(item.key)?T.primary:T.gray400}}>
+              {notiOn(item.key)?'ON':''}
+            </div>
+          </div>
+          {/* 상세 이동 화살표 */}
+          <div onClick={() => setDetailKey(item.key)} style={{color:T.gray400, cursor:'pointer', fontSize:18, padding:'0 4px'}}>›</div>
+        </div>)}
       </div>
-      {testResult && <div style={{marginTop:8,fontSize:T.fs.xxs,color:testResult.ok?T.success:T.female,fontWeight:T.fw.bold}}>{testResult.msg}</div>}
-    </div>
+    </div>)}
 
-    <div className="card" style={{padding:20,maxWidth:540,marginTop:16}}>
-      <div style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder,marginBottom:8,color:T.text}}>설정 가이드</div>
-      <div style={{fontSize:T.fs.xxs,color:T.gray600,lineHeight:1.8}}>
-        1. <a href="https://www.nhncloud.com" target="_blank" rel="noopener" style={{color:T.primary}}>NHN Cloud</a> 가입 → 프로젝트 생성<br/>
-        2. Notification → KakaoTalk Bizmessage 서비스 활성화<br/>
-        3. 각 지점의 카카오 채널 연동 → 발신 프로필 등록<br/>
-        4. 알림톡 템플릿 등록 (검수 1~2일 소요)<br/>
-        5. 지점별로 App Key, Secret Key, 발신 프로필 키 입력<br/>
-        6. 템플릿 코드 입력 후 테스트 발송<br/><br/>
-        <strong>비용:</strong> 건당 약 7원 (NHN Cloud 요금제 기준)<br/>
-        <strong>각 지점의 카카오 채널이 다르면</strong> 발신 프로필 키만 지점별로 다르게 입력하세요.
-      </div>
-    </div>
     </>}
   </div>;
 }
-
-
-// ─── AI설정 ───
-const AI_RULES_KEY = "bliss_ai_rules";
 function AdminAISettings({ data, sb, bizId }) {
   const [apiKey, setApiKey] = useState(()=>window.__geminiKey || localStorage.getItem("bliss_gemini_key")||"");
   const [saved, setSaved] = useState(false);
