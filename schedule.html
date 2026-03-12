@@ -600,7 +600,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
 
   // 6) 월 총 휴무 미달 보정 패스: 주 수 × weeklyOff 대비 부족분을 남은 날짜에서 보충
   //    weeks[] 기준 주 경계 사용, 배정마다 weekOffNow 재계산, 연속 2회 제한 적용
-  employees.filter(e => !isAltPattern(e) && !e.isOwner).forEach(emp => {
+  employees.filter(e => !isAltPattern(e) && !e.isOwner && !e.isMale).forEach(emp => { // 남자직원은 step2에서 완료
     const branch = BRANCHES.find(b => b.id === emp.branch);
     const branchEmps = employees.filter(e => e.branch === emp.branch);
     const monthlyTarget = getWeeklyOff(emp) * weekCount;
@@ -1679,7 +1679,7 @@ function App() {
                               {emp.isMale && (()=>{
                                 const curMs2b = `${year}-${String(month+1).padStart(2,"0")}`;
                                 const sunWork = Object.entries(sch[emp.id]||{})
-                                  .filter(([ds,s])=>ds.startsWith(curMs2b)&&new Date(ds).getDay()===0&&s===STATUS.WORK)
+                                  .filter(([ds,s])=>ds.startsWith(curMs2b)&&new Date(ds).getDay()===0&&s==="근무")
                                   .length;
                                 return <span style={{fontSize:9,fontWeight:700,color:"#2a6099",background:"#e8f0fb",borderRadius:3,padding:"0 3px",marginLeft:2}}>
                                   일☀{sunWork}
