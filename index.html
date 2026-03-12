@@ -174,7 +174,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.67";
+const BLISS_V = "2.69.68";
 
 // ─── 디자인 토큰 ────────────────────────────────────────────────────────────
 const T = {
@@ -590,6 +590,20 @@ function App() {
     try { const p = sessionStorage.getItem("bliss_page"); console.log("[SESSION] page restore:", p); return p || "timeline"; } catch(e){ return "timeline"; }
   });
   const [pendingOpenRes, setPendingOpenRes] = useState(null);
+  const [serverV, setServerV] = useState(null); // 서버 스크래퍼 버전
+  // server_logs에서 서버 버전 1분마다 폴링
+  React.useEffect(()=>{
+    const fetchServerV = async ()=>{
+      try {
+        const r = await fetch(`${SB_URL}/rest/v1/server_logs?select=extra,updated_at&limit=1&order=updated_at.desc`,{headers:sbHeaders});
+        const rows = await r.json();
+        if (rows?.[0]?.extra?.scraper_version) setServerV(rows[0].extra.scraper_version);
+      } catch(e){}
+    };
+    fetchServerV();
+    const t = setInterval(fetchServerV, 60000);
+    return ()=>clearInterval(t);
+  },[]);
   const [naverColShow, setNaverColShowRaw] = useState(()=>{ try{return JSON.parse(localStorage.getItem("bliss_naver_cols")||"null")||{};}catch(e){return{};} });
   const setNaverColShow = v => { setNaverColShowRaw(v); try{localStorage.setItem("bliss_naver_cols",JSON.stringify(v));}catch(e){} };
   const setPage = useCallback((p) => {
@@ -982,7 +996,12 @@ function App() {
             : <span/>
           }
           {bizName && <span style={{fontSize:T.fs.lg,fontWeight:T.fw.black,color:T.primary,position:"absolute",left:"50%",transform:"translateX(-50%)"}}>{bizName}</span>}
-          <span style={{marginLeft:"auto",fontSize:T.fs.xl,fontWeight:T.fw.black,color:T.danger}}>v{BLISS_V}</span>
+          <div style={{marginLeft:"auto",display:"flex",flexDirection:"column",alignItems:"flex-end",gap:1}}>
+            <span style={{fontSize:T.fs.sm,fontWeight:T.fw.black,color:T.danger}}>앱 v{BLISS_V}</span>
+            <span style={{fontSize:T.fs.nano,fontWeight:T.fw.medium,color:serverV?"#03C75A":T.textMuted}}>
+              서버 {serverV?`v${serverV}`:"연결중…"}
+            </span>
+          </div>
         </div>
         <div className="page-pad" style={{flex:1,padding:page==="timeline"?"0":"16px 20px 16px",display:"flex",flexDirection:"column",minHeight:0,overflow:"hidden"}}>
           <div className={page==="timeline"?"":"fade-in"} key={page} style={page==="timeline"?{flex:1,display:"flex",flexDirection:"column",minHeight:0}:{overflow:"auto",flex:1,WebkitOverflowScrolling:"touch"}}>
@@ -1634,7 +1653,7 @@ function Login({ users, onLogin, onSignup }) {
             <span style={{fontSize:T.fs.sm,color:T.textMuted}}>아직 계정이 없으신가요? </span>
             <button onClick={()=>setShowSignup(true)} style={{background:"none",border:"none",fontSize:T.fs.sm,color:T.primary,fontWeight:T.fw.bolder,cursor:"pointer",fontFamily:"inherit",textDecoration:"underline"}}>무료 체험 시작 →</button>
           </div>
-          <div style={{fontSize:T.fs.xs,color:T.textMuted,textAlign:"center",marginTop:4}}>v{BLISS_V}</div>
+          <div style={{fontSize:T.fs.xs,color:T.textMuted,textAlign:"center",marginTop:4}}>앱 v{BLISS_V}</div>
         </div>
       </div>
     </div>
@@ -1694,7 +1713,7 @@ function Sidebar({ nav, page, setPage, role, branchNames, onLogout, bizName="", 
     <div style={{padding:T.sp.md,borderTop:`1px solid ${T.border}`,display:"flex",flexDirection:"column",gap:6}}>
       {isSuper && <Btn variant="outline" size="sm" onClick={onBackToSuper} style={{width:"100%"}}><I name="arrowL" size={14}/> 관리자 대시보드</Btn>}
       <Btn variant="ghost" size="sm" onClick={onLogout} style={{width:"100%",color:T.textSub}}>로그아웃</Btn>
-      <div style={{fontSize:T.fs.xs,color:T.textMuted,textAlign:"center",marginTop:2}}>v{BLISS_V}</div>
+      <div style={{fontSize:T.fs.xs,color:T.textMuted,textAlign:"center",marginTop:2,lineHeight:1.6}}><span style={{color:T.danger}}>앱 v{BLISS_V}</span><br/><span style={{color:serverV?"#03C75A":T.textMuted}}>서버 {serverV?`v${serverV}`:"연결중…"}</span></div>
     </div>
   </>;
 }
