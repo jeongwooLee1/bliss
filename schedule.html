@@ -354,13 +354,24 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     sundays.forEach(day => {
       // 수동 배정된 경우 건드리지 않음
       if (maleEmps.some(e => sch[e.id][day.ds] === STATUS.MUST_OFF)) return;
-      // 이번달 일요일 근무 횟수 적은 직원 우선 (균등 배분)
-      const workCnt = (e) => sundays.filter(s => s.ds < day.ds && sch[e.id][s.ds] === STATUS.WORK).length;
+      // 이번달 + 전달 일요일 근무 횟수 합산 (균등 배분 기준)
+      const prevSunWorkCnt = (e) => {
+        if (!prevSchData?.[e.id]) return 0;
+        return Object.entries(prevSchData[e.id]).filter(([ds, s]) => {
+          const d = new Date(ds);
+          return d.getDay() === 0 && s === STATUS.WORK;
+        }).length;
+      };
+      const workCnt = (e) =>
+        prevSunWorkCnt(e) +
+        sundays.filter(s => s.ds < day.ds && sch[e.id][s.ds] === STATUS.WORK).length;
       const sorted = [...maleEmps].sort((a,b) => workCnt(a) - workCnt(b));
       // 동수면 직전 일요일 근무자 피하기
       const prev7 = new Date(day.ds); prev7.setDate(prev7.getDate()-7);
       const prev7ds = fmtDs(prev7.getFullYear(),prev7.getMonth(),prev7.getDate());
-      const lastWorker = maleEmps.find(e => sch[e.id][prev7ds] === STATUS.WORK);
+      const lastWorker = maleEmps.find(e =>
+        (sch[e.id][prev7ds] || prevSchData?.[e.id]?.[prev7ds]) === STATUS.WORK
+      );
       const minCnt = workCnt(sorted[0]);
       const tied = sorted.filter(e => workCnt(e) === minCnt);
       const worker = (tied.length > 1 && lastWorker && tied.includes(lastWorker))
@@ -1301,12 +1312,12 @@ function App() {
 
     });
 
-    // 연속 근무 초과 직원 검출
+    // 연속 근무 초과 직원 검출 (원장 제외)
     const isW_ = (empId, ds) => {
       const s = getS(empId, ds);
       return s === STATUS.WORK || (s && s.startsWith("지원")) || s === STATUS.SHARE;
     };
-    ALL_EMPLOYEES.forEach(emp => {
+    ALL_EMPLOYEES.filter(emp => !emp.isOwner).forEach(emp => {
       let streak = 0; let maxStreak = 0; let streakStart = null;
       [...days].forEach(day => {
         if (isW_(emp.id, day.ds)) {
