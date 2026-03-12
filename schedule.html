@@ -1051,6 +1051,42 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     });
   }
 
+  // 10) 남자직원 일요일 배정 재실행 (STEP A 복원)
+  //     step 5~9 과정에서 일요일 배정이 틀어질 수 있으므로 최종적으로 STEP A를 재적용
+  if (maleEmps.length > 0) {
+    const sundays10 = weeks.flatMap(w => w.filter(d => !d.isPrev && d.dow === 6));
+    sundays10.forEach(day => {
+      // 수동 배정(MUST_OFF)은 건드리지 않음
+      if (maleEmps.some(e => seededDates.has(day.ds) || sch[e.id][day.ds] === STATUS.MUST_OFF)) return;
+
+      // 이번달 + 전달 일요일 근무 누적 횟수
+      const prevSunCnt = (e) => {
+        if (!prevSchData?.[e.id]) return 0;
+        return Object.entries(prevSchData[e.id])
+          .filter(([ds, s]) => new Date(ds).getDay() === 0 && s === STATUS.WORK).length;
+      };
+      const workCnt10 = (e) =>
+        prevSunCnt(e) +
+        sundays10.filter(s => s.ds < day.ds && sch[e.id][s.ds] === STATUS.WORK).length;
+
+      const sorted10 = [...maleEmps].sort((a, b) => workCnt10(a) - workCnt10(b));
+      const prev7d = new Date(day.ds); prev7d.setDate(prev7d.getDate() - 7);
+      const prev7ds10 = fmtDs(prev7d.getFullYear(), prev7d.getMonth(), prev7d.getDate());
+      const lastWorker10 = maleEmps.find(e =>
+        (sch[e.id][prev7ds10] || prevSchData?.[e.id]?.[prev7ds10]) === STATUS.WORK
+      );
+      const minCnt10 = workCnt10(sorted10[0]);
+      const tied10 = sorted10.filter(e => workCnt10(e) === minCnt10);
+      const worker10 = (tied10.length > 1 && lastWorker10 && tied10.includes(lastWorker10))
+        ? tied10.find(e => e !== lastWorker10) || tied10[0]
+        : tied10[0];
+
+      maleEmps.forEach(e => {
+        sch[e.id][day.ds] = e === worker10 ? STATUS.WORK : STATUS.OFF;
+      });
+    });
+  }
+
   // 디버그: window.__debugDate 설정 시 해당 날짜 canAssignOff 원인 로깅
   if (typeof window !== 'undefined' && window.__debugDate) {
     const dd = window.__debugDate;
