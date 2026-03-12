@@ -3980,7 +3980,7 @@ return f.requestMsg.split("\n").filter(l=>l.trim()).map((line,i)=>{
 }
 
 // ═══════════════════════════════════════════
-// Bliss v2.69.39 - 예약목록 새로고침 버튼 추가
+// Bliss v2.69.40 - 예약목록 새로고침 버튼 추가
 const SaleSvcRow = React.memo(function SaleSvcRow({ id, name, dur, checked, amount, defPrice, toggle, setAmt }) {
   const disabled = defPrice === 0;
   const [localAmt, setLocalAmt] = useState(amount || "");
@@ -5087,7 +5087,9 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
         };
 
         /* ── 모바일 카드 ── */
-        const chain = getChain(r);
+        const head = getHead(r);
+        const isChainMember = head.id !== r.id;
+        const chain = isChainMember ? [...getChain(head), head] : getChain(r);
         const hasChain = chain.length > 0;
         const isExpanded = expandedChains[r.id];
 
