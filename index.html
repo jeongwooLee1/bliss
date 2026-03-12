@@ -174,7 +174,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.69";
+const BLISS_V = "2.69.70";
 
 // ─── 디자인 토큰 ────────────────────────────────────────────────────────────
 const T = {
@@ -981,7 +981,7 @@ function App() {
         </div>
       </div>}
       <main className="main-c" style={S.main}>
-        <div className="mob-hdr" style={{...S.mobHdr,position:"relative",...(page==="timeline"||pageHistory.length===0?{display:"none"}:{})}}>
+        <div className="mob-hdr" style={{...S.mobHdr,position:"relative",...{display:"none"}}}>
           {pageHistory.length > 0
             ? <button onClick={()=>{
                 setPageHistory(h=>{
@@ -1011,7 +1011,7 @@ function App() {
             {page==="stats" && <StatsPage data={data} userBranches={userBranches} isMaster={isMaster} role={role}/>}
             {page==="customers" && <CustomersPage data={data} setData={setData} userBranches={userBranches} isMaster={isMaster}/>}
             {page==="users" && <UsersPage data={data} setData={setData} bizId={currentBizId}/>}
-            {page==="admin" && <AdminPage data={data} setData={setData} bizId={currentBizId} />}
+            {page==="admin" && <AdminPage data={data} setData={setData} bizId={currentBizId} serverV={serverV}/>}
           </div>
         </div>
       </main>
@@ -5926,7 +5926,7 @@ function UserEditRow({ init, regBranches, allBranches, onSave, onCancel, isNew }
 // ═══════════════════════════════════════════
 // ADMIN
 // ═══════════════════════════════════════════
-function AdminPage({ data, setData, bizId }) {
+function AdminPage({ data, setData, bizId, serverV }) {
   const [tab, setTabRaw] = useState(() => {
     try { const t = sessionStorage.getItem("bliss_adminTab"); console.log("[SESSION] adminTab restore:", t); return t || "places"; } catch(e){ return "places"; }
   });
@@ -5950,6 +5950,11 @@ function AdminPage({ data, setData, bizId }) {
     {tab==="ressrc" && <AdminResSources data={data} setData={setData}/>}
     {tab==="notiSettings" && <AdminNotiSettings data={data} setData={setData}/>}
     {tab==="aisettings" && <AdminAISettings data={data}  sb={sb} bizId={bizId}/>}
+    <div style={{marginTop:32,textAlign:"center",lineHeight:2}}>
+      <span style={{fontSize:T.fs.xs,color:T.danger,fontWeight:T.fw.bolder}}>앱 v{BLISS_V}</span>
+      {"  ·  "}
+      <span style={{fontSize:T.fs.xs,color:serverV?"#03C75A":T.textMuted}}>서버 {serverV?`v${serverV}`:"연결중…"}</span>
+    </div>
   </div>;
 }
 
