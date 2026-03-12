@@ -174,7 +174,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.70";
+const BLISS_V = "2.69.71";
 
 // ─── 디자인 토큰 ────────────────────────────────────────────────────────────
 const T = {
@@ -1015,6 +1015,11 @@ function App() {
           </div>
         </div>
       </main>
+      <div className="mob-bottom-nav" style={{position:"fixed",bottom:56,left:0,right:0,height:16,display:"flex",alignItems:"center",justifyContent:"center",gap:6,zIndex:199,pointerEvents:"none"}}>
+        <span style={{fontSize:9,color:T.danger,fontWeight:T.fw.bolder,opacity:.7}}>앱 v{BLISS_V}</span>
+        <span style={{fontSize:9,color:T.textMuted,opacity:.5}}>·</span>
+        <span style={{fontSize:9,color:serverV?"#03C75A":T.textMuted,opacity:.7}}>서버 {serverV?`v${serverV}`:"…"}</span>
+      </div>
       <MobileBottomNav nav={nav} page={page} setPage={setPage}/>
     </div>
   );
@@ -5950,11 +5955,6 @@ function AdminPage({ data, setData, bizId, serverV }) {
     {tab==="ressrc" && <AdminResSources data={data} setData={setData}/>}
     {tab==="notiSettings" && <AdminNotiSettings data={data} setData={setData}/>}
     {tab==="aisettings" && <AdminAISettings data={data}  sb={sb} bizId={bizId}/>}
-    <div style={{marginTop:32,textAlign:"center",lineHeight:2}}>
-      <span style={{fontSize:T.fs.xs,color:T.danger,fontWeight:T.fw.bolder}}>앱 v{BLISS_V}</span>
-      {"  ·  "}
-      <span style={{fontSize:T.fs.xs,color:serverV?"#03C75A":T.textMuted}}>서버 {serverV?`v${serverV}`:"연결중…"}</span>
-    </div>
   </div>;
 }
 
