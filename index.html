@@ -174,7 +174,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.79";
+const BLISS_V = "2.69.80";
 
 // ─── 디자인 토큰 ────────────────────────────────────────────────────────────
 const T = {
@@ -8001,6 +8001,9 @@ const CSS = `
     .sidebar-d{display:none!important}
     .sidebar-m{display:none!important}
     .mob-bottom-nav{display:flex!important}
+  }
+  @media(min-width:769px){
+    .mob-bottom-nav{display:none!important}
     .mob-hdr{padding-left:16px!important}
     .main-c{margin-left:0!important;padding-bottom:56px!important}
     .page-title{font-size:15px;margin-bottom:10px}
