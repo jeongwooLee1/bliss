@@ -174,7 +174,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.91";
+const BLISS_V = "2.69.92";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -3540,7 +3540,7 @@ ${naverText}
               transition:"background .15s,color .15s"}}
             onMouseOver={e=>{e.currentTarget.style.background=T.dangerLt;e.currentTarget.style.color=T.danger}}
             onMouseOut={e=>{e.currentTarget.style.background=T.gray200;e.currentTarget.style.color=T.gray500}}>✕</button>
-        </div>
+        </div>}
 
         <div style={{padding:"20px 24px 8px"}} className="form-col">
 
