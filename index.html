@@ -174,7 +174,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.72";
+const BLISS_V = "2.69.73";
 
 // ─── 디자인 토큰 ────────────────────────────────────────────────────────────
 const T = {
@@ -3935,7 +3935,7 @@ return f.requestMsg.split("\n").filter(l=>l.trim()).map((line,i)=>{
 
           {/* Action Buttons - 한 줄 (pinned bottom) */}
         </div>
-        <div style={{padding:"14px 20px",background:T.gray100,borderRadius:"0 0 14px 14px",position:"sticky",bottom:0,zIndex:10,paddingBottom:"calc(14px + env(safe-area-inset-bottom))"}}>
+        <div style={{padding:"14px 20px",background:T.gray100,borderRadius:_isMob?"0":"0 0 14px 14px",position:_isMob?"static":"sticky",bottom:0,zIndex:10,paddingBottom:_isMob?"14px":"calc(14px + env(safe-area-inset-bottom))"}}>
             {/* 예약상태 버튼 */}
             {item?.id && !isSchedule && <div style={{display:"flex",gap:6,marginBottom:10,justifyContent:"center"}}>
               <div style={{display:"flex",gap:T.sp.xs}}>
