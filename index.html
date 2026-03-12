@@ -174,7 +174,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.89";
+const BLISS_V = "2.69.90";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -3055,30 +3055,6 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
           maxHeight:"80vh",overflowY:"auto",animation:"bottomSheet .4s cubic-bezier(.22,1,.36,1)",willChange:"transform"}}>
           <div style={{width:36,height:4,borderRadius:T.radius.sm,background:T.gray300,margin:"0 auto 16px",cursor:"grab"}}/>
           <div style={{fontSize:T.fs.md,fontWeight:T.fw.bolder,color:T.text,marginBottom:12}}><I name="settings" size={14}/> 타임라인 설정</div>
-          {/* 지점 선택 */}
-          {(() => {
-            const branchList = isMaster ? allBranchList : allBranchList.filter(b=>accessibleBids.includes(b.id));
-            const allSelected = branchList.every(b => viewBids.includes(b.id));
-            return <div style={{marginBottom:12}}>
-              <span style={{fontSize:T.fs.sm,color:T.gray700,fontWeight:T.fw.bold,display:"block",marginBottom:6}}>지점 선택</span>
-              <div style={{display:"flex",flexWrap:"wrap",gap:T.sp.xs}}>
-                <button onClick={()=>{ if(allSelected){const f=branchList[0];if(f)setViewBids([f.id]);}else setViewBids(branchList.map(b=>b.id)); }}
-                  style={{padding:"6px 12px",fontSize:T.fs.sm,border:"1px solid #ddd",borderRadius:T.radius.md,
-                    background:allSelected?T.primary:T.bgCard,color:allSelected?T.bgCard:T.gray600,
-                    fontWeight:allSelected?700:400,cursor:"pointer",fontFamily:"inherit"}}>전체</button>
-                {branchList.map(b=>{
-                  const sel=viewBids.includes(b.id);
-                  return <button key={b.id} onClick={()=>{
-                    if(sel&&viewBids.length<=1)return;
-                    setViewBids(prev=>sel?prev.filter(id=>id!==b.id):[...prev,b.id]);
-                  }} style={{padding:"6px 12px",fontSize:T.fs.sm,border:"1px solid #ddd",borderRadius:T.radius.md,
-                    background:sel?(b.color||T.primary):T.bgCard,color:sel?T.bgCard:T.gray600,
-                    fontWeight:sel?700:400,cursor:"pointer",fontFamily:"inherit"}}>{b.short||b.name}</button>;
-                })}
-              </div>
-            </div>;
-          })()}
-          <GridLayout cols={2} gap={8}>
           {[
             {label:"줄간격",val:rowH,dec:()=>setRowH(h=>Math.max(6,h-2)),inc:()=>setRowH(h=>Math.min(30,h+2))},
             {label:"열너비",val:colW,dec:()=>setColW(w=>Math.max(80,w-20)),inc:()=>setColW(w=>Math.min(300,w+20))},
