@@ -438,9 +438,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       // weekOffNow: 남자직원은 isNext(이월일요일) 포함 카운트 - 일요일도 주 쿼터에 포함
       // 여직원은 isNext 제외 - 이월 일요일이 쿼터를 잡아먹지 않도록
       const weekOffNow = thisMonthDays.filter(d =>
-        (emp.isMale || !d.isNext) &&
-        ["휴무","휴무(꼭)"].includes(sch[emp.id][d.ds]) &&
-        !(emp.isMale && d.dow === 6) // 남자직원 일요일 강제 OFF는 쿼터 외 (평일 휴무만 카운트)
+        (emp.isMale || !d.isNext) && ["휴무","휴무(꼭)"].includes(sch[emp.id][d.ds])
       ).length;
       const weekTarget = Math.min(getWeeklyOff(emp), monthlyRemaining);
       let toAssign = Math.max(0, weekTarget - weekOffNow);
@@ -675,7 +673,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       ).length;
     };
 
-    employees.forEach(emp => {
+    employees.filter(e => !e.isMale).forEach(emp => {
       const branch = BRANCHES.find(b => b.id === emp.branch);
       const branchEmps = employees.filter(e => e.branch === emp.branch);
       const wo = getWeeklyOff(emp); // 주당 휴무 기준
@@ -982,7 +980,6 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
         const wkDays = week.filter(d => !d.isPrev);
         const offDaysInWk = wkDays.filter(d =>
           ["휴무","휴무(꼭)"].includes(sch[emp.id]?.[d.ds])
-          && !(emp.isMale && d.dow === 6) // 남자직원 일요일 강제 OFF는 쿼터 외
         );
         const excess = offDaysInWk.length - wo;
         if (excess <= 0) return;
@@ -1019,7 +1016,6 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
         const wkDays = week.filter(d => !d.isPrev);
         const offNow = wkDays.filter(d =>
           ["휴무","휴무(꼭)"].includes(sch[emp.id]?.[d.ds])
-          && !(emp.isMale && d.dow === 6) // 남자직원 일요일 강제 OFF는 쿼터 외
         ).length;
         const needed = wo - offNow;
         if (needed <= 0) return;
