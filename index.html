@@ -174,7 +174,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.75";
+const BLISS_V = "2.69.76";
 
 // ─── 디자인 토큰 ────────────────────────────────────────────────────────────
 const T = {
@@ -3545,15 +3545,27 @@ ${naverText}
           position:"sticky",top:0,zIndex:10}}>
           {/* Pull-to-refresh 인디케이터 */}
           {(_ptr.pullDist > 0 || _ptr.refreshing) && (
-            <div style={{position:"absolute",top:_ptr.refreshing?8:_ptr.pullDist/3,left:"50%",transform:"translateX(-50%)",
-              width:32,height:32,borderRadius:"50%",background:T.bgCard,
-              boxShadow:"0 2px 8px rgba(0,0,0,.15)",display:"flex",alignItems:"center",justifyContent:"center",
-              transition:_ptr.refreshing?"none":"transform .1s",zIndex:20}}>
-              <I name="refresh" size={16} style={{
-                color:T.primary,
-                transform:`rotate(${_ptr.refreshing ? 0 : _ptr.pullDist*3}deg)`,
-                animation:_ptr.refreshing?"spin 0.7s linear infinite":"none"
-              }}/>
+            <div style={{position:"absolute",top:_ptr.refreshing?12:Math.min(_ptr.pullDist*0.8,60),left:"50%",
+              transform:"translateX(-50%)",display:"flex",alignItems:"center",gap:12,zIndex:20,
+              opacity:Math.min(_ptr.pullDist/40,1)}}>
+              {/* 닫기 버튼 */}
+              <div onClick={onClose} style={{width:44,height:44,borderRadius:"50%",background:"#f0f0f5",
+                display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,
+                boxShadow:"0 2px 10px rgba(0,0,0,.15)",cursor:"pointer"}}>
+                <I name="x" size={18} style={{color:"#666"}}/>
+                <span style={{fontSize:9,color:"#888",lineHeight:1}}>닫기</span>
+              </div>
+              {/* 새로고침 버튼 */}
+              <div style={{width:52,height:52,borderRadius:"50%",background:T.primary,
+                display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,
+                boxShadow:"0 2px 12px rgba(124,124,200,.4)"}}>
+                <I name="refresh" size={20} style={{color:"#fff",
+                  animation:_ptr.refreshing?"spin 0.7s linear infinite":"none",
+                  transform:_ptr.refreshing?"none":`rotate(${_ptr.pullDist*4}deg)`}}/>
+                <span style={{fontSize:9,color:"rgba(255,255,255,.9)",lineHeight:1}}>
+                  {_ptr.refreshing?"로딩중":"새로고침"}
+                </span>
+              </div>
             </div>
           )}
           <button onClick={onClose} style={{display:"flex",alignItems:"center",gap:4,
