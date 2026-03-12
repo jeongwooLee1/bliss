@@ -620,7 +620,8 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       if (weekDeficit() <= 0) return;
 
       const cands = thisMonthDays
-        .filter(d => sch[emp.id][d.ds] === STATUS.WORK)
+        .filter(d => sch[emp.id][d.ds] === STATUS.WORK
+          && !(emp.isMale && d.dow === 6)) // 남자직원 일요일 STEP A 보호
         .sort((a, b) => {
           if (!!a.isNext !== !!b.isNext) return (a.isNext ? 1 : 0) - (b.isNext ? 1 : 0);
           const aOff = branchEmps.filter(be=>be.id!==emp.id&&["휴무","휴무(꼭)"].includes(sch[be.id][a.ds])).length;
@@ -742,6 +743,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
               const adjDay = wkDays.find(d => d.ds === adjDs);
               if (!adjDay) continue;
               if (adjDay.isNext) continue; // isNext 날짜로 이동 금지
+              if (emp.isMale && adjDay.dow === 6) continue; // 남자직원 일요일로 MOVE 금지
               // ★ getWeekIdx 기준으로도 같은 주인지 검증
               if (getWeekIdx(targetOff.ds) !== getWeekIdx(adjDs)) continue;
               if (sch[emp.id][adjDs] !== STATUS.WORK) continue;
