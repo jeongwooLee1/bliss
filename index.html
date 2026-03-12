@@ -174,7 +174,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.63";
+const BLISS_V = "2.69.64";
 
 // ─── 디자인 토큰 ────────────────────────────────────────────────────────────
 const T = {
@@ -3886,7 +3886,7 @@ return f.requestMsg.split("\n").filter(l=>l.trim()).map((line,i)=>{
 
           {/* Action Buttons - 한 줄 (pinned bottom) */}
         </div>
-        <div style={{padding:"14px 20px",background:T.gray100,borderRadius:"0 0 14px 14px"}}>
+        <div style={{padding:"14px 20px",background:T.gray100,borderRadius:"0 0 14px 14px",position:"sticky",bottom:0,zIndex:10,paddingBottom:"calc(14px + env(safe-area-inset-bottom))"}}>
             {/* 예약상태 버튼 */}
             {item?.id && !isSchedule && <div style={{display:"flex",gap:6,marginBottom:10,justifyContent:"center"}}>
               <div style={{display:"flex",gap:T.sp.xs}}>
@@ -7897,7 +7897,7 @@ const CSS = `
     .form-col textarea.inp{height:auto!important}
     .modal-res{width:100%!important;max-width:100%!important;border-radius:12px!important;margin:0!important}
     .modal-res .form-col{overflow:visible!important}
-    .ov{padding:8px 0!important;padding-bottom:calc(100px + env(safe-area-inset-bottom))!important;-webkit-overflow-scrolling:touch!important}
+    .ov{padding:8px 0!important;padding-bottom:calc(56px + env(safe-area-inset-bottom))!important;-webkit-overflow-scrolling:touch!important}
     .tl-topbar{flex-direction:column!important;gap:4px!important;padding:6px 6px!important;align-items:stretch!important}
     .mob-hdr{padding:10px 16px!important}
     .tl-date-label{font-size:15px!important}
