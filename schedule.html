@@ -914,8 +914,10 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
           );
 
           // emp의 교환 가능 휴무날 목록
+          // 남자직원은 일요일 OFF를 swap 대상에서 제외 (STEP A 일요일 배정 보호)
           const empOffDays = scanDates.filter(od =>
             sch[emp.id]?.[od.ds] === STATUS.OFF && !seededDates.has(od.ds)
+            && !(emp.isMale && od.dow === 6)
           );
 
           let didSwap = false;
