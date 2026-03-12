@@ -47,7 +47,7 @@ const sb = {
 };
 // snake_case <-> camelCase column mapping per table
 const DBMAP = {
-  reservations:{business_id:"businessId",room_id:"roomId",cust_id:"custId",cust_name:"custName",cust_phone:"custPhone",cust_gender:"custGender",staff_id:"staffId",service_id:"serviceId",is_schedule:"isSchedule",is_new_cust:"isNewCust",selected_tags:"selectedTags",selected_services:"selectedServices",repeat_group_id:"repeatSourceId",repeat_until:"repeatUntil",reservation_id:"reservationId",updated_at:"_ua",source:"source",request_msg:"requestMsg",owner_comment:"ownerComment",is_prepaid:"isPrepaid",npay_method:"npayMethod",total_price:"totalPrice",visit_count:"visitCount",no_show_count:"noShowCount",is_scraping_done:"isScrapingDone",naver_reg_dt:"naverRegDt",naver_confirmed_dt:"naverConfirmedDt",naver_cancelled_dt:"naverCancelledDt"},
+  reservations:{business_id:"businessId",room_id:"roomId",cust_id:"custId",cust_name:"custName",cust_phone:"custPhone",cust_gender:"custGender",staff_id:"staffId",service_id:"serviceId",is_schedule:"isSchedule",is_new_cust:"isNewCust",selected_tags:"selectedTags",selected_services:"selectedServices",repeat_group_id:"repeatSourceId",repeat_until:"repeatUntil",reservation_id:"reservationId",updated_at:"_ua",source:"source",request_msg:"requestMsg",owner_comment:"ownerComment",is_prepaid:"isPrepaid",npay_method:"npayMethod",total_price:"totalPrice",visit_count:"visitCount",no_show_count:"noShowCount",is_scraping_done:"isScrapingDone",naver_reg_dt:"naverRegDt",naver_confirmed_dt:"naverConfirmedDt",naver_cancelled_dt:"naverCancelledDt",prev_reservation_id:"prevReservationId"},
   sales:{business_id:"businessId",cust_id:"custId",cust_name:"custName",cust_phone:"custPhone",cust_gender:"custGender",cust_num:"custNum",staff_id:"staffId",staff_name:"staffName",service_id:"serviceId",service_name:"serviceName",product_id:"productId",product_name:"productName",svc_cash:"svcCash",svc_transfer:"svcTransfer",svc_card:"svcCard",svc_point:"svcPoint",prod_cash:"prodCash",prod_transfer:"prodTransfer",prod_card:"prodCard",prod_point:"prodPoint",order_num:"orderNum",reservation_id:"reservationId"},
   customers:{business_id:"businessId",last_visit:"lastVisit",cust_num:"custNum"},
   service_tags:{business_id:"businessId",schedule_yn:"scheduleYn",use_yn:"useYn"},
@@ -174,7 +174,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.66";
+const BLISS_V = "2.69.67";
 
 // ─── 디자인 토큰 ────────────────────────────────────────────────────────────
 const T = {
@@ -4788,6 +4788,29 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
     return inRange(r.date);
   }).sort((a,b)=>b.date.localeCompare(a.date)||b.time.localeCompare(a.time));
 
+  // ── 변경 히스토리 체인 구성 ─────────────────────────────────────
+  // prev_reservation_id로 체인 연결: 최신 예약(naver_changed 아닌 것)이 대표, 이전 것들이 히스토리
+  const [expandedChains, setExpandedChains] = useState({});
+  const toggleChain = (id, e) => { e.stopPropagation(); setExpandedChains(p=>({...p,[id]:!p[id]})); };
+
+  // reservation_id → 예약 객체 맵
+  const resById = React.useMemo(()=>{
+    const m = {};
+    (data?.reservations||[]).forEach(r=>{ m[r.reservationId] = r; });
+    return m;
+  }, [data?.reservations]);
+
+  // 각 예약의 히스토리(이전 체인) 가져오기
+  const getChain = (r) => {
+    const chain = [];
+    let cur = r;
+    while(cur?.prevReservationId && resById[cur.prevReservationId]) {
+      cur = resById[cur.prevReservationId];
+      chain.unshift(cur); // 오래된 것이 앞
+    }
+    return chain;
+  };
+
   const deleteRes = id => setData(prev=>({...prev,reservations:(prev?.reservations||[]).filter(r=>r.id!==id)}));
 
   // ── 날짜 라벨 ─────────────────────────────────────
@@ -4992,13 +5015,27 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
         };
 
         /* ── 모바일 카드 ── */
-        if (isMobile) return <div key={r.id} style={{
-          background:rowBg, borderRadius:T.radius.lg,
-          border:"1px solid "+(r.status==="cancelled"||r.status==="no_show"||r.status==="naver_cancelled"?T.danger+"33":T.border),
-          padding:"12px 14px", cursor:"pointer", position:"relative",
-        }} onClick={handleClick}>
+        const chain = getChain(r);
+        const hasChain = chain.length > 0;
+        const isExpanded = expandedChains[r.id];
+
+        if (isMobile) return <div key={r.id}>
+          <div style={{
+            background:rowBg, borderRadius:T.radius.lg,
+            border:"1px solid "+(r.status==="cancelled"||r.status==="no_show"||r.status==="naver_cancelled"?T.danger+"33":T.border),
+            padding:"12px 14px", cursor:"pointer", position:"relative",
+            display:"flex", alignItems:"flex-start", gap:8,
+          }} onClick={handleClick}>
+            {hasChain && <div onClick={e=>toggleChain(r.id,e)} style={{
+              flexShrink:0, width:22, height:22, borderRadius:"50%",
+              background:isExpanded?T.primary:T.gray200,
+              color:isExpanded?T.bgCard:T.gray600,
+              display:"flex", alignItems:"center", justifyContent:"center",
+              fontSize:14, fontWeight:"bold", marginTop:2, cursor:"pointer",
+            }}>{isExpanded?"−":"+"}</div>}
+            <div style={{flex:1,minWidth:0,position:"relative"}}>
           {/* 상태 뱃지 - 우상단 */}
-          <div style={{position:"absolute",top:10,right:12}}>
+          <div style={{position:"absolute",top:0,right:0}}>
             <Badge color={st.color} bg={st.bg}>{st.label}</Badge>
           </div>
           {/* Row1: 날짜+매장 */}
@@ -5025,6 +5062,28 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
             {naverInfoItems.map(item=>(
               <span key={item.label} style={{fontSize:T.fs.nano,padding:"1px 6px",borderRadius:T.radius.full,background:T.primaryLt,color:T.primaryDk,fontWeight:T.fw.bold,whiteSpace:"nowrap"}}>{item.label}: {item.value}</span>
             ))}
+          </div>}
+            </div>
+          </div>
+          {/* ── 히스토리 펼침 ── */}
+          {hasChain && isExpanded && <div style={{marginLeft:30,marginTop:3,display:"flex",flexDirection:"column",gap:3}}>
+            {chain.map(h=>{
+              const hst = ST[h.status]||{bg:T.gray100,color:T.gray500,label:h.status};
+              return <div key={h.id} onClick={()=>setListModalData(h)} style={{
+                background:T.gray100, borderRadius:T.radius.md,
+                border:"1px solid "+T.border, padding:"8px 12px",
+                cursor:"pointer", display:"flex", alignItems:"center", gap:8,
+              }}>
+                <div style={{width:2,alignSelf:"stretch",background:T.border,borderRadius:2,flexShrink:0}}/>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2}}>
+                    <span style={{fontSize:T.fs.xs,color:T.textSub}}>{h.date} {h.time}</span>
+                    <Badge color={hst.color} bg={hst.bg} style={{marginLeft:"auto"}}>{hst.label}</Badge>
+                  </div>
+                  <div style={{fontSize:T.fs.nano,color:T.textMuted}}>#{h.reservationId}</div>
+                </div>
+              </div>;
+            })}
           </div>}
         </div>;
 
