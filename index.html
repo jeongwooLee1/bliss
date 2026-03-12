@@ -174,7 +174,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.83";
+const BLISS_V = "2.69.84";
 
 // ─── 디자인 토큰 ────────────────────────────────────────────────────────────
 const T = {
@@ -4828,11 +4828,27 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
     if (startDate&&endDate) return date>=startDate&&date<=endDate;
     return true;
   };
+  // prevReservationId → 다음 예약 맵 (역방향) — res 필터보다 먼저 정의
+  const resByPrev = React.useMemo(()=>{
+    const m = {};
+    (data?.reservations||[]).forEach(r=>{ if(r.prevReservationId) m[r.prevReservationId] = r; });
+    return m;
+  }, [data?.reservations]);
+
+  // 체인의 head(가장 최신) 찾기
+  const getHead = (r) => {
+    let cur = r;
+    while(resByPrev[cur.reservationId]) cur = resByPrev[cur.reservationId];
+    return cur;
+  };
+
   const res = (data?.reservations||[]).filter(r => {
     if (r.type!=="reservation") return false;
     if (!(vb==="all"?userBranches.includes(r.bid):r.bid===vb)) return false;
     const isNaver = r.source==="naver"||r.source==="네이버";
     if (isNaver&&!r.isScrapingDone) return false;
+    // 체인 멤버인 naver_changed는 목록에서 숨김 (+ 버튼으로만 표시)
+    if (r.status==="naver_changed" && resByPrev[r.reservationId]) return false;
     if (statusFilter!=="all") {
       const cancelGroup = statusFilter==="cancelled"&&(r.status==="cancelled"||r.status==="naver_cancelled");
       if (!cancelGroup&&r.status!==statusFilter) return false;
@@ -4857,20 +4873,6 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
     (data?.reservations||[]).forEach(r=>{ m[r.reservationId] = r; });
     return m;
   }, [data?.reservations]);
-
-  // prevReservationId → 다음 예약 맵 (역방향)
-  const resByPrev = React.useMemo(()=>{
-    const m = {};
-    (data?.reservations||[]).forEach(r=>{ if(r.prevReservationId) m[r.prevReservationId] = r; });
-    return m;
-  }, [data?.reservations]);
-
-  // 체인의 head(가장 최신) 찾기
-  const getHead = (r) => {
-    let cur = r;
-    while(resByPrev[cur.reservationId]) cur = resByPrev[cur.reservationId];
-    return cur;
-  };
 
   // 각 예약의 히스토리(이전 체인) 가져오기
   const getChain = (r) => {
