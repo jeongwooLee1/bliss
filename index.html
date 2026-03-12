@@ -174,7 +174,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.90";
+const BLISS_V = "2.69.91";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -3055,7 +3055,8 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
           maxHeight:"80vh",overflowY:"auto",animation:"bottomSheet .4s cubic-bezier(.22,1,.36,1)",willChange:"transform"}}>
           <div style={{width:36,height:4,borderRadius:T.radius.sm,background:T.gray300,margin:"0 auto 16px",cursor:"grab"}}/>
           <div style={{fontSize:T.fs.md,fontWeight:T.fw.bolder,color:T.text,marginBottom:12}}><I name="settings" size={14}/> 타임라인 설정</div>
-          {[
+          <GridLayout cols={2} gap={8}>
+        {[
             {label:"줄간격",val:rowH,dec:()=>setRowH(h=>Math.max(6,h-2)),inc:()=>setRowH(h=>Math.min(30,h+2))},
             {label:"열너비",val:colW,dec:()=>setColW(w=>Math.max(80,w-20)),inc:()=>setColW(w=>Math.min(300,w+20))},
             {label:"글자크기",val:blockFs,dec:()=>setBlockFs(f=>Math.max(6,f-1)),inc:()=>setBlockFs(f=>Math.min(16,f+1))},
