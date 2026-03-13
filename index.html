@@ -2383,7 +2383,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
               : {};
             return {...r, time: snap.time, endTime, roomId: snap.roomId||r.roomId, bid: snap.bid||r.bid, ...staffUpdate};
           })}));
-          setPendingChange({ type: "move", block, data: snap, orig });
+          setPendingChange({ type: "move", block, data: snap, orig, px: pt.clientX, py: pt.clientY });
         }
       }
       setDragBlock(null); setDragPos(null); setDragSnap(null); dragSnapRef.current = null;
@@ -3018,18 +3018,27 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
         const desc = type === "move"
           ? `${name}: ${orig.time} → ${d.time}`
           : `${name}: ${orig.dur}분 → ${d.dur}분`;
-        return <div className="ov" style={{zIndex:9998}} onClick={()=>_mc(cancelChange)}>
-          <div onClick={e=>e.stopPropagation()} style={{background:T.bgCard,borderRadius:T.radius.md,boxShadow:"0 12px 40px rgba(0,0,0,0.2)",padding:"20px 24px",
-            fontFamily:"inherit",minWidth:260,maxWidth:340,textAlign:"center",animation:"slideUp .6s cubic-bezier(.22,1,.36,1)"}}>
-            <div style={{fontSize:T.fs.md,fontWeight:T.fw.bolder,marginBottom:6}}>{type==="move"?"예약 이동":"시간 변경"}</div>
-            <div style={{fontSize:T.fs.sm,color:T.gray700,marginBottom:16}}>{desc}</div>
-            <div style={{display:"flex",gap:10,justifyContent:"center"}}>
-              <button onClick={()=>_mc(cancelChange)} style={{flex:1,padding:"10px 0",fontSize:T.fs.sm,fontWeight:T.fw.bold,borderRadius:T.radius.md,border:"1px solid #ddd",background:T.bg,color:T.gray600,cursor:"pointer",fontFamily:"inherit"}}>취소</button>
-              <button onClick={confirmChange} style={{flex:1,padding:"10px 0",fontSize:T.fs.sm,fontWeight:T.fw.bolder,borderRadius:T.radius.md,border:"none",background:T.primary,color:T.bgCard,cursor:"pointer",fontFamily:"inherit"}}>완료</button>
+        const popW = 240;
+        const vw = window.innerWidth; const vh = window.innerHeight;
+        const px = pendingChange.px; const py = pendingChange.py;
+        const popLeft = px != null ? Math.min(Math.max(8, px - popW/2), vw - popW - 8) : (vw - popW)/2;
+        const popTop  = py != null ? Math.min(Math.max(8, py + 14), vh - 120) : (vh - 110)/2;
+        return <>
+          <div style={{position:'fixed',inset:0,zIndex:9997}} onClick={()=>_mc(cancelChange)}/>
+          <div onClick={e=>e.stopPropagation()} style={{
+            position:'fixed', left:popLeft, top:popTop, width:popW,
+            background:T.bgCard, borderRadius:14, boxShadow:'0 8px 32px rgba(0,0,0,.22)',
+            fontFamily:'inherit', zIndex:9998, overflow:'hidden', animation:'fadeIn .18s ease'}}>
+            <div style={{padding:'13px 16px 10px'}}>
+              <div style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder,color:T.text,marginBottom:3}}>{type==="move"?"예약 이동":"시간 변경"}</div>
+              <div style={{fontSize:T.fs.xs,color:T.gray600}}>{desc}</div>
+            </div>
+            <div style={{display:'flex',borderTop:'1px solid '+T.gray100}}>
+              <button onClick={()=>_mc(cancelChange)} style={{flex:1,padding:'11px 0',fontSize:T.fs.sm,fontWeight:600,border:'none',borderRight:'1px solid '+T.gray100,background:'none',color:T.textSub,cursor:'pointer',fontFamily:'inherit'}}>취소</button>
+              <button onClick={confirmChange} style={{flex:1,padding:'11px 0',fontSize:T.fs.sm,fontWeight:700,border:'none',background:'none',color:T.primary,cursor:'pointer',fontFamily:'inherit'}}>확인</button>
             </div>
           </div>
-        </div>;
-      })()}
+        </>;
 
       {showModal && <TimelineModal item={modalData} onSave={handleSave} onDelete={handleDelete} onDeleteRequest={handleDeleteRequest} naverColShow={naverColShow} onClose={()=>_mc(()=>{setShowModal(false);setModalData(null)})} selBranch={userBranches[0]} userBranches={userBranches} data={data} setData={setData} setPage={setPage}/>}
 
