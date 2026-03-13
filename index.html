@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.148";
+const BLISS_V = "2.69.149";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -3490,7 +3490,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
 [시술상품 목록] ${svcList}
 
 [기본 판단 기준]
-- 주차 언급 → "주차" 태그
+- 주차: 고객이 명시적으로 "주차 부탁", "주차 가능한가요" 등 직접 요청한 경우에만 "주차" 태그 선택. 단순히 주차 관련 안내글이나 업체 메모에 주차 언급만으로는 선택하지 마세요.
 - 임산부/산모 → "산모님" 태그
 - 커플룸 요청 → "커플룸" 태그
 - 남자 관리사 요청 → "남자선생님" 태그
@@ -3511,7 +3511,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
 ${naverText}
 
 응답 형식:
-{"matchedTagIds":["태그id1","태그id2"],"matchedServiceIds":["시술id1"],"gender":"F 또는 M 또는 빈문자열","reason":"선택 이유 한줄"}`;
+{"matchedTagIds":["태그id1","태그id2"],"matchedServiceIds":["시술id1"],"gender":"고객이 명시적으로 성별을 언급한 경우에만 F 또는 M, 그 외 빈문자열","reason":"선택 이유 한줄"}`;
       const r = await fetch("https://api.openai.com/v1/chat/completions", {
         method:"POST", headers:{"Content-Type":"application/json","Authorization":`Bearer ${apiKey}`},
         body:JSON.stringify({model:"gpt-4o-mini",messages:[{role:"user",content:prompt}],temperature:0,max_tokens:400})
