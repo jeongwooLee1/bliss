@@ -173,7 +173,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.105";
+const BLISS_V = "2.69.104";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -3018,7 +3018,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
         const desc = type === "move"
           ? `${name}: ${orig.time} → ${d.time}`
           : `${name}: ${orig.dur}분 → ${d.dur}분`;
-        const popW = 240;
+        const popW = Math.min(320, Math.max(260, Math.round(window.innerWidth * 0.8)));
         const vw = window.innerWidth; const vh = window.innerHeight;
         const px = pendingChange.px; const py = pendingChange.py;
         const popH = 112;
