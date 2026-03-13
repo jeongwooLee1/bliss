@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.141";
+const BLISS_V = "2.69.142";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7320,9 +7320,10 @@ function QuickBookModal({ onClose, onParsed, data }) {
         return `${bName} ${r.time} ${r.cust_name||"?"} ${r.status}`;
       }).join(" | ");
 
-      return `[${ds} ${ts}] 하우스왁싱 예약관리 시스템
+      return `[현재시각: ${ds} ${ts}] 하우스왁싱 예약관리 시스템
 지점현황: ${branchSummaries||"없음"}
-오늘예약(${rows.length}건): ${rowLines||"없음"}
+오늘(${ds}) 예약(${rows.length}건): ${rowLines||"없음"}
+※ 위 예약 목록은 오늘(${ds}) 데이터만입니다. 다른 날짜 예약 요청 시 위 목록과 무관합니다.
 전체지점: ${branches.map(b=>b.short||b.name).join(",")||"없음"}`;
     } catch(e) {
       return `[${new Date().toLocaleDateString("ko-KR")}] 하우스왁싱 예약관리`;
