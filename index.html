@@ -3039,6 +3039,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
             </div>
           </div>
         </>;
+      })()}
 
       {showModal && <TimelineModal item={modalData} onSave={handleSave} onDelete={handleDelete} onDeleteRequest={handleDeleteRequest} naverColShow={naverColShow} onClose={()=>_mc(()=>{setShowModal(false);setModalData(null)})} selBranch={userBranches[0]} userBranches={userBranches} data={data} setData={setData} setPage={setPage}/>}
 
