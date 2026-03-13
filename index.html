@@ -1,5 +1,3 @@
-<
-      {onLogout && <div style={{display:"flex",justifyContent:"flex-end",marginBottom:8}}><button onClick={onLogout} style={{padding:"6px 16px",fontSize:T.fs.sm,borderRadius:T.radius.md,border:"1px solid "+T.danger,color:T.danger,background:"none",cursor:"pointer",fontFamily:"inherit"}}>로그아웃</button></div>}!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8"/>
   <link rel="manifest" href="/bliss/manifest.json"/>
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
@@ -175,7 +173,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.101";
+const BLISS_V = "2.69.102";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
