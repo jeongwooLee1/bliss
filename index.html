@@ -173,7 +173,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.118";
+const BLISS_V = "2.69.119";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -2234,7 +2234,9 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
     setData(prev => {
       const exists = (prev?.reservations||[]).find(r => r.id === item.id);
       if (exists) {
-        sb.update("reservations", item.id, toDb("reservations", item)).catch(console.error);
+        const updateRow = toDb("reservations", item);
+        if (!updateRow.reservation_id) delete updateRow.reservation_id;
+        sb.update("reservations", item.id, updateRow).catch(console.error);
         return { ...prev, reservations: (prev?.reservations||[]).map(r => r.id === item.id ? item : r) };
       }
       const items = [item];
@@ -2262,7 +2264,13 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       return { ...prev, reservations: [...prev.reservations, ...items] };
     });
     // Async sync to Supabase
-    setTimeout(()=>{ if(allItems.length) sb.upsert("reservations", allItems.map(i=>toDb("reservations",i))).catch(console.error); }, 0);
+    setTimeout(()=>{
+      if(allItems.length) sb.upsert("reservations", allItems.map(i=>{
+        const row = toDb("reservations", i);
+        if (!row.reservation_id) delete row.reservation_id; // 수동등록 시 null 제외
+        return row;
+      })).catch(console.error);
+    }, 0);
     // 알림톡 자동 발송 (신규 예약 & 내부일정 아닌 경우)
     if(!item.isSchedule && allItems.length > 0 && item.custPhone) {
       try {
