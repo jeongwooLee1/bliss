@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.153";
+const BLISS_V = "2.69.154";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -3473,15 +3473,16 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
         .map(t=>`"${t.id}":"${t.name}"`).join(", ");
       const svcList = (data?.services||[]).filter(s=>s.useYn!==false)
         .map(s=>`"${s.id}":"${s.name}"`).join(", ");
-      const customRules = (() => {
-        try {
-          const bizList = data?.businesses || data?.businessSettings || [];
-          const biz = bizList.find(b => b.id === "biz_khvurgshb") || bizList.find(b => b.id !== "biz_system") || bizList[0];
-          const settings = typeof biz?.settings === "string" ? JSON.parse(biz.settings) : (biz?.settings || {});
-          if(Array.isArray(settings.ai_rules) && settings.ai_rules.length) return settings.ai_rules;
-          return JSON.parse(localStorage.getItem("bliss_ai_rules") || "[]");
-        } catch { return []; }
-      })();
+      // ai_rules: Supabase에서 직접 로드
+      let customRules = [];
+      try {
+        const rr = await fetch(`${SB_URL}/rest/v1/businesses?id=eq.biz_khvurgshb&select=settings`, {headers: sbHeaders});
+        const rrows = await rr.json();
+        const memo = JSON.parse(rrows[0]?.settings || "{}");
+        customRules = Array.isArray(memo.ai_rules) ? memo.ai_rules : [];
+      } catch(e) {
+        try { customRules = JSON.parse(localStorage.getItem("bliss_ai_rules") || "[]"); } catch{}
+      }
       const customRulesBlock = customRules.length > 0
         ? `\n[추가 판단 규칙 - 아래 규칙을 기본 기준보다 우선 적용하세요]\n${customRules.map((r,i)=>`${i+1}. ${r}`).join("\n")}`
         : "";
@@ -7395,13 +7396,17 @@ function QuickBookModal({ onClose, onParsed, data }) {
       if(avail) availInfo = `\n[예약현황] ${avail}`;
     }
 
-    const bizList = data?.businesses || data?.businessSettings || [];
-    const biz = bizList.find(b => b.id === "biz_khvurgshb") || bizList.find(b => b.id !== "biz_system") || bizList[0];
-    const bizSettings = typeof biz?.settings === "string" ? JSON.parse(biz?.settings||"{}") : (biz?.settings||{});
-    const rules = Array.isArray(bizSettings.ai_rules) && bizSettings.ai_rules.length
-      ? bizSettings.ai_rules
-      : (data?.businesses || data?.businessSettings)?.[0]?.settings?.ai_rules || [];
-    const rulesText = Array.isArray(rules) ? rules.map((r,i)=>`${i+1}. ${r}`).join("\n") : "";
+    let rules = [];
+    try {
+      const rr = await fetch(`${SUPA_URL}/rest/v1/businesses?id=eq.biz_khvurgshb&select=settings`,
+        {headers:{apikey:ANON, Authorization:`Bearer ${ANON}`}});
+      const rrows = await rr.json();
+      const memo = JSON.parse(rrows[0]?.settings || "{}");
+      rules = Array.isArray(memo.ai_rules) ? memo.ai_rules : [];
+    } catch(e) {
+      try { rules = JSON.parse(localStorage.getItem("bliss_ai_rules")||"[]"); } catch{}
+    }
+    const rulesText = rules.map((r,i)=>`${i+1}. ${r}`).join("\n");
     const branches = (data?.branches || data?.branchSettings || []).map(b=>b.short||b.name).join(", ");
     const now = new Date();
     const ds = now.toLocaleDateString("ko-KR");
