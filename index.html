@@ -173,7 +173,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.116";
+const BLISS_V = "2.69.117";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7210,17 +7210,8 @@ function QuickBookModal({ onClose, onParsed, data }) {
       timerRef.current = setInterval(()=>setRecordSec(s=>s+1), 1000);
     } catch(e) { alert("마이크 권한이 필요합니다"); }
   };
-  const stopVoice = () => {
-    if (recordSec < 3) {
-      alert("3초 이상 말씀해 주세요.");
-      mediaRecRef.current?.stop();
-      setIsListening(false); clearInterval(timerRef.current);
-      setAudioData(null); chunksRef.current = [];
-      return;
-    }
-    mediaRecRef.current?.stop(); setIsListening(false); clearInterval(timerRef.current);
-  };
-  // 자동 파싱 제거: 녹음 후 버튼 눌러야 파싱
+  const stopVoice = () => { mediaRecRef.current?.stop(); setIsListening(false); clearInterval(timerRef.current); };
+  useEffect(() => { if (audioData) doParse(null, audioData); }, [audioData]);
 
   const handleImage = (e) => {
     const file = e.target.files?.[0]; if (!file) return;
@@ -7280,7 +7271,7 @@ function QuickBookModal({ onClose, onParsed, data }) {
 
   const editResult = (k,v) => setResult(p=>({...p,[k]:v}));
   const reset = () => { setResult(null);setError(null);setAudioData(null);setRecordSec(0);setImgData(null);setImgPreview(null);setInput(""); };
-  const handleSubmit = () => { if (input.trim() || imgData || audioData) doParse(); };
+  const handleSubmit = () => { if (input.trim() || imgData) doParse(); };
 
   const sparkle = <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 2L13.09 8.26L18 6L14.74 10.91L21 12L14.74 13.09L18 18L13.09 15.74L12 22L10.91 15.74L6 18L9.26 13.09L3 12L9.26 10.91L6 6L10.91 8.26L12 2Z" fill="url(#gsp)"/><defs><linearGradient id="gsp" x1="3" y1="2" x2="21" y2="22"><stop stopColor={T.google}/><stop offset="0.5" stopColor={T.purple}/><stop offset="1" stopColor={T.female}/></linearGradient></defs></svg>;
 
