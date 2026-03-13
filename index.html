@@ -3021,8 +3021,12 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
         const popW = 240;
         const vw = window.innerWidth; const vh = window.innerHeight;
         const px = pendingChange.px; const py = pendingChange.py;
+        const popH = 112;
+        const safeB = 100; // 모바일 탭바+여유
         const popLeft = px != null ? Math.min(Math.max(8, px - popW/2), vw - popW - 8) : (vw - popW)/2;
-        const popTop  = py != null ? Math.min(Math.max(8, py + 14), vh - 120) : (vh - 110)/2;
+        const belowY = py != null ? py + 18 : (vh - popH) / 2;
+        const aboveY = py != null ? py - popH - 10 : (vh - popH) / 2;
+        const popTop = (belowY + popH + safeB > vh) ? Math.max(8, aboveY) : belowY;
         return <>
           <div style={{position:'fixed',inset:0,zIndex:9997}} onClick={()=>_mc(cancelChange)}/>
           <div onClick={e=>e.stopPropagation()} style={{
