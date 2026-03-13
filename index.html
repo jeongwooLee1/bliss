@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.156";
+const BLISS_V = "2.69.157";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -3489,25 +3489,29 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
       const NEW_CUST_TAG_ID = NEW_CUST_TAG_ID_GLOBAL;
       const custLinked = !!(f.custId) || !!(data?.customers||[]).find(c=>(c.phone||"").replace(/-/g,"") === (f.custPhone||"").replace(/-/g,""));
       const effectiveIsNew = custLinked ? false : (f.visitCount === 0);
+      const naverSvcNames = (f.selectedServices||[]).length > 0
+        ? (f.selectedServices||[]).map(id=>{const s=(data?.services||[]).find(x=>x.id===id);return s?s.name:id;}).join(", ")
+        : null;
+
       const prompt = `당신은 왁싱샵/미용실 예약 정보를 분석하는 AI입니다.
 아래 네이버 예약 고객 정보를 분석하여 적합한 태그와 시술상품을 선택하세요.
 마크다운 없이 순수 JSON만 출력하세요.
 
 [태그 목록] ${tagList}
-[시술상품 목록] ${svcList}
+[시술상품 목록(수량허용=[qty])]: ${svcList}
 
-[판단 기준]
-- 시술상품: 네이버 시술메뉴 또는 고객 요청에 명시된 항목만 선택하세요. 명시되지 않은 항목은 절대 추가하지 마세요.
-- 수량 허용 시술(이름 뒤에 [qty] 표시)은 2개 이상이면 같은 id를 반복해서 넣으세요
-- "예약금완료" 태그는 선택하지 마세요. 이 태그는 시스템이 자동 처리합니다.${customRulesBlock}
+[판단 기준 - 반드시 지켜주세요]
+- 시술상품: 아래 [네이버 시술메뉴]에 명시된 항목만 선택하세요.
+- [네이버 시술메뉴]가 없으면 matchedServiceIds는 반드시 빈 배열 []로 응답하세요.
+- 고객 요청/메모/텍스트에서 시술을 추론하거나 추가하지 마세요.
+- "예약금완료" 태그는 선택하지 마세요.${customRulesBlock}
 
 [예약 기본 정보]
 - 고객명: ${f.custName||"미상"}
 - 연락처: ${f.custPhone||"미상"}
 - 방문횟수: ${f.visitCount||0}회
 - 예약일시: ${f.date||""} ${f.time||""}
-- 시술상품 목록(수량허용=[qty]): ${(data?.services||[]).map(s=>svcAllowQty(s)?`${s.name}[qty](id:${s.id})`:s.name+`(id:${s.id})`).join(', ')}
-- 시술메뉴(네이버): ${(f.selectedServices||[]).length > 0 ? (f.selectedServices||[]).map(id=>{const s=(data?.services||[]).find(x=>x.id===id);return s?s.name:id;}).join(", ") : "미선택"}
+- 네이버 시술메뉴: ${naverSvcNames || "없음 → matchedServiceIds는 [] 필수"}
 - customers DB 등록 여부: ${custLinked ? "등록된 고객" : "미등록"}
 
 [고객 요청 / 업체 메모]
@@ -3525,7 +3529,8 @@ ${naverText}
       const parsed = JSON.parse(txt.replace(/```json|```/g,"").trim());
       let newTags = (parsed.matchedTagIds || []).filter(id => !SYSTEM_TAG_IDS.includes(id));
       if (f.isPrepaid && !newTags.includes(PREPAID_TAG_ID)) newTags = [...newTags, PREPAID_TAG_ID];
-      const newSvcs = parsed.matchedServiceIds || [];
+      // 네이버 시술메뉴 없으면 서비스 선택 강제 비움
+      const newSvcs = (f.selectedServices||[]).length > 0 ? (parsed.matchedServiceIds || []) : [];
       setF(p => {
         const tagSum = newTags.reduce((s,tid)=>{const t=(data?.serviceTags||[]).find(x=>x.id===tid);return s+(t?.dur||0);},0);
         const svcSum = newSvcs.reduce((s,sid)=>{const sv=(data?.services||[]).find(x=>x.id===sid);return s+(sv?.dur||0);},0);
