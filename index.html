@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.136";
+const BLISS_V = "2.69.137";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7492,48 +7492,66 @@ JSON 형식: {"date":"YYYY-MM-DD","time":"HH:MM","custName":"","custPhone":"","s
     try { recognitionRef.current?.start(); } catch(e){}
   };
 
-  // ── TTS ──
-  const speakReply = text => {
-    if(!window.speechSynthesis) { setTimeout(restartListening, 500); return; }
-    window.speechSynthesis.cancel();
-    const clean = text.replace(/[*_`#\[\]]/g,"").replace(/\n/g," ").slice(0,200);
-    const u = new SpeechSynthesisUtterance(clean);
-    u.lang = "ko-KR"; u.rate = 1.0; u.pitch = 1.05;
-    const kr = window.speechSynthesis.getVoices().find(v=>v.lang.includes("ko"));
-    if(kr) u.voice = kr;
-    u.onstart = () => { isSpeakingRef.current = true; if(convoModeRef.current) setConvoState("speaking"); };
-    u.onend = u.onerror = () => {
+  // ── AudioContext (iOS unlock용) ──
+  const audioCtxRef = React.useRef(null);
+  const getAudioCtx = () => {
+    if(!audioCtxRef.current) audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+    if(audioCtxRef.current.state === "suspended") audioCtxRef.current.resume();
+    return audioCtxRef.current;
+  };
+
+  // ── OpenAI TTS ──
+  const speakReply = async text => {
+    const key = getOpenAIKey();
+    if(!key) { setTimeout(restartListening, 500); return; }
+    isSpeakingRef.current = true;
+    if(convoModeRef.current) setConvoState("speaking");
+    try {
+      const clean = text.replace(/[*_`#\[\]]/g,"").replace(/\n/g," ").slice(0,300);
+      const r = await fetch("https://api.openai.com/v1/audio/speech", {
+        method:"POST",
+        headers:{"Content-Type":"application/json","Authorization":`Bearer ${key}`},
+        body: JSON.stringify({model:"tts-1", voice:"nova", input:clean, response_format:"mp3"})
+      });
+      if(!r.ok) throw new Error("TTS "+r.status);
+      const buf = await r.arrayBuffer();
+      const ctx = getAudioCtx();
+      const decoded = await ctx.decodeAudioData(buf);
+      const src = ctx.createBufferSource();
+      src.buffer = decoded;
+      src.connect(ctx.destination);
+      src.onended = () => {
+        isSpeakingRef.current = false;
+        if(convoModeRef.current) { setConvoTranscript(""); setTimeout(restartListening, 400); }
+      };
+      src.start(0);
+    } catch(e) {
+      console.warn("TTS 오류:", e);
       isSpeakingRef.current = false;
-      if(convoModeRef.current) { setConvoTranscript(""); setTimeout(restartListening, 400); }
-    };
-    window.speechSynthesis.speak(u);
+      if(convoModeRef.current) setTimeout(restartListening, 500);
+    }
   };
 
   // ── 대화모드 ──
   const startConvoMode = () => {
-    if(!apiKey) { setError("API 키가 없어요"); return; }
     if(!recognitionRef.current) { setError("이 브라우저는 음성을 지원하지 않아요"); return; }
     convoModeRef.current = true;
     setConvoMode(true); setConvoState("idle");
-    // iOS TTS unlock (사용자 제스처 컨텍스트에서 실행)
-    if(window.speechSynthesis) {
-      const u = new SpeechSynthesisUtterance(" ");
-      u.volume = 0; u.lang = "ko-KR";
-      window.speechSynthesis.speak(u);
-    }
-    setTimeout(restartListening, 800);
+    // iOS AudioContext unlock (사용자 제스처 컨텍스트에서 실행)
+    try { getAudioCtx(); } catch(e){}
+    setTimeout(restartListening, 300);
   };
   const stopConvoMode = () => {
     convoModeRef.current = false;
     setConvoMode(false); setConvoState("idle");
     try { recognitionRef.current?.abort(); } catch(e){}
-    window.speechSynthesis?.cancel();
     isSpeakingRef.current = false;
+    audioCtxRef.current?.suspend();
   };
 
   // ── 단발 마이크 ──
   const toggleVoice = () => {
-    if(isSpeakingRef.current) { window.speechSynthesis?.cancel(); return; }
+    if(isSpeakingRef.current) return; // 말하는 중엔 무시
     if(isListening) { recognitionRef.current?.stop(); return; }
     if(!recognitionRef.current) return;
     try { recognitionRef.current.start(); } catch(e){}
