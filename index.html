@@ -7089,6 +7089,1734 @@ function AdminServiceTags({ data, setData }) {
 }
 
 
+function useDragSort(items, setItems, sortKey="sort", onComplete) {
+  const dragItem = useRef(null);
+  const dragOver = useRef(null);
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
+  const [touchDragIdx, setTouchDragIdx] = useState(null);
+  const [touchOverIdx, setTouchOverIdx] = useState(null);
+  const rowEls = useRef({});
+
+  const doReorder = (fromIdx, toIdx) => {
+    if (fromIdx === toIdx) return;
+    const copy = [...itemsRef.current];
+    const dragged = copy.splice(fromIdx, 1)[0];
+    copy.splice(toIdx, 0, dragged);
+    const reordered = copy.map((it, i) => ({...it, [sortKey]: i}));
+    setItems(reordered);
+    if (onCompleteRef.current) onCompleteRef.current(reordered);
+  };
+
+  // Desktop drag
+  const onDragStart = (idx) => { dragItem.current = idx; };
+  const onDragEnter = (idx) => { dragOver.current = idx; };
+  const onDragEnd = () => {
+    if (dragItem.current === null || dragOver.current === null) return;
+    doReorder(dragItem.current, dragOver.current);
+    dragItem.current = null; dragOver.current = null;
+  };
+
+  // Touch drag (document-level listeners so touchmove/end always fire)
+  useEffect(() => {
+    const handleMove = (e) => {
+      if (dragItem.current === null) return;
+      e.preventDefault();
+      const touch = e.touches[0];
+      for (const [idxStr, el] of Object.entries(rowEls.current)) {
+        if (!el) continue;
+        const rect = el.getBoundingClientRect();
+        if (touch.clientY >= rect.top && touch.clientY <= rect.bottom) {
+          const idx = parseInt(idxStr);
+          if (dragOver.current !== idx) { dragOver.current = idx; setTouchOverIdx(idx); }
+          break;
+        }
+      }
+    };
+    const handleEnd = () => {
+      if (dragItem.current !== null && dragOver.current !== null) {
+        doReorder(dragItem.current, dragOver.current);
+      }
+      dragItem.current = null; dragOver.current = null;
+      setTouchDragIdx(null); setTouchOverIdx(null);
+    };
+    document.addEventListener('touchmove', handleMove, {passive: false});
+    document.addEventListener('touchend', handleEnd);
+    return () => { document.removeEventListener('touchmove', handleMove); document.removeEventListener('touchend', handleEnd); };
+  }, []);
+
+  const onTouchStart = (idx) => (e) => {
+    dragItem.current = idx; dragOver.current = idx;
+    setTouchDragIdx(idx); setTouchOverIdx(idx);
+  };
+  const rowRef = (idx) => (el) => { rowEls.current[idx] = el; };
+
+  return { onDragStart, onDragEnter, onDragEnd, onTouchStart, rowRef, touchDragIdx, touchOverIdx };
+}
+
+const DragHandle = ({onTouchStart}) => <span onTouchStart={onTouchStart} style={{cursor:"grab",flexShrink:0,userSelect:"none",touchAction:"none",padding:"4px 2px"}}><I name="grip" size={14} color={T.gray500}/></span>;
+
+// ─── 시술상품관리 ───
+function AdminSaleItems({ data, setData }) {
+  const [services, setServices] = useState([...(data?.services||[])].sort((a,b)=>a.sort-b.sort));
+  useEffect(() => { setData(p => ({...p, services})); }, [services]);
+  const [cats, setCats] = useState(()=>[...(data?.categories||[])].sort((a,b)=>(a.sort||0)-(b.sort||0)));
+  useEffect(()=>{ setCats([...(data?.categories||[])].sort((a,b)=>(a.sort||0)-(b.sort||0))); },[data?.categories?.length]);
+  const catDragRef = useRef(null); const catOverRef = useRef(null); const [catDragOver, setCatDragOver] = useState(null);
+  const syncCats = (updated) => { setCats(updated); if(setData) setData(p=>p?{...p,categories:updated}:p); };
+  const [editId, setEditId] = useState(null);
+  const [editData, setEditData] = useState({});
+  const [showAdd, setShowAdd] = useState(false);
+  const [newSvc, setNewSvc] = useState({ cat:cats[0]?.id||"sc1", name:"", dur:20, priceF:0, priceM:0, note:"", isPackage:false, pkgCount:5, pkgPriceF:0, pkgPriceM:0 });
+  const [filterCat, setFilterCat] = useState("all");
+  const [delConfirm, setDelConfirm] = useState(null);
+  const [selected, setSelected] = useState(new Set());
+  const drag = useDragSort(services, setServices, "sort", (reordered) => {
+    reordered.forEach(s => sb.update("services", s.id, {sort: s.sort}).catch(console.error));
+  });
+
+  const filtered = filterCat === "all" ? services : services.filter(s => s.cat === filterCat);
+  const allChecked = filtered.length > 0 && filtered.every(s => selected.has(s.id));
+  const toggleAll = () => {
+    if (allChecked) setSelected(new Set());
+    else setSelected(new Set(filtered.map(s => s.id)));
+  };
+  const toggleOne = (id) => setSelected(prev => { const s = new Set(prev); s.has(id)?s.delete(id):s.add(id); return s; });
+  const bulkDelete = () => {
+    if (selected.size === 0) return;
+    if (!window.confirm(selected.size + "개 시술을 삭제하시겠습니까?")) return;
+    selected.forEach(id => sb.del("services", id).catch(console.error));
+    setServices(p => p.filter(s => !selected.has(s.id)).map((s,i) => ({...s, sort:i})));
+    setSelected(new Set());
+  };
+
+  const startEdit = (svc) => { setEditId(svc.id); setEditData({...svc}); };
+  const saveEdit = () => { 
+    setServices(p=>p.map(s=>s.id===editId?{...editData}:s)); 
+    sb.update("services", editId, {cat:editData.cat, name:editData.name, dur:editData.dur, price_f:editData.priceF, price_m:editData.priceM, note:editData.note||"", sort:editData.sort||0, is_package:!!editData.isPackage, pkg_count:editData.pkgCount||0, pkg_price_f:editData.pkgPriceF||0, pkg_price_m:editData.pkgPriceM||0}).catch(console.error);
+    setEditId(null); 
+  };
+  const deleteSvc = (id) => { 
+    setServices(p=>p.filter(s=>s.id!==id).map((s,i)=>({...s,sort:i}))); 
+    sb.del("services", id).catch(console.error);
+    setDelConfirm(null); 
+  };
+  const addSvc = () => {
+    if(!newSvc.name.trim()) return;
+    // 같은 카테고리 중 최대 sort 찾기 → 그 바로 뒤에 삽입
+    const sameCat = services.filter(s=>s.cat===newSvc.cat);
+    const insertAfterSort = sameCat.length>0 ? Math.max(...sameCat.map(s=>s.sort||0)) : -1;
+    // insertAfterSort 보다 sort가 큰 기존 항목들을 +1씩 밀기
+    const shifted = services.map(s=>(s.sort||0)>insertAfterSort ? {...s,sort:(s.sort||0)+1} : s);
+    const newSort = insertAfterSort+1;
+    const svc = {...newSvc, id:uid(), priceF:Number(newSvc.priceF)||0, priceM:Number(newSvc.priceM)||0, dur:Number(newSvc.dur)||20, sort:newSort, isPackage:!!newSvc.isPackage, pkgCount:Number(newSvc.pkgCount)||0, pkgPriceF:Number(newSvc.pkgPriceF)||0, pkgPriceM:Number(newSvc.pkgPriceM)||0};
+    setServices([...shifted, svc]);
+    // DB: 밀린 항목들 sort 업데이트
+    shifted.filter((s,i)=>s.sort!==(services[i]?.sort||0)).forEach(s=>sb.update("services",s.id,{sort:s.sort}).catch(console.error));
+    sb.insert("services", {id:svc.id, business_id:_activeBizId, cat:svc.cat, name:svc.name, dur:svc.dur, price_f:svc.priceF, price_m:svc.priceM, note:svc.note||"", sort:svc.sort, is_package:svc.isPackage, pkg_count:svc.pkgCount, pkg_price_f:svc.pkgPriceF, pkg_price_m:svc.pkgPriceM}).catch(console.error);
+    setNewSvc({ cat:cats[0]?.id||"sc1", name:"", dur:20, priceF:0, priceM:0, note:"", isPackage:false, pkgCount:5, pkgPriceF:0, pkgPriceM:0 }); setShowAdd(false);
+  };
+  const inp = (val, onChange, w, type) => <input className="inp" type={type||"text"} value={val}
+    onChange={e => onChange(type==="number" ? Number(e.target.value)||0 : e.target.value)}
+    style={{width:w||"100%",padding:"4px 6px",fontSize:T.fs.xxs,background:T.dangerLt,border:"1px solid #d0d0d0",textAlign:type==="number"?"right":"left"}} />;
+
+  const downloadXl = () => XL.download(services.map(s=>({카테고리:cats.find(c=>c.id===s.cat)?.name||"",시술명:s.name,여성가:s.priceF,남성가:s.priceM,소요분:s.dur,다회권:s.isPackage?"Y":"",회수:s.pkgCount||"",비고:s.note||""})),"시술목록.xlsx","시술",["카테고리","시술명","여성가","남성가","소요분","다회권","회수","비고"]);
+  const uploadXl = async (e) => {
+    const file = e.target.files[0]; if(!file) return;
+    const rows = await XL.readFile(file);
+    // Auto-create missing categories from Excel
+    const catNames = [...new Set(rows.map(r=>String(r["카테고리"]||r["category"]||"").trim()).filter(Boolean))];
+    let localCats = [...cats];
+    const newCats = [];
+    for (const cn of catNames) {
+      if (!localCats.find(c=>c.name.trim()===cn)) {
+        const nc = {id:uid(), name:cn, sort:localCats.length+newCats.length};
+        newCats.push(nc);
+        localCats.push(nc);
+      }
+    }
+    if (newCats.length > 0) {
+      for (const nc of newCats) {
+        await sb.insert("service_categories", {id:nc.id, business_id:_activeBizId, name:nc.name, sort:nc.sort}).catch(console.error);
+      }
+      if (setData) setData(prev => ({...prev, categories: localCats}));
+    }
+    const newSvcs = rows.map((r,i)=>{
+      const catName = String(r["카테고리"]||r["category"]||"").trim();
+      const cat = localCats.find(c=>c.name.trim()===catName);
+      return {id:uid(), cat:cat?.id||localCats[0]?.id||"sc1", name:String(r["시술명"]||r["name"]||"").trim(), priceF:Number(r["여성가"]||r["priceF"])||0, priceM:Number(r["남성가"]||r["priceM"])||0, dur:Number(r["소요분"]||r["dur"])||20, note:String(r["비고"]||"").trim(), sort:i, isPackage:String(r["다회권"]||"").toUpperCase()==="Y", pkgCount:Number(r["회수"])||0, pkgPriceF:0, pkgPriceM:0};
+    }).filter(r=>r.name);
+    // Re-assign sort after filter
+    newSvcs.forEach((s,i) => s.sort = i);
+    if(newSvcs.length) {
+      const mode = window.confirm(newSvcs.length+"개 시술 업로드\n\n[확인] 기존 전체 삭제 후 교체\n[취소] 기존에 추가");
+      if (mode) {
+        // Replace all: delete existing services first
+        for (const s of services) { await sb.del("services", s.id).catch(console.error); }
+        setServices(newSvcs);
+        for (const s of newSvcs) { await sb.insert("services",{id:s.id, business_id:_activeBizId, cat:s.cat, name:s.name, dur:s.dur, price_f:s.priceF, price_m:s.priceM, note:s.note||"", sort:s.sort, is_package:!!s.isPackage, pkg_count:s.pkgCount||0, pkg_price_f:s.pkgPriceF||0, pkg_price_m:s.pkgPriceM||0}).catch(console.error); }
+      } else {
+        const maxSort = services.reduce((m,s)=>Math.max(m,s.sort||0),0);
+        newSvcs.forEach((s,i) => s.sort = maxSort + 1 + i);
+        setServices(p=>[...p,...newSvcs]);
+        newSvcs.forEach(s=>sb.insert("services",{id:s.id, business_id:_activeBizId, cat:s.cat, name:s.name, dur:s.dur, price_f:s.priceF, price_m:s.priceM, note:s.note||"", sort:s.sort, is_package:!!s.isPackage, pkg_count:s.pkgCount||0, pkg_price_f:s.pkgPriceF||0, pkg_price_m:s.pkgPriceM||0}).catch(console.error));
+      }
+      if (setData) setData(prev => ({...prev, services: mode ? newSvcs : [...prev.services, ...newSvcs]}));
+    }
+    e.target.value="";
+  };
+
+  const resetSort = () => {
+    if(!window.confirm("현재 화면 순서대로 sort 값을 0부터 재설정합니다.")) return;
+    const reordered = services.map((s,i) => ({...s, sort:i}));
+    setServices(reordered);
+    reordered.forEach(s => sb.update("services", s.id, {sort:s.sort}).catch(console.error));
+  };
+
+  return <div>
+    <AdminHeader title="시술 상품 관리" count={services.length} onAdd={()=>setShowAdd(!showAdd)} addLabel={showAdd?"취소":<><I name="plus" size={12}/> 시술 추가</>} onDownload={downloadXl} onUpload={uploadXl}/>
+    {showAdd && <div className="card" style={{padding:14,marginBottom:14}}>
+      <div style={{display:"flex",gap:T.sp.sm,flexWrap:"wrap",alignItems:"flex-end"}}>
+        <FLD label="카테고리"><select className="inp" style={{width:120,padding:"4px 6px",fontSize:T.fs.xxs}} value={newSvc.cat} onChange={e=>setNewSvc(p=>({...p,cat:e.target.value}))}>{cats.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></FLD>
+        <FLD label="시술명">{inp(newSvc.name, v=>setNewSvc(p=>({...p,name:v})), 150)}</FLD>
+        <FLD label="여성가(1회)">{inp(newSvc.priceF, v=>setNewSvc(p=>({...p,priceF:v})), 90, "number")}</FLD>
+        <FLD label="남성가(1회)">{inp(newSvc.priceM, v=>setNewSvc(p=>({...p,priceM:v})), 90, "number")}</FLD>
+        <FLD label="소요(분)">{inp(newSvc.dur, v=>setNewSvc(p=>({...p,dur:v})), 60, "number")}</FLD>
+        <FLD label="비고">{inp(newSvc.note||"", v=>setNewSvc(p=>({...p,note:v})), 130)}</FLD>
+      </div>
+      <div style={{display:"flex",gap:T.sp.sm,flexWrap:"wrap",alignItems:"center",marginTop:8}}>
+        <label style={{fontSize:T.fs.xxs,display:"flex",alignItems:"center",gap:T.sp.xs,cursor:"pointer"}}>
+          <label style={{display:"flex",alignItems:"center",gap:4,cursor:"pointer",marginRight:8}}>
+              <input type="checkbox" checked={!!(newSvc.note||'').includes('[qty]')} onChange={e=>setNewSvc(p=>({...p,note:e.target.checked?(p.note||'').replace('[qty]','').trim()+' [qty]':(p.note||'').replace('[qty]','').trim()}))} style={{accentColor:T.female}}/> 
+              <span style={{fontWeight:T.fw.bold,color:(newSvc.note||'').includes('[qty]')?T.female:T.gray500}}>수량허용</span>
+            </label>
+            <input type="checkbox" checked={newSvc.isPackage} onChange={e=>setNewSvc(p=>({...p,isPackage:e.target.checked}))} style={{accentColor:T.primary}}/>
+          <span style={{fontWeight:T.fw.bold,color:newSvc.isPackage?T.primary:T.gray500}}>다회권</span>
+        </label>
+        {newSvc.isPackage && <>
+          <FLD label="회수">{inp(newSvc.pkgCount, v=>setNewSvc(p=>({...p,pkgCount:v})), 50, "number")}</FLD>
+          <FLD label="다회권 여성가">{inp(newSvc.pkgPriceF, v=>setNewSvc(p=>({...p,pkgPriceF:v})), 90, "number")}</FLD>
+          <FLD label="다회권 남성가">{inp(newSvc.pkgPriceM, v=>setNewSvc(p=>({...p,pkgPriceM:v})), 90, "number")}</FLD>
+        </>}
+        <Btn variant="primary" size="sm" onClick={addSvc} style={{padding:"6px 16px",marginLeft:"auto"}}>등록</Btn>
+      </div>
+    </div>}
+    <div style={{marginBottom:8}}>
+      <div style={{fontSize:T.fs.xs,color:T.textSub,marginBottom:4}}>카테고리 <span style={{color:T.gray400,fontSize:T.fs.nano}}>(드래그로 순서 변경)</span></div>
+      <div style={{display:"flex",gap:T.sp.xs,flexWrap:"wrap",alignItems:"center",padding:"6px 8px",background:T.gray100,borderRadius:T.radius.md,minHeight:36}} onDragOver={e=>e.preventDefault()}>
+        <button className={filterCat==="all"?"btn-p btn-sm":"btn-s btn-sm"} onClick={()=>setFilterCat("all")} style={{fontSize:T.fs.xs}}>전체 ({services.length})</button>
+        {cats.map((cat,i)=><button key={cat.id}
+          draggable className={filterCat===cat.id?"btn-p btn-sm":"btn-s btn-sm"}
+          onClick={()=>setFilterCat(cat.id)}
+          onDragStart={()=>{catDragRef.current=i;}}
+          onDragEnter={()=>{catOverRef.current=i; setCatDragOver(i);}}
+          onDragEnd={()=>{
+            const di=catDragRef.current, oi=catOverRef.current;
+            setCatDragOver(null); catDragRef.current=null; catOverRef.current=null;
+            if(di===null||oi===null||di===oi) return;
+            const r=[...cats]; const [m]=r.splice(di,1); r.splice(oi,0,m);
+            const reordered=r.map((c,j)=>({...c,sort:j}));
+            syncCats(reordered);
+            reordered.forEach(c=>sb.update("service_categories",c.id,{sort:c.sort}).catch(console.error));
+          }}
+          style={{fontSize:T.fs.xs,cursor:"grab",opacity:catDragOver===i?0.5:1,outline:catDragOver===i?"2px dashed #7c7cc8":"none"}}
+          >{cat.name} ({services.filter(s=>s.cat===cat.id).length})</button>)}
+        {selected.size > 0 && <Btn variant="danger" size="sm" onClick={bulkDelete} style={{fontSize:T.fs.xs,marginLeft:"auto",padding:"4px 12px"}}><I name="trash" size={12}/> 선택 삭제 ({selected.size})</Btn>}
+        <button onClick={resetSort} style={{fontSize:T.fs.nano,marginLeft:selected.size>0?"4px":"auto",padding:"3px 8px",border:"1px solid #ccc",borderRadius:T.radius.sm,background:T.bgCard,color:T.textSub,cursor:"pointer"}}>순서 리셋</button>
+      </div>
+    </div>
+    <DataTable card={false} className="admin-tw" maxH="calc(100vh - 340px)"><thead><tr>
+        <th style={{width:30}}><input type="checkbox" checked={allChecked} onChange={toggleAll}/></th><th style={{width:25}}></th><th style={{width:30}}>No</th><th style={{width:85}}>카테고리</th><th>시술명</th>
+        <th style={{width:85,textAlign:"right"}}>여성가</th><th style={{width:85,textAlign:"right"}}>남성가</th>
+        <th style={{width:50,textAlign:"center"}}>소요</th><th style={{width:100}}>비고</th><th style={{width:45,textAlign:"center",fontSize:T.fs.nano}}>다회권</th><th style={{width:75,textAlign:"center"}}>관리</th>
+      </tr></thead><tbody>
+        {filtered.map((svc,i)=>{
+          const isEdit = editId === svc.id;
+          if (isEdit) return <tr key={svc.id} ref={drag.rowRef(i)} style={{background:T.primaryHover}}>
+            <td><input type="checkbox" checked={selected.has(svc.id)} onChange={()=>toggleOne(svc.id)}/></td>
+            <td><DragHandle onTouchStart={drag.onTouchStart(i)}/></td><td style={{color:T.gray500}}>{i+1}</td>
+            <td><select className="inp" value={editData.cat} onChange={e=>setEditData(p=>({...p,cat:e.target.value}))} style={{width:"100%",padding:"4px 6px",fontSize:T.fs.xxs}}>{cats.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></td>
+            <td>{inp(editData.name, v=>setEditData(p=>({...p,name:v})))}</td>
+            <td>{inp(editData.priceF, v=>setEditData(p=>({...p,priceF:v})), "100%", "number")}</td>
+            <td>{inp(editData.priceM, v=>setEditData(p=>({...p,priceM:v})), "100%", "number")}</td>
+            <td>{inp(editData.dur, v=>setEditData(p=>({...p,dur:v})), "100%", "number")}</td>
+            <td>{inp(editData.note||"", v=>setEditData(p=>({...p,note:v})))}</td>
+            <td style={{textAlign:"center"}}><label style={{fontSize:T.fs.nano,display:"flex",alignItems:"center",gap:2}}><input type="checkbox" checked={!!editData.isPackage} onChange={e=>setEditData(p=>({...p,isPackage:e.target.checked}))}/>{editData.isPackage?editData.pkgCount+"회":""}</label>
+            {editData.isPackage && <div style={{display:"flex",gap:2,marginTop:2}}>{inp(editData.pkgCount||5,v=>setEditData(p=>({...p,pkgCount:v})),30,"number")}<span style={{fontSize:T.fs.nano,color:T.gray500}}>회</span></div>}</td><td style={{textAlign:"center"}}>
+              <label style={{fontSize:T.fs.nano,display:"flex",alignItems:"center",gap:2,justifyContent:"center"}}>
+              <input type="checkbox" checked={!!(editData.note||'').includes('[qty]')} 
+              onChange={e=>setEditData(p=>({...p,note:e.target.checked?(p.note||'').replace('[qty]','').trim()+' [qty]':(p.note||'').replace('[qty]','').trim()}))} 
+              style={{accentColor:T.female}}/>수량</label></td>
+            <td style={{textAlign:"center"}}><div style={{display:"flex",gap:3,justifyContent:"center"}}>
+              <Btn variant="primary" size="sm" onClick={saveEdit} style={{padding:"2px 8px",fontSize:T.fs.xs}}>저장</Btn>
+              <Btn variant="secondary" size="sm" onClick={()=>setEditId(null)} style={{padding:"2px 6px",fontSize:T.fs.xs}}>취소</Btn>
+            </div></td>
+          </tr>;
+          return <tr key={svc.id} ref={drag.rowRef(i)} draggable onDragStart={()=>drag.onDragStart(i)} onDragEnter={()=>drag.onDragEnter(i)} onDragEnd={drag.onDragEnd} onDragOver={e=>e.preventDefault()}
+            style={{background:drag.touchOverIdx===i?T.purpleLt:undefined}}>
+            <td><input type="checkbox" checked={selected.has(svc.id)} onChange={()=>toggleOne(svc.id)}/></td>
+            <td><DragHandle onTouchStart={drag.onTouchStart(i)}/></td>
+            <td style={{color:T.gray500}}>{i+1}</td>
+            <td><span className="badge" style={{background:T.primaryHover,color:T.primary}}>{cats.find(c=>c.id===svc.cat)?.name||"-"}</span></td>
+            <td style={{fontWeight:T.fw.medium,fontSize:T.fs.sm}}>{svc.name}{svc.isPackage && <span style={{marginLeft:4,fontSize:T.fs.nano,background:T.primary,color:T.bgCard,borderRadius:T.radius.sm,padding:"1px 4px",verticalAlign:"middle"}}>{svc.pkgCount}회권</span>}</td>
+            <td style={{textAlign:"right",color:T.primary,fontWeight:T.fw.bold,fontSize:T.fs.sm}}>{svc.priceF>0?fmt(svc.priceF)+"원":"-"}</td>
+            <td style={{textAlign:"right",color:T.male,fontWeight:T.fw.bold,fontSize:T.fs.sm}}>{svc.priceM>0?fmt(svc.priceM)+"원":"-"}</td>
+            <td style={{textAlign:"center",color:T.textSub,fontSize:T.fs.xxs}}>{svc.dur}분</td>
+            <td style={{fontSize:T.fs.xxs,color:T.textSub}}>{svcNoteDisplay(svc.note)}{(svc.note||'').includes('[qty]')&&<span style={{marginLeft:4,fontSize:T.fs.nano,background:T.femaleLt||'#fce4ec',color:T.female,borderRadius:T.radius.sm,padding:'1px 4px'}}>수량</span>}</td>
+            <td style={{textAlign:"center"}}>{svc.isPackage ? <span style={{fontSize:T.fs.nano,background:T.primary,color:T.bgCard,borderRadius:T.radius.sm,padding:"1px 4px"}}>{svc.pkgCount}회</span> : <span style={{fontSize:T.fs.nano,color:T.gray400}}>-</span>}</td>
+            <td style={{textAlign:"center"}}><div style={{display:"flex",gap:T.sp.xs,justifyContent:"center"}}>
+              <button onClick={()=>startEdit(svc)} style={{background:"none",border:"none",cursor:"pointer",color:T.primary,fontSize:T.fs.sm}}><I name="edit" size={13}/></button>
+              {delConfirm===svc.id
+                ? <><Btn variant="danger" size="sm" onClick={()=>deleteSvc(svc.id)} style={{padding:"1px 6px",fontSize:T.fs.nano}}>확인</Btn><Btn variant="secondary" size="sm" onClick={()=>setDelConfirm(null)} style={{padding:"1px 5px",fontSize:T.fs.nano}}>취소</Btn></>
+                : <button onClick={()=>setDelConfirm(svc.id)} style={{background:"none",border:"none",cursor:"pointer",color:T.danger,fontSize:T.fs.sm}}><I name="trash" size={13}/></button>}
+            </div></td>
+          </tr>;
+        })}
+      </tbody></DataTable>
+  </div>;
+}
+
+// ─── 제품관리 ───
+function AdminProductItems({ data, setData }) {
+  const [items, setItems] = useState(()=>[...(data?.products||[])].map((p,i)=>({...p,sort:p.sort??i})).sort((a,b)=>a.sort-b.sort));
+  useEffect(() => { setData(p => ({...p, products: items})); }, [items]);
+  const [editId, setEditId] = useState(null);
+  const [editData, setEditData] = useState({});
+  const [showAdd, setShowAdd] = useState(false);
+  const [newItem, setNewItem] = useState({ name:"", price:0 });
+  const [delConfirm, setDelConfirm] = useState(null);
+  const [selected, setSelected] = useState(new Set());
+  const drag = useDragSort(items, setItems, "sort", (reordered) => {
+    reordered.forEach(s => sb.update("products", s.id, {sort: s.sort}).catch(console.error));
+  });
+
+  const allChecked = items.length > 0 && items.every(it => selected.has(it.id));
+  const toggleAll = () => { if (allChecked) setSelected(new Set()); else setSelected(new Set(items.map(it => it.id))); };
+  const toggleOne = (id) => setSelected(prev => { const s = new Set(prev); s.has(id)?s.delete(id):s.add(id); return s; });
+  const bulkDelete = () => {
+    if (selected.size === 0) return;
+    if (!window.confirm(selected.size + "개 제품을 삭제하시겠습니까?")) return;
+    selected.forEach(id => sb.del("products", id).catch(console.error));
+    setItems(p => p.filter(it => !selected.has(it.id)).map((it,i) => ({...it, sort:i})));
+    setSelected(new Set());
+  };
+
+  const startEdit = (it) => { setEditId(it.id); setEditData({...it}); };
+  const saveEdit = () => { 
+    setItems(p=>p.map(x=>x.id===editId?{...editData}:x)); 
+    sb.update("products", editId, {name:editData.name, price:editData.price||0}).catch(console.error);
+    setEditId(null); 
+  };
+  const deleteItem = (id) => { 
+    setItems(p=>p.filter(x=>x.id!==id).map((x,i)=>({...x,sort:i}))); 
+    sb.del("products", id).catch(console.error);
+    setDelConfirm(null); 
+  };
+  const addItem = () => {
+    if(!newItem.name.trim()) return;
+    const it = {id:uid(), name:newItem.name, price:Number(newItem.price)||0, cat:"product", sort:items.length};
+    setItems(p=>[...p, it]);
+    sb.insert("products", {id:it.id, business_id:_activeBizId, name:it.name, price:it.price, cat:"product", sort:it.sort}).catch(console.error);
+    setNewItem({name:"",price:0}); setShowAdd(false);
+  };
+
+  const downloadXl = () => XL.download(items.map((p,i)=>({제품명:p.name, 가격:p.price||0})), "제품목록.xlsx", "제품", ["제품명","가격"]);
+  const uploadXl = async (e) => {
+    const file = e.target.files[0]; if(!file) return;
+    const rows = await XL.readFile(file);
+    const newItems = rows.map((r,i)=>({id:uid(), name:String(r["제품명"]||r["name"]||"").trim(), price:Number(r["가격"]||r["price"])||0, cat:"product", sort:items.length+i})).filter(r=>r.name);
+    if(newItems.length && window.confirm(newItems.length+"개 제품을 추가하시겠습니까?")) {
+      setItems(p=>[...p,...newItems]);
+      newItems.forEach(it=>sb.insert("products",{id:it.id, business_id:_activeBizId, name:it.name, price:it.price, cat:"product", sort:it.sort}).catch(console.error));
+    }
+    e.target.value="";
+  };
+
+  return <div>
+    <AdminHeader title="제품 관리" count={items.length} onAdd={()=>setShowAdd(!showAdd)} addLabel={showAdd?"취소":<><I name="plus" size={12}/> 제품 추가</>} onDownload={downloadXl} onUpload={uploadXl}/>
+    {showAdd && <div className="card" style={{padding:14,marginBottom:14}}>
+      <div style={{display:"flex",gap:T.sp.sm,alignItems:"flex-end"}}>
+        <FLD label="제품명"><input className="inp" style={{width:180}} value={newItem.name} onChange={e=>setNewItem(p=>({...p,name:e.target.value}))} placeholder="제품명"/></FLD>
+        <FLD label="가격"><input className="inp" type="number" style={{width:100}} value={newItem.price} onChange={e=>setNewItem(p=>({...p,price:e.target.value}))} placeholder="0"/></FLD>
+        <Btn variant="primary" size="sm" onClick={addItem} style={{padding:"6px 16px"}}>등록</Btn>
+      </div>
+    </div>}
+    {selected.size > 0 && <div style={{marginBottom:8}}><Btn variant="danger" size="sm" onClick={bulkDelete} style={{fontSize:T.fs.xs,padding:"4px 12px"}}><I name="trash" size={12}/> 선택 삭제 ({selected.size})</Btn></div>}
+    <DataTable card={false} className="admin-tw" maxH="calc(100vh - 300px)"><thead><tr>
+        <th style={{width:30}}><input type="checkbox" checked={allChecked} onChange={toggleAll}/></th><th style={{width:25}}></th><th style={{width:35}}>No</th><th>제품명</th><th style={{width:100,textAlign:"right"}}>가격</th><th style={{width:80,textAlign:"center"}}>관리</th>
+      </tr></thead>
+        <tbody>{items.map((it,i)=>{
+          if (editId===it.id) return <tr key={it.id} ref={drag.rowRef(i)} style={{background:T.primaryHover}}>
+            <td><input type="checkbox" checked={selected.has(it.id)} onChange={()=>toggleOne(it.id)}/></td>
+            <td><DragHandle onTouchStart={drag.onTouchStart(i)}/></td><td style={{color:T.gray500}}>{i+1}</td>
+            <td><input className="inp" value={editData.name} onChange={e=>setEditData(p=>({...p,name:e.target.value}))} style={{width:"100%"}}/></td>
+            <td><input className="inp" type="number" value={editData.price} onChange={e=>setEditData(p=>({...p,price:Number(e.target.value)||0}))} style={{width:"100%",textAlign:"right"}}/></td>
+            <td style={{textAlign:"center"}}><div style={{display:"flex",gap:3,justifyContent:"center"}}>
+              <Btn variant="primary" size="sm" onClick={saveEdit} style={{padding:"2px 8px",fontSize:T.fs.xs}}>저장</Btn>
+              <Btn variant="secondary" size="sm" onClick={()=>setEditId(null)} style={{padding:"2px 6px",fontSize:T.fs.xs}}>취소</Btn>
+            </div></td>
+          </tr>;
+          return <tr key={it.id} ref={drag.rowRef(i)} draggable onDragStart={()=>drag.onDragStart(i)} onDragEnter={()=>drag.onDragEnter(i)} onDragEnd={drag.onDragEnd} onDragOver={e=>e.preventDefault()}
+            style={{background:drag.touchOverIdx===i?T.purpleLt:undefined}}>
+            <td><input type="checkbox" checked={selected.has(it.id)} onChange={()=>toggleOne(it.id)}/></td>
+            <td><DragHandle onTouchStart={drag.onTouchStart(i)}/></td><td style={{color:T.gray500}}>{i+1}</td>
+            <td style={{fontWeight:T.fw.medium,fontSize:T.fs.sm}}>{it.name}</td>
+            <td style={{textAlign:"right",color:T.infoLt2,fontWeight:T.fw.bold,fontSize:T.fs.sm}}>{it.price>0?fmt(it.price)+"원":"-"}</td>
+            <td style={{textAlign:"center"}}><div style={{display:"flex",gap:T.sp.xs,justifyContent:"center"}}>
+              <button onClick={()=>startEdit(it)} style={{background:"none",border:"none",cursor:"pointer",color:T.primary,fontSize:T.fs.sm}}><I name="edit" size={13}/></button>
+              {delConfirm===it.id
+                ? <><Btn variant="danger" size="sm" onClick={()=>deleteItem(it.id)} style={{padding:"1px 6px",fontSize:T.fs.nano}}>확인</Btn><Btn variant="secondary" size="sm" onClick={()=>setDelConfirm(null)} style={{padding:"1px 5px",fontSize:T.fs.nano}}>취소</Btn></>
+                : <button onClick={()=>setDelConfirm(it.id)} style={{background:"none",border:"none",cursor:"pointer",color:T.danger,fontSize:T.fs.sm}}><I name="trash" size={13}/></button>}
+            </div></td>
+          </tr>;
+        })}</tbody>
+      </DataTable>
+  </div>;
+}
+
+// ─── 예약경로관리 ───
+function AdminResSources({ data, setData }) {
+  const [sources, setSources] = useState(()=>[...(data?.resSources || [])].sort((a,b)=>(a.sort||0)-(b.sort||0)));
+  useEffect(() => { setData(p => ({...p, resSources: sources})); }, [sources]);
+  const [showAdd, setShowAdd] = useState(false);
+  const [newSrc, setNewSrc] = useState({ name:"", color:T.primary });
+  const [editId, setEditId] = useState(null);
+  const [editData, setEditData] = useState({});
+  const [delConfirm, setDelConfirm] = useState(null);
+  const [selected, setSelected] = useState(new Set());
+  // 미리보기 드래그 refs
+  const srcPrevDragRef = useRef(null);
+  const srcPrevOverRef = useRef(null);
+  const [srcPrevOver, setSrcPrevOver] = useState(null);
+  const syncSources = (updated) => { setSources(updated); if(setData) setData(prev=>({...prev,resSources:updated})); };
+  const drag = useDragSort(sources, syncSources, "sort", (reordered) => {
+    reordered.forEach(s => sb.update("reservation_sources", s.id, {sort: s.sort}).catch(console.error));
+  });
+
+  const allChecked = sources.length > 0 && sources.every(s => selected.has(s.id));
+  const toggleAll = () => { if (allChecked) setSelected(new Set()); else setSelected(new Set(sources.map(s => s.id))); };
+  const toggleOne = (id) => setSelected(prev => { const s = new Set(prev); s.has(id)?s.delete(id):s.add(id); return s; });
+  const bulkDelete = () => {
+    if (selected.size === 0) return;
+    if (!window.confirm(selected.size + "개 경로를 삭제하시겠습니까?")) return;
+    if ([...selected].some(id => SYSTEM_SRC_IDS.includes(id))) { alert("네이버 예약경로는 시스템 기본값으로 삭제할 수 없습니다."); return; }
+    selected.forEach(id => sb.del("reservation_sources", id).catch(console.error));
+    syncSources(sources.filter(s => !selected.has(s.id)).map((s,i) => ({...s, sort:i})));
+    setSelected(new Set());
+  };
+
+  const srcToDb = (s) => ({id:s.id, business_id:_activeBizId, name:s.name, color:s.color||"", use_yn:s.useYn!==false, sort:s.sort||0});
+
+  const addSource = () => {
+    if(!newSrc.name.trim()) return;
+    const s = {id:"src_"+uid(), name:newSrc.name.trim(), color:newSrc.color||T.primary, useYn:true, sort:sources.length};
+    syncSources([...sources, s]);
+    sb.insert("reservation_sources", srcToDb(s)).catch(console.error);
+    setNewSrc({name:"",color:T.primary}); setShowAdd(false);
+  };
+  const deleteSource = (id) => {
+    syncSources(sources.filter(s=>s.id!==id).map((s,i)=>({...s,sort:i})));
+    sb.del("reservation_sources", id).catch(console.error);
+    setDelConfirm(null);
+  };
+  const startEdit = (src) => { setEditId(src.id); setEditData({...src}); };
+  const saveEdit = () => {
+    syncSources(sources.map(s=>s.id===editId?{...editData}:s));
+    sb.update("reservation_sources", editId, {name:editData.name, color:editData.color||"", use_yn:editData.useYn!==false, sort:editData.sort||0}).catch(console.error);
+    setEditId(null);
+  };
+  const toggleUse = (id) => {
+    const src = sources.find(s=>s.id===id);
+    const newUse = src?.useYn===false;
+    syncSources(sources.map(s=>s.id===id?{...s,useYn:!s.useYn}:s));
+    sb.update("reservation_sources", id, {use_yn:newUse}).catch(console.error);
+  };
+
+  const inpS = {padding:"4px 6px",fontSize:T.fs.xxs,background:T.dangerLt,border:"1px solid #d0d0d0"};
+
+  return <div>
+    <AdminHeader title="예약경로 관리" count={sources.length} onAdd={()=>setShowAdd(!showAdd)} addLabel={showAdd?"취소":<><I name="plus" size={12}/> 경로 추가</>}/>
+
+    {showAdd && <div className="card" style={{padding:14,marginBottom:14}}>
+      <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"flex-end"}}>
+        <FLD label="경로명"><input className="inp" style={{width:160,...inpS}} value={newSrc.name} onChange={e=>setNewSrc(p=>({...p,name:e.target.value}))} placeholder="경로명" onKeyDown={e=>e.key==="Enter"&&addSource()}/></FLD>
+        <FLD label="색상"><div style={{display:"flex",alignItems:"center",gap:3}}>
+          <input type="color" value={newSrc.color||T.primary} onChange={e=>setNewSrc(p=>({...p,color:e.target.value}))} style={{width:22,height:22,border:"none",cursor:"pointer"}}/>
+          <EyeDrop onPick={c=>setNewSrc(p=>({...p,color:c}))} size={22}/>
+          <input className="inp" style={{width:75,...inpS,fontFamily:"monospace",fontSize:T.fs.nano}} value={newSrc.color} onChange={e=>setNewSrc(p=>({...p,color:e.target.value}))} placeholder="#000000"/>
+        </div></FLD>
+        <Btn variant="primary" size="sm" onClick={addSource} style={{padding:"6px 18px"}}>추가</Btn>
+      </div>
+    </div>}
+
+    <div className="card" style={{padding:12,marginBottom:14}}>
+      <div style={{fontSize:T.fs.xs,color:T.textSub,marginBottom:6}}>미리보기 <span style={{color:T.gray400,fontSize:T.fs.nano}}>(드래그로 순서 변경)</span></div>
+      <div style={{display:"flex",flexWrap:"wrap",gap:6,padding:8,background:T.gray100,borderRadius:T.radius.md,minHeight:36}} onDragOver={e=>e.preventDefault()}>
+        {sources.filter(s=>s.useYn!==false).map((s,i)=>{
+          const clr = s.color||T.primary;
+          const h=clr.replace("#",""); const r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16);
+          const txtClr=(0.299*r+0.587*g+0.114*b)/255>0.55?T.text:T.bgCard;
+          const isNaverSrc = s.name===SYSTEM_SRC_NAME_NAVER;
+          return <span key={s.id} draggable
+            onDragStart={()=>{srcPrevDragRef.current=i;}}
+            onDragEnter={()=>{srcPrevOverRef.current=i; setSrcPrevOver(i);}}
+            onDragEnd={()=>{
+              const di=srcPrevDragRef.current, oi=srcPrevOverRef.current;
+              setSrcPrevOver(null); srcPrevDragRef.current=null; srcPrevOverRef.current=null;
+              if(di===null||oi===null||di===oi) return;
+              const active=sources.filter(s=>s.useYn!==false), inactive=sources.filter(s=>s.useYn===false);
+              const r=[...active]; const [m]=r.splice(di,1); r.splice(oi,0,m);
+              const reordered=[...r,...inactive].map((s,j)=>({...s,sort:j}));
+              syncSources(reordered);
+              reordered.forEach(s=>sb.update("reservation_sources",s.id,{sort:s.sort}).catch(console.error));
+            }}
+            className="tag-pill"
+            style={{background:srcPrevOver===i?T.primaryLt:clr,color:srcPrevOver===i?T.primary:txtClr,fontWeight:T.fw.bold,cursor:"grab",
+              boxShadow:isNaverSrc?"0 0 0 1.5px #03C75A40":undefined,
+              display:"inline-flex",alignItems:"center",gap:T.sp.xs,userSelect:"none"}}>
+            {isNaverSrc && <I name="naver" size={11} color={txtClr}/>}{s.name}
+          </span>;
+        })}
+      </div>
+    </div>
+
+    {selected.size > 0 && <div style={{marginBottom:8}}><Btn variant="danger" size="sm" onClick={bulkDelete} style={{fontSize:T.fs.xs,padding:"4px 12px"}}><I name="trash" size={12}/> 선택 삭제 ({selected.size})</Btn></div>}
+
+    <DataTable card={false} className="admin-tw" maxH="calc(100vh - 400px)"><thead><tr>
+        <th style={{width:30}}><input type="checkbox" checked={allChecked} onChange={toggleAll}/></th>
+        <th style={{width:22}}></th><th style={{width:25}}>No</th><th>경로명</th>
+        <th style={{width:80,textAlign:"center"}}>색상</th><th style={{width:55,textAlign:"center"}}>사용</th>
+        <th style={{width:35,textAlign:"center"}}>순서</th><th style={{width:65,textAlign:"center"}}>관리</th>
+      </tr></thead><tbody>
+      {sources.map((src,i) => {
+        const isEdit = editId===src.id;
+        if (isEdit) return <tr key={src.id} ref={drag.rowRef(i)} style={{background:T.primaryHover}}>
+          <td><input type="checkbox" checked={selected.has(src.id)} onChange={()=>toggleOne(src.id)}/></td>
+          <td><DragHandle onTouchStart={drag.onTouchStart(i)}/></td><td style={{color:T.gray500}}>{i+1}</td>
+          <td><input className="inp" value={editData.name} onChange={e=>setEditData(p=>({...p,name:e.target.value}))} style={{width:"100%",...inpS}}/></td>
+          <td><div style={{display:"flex",alignItems:"center",gap:2}}>
+            <input type="color" value={editData.color||T.primary} onChange={e=>setEditData(p=>({...p,color:e.target.value}))} style={{width:20,height:18,border:"none",cursor:"pointer"}}/>
+            <EyeDrop onPick={c=>setEditData(p=>({...p,color:c}))} size={20}/>
+            <input className="inp" value={editData.color||""} onChange={e=>setEditData(p=>({...p,color:e.target.value}))} style={{width:55,...inpS,fontFamily:"monospace",fontSize:T.fs.nano}}/>
+          </div></td>
+          <td></td><td></td>
+          <td style={{textAlign:"center"}}><div style={{display:"flex",gap:3,justifyContent:"center"}}>
+            <Btn variant="primary" size="sm" onClick={saveEdit} style={{padding:"1px 6px",fontSize:T.fs.nano}}>저장</Btn>
+            <Btn variant="secondary" size="sm" onClick={()=>setEditId(null)} style={{padding:"1px 5px",fontSize:T.fs.nano}}>취소</Btn>
+          </div></td>
+        </tr>;
+        return <tr key={src.id} ref={drag.rowRef(i)} draggable onDragStart={()=>drag.onDragStart(i)} onDragEnter={()=>drag.onDragEnter(i)} onDragEnd={drag.onDragEnd} onDragOver={e=>e.preventDefault()}
+          style={{opacity:src.useYn===false?0.45:1,background:drag.touchOverIdx===i?T.purpleLt:undefined}}>
+          <td>{SYSTEM_SRC_IDS.includes(src.id)?<span title="기본 경로" style={{color:T.gray400,fontSize:T.fs.xs}}>🔒</span>:<input type="checkbox" checked={selected.has(src.id)} onChange={()=>toggleOne(src.id)}/>}</td>
+          <td><DragHandle onTouchStart={drag.onTouchStart(i)}/></td>
+          <td style={{color:T.gray500}}>{i+1}</td>
+          <td style={{fontWeight:T.fw.bold,fontSize:T.fs.sm}}>
+            {(()=>{
+              const clr=src.color||T.primary; const h=clr.replace("#",""); const r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16); const txtC=(0.299*r+0.587*g+0.114*b)/255>0.55?T.text:T.bgCard;
+              const isNv=src.name===SYSTEM_SRC_NAME_NAVER;
+              return <span className="tag-pill" style={{background:clr,color:txtC,fontWeight:T.fw.bold,display:"inline-flex",alignItems:"center",gap:T.sp.xs}}>
+                {isNv && <I name="naver" size={11} color={txtC}/>}{src.name}
+              </span>;
+            })()}
+          </td>
+          <td style={{textAlign:"center"}}>{src.color?<div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:T.sp.xs}}>
+            <div style={{width:24,height:16,borderRadius:T.radius.sm,background:src.color,border:"1px solid #d0d0d080"}}/>
+            <span style={{fontSize:T.fs.nano,color:T.textSub,fontFamily:"monospace"}}>{src.color}</span>
+          </div>:<span style={{color:T.gray400,fontSize:T.fs.xs}}>—</span>}</td>
+          <td style={{textAlign:"center"}}><button onClick={()=>toggleUse(src.id)}
+            style={{fontSize:T.fs.xs,padding:"2px 6px",borderRadius:T.radius.sm,border:"1px solid "+(src.useYn===false?T.female:T.gray400),cursor:"pointer",fontFamily:"inherit",
+              background:src.useYn===false?"#e5737320":"transparent",color:src.useYn===false?T.female:T.gray600}}>{src.useYn===false?"미사용":"사용"}</button></td>
+          <td style={{textAlign:"center",color:T.gray400,fontSize:T.fs.xs}}>{i+1}</td>
+          <td style={{textAlign:"center"}}><div style={{display:"flex",gap:3,justifyContent:"center"}}>
+            <button onClick={()=>startEdit(src)} style={{background:"none",border:"none",cursor:"pointer",color:T.primary,fontSize:T.fs.sm}}><I name="edit" size={13}/></button>
+            {SYSTEM_SRC_IDS.includes(src.id) ? <span title="삭제 불가" style={{color:T.border,fontSize:T.fs.sm}}><I name="trash" size={13}/></span> : delConfirm===src.id
+              ? <><Btn variant="danger" size="sm" onClick={()=>deleteSource(src.id)} style={{padding:"1px 5px",fontSize:T.fs.nano}}>확인</Btn><Btn variant="secondary" size="sm" onClick={()=>setDelConfirm(null)} style={{padding:"1px 4px",fontSize:T.fs.nano}}>취소</Btn></>
+              : (SYSTEM_SRC_IDS.includes(src.id) ? <span title="기본 경로는 삭제할 수 없습니다" style={{color:T.gray300,fontSize:T.fs.sm,cursor:"not-allowed"}}><I name="trash" size={13}/></span> : <button onClick={()=>setDelConfirm(src.id)} style={{background:"none",border:"none",cursor:"pointer",color:T.danger,fontSize:T.fs.sm}}><I name="trash" size={13}/></button>)}
+          </div></td>
+        </tr>;
+      })}</tbody></DataTable>
+  </div>;
+}
+
+// ─── 알림톡 설정 (지점별) ───
+function AdminNoti({ data, sb, bizId, branches }) {
+  const [selBranch, setSelBranch] = React.useState(branches?.[0]?.id || null);
+  const branch = branches?.find(b => b.id === selBranch);
+
+  // 설정 저장 키: businesses.settings.noti_{branchId}
+  const [cfg, setCfg] = React.useState({});
+  const [saved, setSaved] = React.useState(false);
+  const [detailKey, setDetailKey] = React.useState(null); // 상세 편집 중인 항목 key
+  const [apiOpen, setApiOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!selBranch) return;
+    const raw = branch?.notiConfig || {};
+    setCfg(raw);
+    setDetailKey(null);
+  }, [selBranch]);
+
+  const up = (k, v) => { setCfg(p => ({...p, [k]: v})); setSaved(false); };
+  const save = async () => {
+    if (!selBranch) return;
+    await sb.update('branches', selBranch, { noti_config: JSON.stringify(cfg) }).catch(console.error);
+    setSaved(true); setTimeout(() => setSaved(false), 2000);
+  };
+
+  // 알림 항목 정의
+  const NOTI_GROUPS = [
+    { label: '예약 알림', items: [
+      { key: 'rsv_confirm',  label: '예약 확정 알림',     desc: '예약 확정 시 고객에게 발송' },
+      { key: 'rsv_change',   label: '예약 변경 알림',     desc: '예약 변경 시 고객에게 발송' },
+      { key: 'rsv_1day',     label: '예약 1일 전 알림',   desc: '예약 전날 지정 시각에 발송' },
+      { key: 'rsv_today',    label: '예약 당일 알림',     desc: '예약 당일 아침 지정 시각에 발송' },
+      { key: 'rsv_cancel',   label: '예약 취소 알림',     desc: '예약 취소 시 고객에게 발송' },
+      { key: 'rsv_naver',    label: '네이버예약 대기 알림', desc: '네이버 예약 대기 상태 시 발송' },
+    ]},
+    { label: '정액권 알림', items: [
+      { key: 'pkg_pay',      label: '정액권 고객 알림-결제', desc: '정액권 결제 완료 시 발송' },
+      { key: 'pkg_charge',   label: '정액권 고객 알림-충전', desc: '정액권 충전 완료 시 발송' },
+      { key: 'pkg_exp_1m',   label: '정액권 만기 1달 전 알림', desc: '만료 30일 전 발송' },
+      { key: 'pkg_exp_1w',   label: '정액권 만기 1주 전 알림', desc: '만료 7일 전 발송' },
+    ]},
+    { label: '티켓 알림', items: [
+      { key: 'tkt_pay',      label: '티켓 고객 알림-결제', desc: '티켓 결제 완료 시 발송' },
+      { key: 'tkt_charge',   label: '티켓 고객 알림-충전', desc: '티켓 충전 완료 시 발송' },
+      { key: 'tkt_exp_1m',   label: '티켓 만기 1달 전 알림', desc: '만료 30일 전 발송' },
+      { key: 'tkt_exp_1w',   label: '티켓 만기 1주 전 알림', desc: '만료 7일 전 발송' },
+    ]},
+    { label: '포인트 알림', items: [
+      { key: 'pt_earn',      label: '포인트 적립 알림',   desc: '포인트 적립 시 발송' },
+      { key: 'pt_use',       label: '포인트 사용 알림',   desc: '포인트 사용 시 발송' },
+    ]},
+  ];
+
+  const notiOn = (key) => !!(cfg[key]?.on);
+  const toggleOn = (key) => up(key, {...(cfg[key]||{}), on: !notiOn(key)});
+
+  // ── 상세 편집 화면 ──
+  if (detailKey) {
+    const allItems = NOTI_GROUPS.flatMap(g => g.items);
+    const item = allItems.find(x => x.key === detailKey);
+    const dc = cfg[detailKey] || {};
+    const udc = (k, v) => up(detailKey, {...dc, [k]: v});
+    return <div>
+      <div style={{display:'flex', alignItems:'center', gap:12, marginBottom:20}}>
+        <button onClick={() => setDetailKey(null)} style={{background:'none', border:'none', cursor:'pointer', fontSize:20, color:T.primary}}>←</button>
+        <span style={{fontSize:T.fs.lg, fontWeight:T.fw.bolder, color:T.text}}>{item?.label}</span>
+        <div onClick={() => toggleOn(detailKey)} style={{
+          marginLeft:'auto', width:48, height:26, borderRadius:13, cursor:'pointer', transition:'background .2s',
+          background: notiOn(detailKey) ? T.primary : T.gray300, position:'relative'
+        }}>
+          <div style={{position:'absolute', top:3, left: notiOn(detailKey)?24:3, width:20, height:20, borderRadius:'50%', background:'#fff', transition:'left .2s'}}/>
+        </div>
+      </div>
+      {notiOn(detailKey) && <div className="card" style={{padding:20, display:'flex', flexDirection:'column', gap:14}}>
+        <div>
+          <div style={{fontSize:T.fs.xs, fontWeight:T.fw.bold, color:T.gray700, marginBottom:4}}>템플릿 코드</div>
+          <input className="inp" value={dc.tplCode||''} onChange={e=>udc('tplCode', e.target.value)}
+            placeholder="NHN Cloud 템플릿 코드" style={{width:'100%', padding:'8px 10px', fontSize:T.fs.sm}}/>
+        </div>
+        <div>
+          <div style={{fontSize:T.fs.xs, fontWeight:T.fw.bold, color:T.gray700, marginBottom:4}}>발송 문자 내용</div>
+          <textarea className="inp" value={dc.msg||''} onChange={e=>udc('msg', e.target.value)}
+            placeholder={"변수: #{고객명} #{날짜} #{시간} #{장소} #{시술명} #{전화번호}"}
+            rows={6} style={{width:'100%', padding:'8px 10px', fontSize:T.fs.sm, resize:'vertical', fontFamily:'inherit'}}/>
+        </div>
+        {(detailKey==='rsv_1day'||detailKey==='rsv_today') && <div>
+          <div style={{fontSize:T.fs.xs, fontWeight:T.fw.bold, color:T.gray700, marginBottom:4}}>발송 시각</div>
+          <input type="time" className="inp" value={dc.sendAt||'09:00'} onChange={e=>udc('sendAt', e.target.value)}
+            style={{padding:'6px 10px', fontSize:T.fs.sm}}/>
+        </div>}
+      </div>}
+      <div style={{marginTop:16, display:'flex', gap:8}}>
+        <Btn variant="primary" size="sm" onClick={save} style={{padding:'8px 24px'}}>{saved?'저장됨 ✓':'저장'}</Btn>
+        <Btn variant="secondary" size="sm" onClick={() => setDetailKey(null)} style={{padding:'8px 16px'}}>← 목록</Btn>
+      </div>
+    </div>;
+  }
+
+  // ── 목록 화면 ──
+  return <div>
+    <AdminHeader title="알림톡/자동 문자" count={null}/>
+
+    {/* 지점 탭 */}
+    <div style={{display:'flex', gap:6, marginBottom:16, flexWrap:'wrap'}}>
+      {(branches||[]).map(b => <button key={b.id} onClick={() => setSelBranch(b.id)}
+        style={{padding:'6px 14px', fontSize:T.fs.sm, fontWeight:selBranch===b.id?700:400,
+        borderRadius:0, cursor:'pointer', fontFamily:'inherit',
+        border:selBranch===b.id?'2px solid #7c7cc8':'1px solid #d0d0d0',
+        background:selBranch===b.id?'#7c7cc815':T.bgCard, color:selBranch===b.id?T.primary:T.gray600}}>
+        {b.name}
+      </button>)}
+    </div>
+
+    {!selBranch ? <div style={{padding:20, color:T.gray500, textAlign:'center'}}>지점을 선택하세요</div> : <>
+
+    {/* 카카오 알림톡 배너 */}
+    <div style={{background:'#FEE500', borderRadius:T.radius.lg, padding:'14px 16px', marginBottom:20}}>
+      <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:4}}>
+        <span style={{fontSize:18}}>💬</span>
+        <span style={{fontSize:T.fs.md, fontWeight:T.fw.bolder, color:'#3A1D1D'}}>카카오 알림톡</span>
+      </div>
+      <div style={{fontSize:T.fs.xs, color:'#5a4a00', lineHeight:1.5}}>
+        활성화된 알림이 설정한 시간/조건에 맞춰 카카오 알림톡으로 전송됩니다.
+      </div>
+      <div style={{fontSize:T.fs.xs, color:'#a07800', marginTop:4}}>
+        ※ 카카오 알림톡 전송 시 잔여 알림 1건이 차감됩니다.
+      </div>
+    </div>
+
+    {/* NHN API 설정 (접기/펼치기) */}
+    <div className="card" style={{padding:0, marginBottom:20, overflow:'hidden'}}>
+      <div onClick={() => setApiOpen(p=>!p)} style={{padding:'12px 16px', display:'flex', alignItems:'center',
+        justifyContent:'space-between', cursor:'pointer', userSelect:'none'}}>
+        <span style={{fontSize:T.fs.sm, fontWeight:T.fw.bold, color:T.text}}>⚙️ NHN Cloud API 설정</span>
+        <span style={{color:T.gray400}}>{apiOpen?'▲':'▼'}</span>
+      </div>
+      {apiOpen && <div style={{padding:'0 16px 16px', borderTop:'1px solid '+T.border}}>
+        {[['appKey','App Key','NHN Cloud 콘솔 → Notification → KakaoTalk Bizmessage'],
+          ['secretKey','Secret Key','API 보안 설정에서 생성'],
+          ['senderKey','발신 프로필 키','카카오 채널 연동 후 발급']
+        ].map(([k,label,ph]) => <div key={k} style={{marginTop:10}}>
+          <div style={{fontSize:T.fs.xxs, fontWeight:T.fw.bold, color:T.gray700, marginBottom:3}}>{label}</div>
+          <input className="inp" type={k==='secretKey'?'password':'text'} value={cfg[k]||''} onChange={e=>up(k,e.target.value)}
+            placeholder={ph} style={{width:'100%', padding:'6px 10px', fontSize:T.fs.sm}}/>
+        </div>)}
+        <Btn variant="primary" size="sm" onClick={save} style={{padding:'8px 20px', marginTop:12}}>{saved?'저장됨 ✓':'저장'}</Btn>
+      </div>}
+    </div>
+
+    {/* 알림 항목 그룹 */}
+    {NOTI_GROUPS.map(group => <div key={group.label} style={{marginBottom:24}}>
+      <div style={{fontSize:T.fs.sm, fontWeight:T.fw.bolder, color:T.primary, marginBottom:8, paddingLeft:4}}>{group.label}</div>
+      <div style={{display:'flex', flexDirection:'column', gap:0, background:T.bgCard, borderRadius:T.radius.lg, overflow:'hidden', boxShadow:T.shadow.sm}}>
+        {group.items.map((item, idx) => <div key={item.key}
+          style={{display:'flex', alignItems:'center', padding:'15px 16px',
+            borderBottom: idx < group.items.length-1 ? '1px solid '+T.gray100 : 'none'}}>
+          <div style={{flex:1}}>
+            <div style={{fontSize:T.fs.sm, color:T.text, fontWeight:T.fw.medium}}>{item.label}</div>
+          </div>
+          {/* ON/OFF 토글 */}
+          <div onClick={() => toggleOn(item.key)} style={{
+            width:44, height:24, borderRadius:12, cursor:'pointer', transition:'background .2s', marginRight:12,
+            background: notiOn(item.key) ? T.primary : T.gray300, position:'relative', flexShrink:0
+          }}>
+            <div style={{position:'absolute', top:2, left: notiOn(item.key)?22:2, width:20, height:20,
+              borderRadius:'50%', background:'#fff', transition:'left .2s',
+              display:'flex', alignItems:'center', justifyContent:'center',
+              fontSize:8, fontWeight:'bold', color: notiOn(item.key)?T.primary:T.gray400}}>
+              {notiOn(item.key)?'ON':''}
+            </div>
+          </div>
+          {/* 상세 이동 화살표 */}
+          <div onClick={() => setDetailKey(item.key)} style={{color:T.gray400, cursor:'pointer', fontSize:18, padding:'0 4px'}}>›</div>
+        </div>)}
+      </div>
+    </div>)}
+
+    </>}
+  </div>;
+}
+function AdminAISettings({ data, sb, bizId }) {
+  const [apiKey, setApiKey] = useState(()=>window.__geminiKey || localStorage.getItem("bliss_gemini_key")||"");
+  const [saved, setSaved] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState(null);
+
+  const [rules, setRules] = useState(()=>{
+    try { return JSON.parse(localStorage.getItem(AI_RULES_KEY)||"[]"); } catch{ return []; }
+  });
+  // 마운트 시 Supabase에서 gemini_key + ai_rules 복원 (localStorage 삭제 후 복구)
+  useEffect(() => {
+    if (!bizId) return;
+    fetch(`${SB_URL}/rest/v1/businesses?id=eq.${bizId}&select=settings`, { headers: sbHeaders })
+      .then(r => r.json()).then(rows => {
+        try {
+          const memo = JSON.parse(rows[0]?.settings || "{}");
+          // gemini_key 복원 (화면 state + localStorage 모두)
+          if (memo.gemini_key) {
+            setApiKey(memo.gemini_key);
+            localStorage.setItem("bliss_gemini_key", memo.gemini_key);
+            console.log("✅ Gemini key 복원");
+          }
+          // ai_rules 복원
+          if (memo.ai_rules?.length) {
+            setRules(memo.ai_rules);
+            localStorage.setItem(AI_RULES_KEY, JSON.stringify(memo.ai_rules));
+            console.log("✅ AI 규칙 복원:", memo.ai_rules.length + "개");
+          }
+        } catch(e) {}
+      }).catch(()=>{});
+  }, [bizId]);
+  const [newRule, setNewRule] = useState("");
+  const [editIdx, setEditIdx] = useState(null);
+  const [editVal, setEditVal] = useState("");
+
+  const save = async () => {
+    const trimmed = apiKey.trim();
+    localStorage.setItem("bliss_gemini_key", trimmed);
+    window.__geminiKey = trimmed;
+    // 서버(bliss_naver.py)가 읽을 수 있도록 Supabase businesses.settings에도 저장
+    if (bizId) {
+      try {
+        const r = await fetch(`${SB_URL}/rest/v1/businesses?id=eq.${bizId}&select=settings`, { headers: sbHeaders });
+        const rows = await r.json();
+        let memo = {};
+        try { memo = JSON.parse((rows[0]?.settings) || "{}"); } catch { memo = {}; }
+        memo.gemini_key = trimmed;
+        await fetch(`${SB_URL}/rest/v1/businesses?id=eq.${bizId}`, {
+          method: "PATCH",
+          headers: { ...sbHeaders, "Prefer": "return=minimal" },
+          body: JSON.stringify({ settings: JSON.stringify(memo) })
+        });
+        console.log("✅ Gemini key Supabase 동기화 완료");
+      } catch(e) { console.warn("Supabase gemini_key 저장 실패:", e); }
+    }
+    setSaved(true); setTimeout(()=>setSaved(false), 2000);
+  };
+
+  const saveRules = async (next) => {
+    setRules(next);
+    localStorage.setItem(AI_RULES_KEY, JSON.stringify(next));
+    // Supabase에도 저장 (캐시 삭제 후 복구용)
+    if (bizId) {
+      try {
+        const r = await fetch(`${SB_URL}/rest/v1/businesses?id=eq.${bizId}&select=settings`, { headers: sbHeaders });
+        const rows = await r.json();
+        let memo = {};
+        try { memo = JSON.parse(rows[0]?.settings || "{}"); } catch {}
+        memo.ai_rules = next;
+        await fetch(`${SB_URL}/rest/v1/businesses?id=eq.${bizId}`, {
+          method: "PATCH",
+          headers: { ...sbHeaders, "Prefer": "return=minimal" },
+          body: JSON.stringify({ settings: JSON.stringify(memo) })
+        });
+      } catch(e) { console.warn("AI 규칙 Supabase 저장 실패:", e); }
+    }
+  };
+  const addRule = () => {
+    const t = newRule.trim(); if (!t) return;
+    saveRules([...rules, t]); setNewRule("");
+  };
+  const deleteRule = (i) => saveRules(rules.filter((_,idx)=>idx!==i));
+  const startEdit = (i) => { setEditIdx(i); setEditVal(rules[i]); };
+  const saveEdit = () => {
+    const t = editVal.trim();
+    if (t) saveRules(rules.map((r,i)=>i===editIdx?t:r));
+    setEditIdx(null); setEditVal("");
+  };
+
+  const testApi = async () => {
+    if (!apiKey.trim()) { alert("API 키를 입력하세요"); return; }
+    setTesting(true); setTestResult(null);
+    try {
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey.trim()}`, {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({contents:[{parts:[{text:"Hello, respond with just 'OK'"}]}]})
+      });
+      if (r.ok) { setTestResult({ok:true, msg:"✅ 연결 성공!"}); }
+      else { const e = await r.text(); setTestResult({ok:false, msg:"❌ 실패: "+e.slice(0,100)}); }
+    } catch(e) { setTestResult({ok:false, msg:"❌ 네트워크 에러: "+e.message}); }
+    setTesting(false);
+  };
+
+  return <div>
+    <AdminHeader title="AI 설정" count={null}/>
+    <div className="card" style={{padding:20,maxWidth:500}}>
+      <div style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder,marginBottom:12,color:T.text}}>Gemini API 키</div>
+      <div style={{fontSize:T.fs.xxs,color:T.textSub,marginBottom:12,lineHeight:1.6}}>
+        AI Book 기능에 사용됩니다. 텍스트/음성/이미지에서 예약 정보를 자동 추출합니다.<br/>
+        <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style={{color:T.primary,fontWeight:T.fw.bold}}>Google AI Studio</a>에서 무료로 발급받을 수 있습니다.
+      </div>
+      <div style={{display:"flex",gap:T.sp.sm,alignItems:"center",marginBottom:12}}>
+        <input className="inp" type="password" value={apiKey} onChange={e=>setApiKey(e.target.value)} placeholder="AIza..." style={{flex:1,padding:"8px 12px",fontSize:T.fs.sm}}/>
+        <Btn variant="primary" size="sm" onClick={save} style={{padding:"8px 16px",whiteSpace:"nowrap"}}>{saved?"저장됨 ✓":"저장"}</Btn>
+      </div>
+      <Btn variant="secondary" size="sm" onClick={testApi} disabled={testing} style={{padding:"6px 14px",fontSize:T.fs.xxs}}>
+        {testing?"테스트 중...":"연결 테스트"}
+      </Btn>
+      {testResult && <div style={{marginTop:8,fontSize:T.fs.xxs,color:testResult.ok?T.success:T.female,fontWeight:T.fw.bold}}>{testResult.msg}</div>}
+    </div>
+
+    {/* ── 커스텀 AI 규칙 ── */}
+    <div className="card" style={{padding:20,maxWidth:500,marginTop:16}}>
+      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
+        <span style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder,color:T.text}}>AI 분석 커스텀 규칙</span>
+        <span style={{fontSize:T.fs.xs,color:T.primary,background:T.primaryLt,padding:"2px 6px",borderRadius:T.radius.lg,fontWeight:T.fw.bold}}>{rules.length}개</span>
+      </div>
+      <div style={{fontSize:T.fs.xxs,color:T.gray500,marginBottom:14,lineHeight:1.6}}>
+        네이버 예약정보 AI 분석 시 아래 규칙이 프롬프트에 추가됩니다.<br/>
+        <span style={{color:T.orange,fontWeight:T.fw.bold}}>❌ 금지</span> 또는 <span style={{color:T.successDk,fontWeight:T.fw.bold}}>✅ 강제</span> 방식으로 작성하세요.
+      </div>
+      {/* 규칙 목록 */}
+      {rules.length === 0 && <div style={{fontSize:T.fs.sm,color:T.gray400,textAlign:"center",padding:"12px 0",borderRadius:T.radius.md,background:T.bg,marginBottom:12}}>아직 등록된 규칙이 없습니다</div>}
+      {rules.map((r,i)=><div key={i} style={{display:"flex",alignItems:"flex-start",gap:6,marginBottom:6,padding:"8px 10px",background:T.gray100,borderRadius:T.radius.md,border:"1px solid #e8e8f0"}}>
+        {editIdx===i
+          ? <><input className="inp" value={editVal} onChange={e=>setEditVal(e.target.value)}
+              onKeyDown={e=>{if(e.key==="Enter")saveEdit();if(e.key==="Escape"){setEditIdx(null);}}}
+              autoFocus style={{flex:1,padding:"4px 8px",fontSize:T.fs.sm,borderRadius:T.radius.md}}/>
+            <button onClick={saveEdit} style={{padding:"4px 10px",fontSize:T.fs.xxs,fontWeight:T.fw.bolder,background:T.primary,color:T.bgCard,border:"none",borderRadius:T.radius.md,cursor:"pointer"}}>저장</button>
+            <button onClick={()=>setEditIdx(null)} style={{padding:"4px 8px",fontSize:T.fs.xxs,background:T.border,color:T.gray600,border:"none",borderRadius:T.radius.md,cursor:"pointer"}}>취소</button></>
+          : <><span style={{flex:1,fontSize:T.fs.sm,color:T.text,lineHeight:1.6,wordBreak:"break-all"}}>{r}</span>
+            <button onClick={()=>startEdit(i)} style={{padding:"3px 8px",fontSize:T.fs.xs,background:T.primaryLt,color:T.primary,border:"none",borderRadius:T.radius.sm,cursor:"pointer",flexShrink:0}}>수정</button>
+            <button onClick={()=>deleteRule(i)} style={{padding:"3px 8px",fontSize:T.fs.xs,background:T.dangerLt,color:T.danger,border:"none",borderRadius:T.radius.sm,cursor:"pointer",flexShrink:0}}>삭제</button></>}
+      </div>)}
+      {/* 새 규칙 입력 */}
+      <div style={{display:"flex",gap:6,marginTop:8}}>
+        <input className="inp" value={newRule} onChange={e=>setNewRule(e.target.value)}
+          onKeyDown={e=>{if(e.key==="Enter")addRule();}}
+          placeholder='예: 허벅지/다리안쪽 언급 시 "다리반" 시술 선택, "바디도움" 태그 사용 금지'
+          style={{flex:1,padding:"8px 12px",fontSize:T.fs.sm,borderRadius:T.radius.md}}/>
+        <button onClick={addRule}
+          style={{padding:"8px 16px",fontSize:T.fs.sm,fontWeight:T.fw.bolder,background:T.primary,color:T.bgCard,border:"none",borderRadius:T.radius.md,cursor:"pointer",flexShrink:0}}>추가</button>
+      </div>
+    </div>
+
+    <div className="card" style={{padding:20,maxWidth:500,marginTop:16}}>
+      <div style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder,marginBottom:8,color:T.text}}>사용 안내</div>
+      <div style={{fontSize:T.fs.xxs,color:T.gray600,lineHeight:1.8}}>
+        타임라인 상단의 <span style={{background:T.primaryLt,color:T.primary,padding:"2px 6px",borderRadius:T.radius.sm,fontWeight:T.fw.bolder,fontSize:T.fs.xs}}>✨ AI Book</span> 버튼으로 사용합니다.<br/>
+        • <strong>텍스트</strong>: 카톡 메시지 붙여넣기 또는 직접 입력<br/>
+        • <strong>음성</strong>: 마이크로 말하면 자동 인식<br/>
+        • <strong>이미지</strong>: 캡처/사진 업로드로 자동 인식<br/>
+        • 비용: 건당 약 $0.0001 (월 1000건 ≈ $0.10)
+      </div>
+    </div>
+  </div>;
+}
+
+// ─── AI Book 모달 ───
+function QuickBookModal({ onClose, onParsed, data }) {
+  const [input, setInput] = useState("");
+  const [imgData, setImgData] = useState(null);
+  const [imgPreview, setImgPreview] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState(null);
+  const [isListening, setIsListening] = useState(false);
+  const [recordSec, setRecordSec] = useState(0);
+  const mediaRecRef = useRef(null);
+  const chunksRef = useRef([]);
+  const timerRef = useRef(null);
+  const [audioData, setAudioData] = useState(null);
+  const fileRef = useRef(null);
+  const camRef = useRef(null);
+  const inputRef = useRef(null);
+  const apiKey = window.__geminiKey || localStorage.getItem("bliss_gemini_key") || "";
+  const C = T.primary;
+  const G1 = T.google, G2 = T.purple, G3 = T.female;
+
+  const startVoice = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+      const mime = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "audio/mp4";
+      const rec = new MediaRecorder(stream, {mimeType: mime});
+      chunksRef.current = [];
+      rec.ondataavailable = (e) => { if(e.data.size>0) chunksRef.current.push(e.data); };
+      rec.onstop = () => {
+        stream.getTracks().forEach(t=>t.stop());
+        const blob = new Blob(chunksRef.current, {type: mime});
+        const reader = new FileReader();
+        reader.onload = () => setAudioData({base64:reader.result.split(",")[1], mimeType:mime.split(";")[0]});
+        reader.readAsDataURL(blob);
+      };
+      rec.start(1000); mediaRecRef.current = rec;
+      setIsListening(true); setRecordSec(0); setAudioData(null); setResult(null); setError(null);
+      timerRef.current = setInterval(()=>setRecordSec(s=>s+1), 1000);
+    } catch(e) { alert("마이크 권한이 필요합니다"); }
+  };
+  const stopVoice = () => { mediaRecRef.current?.stop(); setIsListening(false); clearInterval(timerRef.current); };
+  useEffect(() => { if (audioData) doParse(null, audioData); }, [audioData]);
+
+  const handleImage = (e) => {
+    const file = e.target.files?.[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => { setImgData({base64:ev.target.result.split(",")[1], mimeType:file.type}); setImgPreview(ev.target.result); };
+    reader.readAsDataURL(file);
+  };
+
+  const handlePaste = (e) => {
+    const items = e.clipboardData?.items;
+    if(!items) return;
+    for(let i=0;i<items.length;i++){
+      if(items[i].type.startsWith("image/")){
+        e.preventDefault();
+        const file = items[i].getAsFile();
+        if(!file) continue;
+        const reader = new FileReader();
+        reader.onload = (ev) => { setImgData({base64:ev.target.result.split(",")[1], mimeType:file.type}); setImgPreview(ev.target.result); };
+        reader.readAsDataURL(file);
+        break;
+      }
+    }
+  };
+
+  const buildPrompt = () => {
+    const today = new Date(), dow = ["일","월","화","수","목","금","토"];
+    const ds = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")} (${dow[today.getDay()]})`;
+    const tags = (data?.serviceTags || []).filter(t=>t.useYn!==false && t.scheduleYn!=="Y");
+    const svcs = (data?.services || []).filter(s=>s.useYn!==false);
+    const tagList = tags.map(t=>`"${t.id}":"${t.name}"${t.dur?`(${t.dur}분)`:""}`).join(", ");
+    const svcList = svcs.map(s=>`"${s.id}":"${s.name}"${s.dur?`(${s.dur}분)`:""}`).join(", ");
+    const srcList = (data?.resSources||[]).filter(s=>s.useYn!==false).map(s=>s.name);
+    return `당신은 미용실/왁싱샵 예약 정보를 추출하는 AI입니다.\n오늘 날짜: ${ds}\n\n아래 텍스트/이미지/음성에서 예약 정보를 추출해 JSON으로만 응답하세요.\n마크다운 백틱이나 설명 없이 순수 JSON만 출력하세요.\n\n[이미지] 채팅 앱 스크린샷 분석 시 반드시 다음 순서로 처리:\n1단계: 화면 최상단 헤더 영역에서 전화번호/이름을 먼저 추출\n2단계: 대화 내용에서 날짜, 시간, 시술 정보 추출\n3단계: 앱 종류 판별\n※ 헤더의 전화번호가 고객 전화번호입니다.\n[음성] 오디오 첨부 시 음성을 듣고 추출. 공=0,일=1,이=2,삼=3,사=4,오=5,육=6,칠=7,팔=8,구=9. 공일공=010.\n\n[등록된 서비스태그] {${tagList || "없음"}}\n[등록된 시술상품] {${svcList || "없음"}}\n[등록된 예약경로] [${srcList.length ? srcList.map(s=>`"${s}"`).join(",") : "없음"}]\n\n시술 내용이 언급되면 위 목록에서 가장 적합한 항목의 ID를 매칭하세요.\n[왁싱 용어 매핑] 음모왁싱=브라질리언왁싱, eyebrows=눈썹, underarm=겨드랑이, leg=다리, arm=팔, bikini=비키니, full body=전신\n\n추출 항목:\n- custName: 고객 이름 (없으면 "")\n- custPhone: 전화번호 (010-XXXX-XXXX. 해외번호 원본유지)\n- date: YYYY-MM-DD\n- time: HH:MM 24시간\n- dur: 소요시간(분) (없으면 0)\n- memo: 시술내용/기타 (없으면 "")\n- source: 예약경로 (반드시 등록된 예약경로 목록에서 선택! WhatsApp→와츠앱, 카카오톡→카톡 등 등록된 이름으로 매칭. 목록에 없으면 "")\n- custGender: "M" or "F" or ""\n- matchedTagIds: 매칭된 서비스태그 ID 배열. 없으면 []\n- matchedServiceIds: 매칭된 시술상품 ID 배열. 없으면 []`;
+  };
+
+  const doParse = async (evt, overrideAudio) => {
+    const ad = overrideAudio || audioData;
+    if (!apiKey) { setError("관리설정 → AI설정에서 API 키를 등록하세요"); return; }
+    if (!input.trim() && !imgData && !ad) { setError("텍스트, 이미지, 또는 음성을 입력하세요"); return; }
+    setLoading(true); setError(null); setResult(null);
+    try {
+      const parts = [{text: buildPrompt()}];
+      if (input.trim()) parts.push({text: "입력:\n" + input.trim()});
+      if (imgData) parts.push({inlineData:{mimeType:imgData.mimeType, data:imgData.base64}});
+      if (ad) parts.push({inlineData:{mimeType:ad.mimeType, data:ad.base64}});
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({contents:[{parts}], generationConfig:{temperature:0}})
+      });
+      if (!r.ok) throw new Error("API: "+(await r.text()).slice(0,120));
+      const d = await r.json();
+      const txt = d.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      setResult(JSON.parse(txt.replace(/```json|```/g,"").trim()));
+    } catch(e) { setError("분석 실패: "+e.message); }
+    setLoading(false);
+  };
+
+  const editResult = (k,v) => setResult(p=>({...p,[k]:v}));
+  const reset = () => { setResult(null);setError(null);setAudioData(null);setRecordSec(0);setImgData(null);setImgPreview(null);setInput(""); };
+  const handleSubmit = () => { if (input.trim() || imgData) doParse(); };
+
+  const sparkle = <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 2L13.09 8.26L18 6L14.74 10.91L21 12L14.74 13.09L18 18L13.09 15.74L12 22L10.91 15.74L6 18L9.26 13.09L3 12L9.26 10.91L6 6L10.91 8.26L12 2Z" fill="url(#gsp)"/><defs><linearGradient id="gsp" x1="3" y1="2" x2="21" y2="22"><stop stopColor={T.google}/><stop offset="0.5" stopColor={T.purple}/><stop offset="1" stopColor={T.female}/></linearGradient></defs></svg>;
+
+  return <div style={{position:"fixed",inset:0,zIndex:500,background:T.bgCard,display:"flex",flexDirection:"column"}}>
+    <style>{`@keyframes qb-spin{to{transform:rotate(360deg)}}@keyframes qb-pulse{0%,100%{transform:scale(1);opacity:.7}50%{transform:scale(1.15);opacity:1}}@keyframes qb-fade{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}@keyframes qb-breathe{0%{transform:scale(1) rotate(0deg);opacity:.85}15%{transform:scale(1.18) rotate(8deg);opacity:1}30%{transform:scale(.95) rotate(-5deg);opacity:.75}45%{transform:scale(1.22) rotate(12deg);opacity:.95}60%{transform:scale(1.05) rotate(-3deg);opacity:.8}75%{transform:scale(1.3) rotate(6deg);opacity:1}90%{transform:scale(.98) rotate(-8deg);opacity:.7}100%{transform:scale(1) rotate(0deg);opacity:.85}}@keyframes qb-glow{0%{box-shadow:0 0 15px #4285f420,0 0 30px #9b72cb10}33%{box-shadow:0 0 25px #9b72cb30,0 0 45px #d9657015}66%{box-shadow:0 0 20px #d9657025,0 0 40px #4285f410}100%{box-shadow:0 0 15px #4285f420,0 0 30px #9b72cb10}}.qb-field:focus{border-color:#7c7cc850!important;background:#fff!important}`}</style>
+
+    {/* Top bar */}
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 16px",flexShrink:0}}>
+      <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",padding:6,display:"flex",color:T.gray600}}>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      </button>
+      <div style={{display:"flex",alignItems:"center",gap:6}}>{sparkle}<span style={{fontSize:T.fs.md,fontWeight:T.fw.bolder,color:T.text}}>AI Book</span></div>
+      <div style={{width:32}}/>
+    </div>
+
+    {/* Content */}
+    <div style={{flex:1,overflow:"auto",padding:"0 20px",display:"flex",flexDirection:"column"}}>
+
+      {/* Empty */}
+      {!result && !loading && !error && !imgPreview && !isListening && <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:T.sp.md,opacity:.9}}>
+        <div style={{width:64,height:64,borderRadius:T.radius.sm,background:"linear-gradient(135deg,#4285f412,#9b72cb12,#d9657012)",display:"flex",alignItems:"center",justifyContent:"center",animation:"qb-glow 4s ease infinite"}}>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" style={{animation:"qb-breathe 6s ease-in-out infinite"}}><path d="M12 2L13.09 8.26L18 6L14.74 10.91L21 12L14.74 13.09L18 18L13.09 15.74L12 22L10.91 15.74L6 18L9.26 13.09L3 12L9.26 10.91L6 6L10.91 8.26L12 2Z" fill="url(#gsp)"/></svg>
+        </div>
+        <div style={{fontSize:T.fs.xl,fontWeight:T.fw.bolder,color:T.text}}>어떤 예약을 등록할까요?</div>
+        <div style={{fontSize:T.fs.sm,color:T.gray500,textAlign:"center",lineHeight:1.6}}>카톡 메시지 붙여넣기, 음성, 채팅 캡처<br/>무엇이든 AI가 분석해드려요</div>
+      </div>}
+
+      {/* Image preview */}
+      {imgPreview && !result && !loading && <div style={{animation:"qb-fade .3s ease",marginTop:16}}>
+        <div style={{position:"relative",borderRadius:T.radius.md,overflow:"hidden",border:"1px solid #eee",display:"inline-block"}}>
+          <img src={imgPreview} style={{maxWidth:"100%",maxHeight:240,display:"block",objectFit:"contain"}} alt=""/>
+          <button onClick={()=>{setImgData(null);setImgPreview(null);}} style={{position:"absolute",top:8,right:8,width:28,height:28,borderRadius:T.radius.md,background:"rgba(0,0,0,.5)",color:T.bgCard,border:"none",cursor:"pointer",fontSize:T.fs.md,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+        </div>
+      </div>}
+
+      {/* Loading */}
+      {loading && <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:T.sp.lg,animation:"qb-fade .3s ease"}}>
+        <div style={{display:"flex",gap:6}}>{[T.google,T.purple,T.female].map((c,i)=><div key={i} style={{width:10,height:10,borderRadius:T.radius.sm,background:c,animation:`qb-pulse .8s ease ${i*.15}s infinite`}}/>)}</div>
+        <div style={{fontSize:T.fs.md,fontWeight:T.fw.bold,color:T.gray700}}>{audioData?"음성을 분석하고 있어요":imgData?"이미지를 읽고 있어요":"분석 중이에요"}</div>
+      </div>}
+
+      {/* Recording */}
+      {isListening && <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:T.sp.md,animation:"qb-fade .3s ease"}}>
+        <div style={{width:72,height:72,borderRadius:T.radius.md,background:"linear-gradient(135deg,#d9657020,#9b72cb20)",display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}>
+          <div style={{position:"absolute",inset:-6,borderRadius:T.radius.sm,border:"2px solid #d9657040",animation:"qb-pulse 1.5s ease infinite"}}/>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill={T.female}><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+        </div>
+        <div style={{fontSize:32,fontWeight:T.fw.bolder,color:T.female,fontFamily:"monospace"}}>{Math.floor(recordSec/60)}:{String(recordSec%60).padStart(2,"0")}</div>
+        <div style={{fontSize:T.fs.sm,color:T.gray500}}>듣고 있어요...</div>
+        <button onClick={stopVoice} style={{marginTop:8,padding:"10px 32px",fontSize:T.fs.sm,fontWeight:T.fw.bold,background:T.female,color:T.bgCard,border:"none",borderRadius:T.radius.sm,cursor:"pointer",fontFamily:"inherit"}}>완료</button>
+      </div>}
+
+      {/* Error */}
+      {error && <div style={{marginTop:20,padding:"14px 16px",background:T.dangerLt,borderRadius:T.radius.lg,fontSize:T.fs.sm,color:T.danger,lineHeight:1.5,animation:"qb-fade .3s ease"}}>{error}<button onClick={reset} style={{display:"block",marginTop:8,fontSize:T.fs.sm,color:T.google,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:T.fw.bold}}>다시 시도</button></div>}
+
+      {/* Results */}
+      {result && <div style={{paddingTop:12,paddingBottom:100,animation:"qb-fade .3s ease"}}>
+        <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:14}}>{sparkle}<span style={{fontSize:T.fs.md,fontWeight:T.fw.bolder,color:T.text}}>분석 완료</span><span style={{fontSize:T.fs.xxs,color:T.gray400,marginLeft:4}}>수정 가능</span></div>
+        <div style={{display:"flex",flexDirection:"column",gap:10}}>
+          {[["custName","고객명"],["custPhone","전화번호"],["date","날짜"],["time","시간"],["memo","시술/메모"],["source","예약경로"]].map(([key,label])=>
+            <div key={key}><div style={{fontSize:T.fs.xxs,color:T.gray500,marginBottom:4,fontWeight:T.fw.medium}}>{label}</div>
+            <input value={result[key]||""} onChange={e=>editResult(key,e.target.value)} className="qb-field"
+              style={{width:"100%",padding:"11px 14px",fontSize:T.fs.md,border:"1.5px solid #e8e8e8",borderRadius:T.radius.lg,fontFamily:"inherit",color:T.text,outline:"none",background:T.bg,transition:"all .15s"}}/></div>
+          )}
+          <div><div style={{fontSize:T.fs.xxs,color:T.gray500,marginBottom:4,fontWeight:T.fw.medium}}>성별</div>
+            <div style={{display:"flex",gap:6}}>{[["","미정"],["M","남"],["F","여"]].map(([v,l])=>
+              <button key={v} onClick={()=>editResult("custGender",v)} style={{padding:"8px 20px",fontSize:T.fs.sm,fontWeight:result.custGender===v?600:400,background:result.custGender===v?"#7c7cc812":T.bg,color:result.custGender===v?T.primary:T.gray500,border:result.custGender===v?"1.5px solid #7c7cc840":"1.5px solid #eee",borderRadius:T.radius.md,cursor:"pointer",fontFamily:"inherit"}}>{l}</button>
+            )}</div>
+          </div>
+          {(()=>{
+            const tags = (data?.serviceTags||[]).filter(t=>t.useYn!==false && t.scheduleYn!=="Y");
+            const svcs = (data?.services||[]).filter(s=>s.useYn!==false);
+            const mTags = result.matchedTagIds || [], mSvcs = result.matchedServiceIds || [];
+            const toggleTag = (id) => editResult("matchedTagIds", mTags.includes(id)?mTags.filter(x=>x!==id):[...mTags,id]);
+            const toggleSvc = (id) => editResult("matchedServiceIds", mSvcs.includes(id)?mSvcs.filter(x=>x!==id):[...mSvcs,id]);
+            if (!tags.length && !svcs.length) return null;
+            return <>{tags.length>0 && <div><div style={{fontSize:T.fs.xxs,color:T.gray500,marginBottom:6,fontWeight:T.fw.medium}}>서비스</div><div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+              {tags.map(t=><button key={t.id} onClick={()=>toggleTag(t.id)} style={{padding:"7px 14px",fontSize:T.fs.sm,fontWeight:mTags.includes(t.id)?600:400,background:mTags.includes(t.id)?(t.color||T.primary)+"15":T.bg,color:mTags.includes(t.id)?t.color||T.primary:T.gray400,border:mTags.includes(t.id)?`1.5px solid ${(t.color||T.primary)}40`:"1.5px solid #eee",borderRadius:T.radius.md,cursor:"pointer",fontFamily:"inherit"}}>{t.name}</button>)}
+            </div></div>}
+            {svcs.length>0 && <div><div style={{fontSize:T.fs.xxs,color:T.gray500,marginBottom:6,fontWeight:T.fw.medium}}>시술</div><div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+              {svcs.map(s=><button key={s.id} onClick={()=>toggleSvc(s.id)} style={{padding:"7px 14px",fontSize:T.fs.sm,fontWeight:mSvcs.includes(s.id)?600:400,background:mSvcs.includes(s.id)?"#7c7cc815":T.bg,color:mSvcs.includes(s.id)?T.primary:T.gray400,border:mSvcs.includes(s.id)?"1.5px solid #7c7cc840":"1.5px solid #eee",borderRadius:T.radius.md,cursor:"pointer",fontFamily:"inherit"}}>{s.name}</button>)}
+            </div></div>}</>;
+          })()}
+        </div>
+        <div style={{display:"flex",gap:10,marginTop:20}}>
+          <button onClick={reset} style={{flex:1,padding:"13px 0",fontSize:T.fs.sm,fontWeight:T.fw.medium,background:T.bg,color:T.textSub,border:"none",borderRadius:T.radius.lg,cursor:"pointer",fontFamily:"inherit"}}>다시</button>
+          <button onClick={()=>onParsed(result)} style={{flex:2,padding:"13px 0",fontSize:T.fs.md,fontWeight:T.fw.bold,background:"linear-gradient(135deg,#4285f4,#9b72cb)",color:T.bgCard,border:"none",borderRadius:T.radius.lg,cursor:"pointer",fontFamily:"inherit"}}>예약폼에 적용</button>
+        </div>
+      </div>}
+    </div>
+
+    {/* Bottom input bar */}
+    {!isListening && !loading && !result && <div style={{flexShrink:0,padding:"8px 12px 16px",borderTop:"1px solid #f0f0f0",background:T.bgCard}}>
+      <div style={{display:"flex",alignItems:"flex-end",gap:T.sp.xs,background:T.primaryHover,borderRadius:T.radius.sm,padding:"6px 6px 6px 16px"}}>
+        <textarea ref={inputRef} value={input} onChange={e=>{setInput(e.target.value);e.target.style.height="auto";e.target.style.height=Math.min(e.target.scrollHeight,120)+"px";}}
+          onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();handleSubmit();}}}
+          onPaste={handlePaste}
+          placeholder="메시지를 입력하거나 이미지를 붙여넣으세요..." rows={1}
+          style={{flex:1,border:"none",background:"transparent",fontSize:T.fs.md,fontFamily:"inherit",color:T.text,outline:"none",resize:"none",padding:"8px 0",lineHeight:1.5,maxHeight:120}}/>
+        <input ref={fileRef} type="file" accept="image/*" onChange={handleImage} style={{display:"none"}}/>
+        <input ref={camRef} type="file" accept="image/*" capture="environment" onChange={handleImage} style={{display:"none"}}/>
+        <button onClick={()=>fileRef.current?.click()} style={{width:36,height:36,borderRadius:T.radius.md,background:"transparent",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:T.textSub}}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+        </button>
+        <button onClick={()=>camRef.current?.click()} style={{width:36,height:36,borderRadius:T.radius.md,background:"transparent",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:T.textSub}}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        </button>
+        {(input.trim() || imgData) ? <button onClick={handleSubmit} style={{width:36,height:36,borderRadius:T.radius.md,background:"linear-gradient(135deg,#4285f4,#9b72cb)",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill={T.bgCard}><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+        </button>
+        : <button onClick={startVoice} style={{width:36,height:36,borderRadius:T.radius.md,background:"transparent",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,color:T.textSub}}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5z"/><path d="M17 11c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+        </button>}
+      </div>
+      {imgPreview && <div style={{marginTop:6,fontSize:T.fs.xxs,color:T.gray500,paddingLeft:16}}>📎 이미지 첨부됨</div>}
+    </div>}
+  </div>;
+}
+
+// ─── 서비스태그관리 ───
+function AdminServiceTags({ data, setData }) {
+  const [tags, setTags] = useState(()=>[...(data?.serviceTags || [])].sort((a,b)=>a.sort-b.sort));
+  useEffect(() => { setData(p => p ? {...p, serviceTags: tags} : p); }, [tags]);
+
+  const TAB_LABELS = { reservation: BLOCK_LABELS.reservation || "예약", schedule: "내부일정" };
+  const [activeTab, setActiveTab] = useState("reservation");
+  const [showAdd, setShowAdd] = useState(false);
+  const [newTag, setNewTag] = useState({ name:"", dur:0, color:"" });
+  const [editId, setEditId] = useState(null);
+  const [editData, setEditData] = useState({});
+  const [delConfirm, setDelConfirm] = useState(null);
+  const [selected, setSelected] = useState(new Set());
+
+  // 미리보기 드래그앤드롭 - ref로 관리해야 stale closure 방지
+  const prevDragIdxRef = useRef(null);
+  const prevOverIdxRef = useRef(null);
+  const [prevDragOver, setPrevDragOver] = useState(null); // 시각적 하이라이트용만 state
+
+  
+  const isScheduleTab = activeTab === "schedule";
+  const tabTags = (tags||[]).filter(t => isScheduleTab ? t.scheduleYn === "Y" : t.scheduleYn !== "Y");
+
+  const previewTags = tabTags.filter(t=>t.useYn!==false);
+  const onPrevDragStart = (i) => { prevDragIdxRef.current = i; };
+  const onPrevDragEnter = (i) => { prevOverIdxRef.current = i; setPrevDragOver(i); };
+  const onPrevDragEnd = () => {
+    const di = prevDragIdxRef.current;
+    const oi = prevOverIdxRef.current;
+    setPrevDragOver(null);
+    prevDragIdxRef.current = null;
+    prevOverIdxRef.current = null;
+    if (di === null || oi === null || di === oi) return;
+    const reordered = [...previewTags];
+    const [moved] = reordered.splice(di, 1);
+    reordered.splice(oi, 0, moved);
+    const otherTags = (tags||[]).filter(t => isScheduleTab ? t.scheduleYn !== "Y" : t.scheduleYn === "Y");
+    const unusedTabs = tabTags.filter(t=>t.useYn===false);
+    const newTabOrder = [...reordered, ...unusedTabs];
+    const allSorted = [...newTabOrder, ...otherTags].map((t,i)=>({...t,sort:i}));
+    syncTags(allSorted);
+    newTabOrder.forEach((t,i) => sb.update("service_tags", t.id, {sort:i}).catch(console.error));
+  };
+
+  const syncTags = (updated) => { setTags(updated); if(setData) setData(prev=>prev ? {...prev,serviceTags:updated} : prev); };
+  const [localTabTags, setLocalTabTags] = useState([]);
+  useEffect(() => { setLocalTabTags(tabTags); }, [activeTab, tags]);
+  const drag = useDragSort(localTabTags, setLocalTabTags, "sort", (reordered) => {
+    const otherTags = (tags||[]).filter(t => isScheduleTab ? t.scheduleYn !== "Y" : t.scheduleYn === "Y");
+    const allSorted = [...reordered, ...otherTags].map((t,i)=>({...t,sort:i}));
+    syncTags(allSorted);
+    reordered.forEach((s,i) => sb.update("service_tags", s.id, {sort: i}).catch(console.error));
+  });
+
+  // 배경색 → 대비색(흰/검) 자동 계산
+  const getContrastColor = (hex) => {
+    if (!hex || hex.length < 4) return T.text;
+    const h = hex.replace("#","");
+    const r = parseInt(h.length===3?h[0]+h[0]:h.slice(0,2),16);
+    const g = parseInt(h.length===3?h[1]+h[1]:h.slice(2,4),16);
+    const b = parseInt(h.length===3?h[2]+h[2]:h.slice(4,6),16);
+    return (0.299*r + 0.587*g + 0.114*b) / 255 > 0.55 ? T.text : T.bgCard;
+  };
+
+  // 태그 pill 스타일 (채우기, 테두리 없음)
+  const tagPillStyle = (color, useYn) => {
+    const bg = color || T.primary;
+    return {
+      padding:"4px 10px", borderRadius:0, border:"none",
+      background: useYn===false ? T.gray400 : bg,
+      color: useYn===false ? T.gray500 : getContrastColor(bg),
+      fontSize:T.fs.xxs, fontWeight:T.fw.bold, display:"inline-flex", alignItems:"center", gap:3,
+      opacity: useYn===false ? 0.5 : 1,
+    };
+  };
+
+  const allChecked = tabTags.length > 0 && tabTags.every(t => selected.has(t.id));
+  const toggleAll = () => { if (allChecked) setSelected(new Set()); else setSelected(new Set(tabTags.map(t => t.id))); };
+  const toggleOne = (id) => setSelected(prev => { const s = new Set(prev); s.has(id)?s.delete(id):s.add(id); return s; });
+
+  const bulkDelete = () => {
+    if (selected.size === 0) return;
+    const protectedSelected = [...selected].filter(id => SYSTEM_TAG_IDS.includes(id));
+    if (protectedSelected.length > 0) { alert("신규, 예약금완료 태그는 시스템 태그로 삭제할 수 없습니다."); return; }
+    if (!window.confirm(selected.size + "개 태그를 삭제하시겠습니까?\n삭제된 태그는 복구할 수 없습니다.")) return;
+    selected.forEach(id => sb.del("service_tags", id).catch(console.error));
+    syncTags((tags||[]).filter(t => !selected.has(t.id)).map((t,i) => ({...t, sort:i})));
+    setSelected(new Set());
+  };
+
+  const tagToDb = (t) => ({id:t.id, business_id:_activeBizId, name:t.name, dur:t.dur||0,
+    schedule_yn: t.scheduleYn==="Y"?"Y":"N", color:t.color||"", use_yn:t.useYn!==false, sort:t.sort||0});
+
+  const addTag = () => {
+    if(!newTag.name.trim()) return;
+    const t = {id:uid(), name:newTag.name.trim(), dur:Number(newTag.dur)||0,
+      scheduleYn: isScheduleTab ? "Y" : "N", color:newTag.color, useYn:true, sort:tags.length};
+    syncTags([...tags, t]);
+    sb.upsert("service_tags", [tagToDb(t)]);
+    setNewTag({name:"",dur:0,color:""});
+    setShowAdd(false);
+  };
+
+  const startEdit = (tag) => { setEditId(tag.id); setEditData({...tag}); };
+  const saveEdit = () => {
+    syncTags(tags.map(t=>t.id===editId?{...editData}:t));
+    sb.update("service_tags", editId, {name:editData.name, dur:editData.dur||0,
+      schedule_yn:editData.scheduleYn==="Y"||editData.scheduleYn===true?"Y":"N",
+      color:editData.color||"", use_yn:editData.useYn!==false, sort:editData.sort||0}).catch(console.error);
+    setEditId(null);
+  };
+  const toggleUse = (id) => {
+    const tag = tags.find(t=>t.id===id);
+    const newUse = tag?.useYn===false;
+    syncTags(tags.map(t=>t.id===id?{...t,useYn:!t.useYn}:t));
+    sb.update("service_tags", id, {use_yn:newUse}).catch(console.error);
+  };
+  const deleteTag = (id) => {
+    if (SYSTEM_TAG_IDS.includes(id)) { alert("시스템 태그는 삭제할 수 없습니다."); return; }
+    syncTags((tags||[]).filter(t=>t.id!==id).map((t,i)=>({...t,sort:i})));
+    sb.del("service_tags", id).catch(console.error);
+    setDelConfirm(null);
+  };
+
+
+  const inpS = {padding:"4px 6px",fontSize:T.fs.xxs,background:T.dangerLt,border:"1px solid #d0d0d0"};
+  const downloadXl = () => XL.download(tabTags.map((t,i)=>({태그명:t.name, 소요분:t.dur, 색상:t.color||"", 사용:t.useYn!==false?"Y":"N"})), isScheduleTab?"내부일정태그.xlsx":"예약태그.xlsx", "태그", ["태그명","소요분","색상","사용"]);
+  const uploadXl = async (e) => {
+    const file = e.target.files[0]; if(!file) return;
+    const rows = await XL.readFile(file);
+    const newTags = rows.map(r=>({id:uid(), name:r["태그명"]||r["name"]||"", dur:Number(r["소요분"]||r["dur"])||0,
+      scheduleYn: isScheduleTab?"Y":"N", color:r["색상"]||"", useYn:(r["사용"]||"Y")!=="N", sort:tags.length})).filter(r=>r.name);
+    if(newTags.length && window.confirm(newTags.length+"개 태그를 추가하시겠습니까?")) {
+      syncTags([...tags,...newTags]);
+      sb.upsert("service_tags", newTags.map(tagToDb));
+    }
+  };
+
+  return <div>
+    <AdminHeader title="태그 관리" count={tags.length} onAdd={()=>setShowAdd(!showAdd)} addLabel={showAdd?"취소":<><I name="plus" size={12}/> 태그 추가</>} onDownload={downloadXl} onUpload={uploadXl}/>
+
+    {/* 탭 버튼 */}
+    <div style={{display:"flex",gap:2,marginBottom:12,background:T.gray300,borderRadius:T.radius.md,padding:3,width:"fit-content"}}>
+      {Object.entries(TAB_LABELS).map(([key, label]) => (
+        <button key={key} className={activeTab===key?"btn-p btn-sm":"btn-s btn-sm"}
+          onClick={()=>{setActiveTab(key);setSelected(new Set());setShowAdd(false);}}>
+          {label}태그 <span style={{fontSize:T.fs.xs,opacity:.7}}>({(key==="schedule"?(tags||[]).filter(t=>t.scheduleYn==="Y"):(tags||[]).filter(t=>t.scheduleYn!=="Y")).length})</span>
+        </button>
+      ))}
+    </div>
+
+    {showAdd && <div className="card" style={{padding:14,marginBottom:14}}>
+      <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"flex-end"}}>
+        <FLD label="태그명"><input className="inp" style={{width:160,...inpS}} value={newTag.name} onChange={e=>setNewTag(p=>({...p,name:e.target.value}))} placeholder="태그명" onKeyDown={e=>e.key==="Enter"&&addTag()}/></FLD>
+        <FLD label="소요(분)"><input className="inp" type="number" style={{width:80,...inpS}} value={newTag.dur} onChange={e=>setNewTag(p=>({...p,dur:e.target.value}))}/></FLD>
+        <FLD label="색상">
+          <div style={{display:"flex",alignItems:"center",gap:6}}>
+            <input type="color" value={newTag.color||T.primary} onChange={e=>setNewTag(p=>({...p,color:e.target.value}))} style={{width:28,height:28,border:"none",borderRadius:T.radius.md,cursor:"pointer",padding:0}}/>
+            <EyeDrop onPick={c=>setNewTag(p=>({...p,color:c}))} size={22}/>
+            <input className="inp" style={{width:75,...inpS,fontFamily:"monospace",fontSize:T.fs.nano}} value={newTag.color} onChange={e=>setNewTag(p=>({...p,color:e.target.value}))} placeholder={T.primary}/>
+            {newTag.color && <span style={{...tagPillStyle(newTag.color,true),fontSize:T.fs.xs,pointerEvents:"none"}}>{newTag.name||"미리보기"}</span>}
+          </div>
+        </FLD>
+        <Btn variant="primary" size="sm" onClick={addTag} style={{padding:"6px 18px"}}>추가 ({TAB_LABELS[activeTab]}태그)</Btn>
+      </div>
+    </div>}
+
+    {/* 미리보기 — 드래그앤드롭 순서 변경 가능 */}
+    <div className="card" style={{padding:12,marginBottom:14}}>
+      <div style={{fontSize:T.fs.xs,color:T.textSub,marginBottom:6}}>미리보기 <span style={{color:T.gray400,fontSize:T.fs.nano}}>(드래그로 순서 변경)</span></div>
+      <div style={{display:"flex",flexWrap:"wrap",gap:6,padding:8,background:T.gray100,borderRadius:T.radius.md,minHeight:36}} onDragOver={e=>e.preventDefault()}>
+        {previewTags.map((t,i)=>(
+          <span key={t.id}
+            draggable
+            onDragStart={()=>onPrevDragStart(i)}
+            onDragEnter={()=>onPrevDragEnter(i)}
+            onDragEnd={onPrevDragEnd}
+            onDragOver={e=>e.preventDefault()}
+            style={{...tagPillStyle(t.color,t.useYn),cursor:"grab",
+              outline: prevDragOver===i ? "2px dashed #7c7cc8" : "none",
+              opacity: 1,
+              transition:"opacity .15s"}}>
+            {t.name}{t.dur>0&&<span style={{fontSize:T.fs.nano,opacity:.7}}>({t.dur}분)</span>}
+          </span>
+        ))}
+        {previewTags.length===0 && <span style={{color:T.gray400,fontSize:T.fs.xxs}}>태그를 추가하세요</span>}
+      </div>
+    </div>
+
+    {selected.size > 0 && <div style={{marginBottom:8}}><Btn variant="danger" size="sm" onClick={bulkDelete} style={{fontSize:T.fs.xs,padding:"4px 12px"}}><I name="trash" size={12}/> 선택 삭제 ({selected.size})</Btn></div>}
+
+    <DataTable card={false} className="admin-tw" maxH="calc(100vh - 420px)"><thead><tr>
+        <th style={{width:30}}><input type="checkbox" checked={allChecked} onChange={toggleAll}/></th>
+        <th style={{width:22}}></th><th style={{width:25}}>No</th><th>태그명</th>
+        <th style={{width:55,textAlign:"center"}}>소요</th>
+        <th style={{width:80,textAlign:"center"}}>색상</th><th style={{width:55,textAlign:"center"}}>사용</th>
+        <th style={{width:35,textAlign:"center"}}>순서</th><th style={{width:65,textAlign:"center"}}>관리</th>
+      </tr></thead><tbody>
+      {(localTabTags.length > 0 ? localTabTags : tabTags).map((tag,i) => {
+        const isSys = SYSTEM_TAG_IDS.includes(tag.id);
+        if(editId===tag.id) return <tr key={tag.id} ref={drag.rowRef(i)} style={{background:T.primaryHover}}>
+          <td>{isSys?<span style={{color:T.gray400,fontSize:T.fs.xs}}>🔒</span>:<input type="checkbox" checked={selected.has(tag.id)} onChange={()=>toggleOne(tag.id)}/>}</td>
+          <td><DragHandle onTouchStart={drag.onTouchStart(i)}/></td><td style={{color:T.gray500}}>{i+1}</td>
+          <td><input className="inp" value={editData.name} onChange={e=>setEditData(p=>({...p,name:e.target.value}))} style={{width:"100%",...inpS}}/></td>
+          <td><input className="inp" type="number" value={editData.dur} onChange={e=>setEditData(p=>({...p,dur:Number(e.target.value)||0}))} style={{width:50,...inpS}}/></td>
+          <td><div style={{display:"flex",alignItems:"center",gap:3}}>
+            <input type="color" value={editData.color||T.primary} onChange={e=>setEditData(p=>({...p,color:e.target.value}))} style={{width:24,height:24,border:"none",borderRadius:T.radius.sm,cursor:"pointer",padding:0}}/>
+            <EyeDrop onPick={c=>setEditData(p=>({...p,color:c}))} size={20}/>
+            <input className="inp" style={{width:60,...inpS,fontFamily:"monospace",fontSize:T.fs.nano}} value={editData.color||""} onChange={e=>setEditData(p=>({...p,color:e.target.value}))}/>
+            {editData.color && <span style={{...tagPillStyle(editData.color,true),fontSize:T.fs.nano,pointerEvents:"none"}}>{editData.name||"미리"}</span>}
+          </div></td>
+          <td style={{textAlign:"center"}}><select className="inp" style={{width:55,...inpS}} value={editData.useYn===false?"N":"Y"} onChange={e=>setEditData(p=>({...p,useYn:e.target.value==="Y"}))}><option value="Y">사용</option><option value="N">미사용</option></select></td>
+          <td style={{textAlign:"center",color:T.gray400,fontSize:T.fs.xs}}>{i+1}</td>
+          <td style={{textAlign:"center"}}><div style={{display:"flex",gap:3,justifyContent:"center"}}>
+            <Btn variant="primary" size="sm" onClick={saveEdit} style={{padding:"1px 6px",fontSize:T.fs.nano}}>저장</Btn>
+            <Btn variant="secondary" size="sm" onClick={()=>setEditId(null)} style={{padding:"1px 4px",fontSize:T.fs.nano}}>취소</Btn>
+          </div></td>
+        </tr>;
+        return <tr key={tag.id} ref={drag.rowRef(i)} draggable onDragStart={()=>drag.onDragStart(i)} onDragEnter={()=>drag.onDragEnter(i)} onDragEnd={drag.onDragEnd} onDragOver={e=>e.preventDefault()}
+          style={{opacity:tag.useYn===false?0.45:1,background:drag.touchOverIdx===i?T.purpleLt:undefined}}>
+          <td>{isSys?<span title="시스템 태그" style={{color:T.gray400,fontSize:T.fs.xs}}>🔒</span>:<input type="checkbox" checked={selected.has(tag.id)} onChange={()=>toggleOne(tag.id)}/>}</td>
+          <td><DragHandle onTouchStart={drag.onTouchStart(i)}/></td>
+          <td style={{color:T.gray500}}>{i+1}</td>
+          <td style={{fontWeight:T.fw.bold,fontSize:T.fs.sm}}>
+            <span style={tagPillStyle(tag.color,tag.useYn)}>{tag.name}</span>
+          </td>
+          <td style={{textAlign:"center",fontSize:T.fs.xxs,color:tag.dur>0?T.danger:T.gray400,fontWeight:tag.dur>0?600:400}}>{tag.dur>0?tag.dur+"분":"-"}</td>
+          <td style={{textAlign:"center"}}>{tag.color?<div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:T.sp.xs}}>
+            <div style={{width:28,height:18,borderRadius:T.radius.sm,background:tag.color}}/>
+            <span style={{fontSize:T.fs.nano,color:T.textSub,fontFamily:"monospace"}}>{tag.color}</span>
+          </div>:<span style={{color:T.gray400,fontSize:T.fs.xs}}>—</span>}</td>
+          <td style={{textAlign:"center"}}><button onClick={()=>toggleUse(tag.id)}
+            style={{fontSize:T.fs.xs,padding:"2px 6px",borderRadius:T.radius.sm,border:"1px solid "+(tag.useYn===false?T.female:T.gray400),cursor:"pointer",fontFamily:"inherit",
+              background:tag.useYn===false?"#e5737320":"transparent",color:tag.useYn===false?T.female:T.gray600}}>{tag.useYn===false?"미사용":"사용"}</button></td>
+          <td style={{textAlign:"center",color:T.gray400,fontSize:T.fs.xs}}>{i+1}</td>
+          <td style={{textAlign:"center"}}><div style={{display:"flex",gap:3,justifyContent:"center"}}>
+            <button onClick={()=>startEdit(tag)} style={{background:"none",border:"none",cursor:"pointer",color:T.primary,fontSize:T.fs.sm}}><I name="edit" size={13}/></button>
+            {isSys ? <span title="삭제 불가" style={{color:T.border,fontSize:T.fs.sm}}><I name="trash" size={13}/></span> : delConfirm===tag.id
+              ? <><Btn variant="danger" size="sm" onClick={()=>deleteTag(tag.id)} style={{padding:"1px 5px",fontSize:T.fs.nano}}>확인</Btn><Btn variant="secondary" size="sm" onClick={()=>setDelConfirm(null)} style={{padding:"1px 4px",fontSize:T.fs.nano}}>취소</Btn></>
+              : <button onClick={()=>setDelConfirm(tag.id)} style={{background:"none",border:"none",cursor:"pointer",color:T.danger,fontSize:T.fs.sm}}><I name="trash" size={13}/></button>}
+          </div></td>
+        </tr>;
+      })}
+      </tbody></DataTable>
+  </div>;
+}
+
+
+function EyeDrop({ onPick, size=20 }) {
+  const supported = typeof window !== "undefined" && "EyeDropper" in window;
+  if (!supported) return null;
+  const pick = async () => {
+    try {
+      const ed = new EyeDropper();
+      const r = await ed.open();
+      if (r?.sRGBHex) onPick(r.sRGBHex);
+    } catch(e) {}
+  };
+  return <button onClick={pick} title="화면에서 색상 추출" style={{width:size,height:size,border:"1px solid #d0d0d0",borderRadius:T.radius.sm,background:T.bgCard,cursor:"pointer",display:"inline-flex",alignItems:"center",justifyContent:"center",padding:0,flexShrink:0}}>
+    <svg width={size-6} height={size-6} viewBox="0 0 16 16" fill="none" stroke={T.gray600} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M13.5 2.5l-1-1-2 2-1-1-6 6-.5 3.5 3.5-.5 6-6-1-1 2-2z"/><path d="M3.5 9.5l3 3"/></svg>
+  </button>;
+}
+
+function DatePick({ value, onChange, style, min }) {
+  const DAYS = ["일","월","화","수","목","금","토"];
+  const fmt = (v) => {
+    if (!v) return "--";
+    const p = v.split("-");
+    const d = new Date(Number(p[0]), Number(p[1])-1, Number(p[2]));
+    const dow = d.getDay();
+    const clr = dow===0?T.danger:dow===6?T.male:T.gray600;
+    return <>{p[1]}.{p[2]}<span style={{color:clr,fontWeight:T.fw.medium,marginLeft:2}}>({DAYS[dow]})</span></>;
+  };
+  return <label style={{position:"relative",display:"inline-flex",alignItems:"center",gap:T.sp.xs,cursor:"pointer",...style}}>
+    <I name="calPick" size={12} color={T.gray500}/>
+    <span style={{fontSize:T.fs.sm,fontWeight:T.fw.normal,whiteSpace:"nowrap",pointerEvents:"none",color:T.gray700,fontFamily:"inherit"}}>{fmt(value)}</span>
+    <input type="date" value={value} onChange={e=>onChange(e.target.value)} min={min}
+      style={{position:"absolute",inset:0,opacity:0,width:"100%",height:"100%",cursor:"pointer",fontSize:T.fs.lg}}/>
+  </label>;
+}
+function FLD({ label, children }) {
+  return <div><label style={{fontSize:T.fs.sm,fontWeight:T.fw.bold,color:T.gray600,marginBottom:5,display:"block"}}>{label}</label>{children}</div>;
+}
+
+// ─── Styles ───
+// Palette: #5cb5c5(teal) #7c7cc8(slate) #d0d0d0(pink) #f0f0f0(blush)
+const S = {
+  root: { display:"flex", height:"100dvh", fontFamily:"'Pretendard',-apple-system,BlinkMacSystemFont,'Noto Sans KR',sans-serif", background:T.gray100, color:T.text, overflow:"hidden", position:"fixed", top:0, left:0, right:0, bottom:0 },
+  sidebar: { width:200, background:T.bgCard, borderRight:"1px solid "+T.border, display:"flex", flexDirection:"column", position:"fixed", top:0, left:0, bottom:0, zIndex:50 },
+  main: { flex:1, marginLeft:200, display:"flex", flexDirection:"column", height:"100%", minHeight:0, background:T.bgCard, overflow:"hidden" },
+  mobHdr: { padding:"10px 16px", background:T.bgCard, display:"flex", alignItems:"center", gap:T.sp.md },
+  menuBtn: { background:"none", border:"none", color:T.text, cursor:"pointer", fontSize:T.fs.xxl, fontFamily:"inherit" },
+};
+
+const CSS = `
+  html,body,#root{height:100%;margin:0;padding:0;overflow:hidden;overscroll-behavior:none}
+  @keyframes bounceIn{0%{transform:scale(0)}60%{transform:scale(1.2)}80%{transform:scale(.9)}100%{transform:scale(1)}}
+  @keyframes loadingBar{from{width:0;opacity:1}to{width:100%;opacity:.4}}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  @supports(height:100dvh){html,body,#root{height:100dvh}}
+  *{box-sizing:border-box;margin:0;padding:0}
+  input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+  input[type=number]{-moz-appearance:textfield}
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-track{background:#eee}
+  ::-webkit-scrollbar-thumb{background:#aaa;border-radius:5px;border:2px solid #eee}
+  ::-webkit-scrollbar-thumb:hover{background:#888}
+  .ov>div::-webkit-scrollbar{display:none}
+  .timeline-scroll{scrollbar-width:auto;scrollbar-color:#999 #e0e0e0;overflow:scroll !important;scrollbar-gutter:stable;overscroll-behavior:none}
+  .timeline-scroll::-webkit-scrollbar{width:14px !important;height:14px !important;display:block !important}
+  .timeline-scroll::-webkit-scrollbar-track{background:#e0e0e0 !important}
+  .timeline-scroll::-webkit-scrollbar-thumb{background:#999 !important;border-radius:7px !important;border:3px solid #e0e0e0 !important}
+  .timeline-scroll::-webkit-scrollbar-thumb:hover{background:#666 !important}
+  .timeline-scroll::-webkit-scrollbar-corner{background:#d0d0d0 !important}
+  div:hover>.resize-handle{opacity:1 !important}
+  @media(pointer:coarse){.resize-handle{opacity:0.6 !important}}
+  .tl-block{transition:box-shadow .2s ease,transform .15s ease !important}
+  .tl-time-col{position:-webkit-sticky;position:sticky}
+  .tl-hdr-cell{position:-webkit-sticky;position:sticky}
+  .tl-block:hover{box-shadow:0 2px 8px rgba(0,0,0,.12) !important}
+  @media(pointer:coarse){.tl-block:active{box-shadow:0 2px 8px rgba(0,0,0,.12) !important}}
+  .tl-block:hover{box-shadow:0 4px 14px rgba(0,0,0,.18) !important;transform:translateY(-1px)}
+  .tl-block:active{box-shadow:0 2px 6px rgba(0,0,0,.12) !important;transform:translateY(0)}
+  input,select,textarea{font-family:inherit}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+  /* ══ 모달 리디자인 — Minimal / Linear style ══ */
+  /* 기본 */
+  .modal-res{font-size:14px;color:#1a1a2e}
+  .modal-res .form-col{display:flex;flex-direction:column;gap:12px}
+
+  /* 입력 필드 공통 — 색 없이 중립 */
+  .modal-res .inp{
+    background:#f5f6f8;border:1.5px solid transparent;border-radius:8px;
+    color:#222;font-size:13.5px;padding:9px 12px;width:100%;
+    font-family:inherit;outline:none;transition:border-color .15s,background .15s;
+    box-sizing:border-box;min-height:40px
+  }
+  .modal-res .inp:focus{background:#fff;border-color:#7c7cc8}
+  .modal-res .inp::placeholder{color:#b0b4c0}
+  .modal-res select.inp{cursor:pointer}
+
+  /* 날짜+시간 통합 필드 */
+  .fld-datetime{
+    display:inline-flex;align-items:center;gap:2px;
+    background:#f5f6f8;border:1.5px solid transparent;border-radius:8px;
+    padding:0 14px;height:42px;cursor:default;
+    transition:border-color .15s,background .15s
+  }
+  .fld-datetime:hover{background:#f0f1f4;border-color:#d4d6e0}
+  .fld-sel{
+    background:transparent;border:none;font-size:14px;font-weight:600;
+    font-family:inherit;color:#333;cursor:pointer;outline:none;
+    padding:0;appearance:none;-webkit-appearance:none;
+    text-align:center;min-width:44px;
+  }
+  .fld-sel:focus{outline:none;color:#7c7cc8}
+  .fld-sel option{background:#fff;color:#333;font-size:13px;font-weight:500;padding:6px 10px}
+  .fld-datetime select{
+    background:transparent;border:none;font-size:14px;font-weight:600;
+    font-family:inherit;color:#333;cursor:pointer;outline:none;padding:0;
+    appearance:none;-webkit-appearance:none;min-width:44px;text-align:center;
+  }
+  .fld-datetime select:focus{outline:none;color:#7c7cc8}
+  /* 시간 커스텀 드롭다운 */
+  .time-sel-wrap{position:relative;display:inline-flex;align-items:center}
+  .time-sel-btn{background:transparent;border:none;font-size:14px;font-weight:700;
+    font-family:inherit;color:#333;cursor:pointer;padding:0 2px;outline:none;
+    min-width:44px;text-align:center;letter-spacing:-0.3px;
+    transition:color .15s}
+  .time-sel-btn:hover,.time-sel-btn:focus{color:#7c7cc8;outline:none}
+  .time-sel-dropdown{position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);
+    background:#fff;border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,.15);
+    z-index:9999;overflow:hidden;min-width:90px;
+    border:1px solid #e8e8ee;animation:fadeIn .12s ease}
+  .time-sel-dropdown ul{list-style:none;margin:0;padding:4px 0;max-height:220px;overflow-y:auto}
+  .time-sel-dropdown ul::-webkit-scrollbar{width:4px}
+  .time-sel-dropdown ul::-webkit-scrollbar-track{background:transparent}
+  .time-sel-dropdown ul::-webkit-scrollbar-thumb{background:#d4d6e8;border-radius:4px}
+  .time-sel-item{padding:7px 16px;font-size:13px;font-weight:500;color:#333;
+    cursor:pointer;white-space:nowrap;transition:background .1s,color .1s}
+  .time-sel-item:hover{background:#f0f0ff;color:#7c7cc8}
+  .time-sel-item.active{background:#7c7cc8;color:#fff;font-weight:700}
+
+  /* 섹션 카드 — 아코디언 */
+  .tags-acc{
+    background:#f5f6f8;border:1.5px solid transparent;
+    border-radius:10px;overflow:hidden;transition:border-color .18s,box-shadow .18s
+  }
+  .tags-acc:hover{border-color:#d4d6e0;box-shadow:0 2px 12px rgba(0,0,0,.06)}
+  .tags-acc-hdr{
+    width:100%;display:flex;align-items:center;justify-content:space-between;
+    padding:10px 14px;cursor:pointer;border:none;background:transparent;
+    font-family:inherit;text-align:left
+  }
+  .tags-acc-body{overflow:hidden;transition:max-height .42s cubic-bezier(.4,0,.2,1),opacity .28s ease;max-height:0;opacity:0}
+  .tags-acc-body.open{max-height:800px;opacity:1}
+  .tags-acc-chev{display:inline-block;transition:transform .32s ease;font-size:18px;color:#9098a8;line-height:1}
+  .tags-acc-chev.open{transform:rotate(180deg)}
+
+  /* 아코디언 색 오버라이드 — 모두 동일하게 중립 */
+  .acc-svc,.acc-src,.acc-tag{background:#fff;border:none;box-shadow:0 2px 10px rgba(0,0,0,.07);border-radius:10px}
+  .acc-svc:hover,.acc-src:hover,.acc-tag:hover{box-shadow:0 4px 16px rgba(0,0,0,.1)}
+  .acc-svc .tags-acc-hdr,.acc-src .tags-acc-hdr,.acc-tag .tags-acc-hdr{background:transparent}
+  .acc-tag .tags-acc-hdr.open{background:transparent}
+
+  /* 태그 버튼 — pill */
+  .tag-pill{
+    display:inline-flex;align-items:center;gap:4px;
+    padding:4px 11px;border-radius:20px;border:none;cursor:pointer;
+    font-size:12.5px;font-weight:500;font-family:inherit;
+    transition:opacity .12s,transform .1s
+  }
+  .tag-pill:active{transform:scale(.96)}
+
+  /* 탭 버튼 */
+  .res-tab-btn{transition:color .15s !important;transform:none !important;box-shadow:none !important}
+  .res-tab-btn:hover{transform:none !important;box-shadow:none !important;opacity:.85}
+
+  /* 액션 버튼 */
+  .modal-res .btn-p{
+    background:#7c7cc8;color:#fff;border:none;border-radius:8px;
+    font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;
+    padding:10px 28px;transition:background .15s,box-shadow .15s
+  }
+  .modal-res .btn-p:hover{background:#6a6ab8;box-shadow:0 4px 14px rgba(124,124,200,.35)}
+  .modal-res .btn-p:active{background:#5a5aa8}
+  .modal-res .btn-s{
+    background:#f0f1f4;color:#555;border:none;border-radius:8px;
+    font-size:13.5px;font-weight:500;cursor:pointer;font-family:inherit;
+    padding:10px 20px;transition:background .15s
+  }
+  .modal-res .btn-s:hover{background:#e4e5ea}
+  .modal-res .btn-d{
+    background:#fff0f0;color:#d94f4f;border:none;border-radius:8px;
+    font-size:13.5px;font-weight:500;cursor:pointer;font-family:inherit;
+    padding:10px 20px;transition:background .15s
+  }
+  .modal-res .btn-d:hover{background:#fce0e0}
+
+  /* 구버전 과다 선언 덮어쓰기 */
+  .inp-search,.inp-cust,.inp-date,.inp-memo{
+    background:#f5f6f8 !important;border:1.5px solid transparent !important;
+    border-radius:8px !important;box-shadow:none !important;
+    transition:border-color .15s,background .15s !important
+  }
+  .inp-search:focus,.inp-cust:focus,.inp-date:focus,.inp-memo:focus{
+    background:#fff !important;border-color:#7c7cc8 !important
+  }
+  .inp-search:hover,.inp-cust:hover,.inp-date:hover,.inp-memo:hover{
+    background:#f0f1f4 !important;box-shadow:none !important
+  }
+
+  /* 버튼 hover 오버라이드 — scale 제거 */
+  .modal-res button:not(:disabled){transition:background .15s,box-shadow .15s,color .15s !important}
+  .modal-res button:not(:disabled):hover{transform:none !important}
+  .modal-res button:not(:disabled):active{transform:scale(.97) !important}
+  .modal-res .btn-p:hover{transform:none !important}
+
+@keyframes slideUp{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:scale(1)}}
+  @keyframes bottomSheet{from{transform:translateY(100%)}to{transform:translateY(0)}}
+  @keyframes ovFadeIn{from{opacity:0}to{opacity:1}}
+#place-modal{width:90vw!important;max-width:480px!important;left:50%!important;right:auto!important;transform:translateX(-50%) !important;}
+.modal-res{width:480px!important;max-width:480px!important;}
+  @keyframes slideIn{from{transform:translateX(-100%)}to{transform:translateX(0)}}
+  @keyframes naverBlink{0%,100%{background:#fff3e0}50%{background:#ffe0b2}}
+  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes pendingBlink{0%,100%{opacity:1}50%{opacity:.5}}
+  .fade-in{animation:fadeIn .6s ease}
+  .card{background:#fff;border-radius:8px;border:1px solid #ebebeb;box-shadow:0 2px 8px rgba(0,0,0,.06),0 1px 3px rgba(0,0,0,.04)}
+  .tw{overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{text-align:left;padding:8px 10px;color:#555;font-weight:700;font-size:11px;letter-spacing:.3px;border-bottom:2px solid #e0e0e0;white-space:nowrap;position:sticky;top:0;background:#fff;z-index:1}
+  td{padding:7px 10px;border-bottom:1px solid #f0f0f0;white-space:nowrap;color:#333}
+  tr:last-child td{border-bottom:none}
+  tr:hover td{background:#f5f5ff}
+  .inp{background:#fff;border:none;color:#333;padding:7px 10px;border-radius:8px;font-size:13px;width:100%;font-family:inherit;outline:none;transition:border-color .15s,box-shadow .15s;box-shadow:0 1px 4px rgba(0,0,0,.08),0 2px 8px rgba(0,0,0,.06)}
+  .inp:focus{border-color:#7c7cc8;box-shadow:0 0 0 2px rgba(124,124,200,.15),0 2px 8px rgba(0,0,0,.08)}
+
+  select.inp{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;padding-right:26px}
+  .badge{display:inline-flex;align-items:center;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:700}
+  .btn-p{background:#7c7cc8;color:#fff;padding:7px 14px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit;display:inline-flex;align-items:center;gap:5px;transition:all .15s;box-shadow:0 1px 4px rgba(124,124,200,.2)}
+  .btn-p:hover{background:#6a6ab8}
+  .btn-p:active{transform:scale(.97)}
+  .btn-s{background:#fff;color:#555;padding:7px 14px;border-radius:8px;border:1px solid #e0e0e0;cursor:pointer;font-size:13px;font-weight:600;font-family:inherit;display:inline-flex;align-items:center;gap:5px;transition:all .15s}
+  .btn-s:hover{background:#f5f5f5}
+  .btn-d{background:#ef5350;color:#fff;padding:7px 14px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:700;font-family:inherit;display:inline-flex;align-items:center;gap:5px;transition:all .15s}
+  .btn-d:hover{background:#e04747}
+  .btn-sm{padding:4px 10px;font-size:11px}
+  .ov{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.35);backdrop-filter:blur(2px);z-index:200;display:flex;align-items:flex-start;justify-content:center;padding:24px 16px;overflow-y:auto;animation:ovFadeIn .25s}
+  .modal{background:#fff;border-radius:12px;border:1px solid #e0e0e0;padding:22px;width:92%;max-width:500px;max-height:85vh;overflow-y:auto;animation:slideUp .6s cubic-bezier(.22,1,.36,1);box-shadow:0 4px 24px rgba(0,0,0,.16)}
+  .close-btn{background:none;border:none;color:#999;cursor:pointer;font-size:16px;font-family:inherit}
+  .form-col{display:flex;flex-direction:column;gap:14px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .page-title{font-size:18px;font-weight:800;color:#333;margin-bottom:16px}
+  @media(max-width:768px){
+    .hide-mobile{display:none!important;}
+    .page-reservations{overflow-x:hidden!important;}
+    .sidebar-d{display:none!important}
+    .sidebar-m{display:none!important}
+    .mob-bottom-nav{display:flex!important}
+    .mob-hdr{padding-left:16px!important}
+    .main-c{margin-left:0!important;padding-bottom:56px!important}
+    .page-title{font-size:15px;margin-bottom:10px}
+    .page-pad{padding:8px 6px 8px!important}
+    .grid2{grid-template-columns:1fr!important}
+    .form-col{gap:8px}
+    .sale-grid{grid-template-columns:1fr 1fr!important;gap:8px!important}
+    .sale-pay-row{flex-direction:column!important;gap:8px!important}
+    .res-time-row{flex-wrap:wrap!important;overflow-x:auto!important}
+    .res-time-row .inp{font-size:13px!important;padding:5px 8px!important}
+    .res-room-sep{display:none!important}
+    .res-room-sel{flex:1 1 100%!important;margin-top:4px!important}
+    .cust-row{grid-template-columns:5.5em 1fr 44px!important;gap:6px!important}
+    .cust-row .inp{height:38px!important;box-sizing:border-box!important}
+    .cust-row button{height:38px!important;box-sizing:border-box!important}
+    .form-col .inp,.form-col select.inp{height:38px!important;box-sizing:border-box!important;padding:5px 8px!important}
+    .form-col textarea.inp{height:auto!important}
+    .modal-res{width:100%!important;max-width:100%!important;border-radius:12px!important;margin:0!important}
+    .modal-res .form-col{overflow:visible!important}
+    .ov{top:56px!important;padding:8px 0!important;align-items:flex-start!important;overflow-y:auto!important}
+    .tl-topbar{flex-direction:column!important;gap:4px!important;padding:6px 6px!important;align-items:stretch!important}
+    .mob-hdr{padding:10px 16px!important}
+    .tl-date-label{font-size:15px!important}
+    .tl-room-name{font-size:14px!important}
+    .tl-room-sub{font-size:11px!important}
+    .tl-time-col{position:-webkit-sticky!important;position:sticky!important}
+    .tl-hdr-cell{position:-webkit-sticky!important;position:sticky!important}
+
+    .tl-days{width:100%;justify-content:space-between;padding:0 2px}
+    .page-filter{flex-wrap:wrap!important;gap:4px!important}
+    .page-filter .inp{max-width:130px!important}
+    table{font-size:11px}
+    th,td{padding:5px 6px}
+    .btn-p,.btn-s,.btn-d{padding:6px 10px;font-size:11px}
+    .btn-sm{padding:4px 8px!important;font-size:10px!important}
+    .stat-cards{grid-template-columns:repeat(auto-fit,minmax(100px,1fr))!important;gap:8px!important}
+    .stat-charts{grid-template-columns:1fr!important}
+    .admin-tw{max-height:calc(100vh - 260px)!important}
+
+    .modal-res span:not(.badge),.modal-res label,.modal-res p{font-size:13px!important}
+    .modal-res h3{font-size:15px!important}
+    .modal-res button{font-size:13px!important}
+    .modal-res .inp,.modal-res select.inp,.modal-res textarea.inp{font-size:16px!important}
+    .ov>div:not(.modal-res) span:not(.badge),.ov>div:not(.modal-res) label{font-size:13px!important}
+    .ov>div:not(.modal-res) h3{font-size:15px!important}
+    .ov>div:not(.modal-res) button{font-size:13px!important}
+    .ov>div:not(.modal-res) .inp,.ov>div:not(.modal-res) select.inp{font-size:16px!important}
+    .inp,.inp:focus{font-size:16px!important}
+    select.inp{font-size:14px!important}
+    .modal{padding:16px!important;max-height:90vh!important;width:100%!important;max-width:100%!important;border-radius:12px!important;margin:0!important}
+  }
+  @media(max-width:480px){
+    .sale-grid{grid-template-columns:1fr!important}
+    .page-filter .inp{max-width:110px!important;font-size:14px!important}
+    .stat-cards{grid-template-columns:1fr 1fr!important}
+  }
+  @media(min-width:769px){
+    .mob-bottom-nav{display:none!important}
+    .mob-hdr{display:none!important}
+    .sidebar-m{display:none!important}
+  }
+`;
+
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(ErrorBoundary, null, React.createElement(App)));
+</script>
+<script>
+// Service Worker
+if("serviceWorker" in navigator){
+  window.addEventListener("load",()=>{
+    navigator.serviceWorker.register("/bliss/sw.js").catch(()=>{});
+  });
+}
+// PWA 설치 프롬프트 저장
+window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();window.__pwaPrompt=e;});
+window.addEventListener("appinstalled",()=>{localStorage.setItem("bliss_pwa_installed","1");});
+
+// 홈 추가 배너 (순수 DOM, React 외부)
+function blissShowPWA(){
+  if(localStorage.getItem("bliss_pwa_installed")||localStorage.getItem("bliss_pwa_dismissed"))return;
+  if(window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone)return;
+  if(document.getElementById("bliss-pwa-banner"))return;
+  const d=document.createElement("div");
+  d.id="bliss-pwa-banner";
+  d.style.cssText="position:fixed;inset:0;z-index:99999;display:flex;align-items:flex-end;background:rgba(0,0,0,.5);font-family:'Pretendard',sans-serif";
+  d.innerHTML=`<div style="background:#fff;border-radius:20px 20px 0 0;padding:28px 24px 48px;width:100%;box-sizing:border-box">
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="font-size:48px">📱</div>
+      <div style="font-size:18px;font-weight:800;color:#222;margin:8px 0 6px">홈 화면에 추가하기</div>
+      <div style="font-size:13px;color:#888;line-height:1.7">Bliss를 홈 화면에 추가하면<br>앱처럼 빠르게 실행할 수 있어요</div>
+    </div>
+    <div style="background:#f5f5ff;border-radius:12px;padding:14px 16px;margin-bottom:16px;font-size:12px;color:#555;line-height:1.9">
+      <b style="color:#7c7cc8">iPhone (Safari)</b><br>
+      하단 공유 버튼 → <b>"홈 화면에 추가"</b> 탭<br><br>
+      <b style="color:#7c7cc8">Android (Chrome)</b><br>
+      우측 상단 메뉴 → <b>"홈 화면에 추가"</b> 탭
+    </div>
+    <button id="bliss-pwa-install" style="display:none;width:100%;padding:14px;border-radius:12px;border:none;background:linear-gradient(135deg,#7c7cc8,#9b9be0);color:#fff;font-size:15px;font-weight:800;cursor:pointer;margin-bottom:10px;box-sizing:border-box">지금 설치하기</button>
+    <button id="bliss-pwa-dismiss" style="width:100%;padding:12px;border-radius:12px;border:1px solid #e0e0e0;background:#fff;color:#999;font-size:13px;cursor:pointer;box-sizing:border-box">다음에 하기</button>
+  </div>`;
+  document.body.appendChild(d);
+  if(window.__pwaPrompt){
+    const btn=document.getElementById("bliss-pwa-install");
+    btn.style.display="block";
+    btn.onclick=()=>{window.__pwaPrompt.prompt();d.remove();};
+  }
+  document.getElementById("bliss-pwa-dismiss").onclick=()=>{localStorage.setItem("bliss_pwa_dismissed","1");d.remove();};
+}
+// 앱 로그인 후 감지 (mob-hdr = 앱 화면 헤더)
 let _pwaTimer=null;
 const _obs=new MutationObserver(()=>{
   if(document.querySelector(".mob-hdr")&&!_pwaTimer){
