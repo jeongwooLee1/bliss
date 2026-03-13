@@ -173,7 +173,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.114";
+const BLISS_V = "2.69.115";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -2214,6 +2214,10 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   };
 
   const handleSave = (item) => {
+    // 필수값 검증
+    if (!item.isSchedule && item.type === "reservation" && !item.custName?.trim()) {
+      alert("고객 이름을 입력해 주세요."); return;
+    }
     // 신규고객이면 DB에 고객 등록
     if (item.isNewCust && item.custName && !item.custId) {
       const newCustId = "cust_" + uid();
@@ -4034,6 +4038,7 @@ return f.requestMsg.split("\n").filter(l=>l.trim()).map((line,i)=>{
             </div>}
             <div style={{display:"flex",gap:T.sp.sm,alignItems:"center",padding:"14px 24px 20px"}}>
             {!isReadOnly && <><Btn
+                disabled={!isSchedule && f.type==="reservation" && !f.custName?.trim()}
                 style={{padding:"10px 26px",background:isSchedule?T.orange:T.primary,boxShadow:isSchedule?"0 4px 14px rgba(225,112,85,.35)":`0 4px 14px rgba(124,124,200,.35)`}}
                 onClick={()=>{
                 const now = new Date();
