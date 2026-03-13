@@ -7087,3 +7087,13 @@ function AdminServiceTags({ data, setData }) {
   </div>;
 }
 
+
+let _pwaTimer=null;
+const _obs=new MutationObserver(()=>{
+  if(document.querySelector(".mob-hdr")&&!_pwaTimer){
+    _pwaTimer=setTimeout(blissShowPWA,3000);
+  }
+});
+_obs.observe(document.body,{childList:true,subtree:true});
+</script></body></html>
+
