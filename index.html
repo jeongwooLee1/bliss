@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.131";
+const BLISS_V = "2.69.132";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7286,12 +7286,15 @@ function QuickBookModal({ onClose, onParsed, data }) {
     const ctx = await buildCtx();
     const rules = (data?.businesses || data?.businessSettings)?.[0]?.settings?.ai_rules || [];
     const rulesText = Array.isArray(rules) ? rules.map((r,i)=>`${i+1}. ${r}`).join("\n") : "";
-    const sys = `당신은 하우스왁싱 원장님 전용 AI 어시스턴트입니다.
+    const sys = `당신은 하우스왁싱 원장님 전용 AI 어시스턴트입니다. 친근하고 자연스러운 말투로 대화하세요.
 ${ctx}
 운영규칙:
 ${rulesText}
 응답규칙: 2~3문장으로 핵심만. 인사 반복 금지. 마크다운(*#_) 절대 금지. 숫자 정확히.
-예약 파싱 요청 시: JSON으로만 응답. {date,time,custName,custPhone,gender,serviceId,staffId,dur,memo}`;
+예약 등록/추가/해줘 요청 시: 반드시 자연스러운 확인 멘트 1문장 먼저 쓰고, 줄바꿈 후 JSON 한 줄 작성. 예시:
+네, 홍길동님 내일 19:30 강남점 예약 확인했어요!
+{"date":"2025-03-14","time":"19:30","custName":"홍길동","custPhone":"01012345678","serviceId":"","staffId":"","dur":60,"memo":"브라질왁싱, 다리왁싱"}
+JSON 필드: date(YYYY-MM-DD), time(HH:MM), custName, custPhone, serviceId, staffId, dur(분), memo`;
 
     const contents = [...chatHistory.map(m=>({role:m.role,parts:[{text:m.text}]})),
       {role:"user", parts: imageData
@@ -7304,7 +7307,7 @@ ${rulesText}
         body: JSON.stringify({
           system_instruction: {parts:[{text:sys}]},
           contents,
-          generationConfig: {temperature:.75, maxOutputTokens:600}
+          generationConfig: {temperature:.75, maxOutputTokens:1200}
         })
       }
     );
@@ -7330,14 +7333,20 @@ ${rulesText}
     try {
       const reply = await callGemini(text, imageData || imgData);
 
-      // 예약 파싱 시도
+      // 예약 파싱 시도 - JSON 블록 추출 (자연어와 분리)
       let parsed = null;
+      let displayText = reply;
       try {
-        const cleaned = reply.replace(/```json|```/g,"").trim();
-        if(cleaned.startsWith("{")) parsed = JSON.parse(cleaned);
+        const jsonMatch = reply.match(/\{[\s\S]*?\}/);
+        if(jsonMatch) {
+          parsed = JSON.parse(jsonMatch[0]);
+          // JSON 부분 제거 후 자연어만 표시
+          displayText = reply.replace(jsonMatch[0], "").replace(/```json|```/g,"").trim();
+          if(!displayText) displayText = `✅ ${parsed.custName||""}님 ${parsed.date||""} ${parsed.time||""} 예약 확인했어요!`;
+        }
       } catch(e){}
 
-      const aiMsg = { role:"model", text: parsed ? `✅ 예약 정보를 인식했어요!\n${parsed.custName||""}님 ${parsed.date||""} ${parsed.time||""}` : reply, time: new Date().toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"}), parsed };
+      const aiMsg = { role:"model", text: displayText, time: new Date().toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"}), parsed };
       setChatHistory(prev => [...prev, aiMsg]);
       setTimeout(() => msgEndRef.current?.scrollIntoView({behavior:"smooth"}), 50);
 
@@ -7345,7 +7354,7 @@ ${rulesText}
         setTimeout(() => onParsed(parsed), 800);
       }
 
-      if(convoModeRef.current) speakReply(reply);
+      if(convoModeRef.current) speakReply(displayText);
     } catch(e) {
       setError("오류: " + e.message);
       if(convoModeRef.current) setTimeout(restartListening, 800);
