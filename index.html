@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.146";
+const BLISS_V = "2.69.147";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7377,6 +7377,7 @@ function QuickBookModal({ onClose, onParsed, data }) {
   // ── GPT-4o-mini 호출 ──
   const callGPT = async (msg, imageData = null) => {
     const draft = draftRef.current;
+    const ctx = await buildCtx(); // 오늘 예약 현황
 
     // 날짜가 파악되면 실제 가용성 조회 (시간+소요시간도 함께)
     let availInfo = "";
@@ -7409,6 +7410,7 @@ function QuickBookModal({ onClose, onParsed, data }) {
     const sys = `당신은 하우스왁싱 예약 AI 비서입니다. 현재 ${ds} ${ts}.
 전체지점: ${branches||"없음"}
 시술목록: ${svcList||"없음"}
+${ctx}
 운영규칙:${rulesText ? "\n"+rulesText : " 없음"}
 ${availInfo}
 ${draftFields ? `\n✅ 파악된 정보 (다시 묻지 마세요): ${draftFields}` : ""}
@@ -7705,7 +7707,17 @@ JSON: {"date":"YYYY-MM-DD","time":"HH:MM","custName":"","custPhone":"","serviceI
   // sparkle icon
   const sparkle = <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z" fill={T.primary}/></svg>;
 
-  return <div style={{position:"fixed",inset:0,zIndex:200,background:T.bg,display:"flex",flexDirection:"column",overflowY:"hidden"}}>
+  // iOS 키보드 대응
+  const [vvHeight, setVvHeight] = React.useState(null);
+  React.useEffect(() => {
+    const vv = window.visualViewport;
+    if(!vv) return;
+    const handler = () => setVvHeight(vv.height);
+    vv.addEventListener("resize", handler);
+    return () => vv.removeEventListener("resize", handler);
+  }, []);
+
+  return <div style={{position:"fixed",top:0,left:0,right:0,height:vvHeight?vvHeight+"px":"100dvh",zIndex:200,background:T.bg,display:"flex",flexDirection:"column",overflowY:"hidden"}}>
     <style>{`
       @keyframes qb-breathe{0%,100%{transform:scale(1);opacity:.85}50%{transform:scale(1.15);opacity:1}}
       @keyframes qb-orb-ring{0%,100%{transform:scale(1);opacity:.4}50%{transform:scale(1.06);opacity:.12}}
