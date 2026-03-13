@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.123";
+const BLISS_V = "2.69.124";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -3942,7 +3942,7 @@ ${naverText}
               // label+value row 컴포넌트 (인라인)
               const NRow = ({label, value, valueColor, bold, rightEl}) => value ? <div style={{display:"flex",alignItems:"baseline",gap:T.sp.sm,padding:"3px 0",borderBottom:"1px solid #E8F5E9",minHeight:26}}>
                 <span style={{fontSize:T.fs.xxs,color:T.textSub,fontWeight:T.fw.medium,minWidth:72,flexShrink:0}}>{label}</span>
-                <span style={{fontSize:T.fs.sm,color:valueColor||T.text,fontWeight:T.fw.normal,lineHeight:1.4,wordBreak:"break-word",flex:1}}>{value}</span>
+                <span style={{fontSize:T.fs.sm,color:valueColor||T.text,fontWeight:T.fw.normal,lineHeight:1.4,wordBreak:"break-word",whiteSpace:"pre-line",flex:1}}>{value}</span>
                 {rightEl && <span style={{flexShrink:0}}>{rightEl}</span>}
               </div> : null;
               const fmtDt = (v) => { const d=new Date(v); return isNaN(d)?v:`${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`; };
@@ -3998,7 +3998,7 @@ return f.requestMsg.split("\n").filter(l=>l.trim()).map((line,i)=>{
                 {/* 직원 메모 */}
                 {f.ownerComment && naverColShow["직원메모"] !== false && <div style={{display:"flex",alignItems:"baseline",gap:T.sp.sm,padding:"3px 0",borderBottom:"1px solid #E8F5E9",minHeight:26}}>
                   <span style={{fontSize:T.fs.xxs,color:T.textSub,fontWeight:T.fw.medium,minWidth:72,flexShrink:0}}>직원메모</span>
-                  <span style={{fontSize:T.fs.sm,fontWeight:T.fw.normal,color:T.male,background:T.maleLt,borderRadius:T.radius.sm,padding:"1px 8px",lineHeight:1.4,wordBreak:"break-word"}}>{f.ownerComment}</span>
+                  <span style={{fontSize:T.fs.sm,fontWeight:T.fw.normal,color:T.male,background:T.maleLt,borderRadius:T.radius.sm,padding:"1px 8px",lineHeight:1.4,wordBreak:"break-word",whiteSpace:"pre-line"}}>{f.ownerComment}</span>
                 </div>}
                 {/* {/* 방문/노쇼 + 바로가기 */}
                 {(()=>{
