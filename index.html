@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.130";
+const BLISS_V = "2.69.131";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7417,7 +7417,13 @@ ${rulesText}
     if(!recognitionRef.current) { setError("이 브라우저는 음성을 지원하지 않아요"); return; }
     convoModeRef.current = true;
     setConvoMode(true); setConvoState("idle");
-    setTimeout(restartListening, 600);
+    // iOS TTS unlock (사용자 제스처 컨텍스트에서 실행)
+    if(window.speechSynthesis) {
+      const u = new SpeechSynthesisUtterance(" ");
+      u.volume = 0; u.lang = "ko-KR";
+      window.speechSynthesis.speak(u);
+    }
+    setTimeout(restartListening, 800);
   };
   const stopConvoMode = () => {
     convoModeRef.current = false;
@@ -7572,7 +7578,7 @@ ${rulesText}
     </div>
 
     {/* ── Input bar ── */}
-    <div style={{borderTop:"1px solid "+T.border,padding:"10px 14px",paddingBottom:"calc(10px + env(safe-area-inset-bottom,0px))",background:T.bgCard,flexShrink:0}}>
+    <div style={{borderTop:"1px solid "+T.border,padding:"10px 14px",paddingBottom:"calc(16px + env(safe-area-inset-bottom,0px))",background:T.bgCard,flexShrink:0}}>
       <div style={{display:"flex",alignItems:"flex-end",gap:8}}>
         <div style={{flex:1,background:T.bg,border:"1.5px solid "+T.border,borderRadius:22,display:"flex",alignItems:"flex-end",padding:"10px 14px",gap:8,minHeight:46}}>
           <button onClick={toggleVoice}
