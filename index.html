@@ -6088,15 +6088,16 @@ function AConfirm({ open, title, desc, onOk, onCancel, okLabel="삭제", danger=
   </div>;
 }
 
-function ASheet({ open, onClose, title, children }) {
+function ASheet({ open, onClose, title, children, onSave, saveLabel, saving, saveDisabled }) {
   if (!open) return null;
   return <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.4)",zIndex:500,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
-    <div style={{background:"#fff",borderRadius:"20px 20px 0 0",width:"100%",maxWidth:540,maxHeight:"88vh",overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
-      <div style={{padding:"20px 20px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,background:"#fff",borderBottom:"1px solid "+T.gray100,zIndex:1}}>
+    <div style={{background:"#fff",borderRadius:"20px 20px 0 0",width:"100%",maxWidth:540,maxHeight:"88vh",display:"flex",flexDirection:"column",WebkitOverflowScrolling:"touch"}}>
+      <div style={{padding:"20px 20px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0,borderBottom:"1px solid "+T.gray100}}>
         <div style={{fontSize:T.fs.md,fontWeight:T.fw.black,color:T.text}}>{title}</div>
         <button onClick={onClose} style={{width:28,height:28,borderRadius:"50%",border:"none",background:T.gray100,color:T.gray500,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><I name="x" size={14}/></button>
       </div>
-      <div style={{padding:"20px"}}>{children}</div>
+      <div style={{padding:"20px",overflowY:"auto",flex:1}}>{children}</div>
+      {onSave && <div style={{padding:"12px 20px 20px",borderTop:"1px solid "+T.gray100,flexShrink:0,paddingBottom:"calc(20px + env(safe-area-inset-bottom))"}}><AIBtn onClick={onSave} saving={saving} disabled={saving||saveDisabled} label={saveLabel||"저장"} style={{width:"100%"}}/></div>}
     </div>
   </div>;
 }
@@ -6359,7 +6360,7 @@ function AdminPlaces({ data, setData, bizId }) {
           <button onClick={e=>{e.stopPropagation();setDel(b.id);}} style={{width:28,height:28,borderRadius:7,border:"1px solid #fecaca",background:"#fff5f5",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><I name="trash" size={13} style={{color:T.danger}}/></button>
         </div>}/>)}
     </div>}
-    <ASheet open={sheet} onClose={()=>setSheet(false)} title={edit?"지점 수정":"지점 추가"}>
+    <ASheet open={sheet} onClose={()=>setSheet(false)} title={edit?"지점 수정":"지점 추가"} onSave={save} saving={saving} saveDisabled={saving||!form.name.trim()} saveLabel={edit?"저장":"지점 추가"}>
       <AField label="지점명" required><input style={AInp} value={form.name} onChange={e=>set("name",e.target.value)} placeholder="예: 강남점" onFocus={e=>e.target.style.borderColor=T.primary} onBlur={e=>e.target.style.borderColor="#e8e8f0"}/></AField>
       <AField label="약칭" hint="타임라인 등 좁은 공간에 표시"><input style={AInp} value={form.short} onChange={e=>set("short",e.target.value)} placeholder="예: 강남" onFocus={e=>e.target.style.borderColor=T.primary} onBlur={e=>e.target.style.borderColor="#e8e8f0"}/></AField>
       <AField label="전화번호"><input style={AInp} value={form.phone} onChange={e=>set("phone",e.target.value)} placeholder="02-0000-0000" onFocus={e=>e.target.style.borderColor=T.primary} onBlur={e=>e.target.style.borderColor="#e8e8f0"}/></AField>
@@ -6369,7 +6370,7 @@ function AdminPlaces({ data, setData, bizId }) {
         <span style={{fontSize:T.fs.sm,color:T.text,fontWeight:500}}>운영 중</span>
         <AToggle on={form.useYn} onChange={v=>set("useYn",v)}/>
       </div>
-      <AIBtn onClick={save} saving={saving} disabled={saving||!form.name.trim()} label={edit?"저장":"지점 추가"}/>
+      
     </ASheet>
     <AConfirm open={!!del} title="지점 삭제" desc="삭제 후에도 기존 예약 데이터는 유지됩니다." onOk={()=>doDelete(del)} onCancel={()=>setDel(null)}/>
   </div>;
@@ -6435,7 +6436,7 @@ function AdminWorkers({ data, setData }) {
           <button onClick={e=>{e.stopPropagation();setDel(r.id);}} style={{width:28,height:28,borderRadius:7,border:"1px solid #fecaca",background:"#fff5f5",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><I name="trash" size={13} style={{color:T.danger}}/></button>
         </div>}/>)}
     </div>}
-    <ASheet open={sheet} onClose={()=>setSheet(false)} title={edit?"담당자 수정":"담당자 추가"}>
+    <ASheet open={sheet} onClose={()=>setSheet(false)} title={edit?"담당자 수정":"담당자 추가"} onSave={save} saving={saving} saveDisabled={saving||!form.name.trim()||!form.branchId} saveLabel={edit?"저장":"담당자 추가"}>
       <AField label="이름" required><input style={AInp} value={form.name} onChange={e=>set("name",e.target.value)} placeholder="예: 김민지" onFocus={e=>e.target.style.borderColor=T.primary} onBlur={e=>e.target.style.borderColor="#e8e8f0"}/></AField>
       <AField label="소속 지점" required>
         <select style={{...AInp}} value={form.branchId} onChange={e=>set("branchId",e.target.value)}>
@@ -6545,7 +6546,7 @@ function AdminSaleItems({ data, setData }) {
         </div>
       </div>)}
     </div>}
-    <ASheet open={sheet} onClose={()=>setSheet(false)} title={edit?"시술 수정":"시술 추가"}>
+    <ASheet open={sheet} onClose={()=>setSheet(false)} title={edit?"시술 수정":"시술 추가"} onSave={save} saving={saving} saveDisabled={saving||!form.name.trim()} saveLabel={edit?"저장":"시술 추가"}>
       <AField label="카테고리">
         <select style={{...AInp}} value={form.cat} onChange={e=>set("cat",e.target.value)}>
           {cats.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}
@@ -6572,7 +6573,7 @@ function AdminSaleItems({ data, setData }) {
         <AField label="다회권 여성가"><input style={AInp} type="number" value={form.pkgPriceF} onChange={e=>set("pkgPriceF",e.target.value)} onFocus={e=>e.target.style.borderColor=T.primary} onBlur={e=>e.target.style.borderColor="#e8e8f0"}/></AField>
         <AField label="다회권 남성가"><input style={AInp} type="number" value={form.pkgPriceM} onChange={e=>set("pkgPriceM",e.target.value)} onFocus={e=>e.target.style.borderColor=T.primary} onBlur={e=>e.target.style.borderColor="#e8e8f0"}/></AField>
       </div>}
-      <AIBtn onClick={save} saving={saving} disabled={saving||!form.name.trim()} label={edit?"저장":"시술 추가"}/>
+
     </ASheet>
     <ASheet open={catSheet} onClose={()=>setCatSheet(false)} title="카테고리 추가">
       <AField label="카테고리명" required><input style={AInp} value={newCatName} onChange={e=>setNewCatName(e.target.value)} placeholder="예: 왁싱, 스킨케어" onFocus={e=>e.target.style.borderColor=T.primary} onBlur={e=>e.target.style.borderColor="#e8e8f0"}/></AField>
@@ -6635,7 +6636,7 @@ function AdminProductItems({ data, setData }) {
           <button onClick={e=>{e.stopPropagation();setDel(it.id);}} style={{width:28,height:28,borderRadius:7,border:"1px solid #fecaca",background:"#fff5f5",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><I name="trash" size={13} style={{color:T.danger}}/></button>
         </div>}/>)}
     </div>}
-    <ASheet open={sheet} onClose={()=>setSheet(false)} title={edit?"제품 수정":"제품 추가"}>
+    <ASheet open={sheet} onClose={()=>setSheet(false)} title={edit?"제품 수정":"제품 추가"} onSave={save} saving={saving} saveDisabled={saving||!form.name.trim()} saveLabel={edit?"저장":"제품 추가"}>
       <AField label="제품명" required><input style={AInp} value={form.name} onChange={e=>set("name",e.target.value)} placeholder="예: 진정 크림" onFocus={e=>e.target.style.borderColor=T.primary} onBlur={e=>e.target.style.borderColor="#e8e8f0"}/></AField>
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
         <AField label="가격(원)"><input style={AInp} type="number" value={form.price} onChange={e=>set("price",e.target.value)} onFocus={e=>e.target.style.borderColor=T.primary} onBlur={e=>e.target.style.borderColor="#e8e8f0"}/></AField>
@@ -6701,7 +6702,7 @@ function AdminResSources({ data, setData }) {
           <button onClick={e=>{e.stopPropagation();setDel(s.id);}} style={{width:28,height:28,borderRadius:7,border:"1px solid #fecaca",background:"#fff5f5",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><I name="trash" size={13} style={{color:T.danger}}/></button>
         </div>}/>)}
     </div>}
-    <ASheet open={sheet} onClose={()=>setSheet(false)} title={edit?"경로 수정":"경로 추가"}>
+    <ASheet open={sheet} onClose={()=>setSheet(false)} title={edit?"경로 수정":"경로 추가"} onSave={save} saving={saving} saveDisabled={saving||!form.name.trim()} saveLabel={edit?"저장":"경로 추가"}>
       <AField label="경로명" required><input style={AInp} value={form.name} onChange={e=>set("name",e.target.value)} placeholder="예: 네이버, 인스타그램" onFocus={e=>e.target.style.borderColor=T.primary} onBlur={e=>e.target.style.borderColor="#e8e8f0"}/></AField>
       <AField label="색상">
         <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:10}}>
@@ -6714,7 +6715,7 @@ function AdminResSources({ data, setData }) {
         <span style={{fontSize:T.fs.sm,fontWeight:500}}>사용 중</span>
         <AToggle on={form.useYn} onChange={v=>set("useYn",v)}/>
       </div>
-      <AIBtn onClick={save} saving={saving} disabled={saving||!form.name.trim()} label={edit?"저장":"경로 추가"}/>
+
     </ASheet>
     <AConfirm open={!!del} title="경로 삭제" onOk={()=>doDelete(del)} onCancel={()=>setDel(null)}/>
   </div>;
@@ -7067,7 +7068,7 @@ function AdminServiceTags({ data, setData }) {
         {!SYSTEM_TAG_IDS.includes(t.id)&&<button onClick={()=>setDel(t.id)} style={{width:28,height:28,borderRadius:7,border:"1px solid #fecaca",background:"#fff5f5",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><I name="trash" size={13} style={{color:T.danger}}/></button>}
       </div>)}
     </div>}
-    <ASheet open={sheet} onClose={()=>setSheet(false)} title={editItem?"태그 수정":"태그 추가"}>
+    <ASheet open={sheet} onClose={()=>setSheet(false)} title={editItem?"태그 수정":"태그 추가"} onSave={save} saveDisabled={!form.name.trim()} saveLabel={editItem?"저장":"태그 추가"}>
       <AField label="태그명" required><input style={AInp} value={form.name} onChange={e=>set("name",e.target.value)} placeholder="예: 신규, VIP" onFocus={e=>e.target.style.borderColor=T.primary} onBlur={e=>e.target.style.borderColor="#e8e8f0"}/></AField>
       <AField label="소요 시간(분)" hint="0이면 기본 시술 시간 사용"><input style={{...AInp,width:120}} type="number" value={form.dur} onChange={e=>set("dur",e.target.value)} onFocus={e=>e.target.style.borderColor=T.primary} onBlur={e=>e.target.style.borderColor="#e8e8f0"}/></AField>
       <AField label="색상"><APalette value={form.color} onChange={v=>set("color",v)}/></AField>
@@ -7078,7 +7079,7 @@ function AdminServiceTags({ data, setData }) {
         <span style={{fontSize:T.fs.sm,fontWeight:500}}>사용 중</span>
         <AToggle on={form.useYn!==false} onChange={v=>set("useYn",v)}/>
       </div>
-      <AIBtn onClick={save} disabled={!form.name.trim()} label={editItem?"저장":"태그 추가"}/>
+
     </ASheet>
     <AConfirm open={!!del} title="태그 삭제" onOk={()=>doDelete(del)} onCancel={()=>setDel(null)}/>
   </div>;
