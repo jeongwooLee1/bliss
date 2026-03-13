@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.134";
+const BLISS_V = "2.69.135";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -681,7 +681,7 @@ function App() {
           const cfg = await sb.get("businesses", "&code=eq.__system__");
           if (cfg.length > 0) {
             const m = JSON.parse(cfg[0].settings || "{}");
-            if (m.system_gemini_key) { window.__systemGeminiKey = m.system_gemini_key; }
+            if (m.system_openai_key) { window.__systemOpenAIKey = m.system_openai_key; }
           }
         } catch(e) {}
         const users = fromDb("app_users", await sb.get("app_users"));
@@ -1601,7 +1601,7 @@ function SuperSystemSettings() {
         const rows = await sb.get("businesses","&code=eq.__system__");
         if (rows.length > 0) {
           const m = JSON.parse(rows[0].settings||"{}");
-          setKey(m.system_gemini_key||"");
+          setKey(m.system_openai_key||m.system_gemini_key||"");
         }
       } catch(e){}
       finally { setLoading(false); }
@@ -1611,13 +1611,13 @@ function SuperSystemSettings() {
   const save = async () => {
     try {
       const rows = await sb.get("businesses","&code=eq.__system__");
-      const settings = JSON.stringify({ system_gemini_key: key.trim() });
+      const settings = JSON.stringify({ system_openai_key: key.trim() });
       if (rows.length > 0) {
         await sb.update("businesses", rows[0].id, { settings });
       } else {
         await sb.insert("businesses",{ id:"biz_system", name:"[시스템]", code:"__system__", phone:"", settings });
       }
-      window.__systemGeminiKey = key.trim();
+      window.__systemOpenAIKey = key.trim();
       setSaved(true);
       setTimeout(()=>setSaved(false), 2500);
     } catch(e) { alert("저장 실패: "+e.message); }
@@ -1632,7 +1632,7 @@ function SuperSystemSettings() {
 
       <div style={{background:T.bgCard,border:"1px solid #e8e8e8",borderRadius:T.radius.lg,padding:20,display:"flex",flexDirection:"column",gap:T.sp.lg}}>
         <div>
-          <div style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder,color:T.gray700,marginBottom:4}}>Gemini API 키 (시스템)</div>
+          <div style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder,color:T.gray700,marginBottom:4}}>OpenAI API 키 (시스템)</div>
           <div style={{fontSize:T.fs.xxs,color:T.textMuted,marginBottom:10}}>
             가입 시 사업자등록증 자동 인식에 사용됩니다. 사용자에게는 노출되지 않습니다.
           </div>
@@ -1641,7 +1641,7 @@ function SuperSystemSettings() {
               type="password"
               value={key}
               onChange={e=>{setKey(e.target.value);setSaved(false);}}
-              placeholder="AIza..."
+              placeholder="sk-proj-..."
               style={{flex:1,padding:"10px 12px",fontSize:T.fs.sm,borderRadius:T.radius.md,border:"1px solid "+T.border,outline:"none",fontFamily:"inherit"}}
             />
             <button onClick={save}
@@ -3444,17 +3444,17 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
 
   // ── AI 자동분석: 네이버 request_msg → 시술상품 + 예약태그 자동 선택 ──
   const handleAiAnalyze = async () => {
-    let apiKey = window.__geminiKey || localStorage.getItem("bliss_gemini_key") || "";
+    let apiKey = window.__openaiKey || localStorage.getItem("bliss_openai_key") || "";
     if (!apiKey) {
       try {
         const r = await fetch(`${SB_URL}/rest/v1/businesses?select=settings&limit=1`, {headers: sbHeaders});
         const rows = await r.json();
         const memo = JSON.parse(rows[0]?.settings || "{}");
-        apiKey = memo.gemini_key || "";
-        if (apiKey) { window.__geminiKey = apiKey; localStorage.setItem("bliss_gemini_key", apiKey); }
+        apiKey = memo.openai_key || "";
+        if (apiKey) { window.__openaiKey = apiKey; localStorage.setItem("bliss_openai_key", apiKey); }
       } catch(e) {}
     }
-    if (!apiKey) { alert("관리설정 → AI설정에서 Gemini API 키를 등록하세요"); return; }
+    if (!apiKey) { alert("관리설정 → AI설정에서 OpenAI API 키를 등록하세요"); return; }
     const reqText = (() => {
       if (!f.requestMsg) return "";
       if (f.requestMsg.trim().startsWith("[")) {
@@ -3512,13 +3512,13 @@ ${naverText}
 
 응답 형식:
 {"matchedTagIds":["태그id1","태그id2"],"matchedServiceIds":["시술id1"],"gender":"F 또는 M 또는 빈문자열","reason":"선택 이유 한줄"}`;
-      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
-        method:"POST", headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({contents:[{parts:[{text:prompt}]}], generationConfig:{temperature:0}})
+      const r = await fetch("https://api.openai.com/v1/chat/completions", {
+        method:"POST", headers:{"Content-Type":"application/json","Authorization":`Bearer ${apiKey}`},
+        body:JSON.stringify({model:"gpt-4o-mini",messages:[{role:"user",content:prompt}],temperature:0,max_tokens:400})
       });
       if (!r.ok) throw new Error("API: "+(await r.text()).slice(0,120));
       const d2 = await r.json();
-      const txt = d2.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      const txt = d2.choices?.[0]?.message?.content || "";
       const parsed = JSON.parse(txt.replace(/```json|```/g,"").trim());
       // AI 결과에서 신규 태그 제거 후 코드가 직접 판단
       let newTags = (parsed.matchedTagIds || []).filter(id => !SYSTEM_TAG_IDS.includes(id));
@@ -6930,8 +6930,9 @@ function AdminAISettings({ data, sb, bizId }) {
   const testKey=async()=>{
     setTesting(true); setTestResult(null);
     try{
-      const r=await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key="+apiKey.trim(),
-        {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({contents:[{parts:[{text:"안녕"}]}]})});
+      const r=await fetch("https://api.openai.com/v1/chat/completions",
+        {method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+openaiKey.trim()},
+         body:JSON.stringify({model:"gpt-4o-mini",messages:[{role:"user",content:"안녕"}],max_tokens:5})});
       setTestResult(r.ok?"✓ 연결 성공":"✕ 연결 실패 ("+r.status+")");
     }catch(e){setTestResult("✕ "+e.message);}
     finally{setTesting(false);}
@@ -6960,34 +6961,21 @@ function AdminAISettings({ data, sb, bizId }) {
     <APageHeader title="AI 설정" desc="예약 분석에 사용되는 AI 기능을 설정하세요"/>
     <div className="card" style={{padding:20,marginBottom:16}}>
       <div style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder,color:T.text,marginBottom:4,display:"flex",alignItems:"center",gap:7}}>
-        <I name="sparkles" size={14} style={{color:"#10a37f"}}/> OpenAI API 키 <span style={{fontSize:10,background:"#10a37f",color:"#fff",padding:"2px 7px",borderRadius:99,fontWeight:700}}>AI Book</span>
+        <I name="sparkles" size={14} style={{color:"#10a37f"}}/> OpenAI API 키
       </div>
       <div style={{fontSize:T.fs.xs,color:T.textMuted,marginBottom:14,lineHeight:1.6}}>
-        AI Book 대화에 사용됩니다.{" "}
+        AI Book 대화 및 예약 AI 분석에 사용됩니다.{" "}
         <a href="https://platform.openai.com/api-keys" target="_blank" style={{color:"#10a37f",fontWeight:700}}>platform.openai.com</a>에서 발급받을 수 있어요.
       </div>
       <AField label="API 키">
         <input style={AInp} type="password" value={openaiKey} onChange={e=>setOpenaiKey(e.target.value)} placeholder="sk-proj-…" onFocus={e=>e.target.style.borderColor="#10a37f"} onBlur={e=>e.target.style.borderColor="#e8e8f0"}/>
       </AField>
-      <AIBtn onClick={saveOpenaiKey} disabled={!openaiKey.trim()} label={openaiSaved?"✓ 저장됨":"저장"} style={{width:"100%",background:openaiSaved?T.success:"#10a37f"}}/>
-    </div>
-    <div className="card" style={{padding:20,marginBottom:16}}>
-      <div style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder,color:T.text,marginBottom:4,display:"flex",alignItems:"center",gap:7}}>
-        <I name="sparkles" size={14} style={{color:T.primary}}/> Gemini API 키
-      </div>
-      <div style={{fontSize:T.fs.xs,color:T.textMuted,marginBottom:14,lineHeight:1.6}}>
-        네이버 예약 AI 분석에 사용됩니다.{" "}
-        <a href="https://aistudio.google.com/app/apikey" target="_blank" style={{color:T.primary,fontWeight:700}}>Google AI Studio</a>에서 무료로 발급받을 수 있어요.
-      </div>
-      <AField label="API 키">
-        <input style={AInp} type="password" value={apiKey} onChange={e=>setApiKey(e.target.value)} placeholder="AIzaSy…" onFocus={e=>e.target.style.borderColor=T.primary} onBlur={e=>e.target.style.borderColor="#e8e8f0"}/>
-      </AField>
       {testResult&&<div style={{fontSize:T.fs.xs,padding:"8px 12px",borderRadius:8,marginBottom:12,background:testResult.startsWith("✓")?"#f0faf4":"#fff5f5",color:testResult.startsWith("✓")?T.success:T.danger}}>{testResult}</div>}
       <div style={{display:"flex",gap:10}}>
-        <button onClick={testKey} disabled={testing||!apiKey.trim()} style={{flex:1,padding:"11px",borderRadius:10,border:"1.5px solid "+T.border,background:"#fff",fontSize:T.fs.sm,fontWeight:600,color:T.textSub,cursor:"pointer",fontFamily:"inherit"}}>
+        <button onClick={testKey} disabled={testing||!openaiKey.trim()} style={{flex:1,padding:"11px",borderRadius:10,border:"1.5px solid "+T.border,background:"#fff",fontSize:T.fs.sm,fontWeight:600,color:T.textSub,cursor:"pointer",fontFamily:"inherit"}}>
           {testing?"테스트 중…":"연결 테스트"}
         </button>
-        <AIBtn onClick={saveKey} disabled={!apiKey.trim()} label={saved?"✓ 저장됨":"저장"} style={{flex:1,background:saved?T.success:T.primary}}/>
+        <AIBtn onClick={saveOpenaiKey} disabled={!openaiKey.trim()} label={openaiSaved?"✓ 저장됨":"저장"} style={{flex:1,background:openaiSaved?T.success:"#10a37f"}}/>
       </div>
     </div>
     <div className="card" style={{padding:20}}>
