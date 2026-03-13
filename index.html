@@ -6051,7 +6051,7 @@ function UserEditRow({ init, regBranches, allBranches, onSave, onCancel, isNew }
 function AConfirm({ open, title, desc, onOk, onCancel, okLabel="삭제", danger=true }) {
   if (!open) return null;
   return <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.45)",zIndex:9999,display:"flex",alignItems:"center",justifyContent:"center",padding:"0 24px"}}>
-    <div style={{background:"#fff",borderRadius:16,padding:"28px 24px",width:"100%",maxWidth:360,boxShadow:"0 20px 60px rgba(0,0,0,.18)",animation:"slideUp .2s ease"}}>
+    <div style={{background:"#fff",borderRadius:16,padding:"28px 24px",width:"100%",maxWidth:360,boxShadow:"0 20px 60px rgba(0,0,0,.18)"}}>
       <div style={{fontSize:T.fs.lg,fontWeight:T.fw.black,color:T.text,marginBottom:6}}>{title}</div>
       {desc&&<div style={{fontSize:T.fs.sm,color:T.textSub,marginBottom:24,lineHeight:1.6}}>{desc}</div>}
       <div style={{display:"flex",gap:10,marginTop:desc?0:20}}>
@@ -6065,7 +6065,7 @@ function AConfirm({ open, title, desc, onOk, onCancel, okLabel="삭제", danger=
 function ASheet({ open, onClose, title, children }) {
   if (!open) return null;
   return <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.4)",zIndex:500,display:"flex",alignItems:"flex-end",justifyContent:"center"}} onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
-    <div style={{background:"#fff",borderRadius:"20px 20px 0 0",width:"100%",maxWidth:540,maxHeight:"88vh",overflowY:"auto",animation:"sheetUp .28s cubic-bezier(.22,1,.36,1)",WebkitOverflowScrolling:"touch"}}>
+    <div style={{background:"#fff",borderRadius:"20px 20px 0 0",width:"100%",maxWidth:540,maxHeight:"88vh",overflowY:"auto",WebkitOverflowScrolling:"touch"}}>
       <div style={{padding:"20px 20px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,background:"#fff",borderBottom:"1px solid "+T.gray100,zIndex:1}}>
         <div style={{fontSize:T.fs.md,fontWeight:T.fw.black,color:T.text}}>{title}</div>
         <button onClick={onClose} style={{width:28,height:28,borderRadius:"50%",border:"none",background:T.gray100,color:T.gray500,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><I name="x" size={14}/></button>
@@ -6088,7 +6088,7 @@ function AField({ label, required, error, children, hint }) {
 
 const AInp = {width:"100%",padding:"10px 12px",border:"1.5px solid #e8e8f0",borderRadius:10,fontSize:14,fontFamily:"inherit",color:"#1a1a2e",outline:"none",background:"#fff",boxSizing:"border-box"};
 
-function AEmpty({ icon="plus-circle", message, onAdd, addLabel }) {
+function AEmpty({ icon="plus", message, onAdd, addLabel }) {
   return <div style={{textAlign:"center",padding:"52px 20px",display:"flex",flexDirection:"column",alignItems:"center",gap:12}}>
     <div style={{width:52,height:52,borderRadius:"50%",background:T.gray100,display:"flex",alignItems:"center",justifyContent:"center"}}>
       <I name={icon} size={22} style={{color:T.gray300}}/>
@@ -6195,7 +6195,7 @@ function AdminMyPage({ currentUser, onLogout }) {
     </div>
     <div className="card" style={{padding:20,marginBottom:16}}>
       <div style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder,color:T.text,marginBottom:16,display:"flex",alignItems:"center",gap:7}}>
-        <I name="lock" size={14} style={{color:T.primary}}/> 비밀번호 변경
+        <I name="settings" size={14} style={{color:T.primary}}/> 비밀번호 변경
       </div>
       {[["cur","현재 비밀번호"],["nw","새 비밀번호"],["nw2","새 비밀번호 확인"]].map(([k,lv])=>
         <AField key={k} label={lv}>
@@ -6207,7 +6207,7 @@ function AdminMyPage({ currentUser, onLogout }) {
     </div>
     <div className="card" style={{padding:16}}>
       <button onClick={onLogout} style={{width:"100%",padding:"12px",borderRadius:10,border:"1.5px solid "+T.danger+"44",background:"#fff5f5",color:T.danger,fontSize:T.fs.sm,fontWeight:700,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
-        <I name="logOut" size={14}/> 로그아웃
+        <I name="arrowL" size={14}/> 로그아웃
       </button>
     </div>
   </div>;
@@ -6223,21 +6223,21 @@ function AdminPage({ data, setData, bizId, serverV, onLogout, currentUser }) {
 
   const MENU=[
     {section:"사업장 관리",items:[
-      {key:"places",     icon:"map-pin",  label:"예약장소 관리",  desc:"지점 추가·수정·삭제"},
-      {key:"workers",    icon:"users",    label:"담당자 관리",    desc:"직원 계정 및 권한 설정"},
-      {key:"saleitems",  icon:"scissors", label:"시술 상품 관리", desc:"시술 항목 및 가격 설정"},
-      {key:"prodmgmt",   icon:"package",  label:"제품 관리",      desc:"판매 제품 관리"},
+      {key:"places",      icon:"building", label:"예약장소 관리",  desc:"지점 추가·수정·삭제"},
+      {key:"workers",     icon:"users",    label:"담당자 관리",    desc:"직원 계정 및 권한 설정"},
+      {key:"saleitems",   icon:"scissors", label:"시술 상품 관리", desc:"시술 항목 및 가격 설정"},
+      {key:"prodmgmt",    icon:"clipboard",label:"제품 관리",      desc:"판매 제품 관리"},
     ]},
     {section:"예약 설정",items:[
-      {key:"svctags",    icon:"tag",      label:"태그 관리",      desc:"예약 태그 추가·편집"},
-      {key:"ressrc",     icon:"link",     label:"예약경로 관리",  desc:"예약 유입 경로 설정"},
+      {key:"svctags",     icon:"tag",      label:"태그 관리",      desc:"예약 태그 추가·편집"},
+      {key:"ressrc",      icon:"zap",      label:"예약경로 관리",  desc:"예약 유입 경로 설정"},
     ]},
     {section:"알림 & AI",items:[
-      {key:"notiSettings",icon:"bell",    label:"알림톡 설정",    desc:"카카오 알림톡 자동 발송 설정"},
-      {key:"aisettings",  icon:"sparkles",label:"AI 설정",        desc:"AI 분석 키 및 규칙 관리"},
+      {key:"notiSettings",icon:"bell",     label:"알림톡 설정",    desc:"카카오 알림톡 자동 발송 설정"},
+      {key:"aisettings",  icon:"sparkles", label:"AI 설정",        desc:"AI 분석 키 및 규칙 관리"},
     ]},
     {section:"내 계정",items:[
-      {key:"mypage",     icon:"user",     label:"마이페이지",     desc:"내 계정 정보 및 비밀번호 변경"},
+      {key:"mypage",      icon:"user",     label:"마이페이지",     desc:"내 계정 정보 및 비밀번호 변경"},
     ]},
   ];
 
@@ -6245,7 +6245,7 @@ function AdminPage({ data, setData, bizId, serverV, onLogout, currentUser }) {
     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:24}}>
       <h2 style={{margin:0,fontSize:T.fs.xl,fontWeight:T.fw.black,color:T.text,letterSpacing:"-.5px"}}>메뉴</h2>
       <button onClick={onLogout} style={{height:32,padding:"0 12px",borderRadius:8,border:"1px solid "+T.border,background:"#fff",color:T.textSub,fontSize:T.fs.sm,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:6}}>
-        <I name="logOut" size={13}/> 로그아웃
+        <I name="arrowL" size={13}/> 로그아웃
       </button>
     </div>
     {MENU.map(g=><div key={g.section} style={{marginBottom:24}}>
@@ -6321,7 +6321,7 @@ function AdminPlaces({ data, setData, bizId }) {
 
   return <div>
     <APageHeader title="예약장소 관리" count={branches.length} onAdd={openNew}/>
-    {branches.length===0?<AEmpty icon="map-pin" message="등록된 지점이 없어요" onAdd={openNew} addLabel="지점 추가"/>
+    {branches.length===0?<AEmpty icon="building" message="등록된 지점이 없어요" onAdd={openNew} addLabel="지점 추가"/>
     :<div className="card" style={{padding:0,overflow:"hidden"}}>
       {branches.map((b,i)=><AListItem key={b.id}
         left={<AColorDot color={b.color} size={22}/>} title={b.name}
@@ -6340,7 +6340,7 @@ function AdminPlaces({ data, setData, bizId }) {
       <AField label="주소"><input style={AInp} value={form.address} onChange={e=>set("address",e.target.value)} placeholder="서울특별시 강남구…" onFocus={e=>e.target.style.borderColor=T.primary} onBlur={e=>e.target.style.borderColor="#e8e8f0"}/></AField>
       <AField label="색상"><APalette value={form.color} onChange={v=>set("color",v)}/></AField>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 0",borderTop:"1px solid "+T.gray100,marginBottom:16,marginTop:4}}>
-        <span style={{fontSize:T.fs.sm,color:T.text,fontWeight:T.fw.medium}}>운영 중</span>
+        <span style={{fontSize:T.fs.sm,color:T.text,fontWeight:500}}>운영 중</span>
         <AToggle on={form.useYn} onChange={v=>set("useYn",v)}/>
       </div>
       <AIBtn onClick={save} saving={saving} disabled={saving||!form.name.trim()} label={edit?"저장":"지점 추가"}/>
@@ -6490,7 +6490,7 @@ function AdminSaleItems({ data, setData }) {
     <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:16,alignItems:"center"}}>
       {[{id:"all",name:"전체"},...cats].map(c=><button key={c.id} onClick={()=>setFilterCat(c.id)}
         style={{padding:"5px 13px",borderRadius:20,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:T.fs.xs,fontWeight:filterCat===c.id?700:500,
-          background:filterCat===c.id?T.primary:T.gray100,color:filterCat===c.id?"#fff":T.gray600,transition:"all .15s"}}>{c.name}</button>)}
+          background:filterCat===c.id?T.primary:T.gray100,color:filterCat===c.id?"#fff":T.gray600}}>{c.name}</button>)}
       <button onClick={()=>setCatSheet(true)} style={{padding:"5px 11px",borderRadius:20,border:"1px dashed #ccc",background:"none",color:T.textMuted,fontSize:T.fs.xs,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:4}}>
         <I name="plus" size={11}/> 카테고리
       </button>
@@ -6506,9 +6506,9 @@ function AdminSaleItems({ data, setData }) {
               {qtyOn(s.note)&&<ABadge color={T.female} bg={T.femaleLt}>수량허용</ABadge>}
             </div>
             <div style={{display:"flex",gap:12,flexWrap:"wrap",marginBottom:6}}>
-              <span style={{fontSize:T.fs.xxs,color:T.textMuted,display:"flex",alignItems:"center",gap:3}}><I name="clock" size={10}/> {s.dur}분</span>
-              <span style={{fontSize:T.fs.xxs,color:T.female}}> 여 {fmt(s.priceF)}</span>
-              <span style={{fontSize:T.fs.xxs,color:T.male}}> 남 {fmt(s.priceM)}</span>
+              <span style={{fontSize:T.fs.xxs,color:T.textMuted}}><I name="clock" size={10}/> {s.dur}분</span>
+              <span style={{fontSize:T.fs.xxs,color:T.female}}>여 {fmt(s.priceF)}</span>
+              <span style={{fontSize:T.fs.xxs,color:T.male}}>남 {fmt(s.priceM)}</span>
             </div>
             <ABadge color={T.gray500} bg={T.gray100}>{catName(s.cat)}</ABadge>
           </div>
@@ -6597,10 +6597,10 @@ function AdminProductItems({ data, setData }) {
 
   return <div>
     <APageHeader title="제품 관리" count={items.length} onAdd={openNew}/>
-    {items.length===0?<AEmpty icon="package" message="등록된 제품이 없어요" onAdd={openNew} addLabel="제품 추가"/>
+    {items.length===0?<AEmpty icon="clipboard" message="등록된 제품이 없어요" onAdd={openNew} addLabel="제품 추가"/>
     :<div className="card" style={{padding:0,overflow:"hidden"}}>
       {items.map((it,i)=><AListItem key={it.id}
-        left={<div style={{width:34,height:34,borderRadius:9,background:T.gray100,display:"flex",alignItems:"center",justifyContent:"center"}}><I name="package" size={15} style={{color:T.gray400}}/></div>}
+        left={<div style={{width:34,height:34,borderRadius:9,background:T.gray100,display:"flex",alignItems:"center",justifyContent:"center"}}><I name="clipboard" size={15} style={{color:T.gray400}}/></div>}
         title={it.name}
         sub={[it.price&&(Number(it.price).toLocaleString()+"원"),it.stock!=null&&("재고 "+it.stock+"개")].filter(Boolean).join(" · ")}
         borderBottom={i<items.length-1}
@@ -6664,7 +6664,7 @@ function AdminResSources({ data, setData }) {
 
   return <div>
     <APageHeader title="예약경로 관리" count={srcs.length} onAdd={openNew}/>
-    {srcs.length===0?<AEmpty icon="link" message="등록된 예약경로가 없어요" onAdd={openNew} addLabel="경로 추가"/>
+    {srcs.length===0?<AEmpty icon="zap" message="등록된 예약경로가 없어요" onAdd={openNew} addLabel="경로 추가"/>
     :<div className="card" style={{padding:0,overflow:"hidden"}}>
       {srcs.map((s,i)=><AListItem key={s.id}
         left={<AColorDot color={s.color} size={22}/>} title={s.name}
@@ -6678,14 +6678,14 @@ function AdminResSources({ data, setData }) {
     <ASheet open={sheet} onClose={()=>setSheet(false)} title={edit?"경로 수정":"경로 추가"}>
       <AField label="경로명" required><input style={AInp} value={form.name} onChange={e=>set("name",e.target.value)} placeholder="예: 네이버, 인스타그램" onFocus={e=>e.target.style.borderColor=T.primary} onBlur={e=>e.target.style.borderColor="#e8e8f0"}/></AField>
       <AField label="색상">
-        <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:8}}>
+        <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:10}}>
           {BRAND.map(({n,c})=><button key={c} onClick={()=>set("color",c)}
             style={{padding:"5px 12px",borderRadius:20,border:form.color===c?"2px solid "+T.text:"2px solid transparent",background:c,color:c==="#FEE500"?"#333":"#fff",fontSize:T.fs.xs,fontWeight:700,cursor:"pointer",fontFamily:"inherit"}}>{n}</button>)}
         </div>
         <APalette value={form.color} onChange={v=>set("color",v)}/>
       </AField>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 0",borderTop:"1px solid "+T.gray100,marginBottom:16}}>
-        <span style={{fontSize:T.fs.sm,fontWeight:T.fw.medium}}>사용 중</span>
+        <span style={{fontSize:T.fs.sm,fontWeight:500}}>사용 중</span>
         <AToggle on={form.useYn} onChange={v=>set("useYn",v)}/>
       </div>
       <AIBtn onClick={save} saving={saving} disabled={saving||!form.name.trim()} label={edit?"저장":"경로 추가"}/>
@@ -6707,8 +6707,7 @@ function AdminNoti({ data, sb, bizId, branches }) {
 
   useEffect(()=>{
     if(!selBranch)return;
-    const raw=branch?.notiConfig||{};
-    setCfg(raw); setDetail(null);
+    setCfg(branch?.notiConfig||{}); setDetail(null);
   },[selBranch]);
 
   const up=(k,v)=>{setCfg(p=>({...p,[k]:v}));setSaved(false);};
@@ -6720,24 +6719,24 @@ function AdminNoti({ data, sb, bizId, branches }) {
 
   const GROUPS=[
     {label:"예약 알림",items:[
-      {key:"rsv_confirm", label:"예약 확정",    desc:"예약 확정 시 발송"},
-      {key:"rsv_change",  label:"예약 변경",    desc:"예약 변경 시 발송"},
-      {key:"rsv_1day",    label:"1일 전 알림",  desc:"전날 지정 시각에 발송",hasTime:true},
-      {key:"rsv_today",   label:"당일 알림",    desc:"당일 아침 지정 시각에 발송",hasTime:true},
-      {key:"rsv_cancel",  label:"예약 취소",    desc:"예약 취소 시 발송"},
-      {key:"rsv_naver",   label:"네이버 대기",  desc:"네이버 예약 대기 상태 시 발송"},
+      {key:"rsv_confirm",label:"예약 확정",   desc:"예약 확정 시 발송"},
+      {key:"rsv_change", label:"예약 변경",   desc:"예약 변경 시 발송"},
+      {key:"rsv_1day",   label:"1일 전 알림", desc:"전날 지정 시각에 발송",hasTime:true},
+      {key:"rsv_today",  label:"당일 알림",   desc:"당일 아침 지정 시각에 발송",hasTime:true},
+      {key:"rsv_cancel", label:"예약 취소",   desc:"예약 취소 시 발송"},
+      {key:"rsv_naver",  label:"네이버 대기", desc:"네이버 예약 대기 상태 시 발송"},
     ]},
     {label:"정액권 알림",items:[
-      {key:"pkg_pay",    label:"결제 완료", desc:"정액권 결제 완료 시 발송"},
-      {key:"pkg_charge", label:"충전 완료", desc:"정액권 충전 시 발송"},
-      {key:"pkg_exp_1m", label:"만기 1달 전",desc:"만료 30일 전 발송"},
-      {key:"pkg_exp_1w", label:"만기 1주 전",desc:"만료 7일 전 발송"},
+      {key:"pkg_pay",   label:"결제 완료",  desc:"정액권 결제 완료 시 발송"},
+      {key:"pkg_charge",label:"충전 완료",  desc:"정액권 충전 시 발송"},
+      {key:"pkg_exp_1m",label:"만기 1달 전",desc:"만료 30일 전 발송"},
+      {key:"pkg_exp_1w",label:"만기 1주 전",desc:"만료 7일 전 발송"},
     ]},
     {label:"티켓 알림",items:[
-      {key:"tkt_pay",    label:"결제 완료", desc:"티켓 결제 완료 시 발송"},
-      {key:"tkt_charge", label:"충전 완료", desc:"티켓 충전 시 발송"},
-      {key:"tkt_exp_1m", label:"만기 1달 전",desc:"만료 30일 전 발송"},
-      {key:"tkt_exp_1w", label:"만기 1주 전",desc:"만료 7일 전 발송"},
+      {key:"tkt_pay",   label:"결제 완료",  desc:"티켓 결제 완료 시 발송"},
+      {key:"tkt_charge",label:"충전 완료",  desc:"티켓 충전 시 발송"},
+      {key:"tkt_exp_1m",label:"만기 1달 전",desc:"만료 30일 전 발송"},
+      {key:"tkt_exp_1w",label:"만기 1주 전",desc:"만료 7일 전 발송"},
     ]},
     {label:"포인트 알림",items:[
       {key:"pt_earn",label:"포인트 적립",desc:"포인트 적립 시 발송"},
@@ -6759,34 +6758,27 @@ function AdminNoti({ data, sb, bizId, branches }) {
       <APageHeader title={item?.label||detail}/>
       <div className="card" style={{padding:20,marginBottom:12}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-          <span style={{fontSize:T.fs.sm,fontWeight:T.fw.medium}}>알림 발송</span>
+          <span style={{fontSize:T.fs.sm,fontWeight:500}}>알림 발송</span>
           <AToggle on={!!c.on} onChange={v=>upC("on",v)}/>
         </div>
         <AField label="템플릿 코드"><input style={AInp} value={c.templateCode||""} onChange={e=>upC("templateCode",e.target.value)} placeholder="예: BLISS_RSV_001" onFocus={e=>e.target.style.borderColor=T.primary} onBlur={e=>e.target.style.borderColor="#e8e8f0"}/></AField>
         {item?.hasTime&&<AField label="발송 시각"><input style={{...AInp,width:"auto"}} type="time" value={c.sendTime||"09:00"} onChange={e=>upC("sendTime",e.target.value)}/></AField>}
-        <AField label="발송 내용 미리보기" hint="실제 발송 내용은 카카오 채널에서 설정한 템플릿을 따릅니다">
-          <textarea style={{...AInp,minHeight:100,resize:"vertical",lineHeight:1.6}} value={c.preview||""} onChange={e=>upC("preview",e.target.value)} placeholder="참고용 내용을 입력하세요"/>
-        </AField>
       </div>
-      <AIBtn onClick={save} saving={false} disabled={false} label={saved?"✓ 저장됨":"저장"} style={{background:saved?T.success:T.primary}}/>
+      <AIBtn onClick={save} disabled={false} label={saved?"✓ 저장됨":"저장"} style={{background:saved?T.success:T.primary}}/>
     </div>;
   }
 
   return <div>
     <APageHeader title="알림톡 설정" desc="카카오 알림톡 자동 발송을 설정하세요"/>
-
-    {/* 지점 선택 */}
     {branches.length>1&&<div style={{marginBottom:16,display:"flex",gap:6,flexWrap:"wrap"}}>
       {branches.map(b=><button key={b.id} onClick={()=>setSelBranch(b.id)}
         style={{padding:"6px 14px",borderRadius:20,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:T.fs.xs,fontWeight:selBranch===b.id?700:500,
           background:selBranch===b.id?T.primary:T.gray100,color:selBranch===b.id?"#fff":T.gray600}}>{b.name}</button>)}
     </div>}
-
-    {/* 카카오 채널 설정 */}
     <div className="card" style={{padding:0,overflow:"hidden",marginBottom:16}}>
       <div onClick={()=>setApiOpen(!apiOpen)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 16px",cursor:"pointer"}}>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
-          <div style={{width:32,height:32,borderRadius:8,background:"#FEE500",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:700,color:"#3A1D1D"}}>K</div>
+          <div style={{width:32,height:32,borderRadius:8,background:"#FEE500",display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,fontWeight:900,color:"#3A1D1D"}}>K</div>
           <div>
             <div style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder}}>카카오 채널 API 설정</div>
             <div style={{fontSize:T.fs.xxs,color:T.textMuted}}>NHN Cloud 연동 정보</div>
@@ -6797,17 +6789,15 @@ function AdminNoti({ data, sb, bizId, branches }) {
       {apiOpen&&<div style={{padding:"0 16px 16px",borderTop:"1px solid "+T.gray100}}>
         {[["앱 키","appKey","발급받은 앱 키"],["발신 채널","senderKey","카카오 채널 발신 키"],["발신 번호","senderPhone","등록된 발신 번호"]].map(([lv,k,ph])=>
           <AField key={k} label={lv}><input style={AInp} value={(cfg.api||{})[k]||""} onChange={e=>up("api",{...(cfg.api||{}),[k]:e.target.value})} placeholder={ph} onFocus={el=>el.target.style.borderColor=T.primary} onBlur={el=>el.target.style.borderColor="#e8e8f0"}/></AField>)}
-        <AIBtn onClick={save} saving={false} disabled={false} label={saved?"✓ 저장됨":"API 설정 저장"} style={{background:saved?T.success:T.primary}}/>
+        <AIBtn onClick={save} disabled={false} label={saved?"✓ 저장됨":"API 저장"} style={{background:saved?T.success:T.primary}}/>
       </div>}
     </div>
-
-    {/* 알림 그룹 */}
     {GROUPS.map(g=><div key={g.label} style={{marginBottom:16}}>
       <div style={{fontSize:T.fs.xs,fontWeight:T.fw.bolder,color:T.primary,marginBottom:8,paddingLeft:2}}>{g.label}</div>
       <div className="card" style={{padding:0,overflow:"hidden"}}>
         {g.items.map((item,idx)=><div key={item.key} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:idx<g.items.length-1?"1px solid "+T.gray100:"none"}}>
           <div style={{flex:1}}>
-            <div style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder,color:T.text}}>{item.label}</div>
+            <div style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder}}>{item.label}</div>
             <div style={{fontSize:T.fs.xxs,color:T.textMuted}}>{item.desc}</div>
           </div>
           <AToggle size="sm" on={notiOn(item.key)} onChange={()=>toggleOn(item.key)}/>
@@ -6815,8 +6805,7 @@ function AdminNoti({ data, sb, bizId, branches }) {
         </div>)}
       </div>
     </div>)}
-
-    <AIBtn onClick={save} saving={false} disabled={false} label={saved?"✓ 저장됨":"저장"} style={{background:saved?T.success:T.primary}}/>
+    <AIBtn onClick={save} disabled={false} label={saved?"✓ 저장됨":"저장"} style={{background:saved?T.success:T.primary}}/>
   </div>;
 }
 
@@ -6845,7 +6834,6 @@ function AdminAISettings({ data, sb, bizId }) {
   const [newRule,setNewRule]=useState("");
   const [editIdx,setEditIdx]=useState(null);
   const [editVal,setEditVal]=useState("");
-  const [saving,setSaving]=useState(false);
 
   const saveKey=async()=>{
     const t=apiKey.trim();
@@ -6873,7 +6861,7 @@ function AdminAISettings({ data, sb, bizId }) {
     finally{setTesting(false);}
   };
 
-  const saveRules=async(updated)=>{
+  const saveRules=async updated=>{
     setRules(updated);
     localStorage.setItem(AI_RULES_KEY,JSON.stringify(updated));
     if(bizId){
@@ -6894,40 +6882,32 @@ function AdminAISettings({ data, sb, bizId }) {
 
   return <div>
     <APageHeader title="AI 설정" desc="예약 분석에 사용되는 AI 기능을 설정하세요"/>
-
-    {/* API 키 */}
     <div className="card" style={{padding:20,marginBottom:16}}>
       <div style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder,color:T.text,marginBottom:4,display:"flex",alignItems:"center",gap:7}}>
         <I name="sparkles" size={14} style={{color:T.primary}}/> Gemini API 키
       </div>
       <div style={{fontSize:T.fs.xs,color:T.textMuted,marginBottom:14,lineHeight:1.6}}>
         AI Book 기능에 사용됩니다.{" "}
-        <a href="https://aistudio.google.com/app/apikey" target="_blank" style={{color:T.primary,fontWeight:700}}>Google AI Studio</a>에서 무료로 발급받을 수 있습니다.
+        <a href="https://aistudio.google.com/app/apikey" target="_blank" style={{color:T.primary,fontWeight:700}}>Google AI Studio</a>에서 무료로 발급받을 수 있어요.
       </div>
       <AField label="API 키">
         <input style={AInp} type="password" value={apiKey} onChange={e=>setApiKey(e.target.value)} placeholder="AIzaSy…" onFocus={e=>e.target.style.borderColor=T.primary} onBlur={e=>e.target.style.borderColor="#e8e8f0"}/>
       </AField>
       {testResult&&<div style={{fontSize:T.fs.xs,padding:"8px 12px",borderRadius:8,marginBottom:12,background:testResult.startsWith("✓")?"#f0faf4":"#fff5f5",color:testResult.startsWith("✓")?T.success:T.danger}}>{testResult}</div>}
       <div style={{display:"flex",gap:10}}>
-        <button onClick={testKey} disabled={testing||!apiKey.trim()} style={{flex:1,padding:"11px",borderRadius:10,border:"1.5px solid "+T.border,background:"#fff",fontSize:T.fs.sm,fontWeight:600,color:T.textSub,cursor:testing?"wait":"pointer",fontFamily:"inherit"}}>
+        <button onClick={testKey} disabled={testing||!apiKey.trim()} style={{flex:1,padding:"11px",borderRadius:10,border:"1.5px solid "+T.border,background:"#fff",fontSize:T.fs.sm,fontWeight:600,color:T.textSub,cursor:"pointer",fontFamily:"inherit"}}>
           {testing?"테스트 중…":"연결 테스트"}
         </button>
-        <AIBtn onClick={saveKey} saving={false} disabled={!apiKey.trim()} label={saved?"✓ 저장됨":"저장"} style={{flex:1,background:saved?T.success:T.primary}}/>
+        <AIBtn onClick={saveKey} disabled={!apiKey.trim()} label={saved?"✓ 저장됨":"저장"} style={{flex:1,background:saved?T.success:T.primary}}/>
       </div>
     </div>
-
-    {/* AI 분석 규칙 */}
     <div className="card" style={{padding:20}}>
       <div style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder,color:T.text,marginBottom:4,display:"flex",alignItems:"center",gap:7}}>
-        <I name="list" size={14} style={{color:T.primary}}/> AI 분석 커스텀 규칙
+        <I name="fileText" size={14} style={{color:T.primary}}/> AI 분석 커스텀 규칙
         <ABadge color={T.primary}>{rules.length}개</ABadge>
       </div>
-      <div style={{fontSize:T.fs.xs,color:T.textMuted,marginBottom:16,lineHeight:1.6}}>
-        네이버 예약정보 AI 분석 시 아래 규칙이 프롬프트에 추가됩니다.
-      </div>
-
-      {/* 규칙 목록 */}
-      {rules.length===0?<AEmpty icon="list" message="등록된 규칙이 없어요"/>
+      <div style={{fontSize:T.fs.xs,color:T.textMuted,marginBottom:16,lineHeight:1.6}}>네이버 예약정보 AI 분석 시 이 규칙들이 프롬프트에 추가됩니다.</div>
+      {rules.length===0?<AEmpty icon="fileText" message="등록된 규칙이 없어요"/>
       :<div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:16}}>
         {rules.map((r,i)=><div key={i} style={{border:"1.5px solid "+T.border,borderRadius:10,padding:"12px 14px",background:"#fafafa"}}>
           {editIdx===i
@@ -6947,8 +6927,6 @@ function AdminAISettings({ data, sb, bizId }) {
             </div>}
         </div>)}
       </div>}
-
-      {/* 새 규칙 추가 */}
       <AField label="새 규칙 추가">
         <textarea style={{...AInp,minHeight:80,resize:"vertical",marginBottom:10,lineHeight:1.6}} value={newRule} onChange={e=>setNewRule(e.target.value)} placeholder="예: 다리안쪽은 다리 절반 시술이다"/>
       </AField>
@@ -6992,8 +6970,7 @@ function AdminServiceTags({ data, setData }) {
   const save=()=>{
     if(!form.name.trim())return;
     if(editItem){
-      const updated=tags.map(t=>t.id===editItem.id?{...t,...form}:t);
-      syncTags(updated);
+      syncTags(tags.map(t=>t.id===editItem.id?{...t,...form}:t));
       sb.update("service_tags",editItem.id,{name:form.name,dur:form.dur||0,color:form.color,use_yn:form.useYn!==false,sort:editItem.sort||0}).catch(console.error);
     }else{
       const t={id:uid(),name:form.name.trim(),dur:Number(form.dur)||0,scheduleYn:isSchedule?"Y":"N",color:form.color,useYn:true,sort:tags.length};
@@ -7017,18 +6994,17 @@ function AdminServiceTags({ data, setData }) {
     sb.update("service_tags",id,{use_yn:newUse}).catch(console.error);
   };
 
-  // 드래그
   const dragIdx=useRef(null), dragOver=useRef(null);
   const [dragOverState,setDragOverState]=useState(null);
-  const onDragStart=i=>{ dragIdx.current=i; };
-  const onDragEnter=i=>{ dragOver.current=i; setDragOverState(i); };
+  const onDragStart=i=>{dragIdx.current=i;};
+  const onDragEnter=i=>{dragOver.current=i;setDragOverState(i);};
   const onDragEnd=()=>{
     setDragOverState(null);
-    const di=dragIdx.current, oi=dragOver.current;
-    dragIdx.current=null; dragOver.current=null;
+    const di=dragIdx.current,oi=dragOver.current;
+    dragIdx.current=null;dragOver.current=null;
     if(di===null||oi===null||di===oi)return;
     const reordered=[...tabTags];
-    const [m]=reordered.splice(di,1); reordered.splice(oi,0,m);
+    const [m]=reordered.splice(di,1);reordered.splice(oi,0,m);
     const other=(tags||[]).filter(t=>isSchedule?t.scheduleYn!=="Y":t.scheduleYn==="Y");
     const all=[...reordered,...other].map((t,i)=>({...t,sort:i}));
     syncTags(all);
@@ -7037,25 +7013,20 @@ function AdminServiceTags({ data, setData }) {
 
   return <div>
     <APageHeader title="태그 관리" count={tabTags.length} onAdd={openNew}/>
-
-    {/* 탭 */}
     <div style={{display:"flex",gap:6,marginBottom:16}}>
       {[["reservation","예약"],["schedule","내부일정"]].map(([k,lv])=>
         <button key={k} onClick={()=>setActiveTab(k)}
           style={{padding:"7px 18px",borderRadius:20,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:T.fs.xs,fontWeight:activeTab===k?700:500,
-            background:activeTab===k?T.primary:T.gray100,color:activeTab===k?"#fff":T.gray600,transition:"all .15s"}}>{lv}</button>)}
+            background:activeTab===k?T.primary:T.gray100,color:activeTab===k?"#fff":T.gray600}}>{lv}</button>)}
     </div>
-
-    {/* 미리보기 */}
     {tabTags.filter(t=>t.useYn!==false).length>0&&<div style={{marginBottom:16,padding:"12px 14px",background:T.gray100,borderRadius:12}}>
       <div style={{fontSize:T.fs.xxs,color:T.textMuted,marginBottom:8,fontWeight:T.fw.bold}}>미리보기 (드래그로 순서 변경)</div>
       <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
         {tabTags.filter(t=>t.useYn!==false).map((t,i)=><div key={t.id} draggable
           onDragStart={()=>onDragStart(i)} onDragEnter={()=>onDragEnter(i)} onDragEnd={onDragEnd} onDragOver={e=>e.preventDefault()}
-          style={{padding:"4px 12px",borderRadius:20,background:t.color||T.primary,color:getContrast(t.color||T.primary),fontSize:T.fs.xs,fontWeight:700,cursor:"grab",opacity:dragOverState===i?.5:1,transition:"opacity .15s"}}>{t.name}</div>)}
+          style={{padding:"4px 12px",borderRadius:20,background:t.color||T.primary,color:getContrast(t.color||T.primary),fontSize:T.fs.xs,fontWeight:700,cursor:"grab",opacity:dragOverState===i?0.5:1}}>{t.name}</div>)}
       </div>
     </div>}
-
     {tabTags.length===0?<AEmpty icon="tag" message="등록된 태그가 없어요" onAdd={openNew} addLabel="태그 추가"/>
     :<div className="card" style={{padding:0,overflow:"hidden"}}>
       {tabTags.map((t,i)=><div key={t.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderBottom:i<tabTags.length-1?"1px solid "+T.gray100:"none"}}>
@@ -7064,13 +7035,12 @@ function AdminServiceTags({ data, setData }) {
           <div style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder,color:t.useYn!==false?T.text:T.gray400}}>{t.name}</div>
           {t.dur>0&&<div style={{fontSize:T.fs.xxs,color:T.textMuted}}>{t.dur}분</div>}
         </div>
-        {SYSTEM_TAG_IDS.includes(t.id)&&<ABadge color={T.orange} bg={T.orangeLt||"#fff3e0"}>시스템</ABadge>}
+        {SYSTEM_TAG_IDS.includes(t.id)&&<ABadge color="#f39c12" bg="#fff3e0">시스템</ABadge>}
         <AToggle size="sm" on={t.useYn!==false} onChange={()=>toggleUse(t.id)}/>
         <button onClick={()=>openEdit(t)} style={{width:28,height:28,borderRadius:7,border:"1px solid "+T.border,background:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><I name="edit" size={13} style={{color:T.gray500}}/></button>
         {!SYSTEM_TAG_IDS.includes(t.id)&&<button onClick={()=>setDel(t.id)} style={{width:28,height:28,borderRadius:7,border:"1px solid #fecaca",background:"#fff5f5",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><I name="trash" size={13} style={{color:T.danger}}/></button>}
       </div>)}
     </div>}
-
     <ASheet open={sheet} onClose={()=>setSheet(false)} title={editItem?"태그 수정":"태그 추가"}>
       <AField label="태그명" required><input style={AInp} value={form.name} onChange={e=>set("name",e.target.value)} placeholder="예: 신규, VIP" onFocus={e=>e.target.style.borderColor=T.primary} onBlur={e=>e.target.style.borderColor="#e8e8f0"}/></AField>
       <AField label="소요 시간(분)" hint="0이면 기본 시술 시간 사용"><input style={{...AInp,width:120}} type="number" value={form.dur} onChange={e=>set("dur",e.target.value)} onFocus={e=>e.target.style.borderColor=T.primary} onBlur={e=>e.target.style.borderColor="#e8e8f0"}/></AField>
@@ -7079,7 +7049,7 @@ function AdminServiceTags({ data, setData }) {
         <div style={{fontSize:T.fs.sm,fontWeight:700,color:getContrast(form.color)}}>{form.name||"미리보기"}</div>
       </div>}
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 0",borderTop:"1px solid "+T.gray100,marginBottom:16}}>
-        <span style={{fontSize:T.fs.sm,fontWeight:T.fw.medium}}>사용 중</span>
+        <span style={{fontSize:T.fs.sm,fontWeight:500}}>사용 중</span>
         <AToggle on={form.useYn!==false} onChange={v=>set("useYn",v)}/>
       </div>
       <AIBtn onClick={save} disabled={!form.name.trim()} label={editItem?"저장":"태그 추가"}/>
@@ -7159,836 +7129,6 @@ function useDragSort(items, setItems, sortKey="sort", onComplete) {
 const DragHandle = ({onTouchStart}) => <span onTouchStart={onTouchStart} style={{cursor:"grab",flexShrink:0,userSelect:"none",touchAction:"none",padding:"4px 2px"}}><I name="grip" size={14} color={T.gray500}/></span>;
 
 // ─── 시술상품관리 ───
-function AdminSaleItems({ data, setData }) {
-  const [services, setServices] = useState([...(data?.services||[])].sort((a,b)=>a.sort-b.sort));
-  useEffect(() => { setData(p => ({...p, services})); }, [services]);
-  const [cats, setCats] = useState(()=>[...(data?.categories||[])].sort((a,b)=>(a.sort||0)-(b.sort||0)));
-  useEffect(()=>{ setCats([...(data?.categories||[])].sort((a,b)=>(a.sort||0)-(b.sort||0))); },[data?.categories?.length]);
-  const catDragRef = useRef(null); const catOverRef = useRef(null); const [catDragOver, setCatDragOver] = useState(null);
-  const syncCats = (updated) => { setCats(updated); if(setData) setData(p=>p?{...p,categories:updated}:p); };
-  const [editId, setEditId] = useState(null);
-  const [editData, setEditData] = useState({});
-  const [showAdd, setShowAdd] = useState(false);
-  const [newSvc, setNewSvc] = useState({ cat:cats[0]?.id||"sc1", name:"", dur:20, priceF:0, priceM:0, note:"", isPackage:false, pkgCount:5, pkgPriceF:0, pkgPriceM:0 });
-  const [filterCat, setFilterCat] = useState("all");
-  const [delConfirm, setDelConfirm] = useState(null);
-  const [selected, setSelected] = useState(new Set());
-  const drag = useDragSort(services, setServices, "sort", (reordered) => {
-    reordered.forEach(s => sb.update("services", s.id, {sort: s.sort}).catch(console.error));
-  });
-
-  const filtered = filterCat === "all" ? services : services.filter(s => s.cat === filterCat);
-  const allChecked = filtered.length > 0 && filtered.every(s => selected.has(s.id));
-  const toggleAll = () => {
-    if (allChecked) setSelected(new Set());
-    else setSelected(new Set(filtered.map(s => s.id)));
-  };
-  const toggleOne = (id) => setSelected(prev => { const s = new Set(prev); s.has(id)?s.delete(id):s.add(id); return s; });
-  const bulkDelete = () => {
-    if (selected.size === 0) return;
-    if (!window.confirm(selected.size + "개 시술을 삭제하시겠습니까?")) return;
-    selected.forEach(id => sb.del("services", id).catch(console.error));
-    setServices(p => p.filter(s => !selected.has(s.id)).map((s,i) => ({...s, sort:i})));
-    setSelected(new Set());
-  };
-
-  const startEdit = (svc) => { setEditId(svc.id); setEditData({...svc}); };
-  const saveEdit = () => { 
-    setServices(p=>p.map(s=>s.id===editId?{...editData}:s)); 
-    sb.update("services", editId, {cat:editData.cat, name:editData.name, dur:editData.dur, price_f:editData.priceF, price_m:editData.priceM, note:editData.note||"", sort:editData.sort||0, is_package:!!editData.isPackage, pkg_count:editData.pkgCount||0, pkg_price_f:editData.pkgPriceF||0, pkg_price_m:editData.pkgPriceM||0}).catch(console.error);
-    setEditId(null); 
-  };
-  const deleteSvc = (id) => { 
-    setServices(p=>p.filter(s=>s.id!==id).map((s,i)=>({...s,sort:i}))); 
-    sb.del("services", id).catch(console.error);
-    setDelConfirm(null); 
-  };
-  const addSvc = () => {
-    if(!newSvc.name.trim()) return;
-    // 같은 카테고리 중 최대 sort 찾기 → 그 바로 뒤에 삽입
-    const sameCat = services.filter(s=>s.cat===newSvc.cat);
-    const insertAfterSort = sameCat.length>0 ? Math.max(...sameCat.map(s=>s.sort||0)) : -1;
-    // insertAfterSort 보다 sort가 큰 기존 항목들을 +1씩 밀기
-    const shifted = services.map(s=>(s.sort||0)>insertAfterSort ? {...s,sort:(s.sort||0)+1} : s);
-    const newSort = insertAfterSort+1;
-    const svc = {...newSvc, id:uid(), priceF:Number(newSvc.priceF)||0, priceM:Number(newSvc.priceM)||0, dur:Number(newSvc.dur)||20, sort:newSort, isPackage:!!newSvc.isPackage, pkgCount:Number(newSvc.pkgCount)||0, pkgPriceF:Number(newSvc.pkgPriceF)||0, pkgPriceM:Number(newSvc.pkgPriceM)||0};
-    setServices([...shifted, svc]);
-    // DB: 밀린 항목들 sort 업데이트
-    shifted.filter((s,i)=>s.sort!==(services[i]?.sort||0)).forEach(s=>sb.update("services",s.id,{sort:s.sort}).catch(console.error));
-    sb.insert("services", {id:svc.id, business_id:_activeBizId, cat:svc.cat, name:svc.name, dur:svc.dur, price_f:svc.priceF, price_m:svc.priceM, note:svc.note||"", sort:svc.sort, is_package:svc.isPackage, pkg_count:svc.pkgCount, pkg_price_f:svc.pkgPriceF, pkg_price_m:svc.pkgPriceM}).catch(console.error);
-    setNewSvc({ cat:cats[0]?.id||"sc1", name:"", dur:20, priceF:0, priceM:0, note:"", isPackage:false, pkgCount:5, pkgPriceF:0, pkgPriceM:0 }); setShowAdd(false);
-  };
-  const inp = (val, onChange, w, type) => <input className="inp" type={type||"text"} value={val}
-    onChange={e => onChange(type==="number" ? Number(e.target.value)||0 : e.target.value)}
-    style={{width:w||"100%",padding:"4px 6px",fontSize:T.fs.xxs,background:T.dangerLt,border:"1px solid #d0d0d0",textAlign:type==="number"?"right":"left"}} />;
-
-  const downloadXl = () => XL.download(services.map(s=>({카테고리:cats.find(c=>c.id===s.cat)?.name||"",시술명:s.name,여성가:s.priceF,남성가:s.priceM,소요분:s.dur,다회권:s.isPackage?"Y":"",회수:s.pkgCount||"",비고:s.note||""})),"시술목록.xlsx","시술",["카테고리","시술명","여성가","남성가","소요분","다회권","회수","비고"]);
-  const uploadXl = async (e) => {
-    const file = e.target.files[0]; if(!file) return;
-    const rows = await XL.readFile(file);
-    // Auto-create missing categories from Excel
-    const catNames = [...new Set(rows.map(r=>String(r["카테고리"]||r["category"]||"").trim()).filter(Boolean))];
-    let localCats = [...cats];
-    const newCats = [];
-    for (const cn of catNames) {
-      if (!localCats.find(c=>c.name.trim()===cn)) {
-        const nc = {id:uid(), name:cn, sort:localCats.length+newCats.length};
-        newCats.push(nc);
-        localCats.push(nc);
-      }
-    }
-    if (newCats.length > 0) {
-      for (const nc of newCats) {
-        await sb.insert("service_categories", {id:nc.id, business_id:_activeBizId, name:nc.name, sort:nc.sort}).catch(console.error);
-      }
-      if (setData) setData(prev => ({...prev, categories: localCats}));
-    }
-    const newSvcs = rows.map((r,i)=>{
-      const catName = String(r["카테고리"]||r["category"]||"").trim();
-      const cat = localCats.find(c=>c.name.trim()===catName);
-      return {id:uid(), cat:cat?.id||localCats[0]?.id||"sc1", name:String(r["시술명"]||r["name"]||"").trim(), priceF:Number(r["여성가"]||r["priceF"])||0, priceM:Number(r["남성가"]||r["priceM"])||0, dur:Number(r["소요분"]||r["dur"])||20, note:String(r["비고"]||"").trim(), sort:i, isPackage:String(r["다회권"]||"").toUpperCase()==="Y", pkgCount:Number(r["회수"])||0, pkgPriceF:0, pkgPriceM:0};
-    }).filter(r=>r.name);
-    // Re-assign sort after filter
-    newSvcs.forEach((s,i) => s.sort = i);
-    if(newSvcs.length) {
-      const mode = window.confirm(newSvcs.length+"개 시술 업로드\n\n[확인] 기존 전체 삭제 후 교체\n[취소] 기존에 추가");
-      if (mode) {
-        // Replace all: delete existing services first
-        for (const s of services) { await sb.del("services", s.id).catch(console.error); }
-        setServices(newSvcs);
-        for (const s of newSvcs) { await sb.insert("services",{id:s.id, business_id:_activeBizId, cat:s.cat, name:s.name, dur:s.dur, price_f:s.priceF, price_m:s.priceM, note:s.note||"", sort:s.sort, is_package:!!s.isPackage, pkg_count:s.pkgCount||0, pkg_price_f:s.pkgPriceF||0, pkg_price_m:s.pkgPriceM||0}).catch(console.error); }
-      } else {
-        const maxSort = services.reduce((m,s)=>Math.max(m,s.sort||0),0);
-        newSvcs.forEach((s,i) => s.sort = maxSort + 1 + i);
-        setServices(p=>[...p,...newSvcs]);
-        newSvcs.forEach(s=>sb.insert("services",{id:s.id, business_id:_activeBizId, cat:s.cat, name:s.name, dur:s.dur, price_f:s.priceF, price_m:s.priceM, note:s.note||"", sort:s.sort, is_package:!!s.isPackage, pkg_count:s.pkgCount||0, pkg_price_f:s.pkgPriceF||0, pkg_price_m:s.pkgPriceM||0}).catch(console.error));
-      }
-      if (setData) setData(prev => ({...prev, services: mode ? newSvcs : [...prev.services, ...newSvcs]}));
-    }
-    e.target.value="";
-  };
-
-  const resetSort = () => {
-    if(!window.confirm("현재 화면 순서대로 sort 값을 0부터 재설정합니다.")) return;
-    const reordered = services.map((s,i) => ({...s, sort:i}));
-    setServices(reordered);
-    reordered.forEach(s => sb.update("services", s.id, {sort:s.sort}).catch(console.error));
-  };
-
-  return <div>
-    <AdminHeader title="시술 상품 관리" count={services.length} onAdd={()=>setShowAdd(!showAdd)} addLabel={showAdd?"취소":<><I name="plus" size={12}/> 시술 추가</>} onDownload={downloadXl} onUpload={uploadXl}/>
-    {showAdd && <div className="card" style={{padding:14,marginBottom:14}}>
-      <div style={{display:"flex",gap:T.sp.sm,flexWrap:"wrap",alignItems:"flex-end"}}>
-        <FLD label="카테고리"><select className="inp" style={{width:120,padding:"4px 6px",fontSize:T.fs.xxs}} value={newSvc.cat} onChange={e=>setNewSvc(p=>({...p,cat:e.target.value}))}>{cats.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></FLD>
-        <FLD label="시술명">{inp(newSvc.name, v=>setNewSvc(p=>({...p,name:v})), 150)}</FLD>
-        <FLD label="여성가(1회)">{inp(newSvc.priceF, v=>setNewSvc(p=>({...p,priceF:v})), 90, "number")}</FLD>
-        <FLD label="남성가(1회)">{inp(newSvc.priceM, v=>setNewSvc(p=>({...p,priceM:v})), 90, "number")}</FLD>
-        <FLD label="소요(분)">{inp(newSvc.dur, v=>setNewSvc(p=>({...p,dur:v})), 60, "number")}</FLD>
-        <FLD label="비고">{inp(newSvc.note||"", v=>setNewSvc(p=>({...p,note:v})), 130)}</FLD>
-      </div>
-      <div style={{display:"flex",gap:T.sp.sm,flexWrap:"wrap",alignItems:"center",marginTop:8}}>
-        <label style={{fontSize:T.fs.xxs,display:"flex",alignItems:"center",gap:T.sp.xs,cursor:"pointer"}}>
-          <label style={{display:"flex",alignItems:"center",gap:4,cursor:"pointer",marginRight:8}}>
-              <input type="checkbox" checked={!!(newSvc.note||'').includes('[qty]')} onChange={e=>setNewSvc(p=>({...p,note:e.target.checked?(p.note||'').replace('[qty]','').trim()+' [qty]':(p.note||'').replace('[qty]','').trim()}))} style={{accentColor:T.female}}/> 
-              <span style={{fontWeight:T.fw.bold,color:(newSvc.note||'').includes('[qty]')?T.female:T.gray500}}>수량허용</span>
-            </label>
-            <input type="checkbox" checked={newSvc.isPackage} onChange={e=>setNewSvc(p=>({...p,isPackage:e.target.checked}))} style={{accentColor:T.primary}}/>
-          <span style={{fontWeight:T.fw.bold,color:newSvc.isPackage?T.primary:T.gray500}}>다회권</span>
-        </label>
-        {newSvc.isPackage && <>
-          <FLD label="회수">{inp(newSvc.pkgCount, v=>setNewSvc(p=>({...p,pkgCount:v})), 50, "number")}</FLD>
-          <FLD label="다회권 여성가">{inp(newSvc.pkgPriceF, v=>setNewSvc(p=>({...p,pkgPriceF:v})), 90, "number")}</FLD>
-          <FLD label="다회권 남성가">{inp(newSvc.pkgPriceM, v=>setNewSvc(p=>({...p,pkgPriceM:v})), 90, "number")}</FLD>
-        </>}
-        <Btn variant="primary" size="sm" onClick={addSvc} style={{padding:"6px 16px",marginLeft:"auto"}}>등록</Btn>
-      </div>
-    </div>}
-    <div style={{marginBottom:8}}>
-      <div style={{fontSize:T.fs.xs,color:T.textSub,marginBottom:4}}>카테고리 <span style={{color:T.gray400,fontSize:T.fs.nano}}>(드래그로 순서 변경)</span></div>
-      <div style={{display:"flex",gap:T.sp.xs,flexWrap:"wrap",alignItems:"center",padding:"6px 8px",background:T.gray100,borderRadius:T.radius.md,minHeight:36}} onDragOver={e=>e.preventDefault()}>
-        <button className={filterCat==="all"?"btn-p btn-sm":"btn-s btn-sm"} onClick={()=>setFilterCat("all")} style={{fontSize:T.fs.xs}}>전체 ({services.length})</button>
-        {cats.map((cat,i)=><button key={cat.id}
-          draggable className={filterCat===cat.id?"btn-p btn-sm":"btn-s btn-sm"}
-          onClick={()=>setFilterCat(cat.id)}
-          onDragStart={()=>{catDragRef.current=i;}}
-          onDragEnter={()=>{catOverRef.current=i; setCatDragOver(i);}}
-          onDragEnd={()=>{
-            const di=catDragRef.current, oi=catOverRef.current;
-            setCatDragOver(null); catDragRef.current=null; catOverRef.current=null;
-            if(di===null||oi===null||di===oi) return;
-            const r=[...cats]; const [m]=r.splice(di,1); r.splice(oi,0,m);
-            const reordered=r.map((c,j)=>({...c,sort:j}));
-            syncCats(reordered);
-            reordered.forEach(c=>sb.update("service_categories",c.id,{sort:c.sort}).catch(console.error));
-          }}
-          style={{fontSize:T.fs.xs,cursor:"grab",opacity:catDragOver===i?0.5:1,outline:catDragOver===i?"2px dashed #7c7cc8":"none"}}
-          >{cat.name} ({services.filter(s=>s.cat===cat.id).length})</button>)}
-        {selected.size > 0 && <Btn variant="danger" size="sm" onClick={bulkDelete} style={{fontSize:T.fs.xs,marginLeft:"auto",padding:"4px 12px"}}><I name="trash" size={12}/> 선택 삭제 ({selected.size})</Btn>}
-        <button onClick={resetSort} style={{fontSize:T.fs.nano,marginLeft:selected.size>0?"4px":"auto",padding:"3px 8px",border:"1px solid #ccc",borderRadius:T.radius.sm,background:T.bgCard,color:T.textSub,cursor:"pointer"}}>순서 리셋</button>
-      </div>
-    </div>
-    <DataTable card={false} className="admin-tw" maxH="calc(100vh - 340px)"><thead><tr>
-        <th style={{width:30}}><input type="checkbox" checked={allChecked} onChange={toggleAll}/></th><th style={{width:25}}></th><th style={{width:30}}>No</th><th style={{width:85}}>카테고리</th><th>시술명</th>
-        <th style={{width:85,textAlign:"right"}}>여성가</th><th style={{width:85,textAlign:"right"}}>남성가</th>
-        <th style={{width:50,textAlign:"center"}}>소요</th><th style={{width:100}}>비고</th><th style={{width:45,textAlign:"center",fontSize:T.fs.nano}}>다회권</th><th style={{width:75,textAlign:"center"}}>관리</th>
-      </tr></thead><tbody>
-        {filtered.map((svc,i)=>{
-          const isEdit = editId === svc.id;
-          if (isEdit) return <tr key={svc.id} ref={drag.rowRef(i)} style={{background:T.primaryHover}}>
-            <td><input type="checkbox" checked={selected.has(svc.id)} onChange={()=>toggleOne(svc.id)}/></td>
-            <td><DragHandle onTouchStart={drag.onTouchStart(i)}/></td><td style={{color:T.gray500}}>{i+1}</td>
-            <td><select className="inp" value={editData.cat} onChange={e=>setEditData(p=>({...p,cat:e.target.value}))} style={{width:"100%",padding:"4px 6px",fontSize:T.fs.xxs}}>{cats.map(c=><option key={c.id} value={c.id}>{c.name}</option>)}</select></td>
-            <td>{inp(editData.name, v=>setEditData(p=>({...p,name:v})))}</td>
-            <td>{inp(editData.priceF, v=>setEditData(p=>({...p,priceF:v})), "100%", "number")}</td>
-            <td>{inp(editData.priceM, v=>setEditData(p=>({...p,priceM:v})), "100%", "number")}</td>
-            <td>{inp(editData.dur, v=>setEditData(p=>({...p,dur:v})), "100%", "number")}</td>
-            <td>{inp(editData.note||"", v=>setEditData(p=>({...p,note:v})))}</td>
-            <td style={{textAlign:"center"}}><label style={{fontSize:T.fs.nano,display:"flex",alignItems:"center",gap:2}}><input type="checkbox" checked={!!editData.isPackage} onChange={e=>setEditData(p=>({...p,isPackage:e.target.checked}))}/>{editData.isPackage?editData.pkgCount+"회":""}</label>
-            {editData.isPackage && <div style={{display:"flex",gap:2,marginTop:2}}>{inp(editData.pkgCount||5,v=>setEditData(p=>({...p,pkgCount:v})),30,"number")}<span style={{fontSize:T.fs.nano,color:T.gray500}}>회</span></div>}</td><td style={{textAlign:"center"}}>
-              <label style={{fontSize:T.fs.nano,display:"flex",alignItems:"center",gap:2,justifyContent:"center"}}>
-              <input type="checkbox" checked={!!(editData.note||'').includes('[qty]')} 
-              onChange={e=>setEditData(p=>({...p,note:e.target.checked?(p.note||'').replace('[qty]','').trim()+' [qty]':(p.note||'').replace('[qty]','').trim()}))} 
-              style={{accentColor:T.female}}/>수량</label></td>
-            <td style={{textAlign:"center"}}><div style={{display:"flex",gap:3,justifyContent:"center"}}>
-              <Btn variant="primary" size="sm" onClick={saveEdit} style={{padding:"2px 8px",fontSize:T.fs.xs}}>저장</Btn>
-              <Btn variant="secondary" size="sm" onClick={()=>setEditId(null)} style={{padding:"2px 6px",fontSize:T.fs.xs}}>취소</Btn>
-            </div></td>
-          </tr>;
-          return <tr key={svc.id} ref={drag.rowRef(i)} draggable onDragStart={()=>drag.onDragStart(i)} onDragEnter={()=>drag.onDragEnter(i)} onDragEnd={drag.onDragEnd} onDragOver={e=>e.preventDefault()}
-            style={{background:drag.touchOverIdx===i?T.purpleLt:undefined}}>
-            <td><input type="checkbox" checked={selected.has(svc.id)} onChange={()=>toggleOne(svc.id)}/></td>
-            <td><DragHandle onTouchStart={drag.onTouchStart(i)}/></td>
-            <td style={{color:T.gray500}}>{i+1}</td>
-            <td><span className="badge" style={{background:T.primaryHover,color:T.primary}}>{cats.find(c=>c.id===svc.cat)?.name||"-"}</span></td>
-            <td style={{fontWeight:T.fw.medium,fontSize:T.fs.sm}}>{svc.name}{svc.isPackage && <span style={{marginLeft:4,fontSize:T.fs.nano,background:T.primary,color:T.bgCard,borderRadius:T.radius.sm,padding:"1px 4px",verticalAlign:"middle"}}>{svc.pkgCount}회권</span>}</td>
-            <td style={{textAlign:"right",color:T.primary,fontWeight:T.fw.bold,fontSize:T.fs.sm}}>{svc.priceF>0?fmt(svc.priceF)+"원":"-"}</td>
-            <td style={{textAlign:"right",color:T.male,fontWeight:T.fw.bold,fontSize:T.fs.sm}}>{svc.priceM>0?fmt(svc.priceM)+"원":"-"}</td>
-            <td style={{textAlign:"center",color:T.textSub,fontSize:T.fs.xxs}}>{svc.dur}분</td>
-            <td style={{fontSize:T.fs.xxs,color:T.textSub}}>{svcNoteDisplay(svc.note)}{(svc.note||'').includes('[qty]')&&<span style={{marginLeft:4,fontSize:T.fs.nano,background:T.femaleLt||'#fce4ec',color:T.female,borderRadius:T.radius.sm,padding:'1px 4px'}}>수량</span>}</td>
-            <td style={{textAlign:"center"}}>{svc.isPackage ? <span style={{fontSize:T.fs.nano,background:T.primary,color:T.bgCard,borderRadius:T.radius.sm,padding:"1px 4px"}}>{svc.pkgCount}회</span> : <span style={{fontSize:T.fs.nano,color:T.gray400}}>-</span>}</td>
-            <td style={{textAlign:"center"}}><div style={{display:"flex",gap:T.sp.xs,justifyContent:"center"}}>
-              <button onClick={()=>startEdit(svc)} style={{background:"none",border:"none",cursor:"pointer",color:T.primary,fontSize:T.fs.sm}}><I name="edit" size={13}/></button>
-              {delConfirm===svc.id
-                ? <><Btn variant="danger" size="sm" onClick={()=>deleteSvc(svc.id)} style={{padding:"1px 6px",fontSize:T.fs.nano}}>확인</Btn><Btn variant="secondary" size="sm" onClick={()=>setDelConfirm(null)} style={{padding:"1px 5px",fontSize:T.fs.nano}}>취소</Btn></>
-                : <button onClick={()=>setDelConfirm(svc.id)} style={{background:"none",border:"none",cursor:"pointer",color:T.danger,fontSize:T.fs.sm}}><I name="trash" size={13}/></button>}
-            </div></td>
-          </tr>;
-        })}
-      </tbody></DataTable>
-  </div>;
-}
-
-// ─── 제품관리 ───
-function AdminProductItems({ data, setData }) {
-  const [items, setItems] = useState(()=>[...(data?.products||[])].map((p,i)=>({...p,sort:p.sort??i})).sort((a,b)=>a.sort-b.sort));
-  useEffect(() => { setData(p => ({...p, products: items})); }, [items]);
-  const [editId, setEditId] = useState(null);
-  const [editData, setEditData] = useState({});
-  const [showAdd, setShowAdd] = useState(false);
-  const [newItem, setNewItem] = useState({ name:"", price:0 });
-  const [delConfirm, setDelConfirm] = useState(null);
-  const [selected, setSelected] = useState(new Set());
-  const drag = useDragSort(items, setItems, "sort", (reordered) => {
-    reordered.forEach(s => sb.update("products", s.id, {sort: s.sort}).catch(console.error));
-  });
-
-  const allChecked = items.length > 0 && items.every(it => selected.has(it.id));
-  const toggleAll = () => { if (allChecked) setSelected(new Set()); else setSelected(new Set(items.map(it => it.id))); };
-  const toggleOne = (id) => setSelected(prev => { const s = new Set(prev); s.has(id)?s.delete(id):s.add(id); return s; });
-  const bulkDelete = () => {
-    if (selected.size === 0) return;
-    if (!window.confirm(selected.size + "개 제품을 삭제하시겠습니까?")) return;
-    selected.forEach(id => sb.del("products", id).catch(console.error));
-    setItems(p => p.filter(it => !selected.has(it.id)).map((it,i) => ({...it, sort:i})));
-    setSelected(new Set());
-  };
-
-  const startEdit = (it) => { setEditId(it.id); setEditData({...it}); };
-  const saveEdit = () => { 
-    setItems(p=>p.map(x=>x.id===editId?{...editData}:x)); 
-    sb.update("products", editId, {name:editData.name, price:editData.price||0}).catch(console.error);
-    setEditId(null); 
-  };
-  const deleteItem = (id) => { 
-    setItems(p=>p.filter(x=>x.id!==id).map((x,i)=>({...x,sort:i}))); 
-    sb.del("products", id).catch(console.error);
-    setDelConfirm(null); 
-  };
-  const addItem = () => {
-    if(!newItem.name.trim()) return;
-    const it = {id:uid(), name:newItem.name, price:Number(newItem.price)||0, cat:"product", sort:items.length};
-    setItems(p=>[...p, it]);
-    sb.insert("products", {id:it.id, business_id:_activeBizId, name:it.name, price:it.price, cat:"product", sort:it.sort}).catch(console.error);
-    setNewItem({name:"",price:0}); setShowAdd(false);
-  };
-
-  const downloadXl = () => XL.download(items.map((p,i)=>({제품명:p.name, 가격:p.price||0})), "제품목록.xlsx", "제품", ["제품명","가격"]);
-  const uploadXl = async (e) => {
-    const file = e.target.files[0]; if(!file) return;
-    const rows = await XL.readFile(file);
-    const newItems = rows.map((r,i)=>({id:uid(), name:String(r["제품명"]||r["name"]||"").trim(), price:Number(r["가격"]||r["price"])||0, cat:"product", sort:items.length+i})).filter(r=>r.name);
-    if(newItems.length && window.confirm(newItems.length+"개 제품을 추가하시겠습니까?")) {
-      setItems(p=>[...p,...newItems]);
-      newItems.forEach(it=>sb.insert("products",{id:it.id, business_id:_activeBizId, name:it.name, price:it.price, cat:"product", sort:it.sort}).catch(console.error));
-    }
-    e.target.value="";
-  };
-
-  return <div>
-    <AdminHeader title="제품 관리" count={items.length} onAdd={()=>setShowAdd(!showAdd)} addLabel={showAdd?"취소":<><I name="plus" size={12}/> 제품 추가</>} onDownload={downloadXl} onUpload={uploadXl}/>
-    {showAdd && <div className="card" style={{padding:14,marginBottom:14}}>
-      <div style={{display:"flex",gap:T.sp.sm,alignItems:"flex-end"}}>
-        <FLD label="제품명"><input className="inp" style={{width:180}} value={newItem.name} onChange={e=>setNewItem(p=>({...p,name:e.target.value}))} placeholder="제품명"/></FLD>
-        <FLD label="가격"><input className="inp" type="number" style={{width:100}} value={newItem.price} onChange={e=>setNewItem(p=>({...p,price:e.target.value}))} placeholder="0"/></FLD>
-        <Btn variant="primary" size="sm" onClick={addItem} style={{padding:"6px 16px"}}>등록</Btn>
-      </div>
-    </div>}
-    {selected.size > 0 && <div style={{marginBottom:8}}><Btn variant="danger" size="sm" onClick={bulkDelete} style={{fontSize:T.fs.xs,padding:"4px 12px"}}><I name="trash" size={12}/> 선택 삭제 ({selected.size})</Btn></div>}
-    <DataTable card={false} className="admin-tw" maxH="calc(100vh - 300px)"><thead><tr>
-        <th style={{width:30}}><input type="checkbox" checked={allChecked} onChange={toggleAll}/></th><th style={{width:25}}></th><th style={{width:35}}>No</th><th>제품명</th><th style={{width:100,textAlign:"right"}}>가격</th><th style={{width:80,textAlign:"center"}}>관리</th>
-      </tr></thead>
-        <tbody>{items.map((it,i)=>{
-          if (editId===it.id) return <tr key={it.id} ref={drag.rowRef(i)} style={{background:T.primaryHover}}>
-            <td><input type="checkbox" checked={selected.has(it.id)} onChange={()=>toggleOne(it.id)}/></td>
-            <td><DragHandle onTouchStart={drag.onTouchStart(i)}/></td><td style={{color:T.gray500}}>{i+1}</td>
-            <td><input className="inp" value={editData.name} onChange={e=>setEditData(p=>({...p,name:e.target.value}))} style={{width:"100%"}}/></td>
-            <td><input className="inp" type="number" value={editData.price} onChange={e=>setEditData(p=>({...p,price:Number(e.target.value)||0}))} style={{width:"100%",textAlign:"right"}}/></td>
-            <td style={{textAlign:"center"}}><div style={{display:"flex",gap:3,justifyContent:"center"}}>
-              <Btn variant="primary" size="sm" onClick={saveEdit} style={{padding:"2px 8px",fontSize:T.fs.xs}}>저장</Btn>
-              <Btn variant="secondary" size="sm" onClick={()=>setEditId(null)} style={{padding:"2px 6px",fontSize:T.fs.xs}}>취소</Btn>
-            </div></td>
-          </tr>;
-          return <tr key={it.id} ref={drag.rowRef(i)} draggable onDragStart={()=>drag.onDragStart(i)} onDragEnter={()=>drag.onDragEnter(i)} onDragEnd={drag.onDragEnd} onDragOver={e=>e.preventDefault()}
-            style={{background:drag.touchOverIdx===i?T.purpleLt:undefined}}>
-            <td><input type="checkbox" checked={selected.has(it.id)} onChange={()=>toggleOne(it.id)}/></td>
-            <td><DragHandle onTouchStart={drag.onTouchStart(i)}/></td><td style={{color:T.gray500}}>{i+1}</td>
-            <td style={{fontWeight:T.fw.medium,fontSize:T.fs.sm}}>{it.name}</td>
-            <td style={{textAlign:"right",color:T.infoLt2,fontWeight:T.fw.bold,fontSize:T.fs.sm}}>{it.price>0?fmt(it.price)+"원":"-"}</td>
-            <td style={{textAlign:"center"}}><div style={{display:"flex",gap:T.sp.xs,justifyContent:"center"}}>
-              <button onClick={()=>startEdit(it)} style={{background:"none",border:"none",cursor:"pointer",color:T.primary,fontSize:T.fs.sm}}><I name="edit" size={13}/></button>
-              {delConfirm===it.id
-                ? <><Btn variant="danger" size="sm" onClick={()=>deleteItem(it.id)} style={{padding:"1px 6px",fontSize:T.fs.nano}}>확인</Btn><Btn variant="secondary" size="sm" onClick={()=>setDelConfirm(null)} style={{padding:"1px 5px",fontSize:T.fs.nano}}>취소</Btn></>
-                : <button onClick={()=>setDelConfirm(it.id)} style={{background:"none",border:"none",cursor:"pointer",color:T.danger,fontSize:T.fs.sm}}><I name="trash" size={13}/></button>}
-            </div></td>
-          </tr>;
-        })}</tbody>
-      </DataTable>
-  </div>;
-}
-
-// ─── 예약경로관리 ───
-function AdminResSources({ data, setData }) {
-  const [sources, setSources] = useState(()=>[...(data?.resSources || [])].sort((a,b)=>(a.sort||0)-(b.sort||0)));
-  useEffect(() => { setData(p => ({...p, resSources: sources})); }, [sources]);
-  const [showAdd, setShowAdd] = useState(false);
-  const [newSrc, setNewSrc] = useState({ name:"", color:T.primary });
-  const [editId, setEditId] = useState(null);
-  const [editData, setEditData] = useState({});
-  const [delConfirm, setDelConfirm] = useState(null);
-  const [selected, setSelected] = useState(new Set());
-  // 미리보기 드래그 refs
-  const srcPrevDragRef = useRef(null);
-  const srcPrevOverRef = useRef(null);
-  const [srcPrevOver, setSrcPrevOver] = useState(null);
-  const syncSources = (updated) => { setSources(updated); if(setData) setData(prev=>({...prev,resSources:updated})); };
-  const drag = useDragSort(sources, syncSources, "sort", (reordered) => {
-    reordered.forEach(s => sb.update("reservation_sources", s.id, {sort: s.sort}).catch(console.error));
-  });
-
-  const allChecked = sources.length > 0 && sources.every(s => selected.has(s.id));
-  const toggleAll = () => { if (allChecked) setSelected(new Set()); else setSelected(new Set(sources.map(s => s.id))); };
-  const toggleOne = (id) => setSelected(prev => { const s = new Set(prev); s.has(id)?s.delete(id):s.add(id); return s; });
-  const bulkDelete = () => {
-    if (selected.size === 0) return;
-    if (!window.confirm(selected.size + "개 경로를 삭제하시겠습니까?")) return;
-    if ([...selected].some(id => SYSTEM_SRC_IDS.includes(id))) { alert("네이버 예약경로는 시스템 기본값으로 삭제할 수 없습니다."); return; }
-    selected.forEach(id => sb.del("reservation_sources", id).catch(console.error));
-    syncSources(sources.filter(s => !selected.has(s.id)).map((s,i) => ({...s, sort:i})));
-    setSelected(new Set());
-  };
-
-  const srcToDb = (s) => ({id:s.id, business_id:_activeBizId, name:s.name, color:s.color||"", use_yn:s.useYn!==false, sort:s.sort||0});
-
-  const addSource = () => {
-    if(!newSrc.name.trim()) return;
-    const s = {id:"src_"+uid(), name:newSrc.name.trim(), color:newSrc.color||T.primary, useYn:true, sort:sources.length};
-    syncSources([...sources, s]);
-    sb.insert("reservation_sources", srcToDb(s)).catch(console.error);
-    setNewSrc({name:"",color:T.primary}); setShowAdd(false);
-  };
-  const deleteSource = (id) => {
-    syncSources(sources.filter(s=>s.id!==id).map((s,i)=>({...s,sort:i})));
-    sb.del("reservation_sources", id).catch(console.error);
-    setDelConfirm(null);
-  };
-  const startEdit = (src) => { setEditId(src.id); setEditData({...src}); };
-  const saveEdit = () => {
-    syncSources(sources.map(s=>s.id===editId?{...editData}:s));
-    sb.update("reservation_sources", editId, {name:editData.name, color:editData.color||"", use_yn:editData.useYn!==false, sort:editData.sort||0}).catch(console.error);
-    setEditId(null);
-  };
-  const toggleUse = (id) => {
-    const src = sources.find(s=>s.id===id);
-    const newUse = src?.useYn===false;
-    syncSources(sources.map(s=>s.id===id?{...s,useYn:!s.useYn}:s));
-    sb.update("reservation_sources", id, {use_yn:newUse}).catch(console.error);
-  };
-
-  const inpS = {padding:"4px 6px",fontSize:T.fs.xxs,background:T.dangerLt,border:"1px solid #d0d0d0"};
-
-  return <div>
-    <AdminHeader title="예약경로 관리" count={sources.length} onAdd={()=>setShowAdd(!showAdd)} addLabel={showAdd?"취소":<><I name="plus" size={12}/> 경로 추가</>}/>
-
-    {showAdd && <div className="card" style={{padding:14,marginBottom:14}}>
-      <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"flex-end"}}>
-        <FLD label="경로명"><input className="inp" style={{width:160,...inpS}} value={newSrc.name} onChange={e=>setNewSrc(p=>({...p,name:e.target.value}))} placeholder="경로명" onKeyDown={e=>e.key==="Enter"&&addSource()}/></FLD>
-        <FLD label="색상"><div style={{display:"flex",alignItems:"center",gap:3}}>
-          <input type="color" value={newSrc.color||T.primary} onChange={e=>setNewSrc(p=>({...p,color:e.target.value}))} style={{width:22,height:22,border:"none",cursor:"pointer"}}/>
-          <EyeDrop onPick={c=>setNewSrc(p=>({...p,color:c}))} size={22}/>
-          <input className="inp" style={{width:75,...inpS,fontFamily:"monospace",fontSize:T.fs.nano}} value={newSrc.color} onChange={e=>setNewSrc(p=>({...p,color:e.target.value}))} placeholder="#000000"/>
-        </div></FLD>
-        <Btn variant="primary" size="sm" onClick={addSource} style={{padding:"6px 18px"}}>추가</Btn>
-      </div>
-    </div>}
-
-    <div className="card" style={{padding:12,marginBottom:14}}>
-      <div style={{fontSize:T.fs.xs,color:T.textSub,marginBottom:6}}>미리보기 <span style={{color:T.gray400,fontSize:T.fs.nano}}>(드래그로 순서 변경)</span></div>
-      <div style={{display:"flex",flexWrap:"wrap",gap:6,padding:8,background:T.gray100,borderRadius:T.radius.md,minHeight:36}} onDragOver={e=>e.preventDefault()}>
-        {sources.filter(s=>s.useYn!==false).map((s,i)=>{
-          const clr = s.color||T.primary;
-          const h=clr.replace("#",""); const r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16);
-          const txtClr=(0.299*r+0.587*g+0.114*b)/255>0.55?T.text:T.bgCard;
-          const isNaverSrc = s.name===SYSTEM_SRC_NAME_NAVER;
-          return <span key={s.id} draggable
-            onDragStart={()=>{srcPrevDragRef.current=i;}}
-            onDragEnter={()=>{srcPrevOverRef.current=i; setSrcPrevOver(i);}}
-            onDragEnd={()=>{
-              const di=srcPrevDragRef.current, oi=srcPrevOverRef.current;
-              setSrcPrevOver(null); srcPrevDragRef.current=null; srcPrevOverRef.current=null;
-              if(di===null||oi===null||di===oi) return;
-              const active=sources.filter(s=>s.useYn!==false), inactive=sources.filter(s=>s.useYn===false);
-              const r=[...active]; const [m]=r.splice(di,1); r.splice(oi,0,m);
-              const reordered=[...r,...inactive].map((s,j)=>({...s,sort:j}));
-              syncSources(reordered);
-              reordered.forEach(s=>sb.update("reservation_sources",s.id,{sort:s.sort}).catch(console.error));
-            }}
-            className="tag-pill"
-            style={{background:srcPrevOver===i?T.primaryLt:clr,color:srcPrevOver===i?T.primary:txtClr,fontWeight:T.fw.bold,cursor:"grab",
-              boxShadow:isNaverSrc?"0 0 0 1.5px #03C75A40":undefined,
-              display:"inline-flex",alignItems:"center",gap:T.sp.xs,userSelect:"none"}}>
-            {isNaverSrc && <I name="naver" size={11} color={txtClr}/>}{s.name}
-          </span>;
-        })}
-      </div>
-    </div>
-
-    {selected.size > 0 && <div style={{marginBottom:8}}><Btn variant="danger" size="sm" onClick={bulkDelete} style={{fontSize:T.fs.xs,padding:"4px 12px"}}><I name="trash" size={12}/> 선택 삭제 ({selected.size})</Btn></div>}
-
-    <DataTable card={false} className="admin-tw" maxH="calc(100vh - 400px)"><thead><tr>
-        <th style={{width:30}}><input type="checkbox" checked={allChecked} onChange={toggleAll}/></th>
-        <th style={{width:22}}></th><th style={{width:25}}>No</th><th>경로명</th>
-        <th style={{width:80,textAlign:"center"}}>색상</th><th style={{width:55,textAlign:"center"}}>사용</th>
-        <th style={{width:35,textAlign:"center"}}>순서</th><th style={{width:65,textAlign:"center"}}>관리</th>
-      </tr></thead><tbody>
-      {sources.map((src,i) => {
-        const isEdit = editId===src.id;
-        if (isEdit) return <tr key={src.id} ref={drag.rowRef(i)} style={{background:T.primaryHover}}>
-          <td><input type="checkbox" checked={selected.has(src.id)} onChange={()=>toggleOne(src.id)}/></td>
-          <td><DragHandle onTouchStart={drag.onTouchStart(i)}/></td><td style={{color:T.gray500}}>{i+1}</td>
-          <td><input className="inp" value={editData.name} onChange={e=>setEditData(p=>({...p,name:e.target.value}))} style={{width:"100%",...inpS}}/></td>
-          <td><div style={{display:"flex",alignItems:"center",gap:2}}>
-            <input type="color" value={editData.color||T.primary} onChange={e=>setEditData(p=>({...p,color:e.target.value}))} style={{width:20,height:18,border:"none",cursor:"pointer"}}/>
-            <EyeDrop onPick={c=>setEditData(p=>({...p,color:c}))} size={20}/>
-            <input className="inp" value={editData.color||""} onChange={e=>setEditData(p=>({...p,color:e.target.value}))} style={{width:55,...inpS,fontFamily:"monospace",fontSize:T.fs.nano}}/>
-          </div></td>
-          <td></td><td></td>
-          <td style={{textAlign:"center"}}><div style={{display:"flex",gap:3,justifyContent:"center"}}>
-            <Btn variant="primary" size="sm" onClick={saveEdit} style={{padding:"1px 6px",fontSize:T.fs.nano}}>저장</Btn>
-            <Btn variant="secondary" size="sm" onClick={()=>setEditId(null)} style={{padding:"1px 5px",fontSize:T.fs.nano}}>취소</Btn>
-          </div></td>
-        </tr>;
-        return <tr key={src.id} ref={drag.rowRef(i)} draggable onDragStart={()=>drag.onDragStart(i)} onDragEnter={()=>drag.onDragEnter(i)} onDragEnd={drag.onDragEnd} onDragOver={e=>e.preventDefault()}
-          style={{opacity:src.useYn===false?0.45:1,background:drag.touchOverIdx===i?T.purpleLt:undefined}}>
-          <td>{SYSTEM_SRC_IDS.includes(src.id)?<span title="기본 경로" style={{color:T.gray400,fontSize:T.fs.xs}}>🔒</span>:<input type="checkbox" checked={selected.has(src.id)} onChange={()=>toggleOne(src.id)}/>}</td>
-          <td><DragHandle onTouchStart={drag.onTouchStart(i)}/></td>
-          <td style={{color:T.gray500}}>{i+1}</td>
-          <td style={{fontWeight:T.fw.bold,fontSize:T.fs.sm}}>
-            {(()=>{
-              const clr=src.color||T.primary; const h=clr.replace("#",""); const r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16); const txtC=(0.299*r+0.587*g+0.114*b)/255>0.55?T.text:T.bgCard;
-              const isNv=src.name===SYSTEM_SRC_NAME_NAVER;
-              return <span className="tag-pill" style={{background:clr,color:txtC,fontWeight:T.fw.bold,display:"inline-flex",alignItems:"center",gap:T.sp.xs}}>
-                {isNv && <I name="naver" size={11} color={txtC}/>}{src.name}
-              </span>;
-            })()}
-          </td>
-          <td style={{textAlign:"center"}}>{src.color?<div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:T.sp.xs}}>
-            <div style={{width:24,height:16,borderRadius:T.radius.sm,background:src.color,border:"1px solid #d0d0d080"}}/>
-            <span style={{fontSize:T.fs.nano,color:T.textSub,fontFamily:"monospace"}}>{src.color}</span>
-          </div>:<span style={{color:T.gray400,fontSize:T.fs.xs}}>—</span>}</td>
-          <td style={{textAlign:"center"}}><button onClick={()=>toggleUse(src.id)}
-            style={{fontSize:T.fs.xs,padding:"2px 6px",borderRadius:T.radius.sm,border:"1px solid "+(src.useYn===false?T.female:T.gray400),cursor:"pointer",fontFamily:"inherit",
-              background:src.useYn===false?"#e5737320":"transparent",color:src.useYn===false?T.female:T.gray600}}>{src.useYn===false?"미사용":"사용"}</button></td>
-          <td style={{textAlign:"center",color:T.gray400,fontSize:T.fs.xs}}>{i+1}</td>
-          <td style={{textAlign:"center"}}><div style={{display:"flex",gap:3,justifyContent:"center"}}>
-            <button onClick={()=>startEdit(src)} style={{background:"none",border:"none",cursor:"pointer",color:T.primary,fontSize:T.fs.sm}}><I name="edit" size={13}/></button>
-            {SYSTEM_SRC_IDS.includes(src.id) ? <span title="삭제 불가" style={{color:T.border,fontSize:T.fs.sm}}><I name="trash" size={13}/></span> : delConfirm===src.id
-              ? <><Btn variant="danger" size="sm" onClick={()=>deleteSource(src.id)} style={{padding:"1px 5px",fontSize:T.fs.nano}}>확인</Btn><Btn variant="secondary" size="sm" onClick={()=>setDelConfirm(null)} style={{padding:"1px 4px",fontSize:T.fs.nano}}>취소</Btn></>
-              : (SYSTEM_SRC_IDS.includes(src.id) ? <span title="기본 경로는 삭제할 수 없습니다" style={{color:T.gray300,fontSize:T.fs.sm,cursor:"not-allowed"}}><I name="trash" size={13}/></span> : <button onClick={()=>setDelConfirm(src.id)} style={{background:"none",border:"none",cursor:"pointer",color:T.danger,fontSize:T.fs.sm}}><I name="trash" size={13}/></button>)}
-          </div></td>
-        </tr>;
-      })}</tbody></DataTable>
-  </div>;
-}
-
-// ─── 알림톡 설정 (지점별) ───
-function AdminNoti({ data, sb, bizId, branches }) {
-  const [selBranch, setSelBranch] = React.useState(branches?.[0]?.id || null);
-  const branch = branches?.find(b => b.id === selBranch);
-
-  // 설정 저장 키: businesses.settings.noti_{branchId}
-  const [cfg, setCfg] = React.useState({});
-  const [saved, setSaved] = React.useState(false);
-  const [detailKey, setDetailKey] = React.useState(null); // 상세 편집 중인 항목 key
-  const [apiOpen, setApiOpen] = React.useState(false);
-
-  React.useEffect(() => {
-    if (!selBranch) return;
-    const raw = branch?.notiConfig || {};
-    setCfg(raw);
-    setDetailKey(null);
-  }, [selBranch]);
-
-  const up = (k, v) => { setCfg(p => ({...p, [k]: v})); setSaved(false); };
-  const save = async () => {
-    if (!selBranch) return;
-    await sb.update('branches', selBranch, { noti_config: JSON.stringify(cfg) }).catch(console.error);
-    setSaved(true); setTimeout(() => setSaved(false), 2000);
-  };
-
-  // 알림 항목 정의
-  const NOTI_GROUPS = [
-    { label: '예약 알림', items: [
-      { key: 'rsv_confirm',  label: '예약 확정 알림',     desc: '예약 확정 시 고객에게 발송' },
-      { key: 'rsv_change',   label: '예약 변경 알림',     desc: '예약 변경 시 고객에게 발송' },
-      { key: 'rsv_1day',     label: '예약 1일 전 알림',   desc: '예약 전날 지정 시각에 발송' },
-      { key: 'rsv_today',    label: '예약 당일 알림',     desc: '예약 당일 아침 지정 시각에 발송' },
-      { key: 'rsv_cancel',   label: '예약 취소 알림',     desc: '예약 취소 시 고객에게 발송' },
-      { key: 'rsv_naver',    label: '네이버예약 대기 알림', desc: '네이버 예약 대기 상태 시 발송' },
-    ]},
-    { label: '정액권 알림', items: [
-      { key: 'pkg_pay',      label: '정액권 고객 알림-결제', desc: '정액권 결제 완료 시 발송' },
-      { key: 'pkg_charge',   label: '정액권 고객 알림-충전', desc: '정액권 충전 완료 시 발송' },
-      { key: 'pkg_exp_1m',   label: '정액권 만기 1달 전 알림', desc: '만료 30일 전 발송' },
-      { key: 'pkg_exp_1w',   label: '정액권 만기 1주 전 알림', desc: '만료 7일 전 발송' },
-    ]},
-    { label: '티켓 알림', items: [
-      { key: 'tkt_pay',      label: '티켓 고객 알림-결제', desc: '티켓 결제 완료 시 발송' },
-      { key: 'tkt_charge',   label: '티켓 고객 알림-충전', desc: '티켓 충전 완료 시 발송' },
-      { key: 'tkt_exp_1m',   label: '티켓 만기 1달 전 알림', desc: '만료 30일 전 발송' },
-      { key: 'tkt_exp_1w',   label: '티켓 만기 1주 전 알림', desc: '만료 7일 전 발송' },
-    ]},
-    { label: '포인트 알림', items: [
-      { key: 'pt_earn',      label: '포인트 적립 알림',   desc: '포인트 적립 시 발송' },
-      { key: 'pt_use',       label: '포인트 사용 알림',   desc: '포인트 사용 시 발송' },
-    ]},
-  ];
-
-  const notiOn = (key) => !!(cfg[key]?.on);
-  const toggleOn = (key) => up(key, {...(cfg[key]||{}), on: !notiOn(key)});
-
-  // ── 상세 편집 화면 ──
-  if (detailKey) {
-    const allItems = NOTI_GROUPS.flatMap(g => g.items);
-    const item = allItems.find(x => x.key === detailKey);
-    const dc = cfg[detailKey] || {};
-    const udc = (k, v) => up(detailKey, {...dc, [k]: v});
-    return <div>
-      <div style={{display:'flex', alignItems:'center', gap:12, marginBottom:20}}>
-        <button onClick={() => setDetailKey(null)} style={{background:'none', border:'none', cursor:'pointer', fontSize:20, color:T.primary}}>←</button>
-        <span style={{fontSize:T.fs.lg, fontWeight:T.fw.bolder, color:T.text}}>{item?.label}</span>
-        <div onClick={() => toggleOn(detailKey)} style={{
-          marginLeft:'auto', width:48, height:26, borderRadius:13, cursor:'pointer', transition:'background .2s',
-          background: notiOn(detailKey) ? T.primary : T.gray300, position:'relative'
-        }}>
-          <div style={{position:'absolute', top:3, left: notiOn(detailKey)?24:3, width:20, height:20, borderRadius:'50%', background:'#fff', transition:'left .2s'}}/>
-        </div>
-      </div>
-      {notiOn(detailKey) && <div className="card" style={{padding:20, display:'flex', flexDirection:'column', gap:14}}>
-        <div>
-          <div style={{fontSize:T.fs.xs, fontWeight:T.fw.bold, color:T.gray700, marginBottom:4}}>템플릿 코드</div>
-          <input className="inp" value={dc.tplCode||''} onChange={e=>udc('tplCode', e.target.value)}
-            placeholder="NHN Cloud 템플릿 코드" style={{width:'100%', padding:'8px 10px', fontSize:T.fs.sm}}/>
-        </div>
-        <div>
-          <div style={{fontSize:T.fs.xs, fontWeight:T.fw.bold, color:T.gray700, marginBottom:4}}>발송 문자 내용</div>
-          <textarea className="inp" value={dc.msg||''} onChange={e=>udc('msg', e.target.value)}
-            placeholder={"변수: #{고객명} #{날짜} #{시간} #{장소} #{시술명} #{전화번호}"}
-            rows={6} style={{width:'100%', padding:'8px 10px', fontSize:T.fs.sm, resize:'vertical', fontFamily:'inherit'}}/>
-        </div>
-        {(detailKey==='rsv_1day'||detailKey==='rsv_today') && <div>
-          <div style={{fontSize:T.fs.xs, fontWeight:T.fw.bold, color:T.gray700, marginBottom:4}}>발송 시각</div>
-          <input type="time" className="inp" value={dc.sendAt||'09:00'} onChange={e=>udc('sendAt', e.target.value)}
-            style={{padding:'6px 10px', fontSize:T.fs.sm}}/>
-        </div>}
-      </div>}
-      <div style={{marginTop:16, display:'flex', gap:8}}>
-        <Btn variant="primary" size="sm" onClick={save} style={{padding:'8px 24px'}}>{saved?'저장됨 ✓':'저장'}</Btn>
-        <Btn variant="secondary" size="sm" onClick={() => setDetailKey(null)} style={{padding:'8px 16px'}}>← 목록</Btn>
-      </div>
-    </div>;
-  }
-
-  // ── 목록 화면 ──
-  return <div>
-    <AdminHeader title="알림톡/자동 문자" count={null}/>
-
-    {/* 지점 탭 */}
-    <div style={{display:'flex', gap:6, marginBottom:16, flexWrap:'wrap'}}>
-      {(branches||[]).map(b => <button key={b.id} onClick={() => setSelBranch(b.id)}
-        style={{padding:'6px 14px', fontSize:T.fs.sm, fontWeight:selBranch===b.id?700:400,
-        borderRadius:0, cursor:'pointer', fontFamily:'inherit',
-        border:selBranch===b.id?'2px solid #7c7cc8':'1px solid #d0d0d0',
-        background:selBranch===b.id?'#7c7cc815':T.bgCard, color:selBranch===b.id?T.primary:T.gray600}}>
-        {b.name}
-      </button>)}
-    </div>
-
-    {!selBranch ? <div style={{padding:20, color:T.gray500, textAlign:'center'}}>지점을 선택하세요</div> : <>
-
-    {/* 카카오 알림톡 배너 */}
-    <div style={{background:'#FEE500', borderRadius:T.radius.lg, padding:'14px 16px', marginBottom:20}}>
-      <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:4}}>
-        <span style={{fontSize:18}}>💬</span>
-        <span style={{fontSize:T.fs.md, fontWeight:T.fw.bolder, color:'#3A1D1D'}}>카카오 알림톡</span>
-      </div>
-      <div style={{fontSize:T.fs.xs, color:'#5a4a00', lineHeight:1.5}}>
-        활성화된 알림이 설정한 시간/조건에 맞춰 카카오 알림톡으로 전송됩니다.
-      </div>
-      <div style={{fontSize:T.fs.xs, color:'#a07800', marginTop:4}}>
-        ※ 카카오 알림톡 전송 시 잔여 알림 1건이 차감됩니다.
-      </div>
-    </div>
-
-    {/* NHN API 설정 (접기/펼치기) */}
-    <div className="card" style={{padding:0, marginBottom:20, overflow:'hidden'}}>
-      <div onClick={() => setApiOpen(p=>!p)} style={{padding:'12px 16px', display:'flex', alignItems:'center',
-        justifyContent:'space-between', cursor:'pointer', userSelect:'none'}}>
-        <span style={{fontSize:T.fs.sm, fontWeight:T.fw.bold, color:T.text}}>⚙️ NHN Cloud API 설정</span>
-        <span style={{color:T.gray400}}>{apiOpen?'▲':'▼'}</span>
-      </div>
-      {apiOpen && <div style={{padding:'0 16px 16px', borderTop:'1px solid '+T.border}}>
-        {[['appKey','App Key','NHN Cloud 콘솔 → Notification → KakaoTalk Bizmessage'],
-          ['secretKey','Secret Key','API 보안 설정에서 생성'],
-          ['senderKey','발신 프로필 키','카카오 채널 연동 후 발급']
-        ].map(([k,label,ph]) => <div key={k} style={{marginTop:10}}>
-          <div style={{fontSize:T.fs.xxs, fontWeight:T.fw.bold, color:T.gray700, marginBottom:3}}>{label}</div>
-          <input className="inp" type={k==='secretKey'?'password':'text'} value={cfg[k]||''} onChange={e=>up(k,e.target.value)}
-            placeholder={ph} style={{width:'100%', padding:'6px 10px', fontSize:T.fs.sm}}/>
-        </div>)}
-        <Btn variant="primary" size="sm" onClick={save} style={{padding:'8px 20px', marginTop:12}}>{saved?'저장됨 ✓':'저장'}</Btn>
-      </div>}
-    </div>
-
-    {/* 알림 항목 그룹 */}
-    {NOTI_GROUPS.map(group => <div key={group.label} style={{marginBottom:24}}>
-      <div style={{fontSize:T.fs.sm, fontWeight:T.fw.bolder, color:T.primary, marginBottom:8, paddingLeft:4}}>{group.label}</div>
-      <div style={{display:'flex', flexDirection:'column', gap:0, background:T.bgCard, borderRadius:T.radius.lg, overflow:'hidden', boxShadow:T.shadow.sm}}>
-        {group.items.map((item, idx) => <div key={item.key}
-          style={{display:'flex', alignItems:'center', padding:'15px 16px',
-            borderBottom: idx < group.items.length-1 ? '1px solid '+T.gray100 : 'none'}}>
-          <div style={{flex:1}}>
-            <div style={{fontSize:T.fs.sm, color:T.text, fontWeight:T.fw.medium}}>{item.label}</div>
-          </div>
-          {/* ON/OFF 토글 */}
-          <div onClick={() => toggleOn(item.key)} style={{
-            width:44, height:24, borderRadius:12, cursor:'pointer', transition:'background .2s', marginRight:12,
-            background: notiOn(item.key) ? T.primary : T.gray300, position:'relative', flexShrink:0
-          }}>
-            <div style={{position:'absolute', top:2, left: notiOn(item.key)?22:2, width:20, height:20,
-              borderRadius:'50%', background:'#fff', transition:'left .2s',
-              display:'flex', alignItems:'center', justifyContent:'center',
-              fontSize:8, fontWeight:'bold', color: notiOn(item.key)?T.primary:T.gray400}}>
-              {notiOn(item.key)?'ON':''}
-            </div>
-          </div>
-          {/* 상세 이동 화살표 */}
-          <div onClick={() => setDetailKey(item.key)} style={{color:T.gray400, cursor:'pointer', fontSize:18, padding:'0 4px'}}>›</div>
-        </div>)}
-      </div>
-    </div>)}
-
-    </>}
-  </div>;
-}
-function AdminAISettings({ data, sb, bizId }) {
-  const [apiKey, setApiKey] = useState(()=>window.__geminiKey || localStorage.getItem("bliss_gemini_key")||"");
-  const [saved, setSaved] = useState(false);
-  const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState(null);
-
-  const [rules, setRules] = useState(()=>{
-    try { return JSON.parse(localStorage.getItem(AI_RULES_KEY)||"[]"); } catch{ return []; }
-  });
-  // 마운트 시 Supabase에서 gemini_key + ai_rules 복원 (localStorage 삭제 후 복구)
-  useEffect(() => {
-    if (!bizId) return;
-    fetch(`${SB_URL}/rest/v1/businesses?id=eq.${bizId}&select=settings`, { headers: sbHeaders })
-      .then(r => r.json()).then(rows => {
-        try {
-          const memo = JSON.parse(rows[0]?.settings || "{}");
-          // gemini_key 복원 (화면 state + localStorage 모두)
-          if (memo.gemini_key) {
-            setApiKey(memo.gemini_key);
-            localStorage.setItem("bliss_gemini_key", memo.gemini_key);
-            console.log("✅ Gemini key 복원");
-          }
-          // ai_rules 복원
-          if (memo.ai_rules?.length) {
-            setRules(memo.ai_rules);
-            localStorage.setItem(AI_RULES_KEY, JSON.stringify(memo.ai_rules));
-            console.log("✅ AI 규칙 복원:", memo.ai_rules.length + "개");
-          }
-        } catch(e) {}
-      }).catch(()=>{});
-  }, [bizId]);
-  const [newRule, setNewRule] = useState("");
-  const [editIdx, setEditIdx] = useState(null);
-  const [editVal, setEditVal] = useState("");
-
-  const save = async () => {
-    const trimmed = apiKey.trim();
-    localStorage.setItem("bliss_gemini_key", trimmed);
-    window.__geminiKey = trimmed;
-    // 서버(bliss_naver.py)가 읽을 수 있도록 Supabase businesses.settings에도 저장
-    if (bizId) {
-      try {
-        const r = await fetch(`${SB_URL}/rest/v1/businesses?id=eq.${bizId}&select=settings`, { headers: sbHeaders });
-        const rows = await r.json();
-        let memo = {};
-        try { memo = JSON.parse((rows[0]?.settings) || "{}"); } catch { memo = {}; }
-        memo.gemini_key = trimmed;
-        await fetch(`${SB_URL}/rest/v1/businesses?id=eq.${bizId}`, {
-          method: "PATCH",
-          headers: { ...sbHeaders, "Prefer": "return=minimal" },
-          body: JSON.stringify({ settings: JSON.stringify(memo) })
-        });
-        console.log("✅ Gemini key Supabase 동기화 완료");
-      } catch(e) { console.warn("Supabase gemini_key 저장 실패:", e); }
-    }
-    setSaved(true); setTimeout(()=>setSaved(false), 2000);
-  };
-
-  const saveRules = async (next) => {
-    setRules(next);
-    localStorage.setItem(AI_RULES_KEY, JSON.stringify(next));
-    // Supabase에도 저장 (캐시 삭제 후 복구용)
-    if (bizId) {
-      try {
-        const r = await fetch(`${SB_URL}/rest/v1/businesses?id=eq.${bizId}&select=settings`, { headers: sbHeaders });
-        const rows = await r.json();
-        let memo = {};
-        try { memo = JSON.parse(rows[0]?.settings || "{}"); } catch {}
-        memo.ai_rules = next;
-        await fetch(`${SB_URL}/rest/v1/businesses?id=eq.${bizId}`, {
-          method: "PATCH",
-          headers: { ...sbHeaders, "Prefer": "return=minimal" },
-          body: JSON.stringify({ settings: JSON.stringify(memo) })
-        });
-      } catch(e) { console.warn("AI 규칙 Supabase 저장 실패:", e); }
-    }
-  };
-  const addRule = () => {
-    const t = newRule.trim(); if (!t) return;
-    saveRules([...rules, t]); setNewRule("");
-  };
-  const deleteRule = (i) => saveRules(rules.filter((_,idx)=>idx!==i));
-  const startEdit = (i) => { setEditIdx(i); setEditVal(rules[i]); };
-  const saveEdit = () => {
-    const t = editVal.trim();
-    if (t) saveRules(rules.map((r,i)=>i===editIdx?t:r));
-    setEditIdx(null); setEditVal("");
-  };
-
-  const testApi = async () => {
-    if (!apiKey.trim()) { alert("API 키를 입력하세요"); return; }
-    setTesting(true); setTestResult(null);
-    try {
-      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey.trim()}`, {
-        method:"POST", headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({contents:[{parts:[{text:"Hello, respond with just 'OK'"}]}]})
-      });
-      if (r.ok) { setTestResult({ok:true, msg:"✅ 연결 성공!"}); }
-      else { const e = await r.text(); setTestResult({ok:false, msg:"❌ 실패: "+e.slice(0,100)}); }
-    } catch(e) { setTestResult({ok:false, msg:"❌ 네트워크 에러: "+e.message}); }
-    setTesting(false);
-  };
-
-  return <div>
-    <AdminHeader title="AI 설정" count={null}/>
-    <div className="card" style={{padding:20,maxWidth:500}}>
-      <div style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder,marginBottom:12,color:T.text}}>Gemini API 키</div>
-      <div style={{fontSize:T.fs.xxs,color:T.textSub,marginBottom:12,lineHeight:1.6}}>
-        AI Book 기능에 사용됩니다. 텍스트/음성/이미지에서 예약 정보를 자동 추출합니다.<br/>
-        <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style={{color:T.primary,fontWeight:T.fw.bold}}>Google AI Studio</a>에서 무료로 발급받을 수 있습니다.
-      </div>
-      <div style={{display:"flex",gap:T.sp.sm,alignItems:"center",marginBottom:12}}>
-        <input className="inp" type="password" value={apiKey} onChange={e=>setApiKey(e.target.value)} placeholder="AIza..." style={{flex:1,padding:"8px 12px",fontSize:T.fs.sm}}/>
-        <Btn variant="primary" size="sm" onClick={save} style={{padding:"8px 16px",whiteSpace:"nowrap"}}>{saved?"저장됨 ✓":"저장"}</Btn>
-      </div>
-      <Btn variant="secondary" size="sm" onClick={testApi} disabled={testing} style={{padding:"6px 14px",fontSize:T.fs.xxs}}>
-        {testing?"테스트 중...":"연결 테스트"}
-      </Btn>
-      {testResult && <div style={{marginTop:8,fontSize:T.fs.xxs,color:testResult.ok?T.success:T.female,fontWeight:T.fw.bold}}>{testResult.msg}</div>}
-    </div>
-
-    {/* ── 커스텀 AI 규칙 ── */}
-    <div className="card" style={{padding:20,maxWidth:500,marginTop:16}}>
-      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
-        <span style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder,color:T.text}}>AI 분석 커스텀 규칙</span>
-        <span style={{fontSize:T.fs.xs,color:T.primary,background:T.primaryLt,padding:"2px 6px",borderRadius:T.radius.lg,fontWeight:T.fw.bold}}>{rules.length}개</span>
-      </div>
-      <div style={{fontSize:T.fs.xxs,color:T.gray500,marginBottom:14,lineHeight:1.6}}>
-        네이버 예약정보 AI 분석 시 아래 규칙이 프롬프트에 추가됩니다.<br/>
-        <span style={{color:T.orange,fontWeight:T.fw.bold}}>❌ 금지</span> 또는 <span style={{color:T.successDk,fontWeight:T.fw.bold}}>✅ 강제</span> 방식으로 작성하세요.
-      </div>
-      {/* 규칙 목록 */}
-      {rules.length === 0 && <div style={{fontSize:T.fs.sm,color:T.gray400,textAlign:"center",padding:"12px 0",borderRadius:T.radius.md,background:T.bg,marginBottom:12}}>아직 등록된 규칙이 없습니다</div>}
-      {rules.map((r,i)=><div key={i} style={{display:"flex",alignItems:"flex-start",gap:6,marginBottom:6,padding:"8px 10px",background:T.gray100,borderRadius:T.radius.md,border:"1px solid #e8e8f0"}}>
-        {editIdx===i
-          ? <><input className="inp" value={editVal} onChange={e=>setEditVal(e.target.value)}
-              onKeyDown={e=>{if(e.key==="Enter")saveEdit();if(e.key==="Escape"){setEditIdx(null);}}}
-              autoFocus style={{flex:1,padding:"4px 8px",fontSize:T.fs.sm,borderRadius:T.radius.md}}/>
-            <button onClick={saveEdit} style={{padding:"4px 10px",fontSize:T.fs.xxs,fontWeight:T.fw.bolder,background:T.primary,color:T.bgCard,border:"none",borderRadius:T.radius.md,cursor:"pointer"}}>저장</button>
-            <button onClick={()=>setEditIdx(null)} style={{padding:"4px 8px",fontSize:T.fs.xxs,background:T.border,color:T.gray600,border:"none",borderRadius:T.radius.md,cursor:"pointer"}}>취소</button></>
-          : <><span style={{flex:1,fontSize:T.fs.sm,color:T.text,lineHeight:1.6,wordBreak:"break-all"}}>{r}</span>
-            <button onClick={()=>startEdit(i)} style={{padding:"3px 8px",fontSize:T.fs.xs,background:T.primaryLt,color:T.primary,border:"none",borderRadius:T.radius.sm,cursor:"pointer",flexShrink:0}}>수정</button>
-            <button onClick={()=>deleteRule(i)} style={{padding:"3px 8px",fontSize:T.fs.xs,background:T.dangerLt,color:T.danger,border:"none",borderRadius:T.radius.sm,cursor:"pointer",flexShrink:0}}>삭제</button></>}
-      </div>)}
-      {/* 새 규칙 입력 */}
-      <div style={{display:"flex",gap:6,marginTop:8}}>
-        <input className="inp" value={newRule} onChange={e=>setNewRule(e.target.value)}
-          onKeyDown={e=>{if(e.key==="Enter")addRule();}}
-          placeholder='예: 허벅지/다리안쪽 언급 시 "다리반" 시술 선택, "바디도움" 태그 사용 금지'
-          style={{flex:1,padding:"8px 12px",fontSize:T.fs.sm,borderRadius:T.radius.md}}/>
-        <button onClick={addRule}
-          style={{padding:"8px 16px",fontSize:T.fs.sm,fontWeight:T.fw.bolder,background:T.primary,color:T.bgCard,border:"none",borderRadius:T.radius.md,cursor:"pointer",flexShrink:0}}>추가</button>
-      </div>
-    </div>
-
-    <div className="card" style={{padding:20,maxWidth:500,marginTop:16}}>
-      <div style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder,marginBottom:8,color:T.text}}>사용 안내</div>
-      <div style={{fontSize:T.fs.xxs,color:T.gray600,lineHeight:1.8}}>
-        타임라인 상단의 <span style={{background:T.primaryLt,color:T.primary,padding:"2px 6px",borderRadius:T.radius.sm,fontWeight:T.fw.bolder,fontSize:T.fs.xs}}>✨ AI Book</span> 버튼으로 사용합니다.<br/>
-        • <strong>텍스트</strong>: 카톡 메시지 붙여넣기 또는 직접 입력<br/>
-        • <strong>음성</strong>: 마이크로 말하면 자동 인식<br/>
-        • <strong>이미지</strong>: 캡처/사진 업로드로 자동 인식<br/>
-        • 비용: 건당 약 $0.0001 (월 1000건 ≈ $0.10)
-      </div>
-    </div>
-  </div>;
-}
-
-// ─── AI Book 모달 ───
 function QuickBookModal({ onClose, onParsed, data }) {
   const [input, setInput] = useState("");
   const [imgData, setImgData] = useState(null);
@@ -8210,253 +7350,6 @@ function QuickBookModal({ onClose, onParsed, data }) {
 }
 
 // ─── 서비스태그관리 ───
-function AdminServiceTags({ data, setData }) {
-  const [tags, setTags] = useState(()=>[...(data?.serviceTags || [])].sort((a,b)=>a.sort-b.sort));
-  useEffect(() => { setData(p => p ? {...p, serviceTags: tags} : p); }, [tags]);
-
-  const TAB_LABELS = { reservation: BLOCK_LABELS.reservation || "예약", schedule: "내부일정" };
-  const [activeTab, setActiveTab] = useState("reservation");
-  const [showAdd, setShowAdd] = useState(false);
-  const [newTag, setNewTag] = useState({ name:"", dur:0, color:"" });
-  const [editId, setEditId] = useState(null);
-  const [editData, setEditData] = useState({});
-  const [delConfirm, setDelConfirm] = useState(null);
-  const [selected, setSelected] = useState(new Set());
-
-  // 미리보기 드래그앤드롭 - ref로 관리해야 stale closure 방지
-  const prevDragIdxRef = useRef(null);
-  const prevOverIdxRef = useRef(null);
-  const [prevDragOver, setPrevDragOver] = useState(null); // 시각적 하이라이트용만 state
-
-  
-  const isScheduleTab = activeTab === "schedule";
-  const tabTags = (tags||[]).filter(t => isScheduleTab ? t.scheduleYn === "Y" : t.scheduleYn !== "Y");
-
-  const previewTags = tabTags.filter(t=>t.useYn!==false);
-  const onPrevDragStart = (i) => { prevDragIdxRef.current = i; };
-  const onPrevDragEnter = (i) => { prevOverIdxRef.current = i; setPrevDragOver(i); };
-  const onPrevDragEnd = () => {
-    const di = prevDragIdxRef.current;
-    const oi = prevOverIdxRef.current;
-    setPrevDragOver(null);
-    prevDragIdxRef.current = null;
-    prevOverIdxRef.current = null;
-    if (di === null || oi === null || di === oi) return;
-    const reordered = [...previewTags];
-    const [moved] = reordered.splice(di, 1);
-    reordered.splice(oi, 0, moved);
-    const otherTags = (tags||[]).filter(t => isScheduleTab ? t.scheduleYn !== "Y" : t.scheduleYn === "Y");
-    const unusedTabs = tabTags.filter(t=>t.useYn===false);
-    const newTabOrder = [...reordered, ...unusedTabs];
-    const allSorted = [...newTabOrder, ...otherTags].map((t,i)=>({...t,sort:i}));
-    syncTags(allSorted);
-    newTabOrder.forEach((t,i) => sb.update("service_tags", t.id, {sort:i}).catch(console.error));
-  };
-
-  const syncTags = (updated) => { setTags(updated); if(setData) setData(prev=>prev ? {...prev,serviceTags:updated} : prev); };
-  const [localTabTags, setLocalTabTags] = useState([]);
-  useEffect(() => { setLocalTabTags(tabTags); }, [activeTab, tags]);
-  const drag = useDragSort(localTabTags, setLocalTabTags, "sort", (reordered) => {
-    const otherTags = (tags||[]).filter(t => isScheduleTab ? t.scheduleYn !== "Y" : t.scheduleYn === "Y");
-    const allSorted = [...reordered, ...otherTags].map((t,i)=>({...t,sort:i}));
-    syncTags(allSorted);
-    reordered.forEach((s,i) => sb.update("service_tags", s.id, {sort: i}).catch(console.error));
-  });
-
-  // 배경색 → 대비색(흰/검) 자동 계산
-  const getContrastColor = (hex) => {
-    if (!hex || hex.length < 4) return T.text;
-    const h = hex.replace("#","");
-    const r = parseInt(h.length===3?h[0]+h[0]:h.slice(0,2),16);
-    const g = parseInt(h.length===3?h[1]+h[1]:h.slice(2,4),16);
-    const b = parseInt(h.length===3?h[2]+h[2]:h.slice(4,6),16);
-    return (0.299*r + 0.587*g + 0.114*b) / 255 > 0.55 ? T.text : T.bgCard;
-  };
-
-  // 태그 pill 스타일 (채우기, 테두리 없음)
-  const tagPillStyle = (color, useYn) => {
-    const bg = color || T.primary;
-    return {
-      padding:"4px 10px", borderRadius:0, border:"none",
-      background: useYn===false ? T.gray400 : bg,
-      color: useYn===false ? T.gray500 : getContrastColor(bg),
-      fontSize:T.fs.xxs, fontWeight:T.fw.bold, display:"inline-flex", alignItems:"center", gap:3,
-      opacity: useYn===false ? 0.5 : 1,
-    };
-  };
-
-  const allChecked = tabTags.length > 0 && tabTags.every(t => selected.has(t.id));
-  const toggleAll = () => { if (allChecked) setSelected(new Set()); else setSelected(new Set(tabTags.map(t => t.id))); };
-  const toggleOne = (id) => setSelected(prev => { const s = new Set(prev); s.has(id)?s.delete(id):s.add(id); return s; });
-
-  const bulkDelete = () => {
-    if (selected.size === 0) return;
-    const protectedSelected = [...selected].filter(id => SYSTEM_TAG_IDS.includes(id));
-    if (protectedSelected.length > 0) { alert("신규, 예약금완료 태그는 시스템 태그로 삭제할 수 없습니다."); return; }
-    if (!window.confirm(selected.size + "개 태그를 삭제하시겠습니까?\n삭제된 태그는 복구할 수 없습니다.")) return;
-    selected.forEach(id => sb.del("service_tags", id).catch(console.error));
-    syncTags((tags||[]).filter(t => !selected.has(t.id)).map((t,i) => ({...t, sort:i})));
-    setSelected(new Set());
-  };
-
-  const tagToDb = (t) => ({id:t.id, business_id:_activeBizId, name:t.name, dur:t.dur||0,
-    schedule_yn: t.scheduleYn==="Y"?"Y":"N", color:t.color||"", use_yn:t.useYn!==false, sort:t.sort||0});
-
-  const addTag = () => {
-    if(!newTag.name.trim()) return;
-    const t = {id:uid(), name:newTag.name.trim(), dur:Number(newTag.dur)||0,
-      scheduleYn: isScheduleTab ? "Y" : "N", color:newTag.color, useYn:true, sort:tags.length};
-    syncTags([...tags, t]);
-    sb.upsert("service_tags", [tagToDb(t)]);
-    setNewTag({name:"",dur:0,color:""});
-    setShowAdd(false);
-  };
-
-  const startEdit = (tag) => { setEditId(tag.id); setEditData({...tag}); };
-  const saveEdit = () => {
-    syncTags(tags.map(t=>t.id===editId?{...editData}:t));
-    sb.update("service_tags", editId, {name:editData.name, dur:editData.dur||0,
-      schedule_yn:editData.scheduleYn==="Y"||editData.scheduleYn===true?"Y":"N",
-      color:editData.color||"", use_yn:editData.useYn!==false, sort:editData.sort||0}).catch(console.error);
-    setEditId(null);
-  };
-  const toggleUse = (id) => {
-    const tag = tags.find(t=>t.id===id);
-    const newUse = tag?.useYn===false;
-    syncTags(tags.map(t=>t.id===id?{...t,useYn:!t.useYn}:t));
-    sb.update("service_tags", id, {use_yn:newUse}).catch(console.error);
-  };
-  const deleteTag = (id) => {
-    if (SYSTEM_TAG_IDS.includes(id)) { alert("시스템 태그는 삭제할 수 없습니다."); return; }
-    syncTags((tags||[]).filter(t=>t.id!==id).map((t,i)=>({...t,sort:i})));
-    sb.del("service_tags", id).catch(console.error);
-    setDelConfirm(null);
-  };
-
-
-  const inpS = {padding:"4px 6px",fontSize:T.fs.xxs,background:T.dangerLt,border:"1px solid #d0d0d0"};
-  const downloadXl = () => XL.download(tabTags.map((t,i)=>({태그명:t.name, 소요분:t.dur, 색상:t.color||"", 사용:t.useYn!==false?"Y":"N"})), isScheduleTab?"내부일정태그.xlsx":"예약태그.xlsx", "태그", ["태그명","소요분","색상","사용"]);
-  const uploadXl = async (e) => {
-    const file = e.target.files[0]; if(!file) return;
-    const rows = await XL.readFile(file);
-    const newTags = rows.map(r=>({id:uid(), name:r["태그명"]||r["name"]||"", dur:Number(r["소요분"]||r["dur"])||0,
-      scheduleYn: isScheduleTab?"Y":"N", color:r["색상"]||"", useYn:(r["사용"]||"Y")!=="N", sort:tags.length})).filter(r=>r.name);
-    if(newTags.length && window.confirm(newTags.length+"개 태그를 추가하시겠습니까?")) {
-      syncTags([...tags,...newTags]);
-      sb.upsert("service_tags", newTags.map(tagToDb));
-    }
-  };
-
-  return <div>
-    <AdminHeader title="태그 관리" count={tags.length} onAdd={()=>setShowAdd(!showAdd)} addLabel={showAdd?"취소":<><I name="plus" size={12}/> 태그 추가</>} onDownload={downloadXl} onUpload={uploadXl}/>
-
-    {/* 탭 버튼 */}
-    <div style={{display:"flex",gap:2,marginBottom:12,background:T.gray300,borderRadius:T.radius.md,padding:3,width:"fit-content"}}>
-      {Object.entries(TAB_LABELS).map(([key, label]) => (
-        <button key={key} className={activeTab===key?"btn-p btn-sm":"btn-s btn-sm"}
-          onClick={()=>{setActiveTab(key);setSelected(new Set());setShowAdd(false);}}>
-          {label}태그 <span style={{fontSize:T.fs.xs,opacity:.7}}>({(key==="schedule"?(tags||[]).filter(t=>t.scheduleYn==="Y"):(tags||[]).filter(t=>t.scheduleYn!=="Y")).length})</span>
-        </button>
-      ))}
-    </div>
-
-    {showAdd && <div className="card" style={{padding:14,marginBottom:14}}>
-      <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"flex-end"}}>
-        <FLD label="태그명"><input className="inp" style={{width:160,...inpS}} value={newTag.name} onChange={e=>setNewTag(p=>({...p,name:e.target.value}))} placeholder="태그명" onKeyDown={e=>e.key==="Enter"&&addTag()}/></FLD>
-        <FLD label="소요(분)"><input className="inp" type="number" style={{width:80,...inpS}} value={newTag.dur} onChange={e=>setNewTag(p=>({...p,dur:e.target.value}))}/></FLD>
-        <FLD label="색상">
-          <div style={{display:"flex",alignItems:"center",gap:6}}>
-            <input type="color" value={newTag.color||T.primary} onChange={e=>setNewTag(p=>({...p,color:e.target.value}))} style={{width:28,height:28,border:"none",borderRadius:T.radius.md,cursor:"pointer",padding:0}}/>
-            <EyeDrop onPick={c=>setNewTag(p=>({...p,color:c}))} size={22}/>
-            <input className="inp" style={{width:75,...inpS,fontFamily:"monospace",fontSize:T.fs.nano}} value={newTag.color} onChange={e=>setNewTag(p=>({...p,color:e.target.value}))} placeholder={T.primary}/>
-            {newTag.color && <span style={{...tagPillStyle(newTag.color,true),fontSize:T.fs.xs,pointerEvents:"none"}}>{newTag.name||"미리보기"}</span>}
-          </div>
-        </FLD>
-        <Btn variant="primary" size="sm" onClick={addTag} style={{padding:"6px 18px"}}>추가 ({TAB_LABELS[activeTab]}태그)</Btn>
-      </div>
-    </div>}
-
-    {/* 미리보기 — 드래그앤드롭 순서 변경 가능 */}
-    <div className="card" style={{padding:12,marginBottom:14}}>
-      <div style={{fontSize:T.fs.xs,color:T.textSub,marginBottom:6}}>미리보기 <span style={{color:T.gray400,fontSize:T.fs.nano}}>(드래그로 순서 변경)</span></div>
-      <div style={{display:"flex",flexWrap:"wrap",gap:6,padding:8,background:T.gray100,borderRadius:T.radius.md,minHeight:36}} onDragOver={e=>e.preventDefault()}>
-        {previewTags.map((t,i)=>(
-          <span key={t.id}
-            draggable
-            onDragStart={()=>onPrevDragStart(i)}
-            onDragEnter={()=>onPrevDragEnter(i)}
-            onDragEnd={onPrevDragEnd}
-            onDragOver={e=>e.preventDefault()}
-            style={{...tagPillStyle(t.color,t.useYn),cursor:"grab",
-              outline: prevDragOver===i ? "2px dashed #7c7cc8" : "none",
-              opacity: 1,
-              transition:"opacity .15s"}}>
-            {t.name}{t.dur>0&&<span style={{fontSize:T.fs.nano,opacity:.7}}>({t.dur}분)</span>}
-          </span>
-        ))}
-        {previewTags.length===0 && <span style={{color:T.gray400,fontSize:T.fs.xxs}}>태그를 추가하세요</span>}
-      </div>
-    </div>
-
-    {selected.size > 0 && <div style={{marginBottom:8}}><Btn variant="danger" size="sm" onClick={bulkDelete} style={{fontSize:T.fs.xs,padding:"4px 12px"}}><I name="trash" size={12}/> 선택 삭제 ({selected.size})</Btn></div>}
-
-    <DataTable card={false} className="admin-tw" maxH="calc(100vh - 420px)"><thead><tr>
-        <th style={{width:30}}><input type="checkbox" checked={allChecked} onChange={toggleAll}/></th>
-        <th style={{width:22}}></th><th style={{width:25}}>No</th><th>태그명</th>
-        <th style={{width:55,textAlign:"center"}}>소요</th>
-        <th style={{width:80,textAlign:"center"}}>색상</th><th style={{width:55,textAlign:"center"}}>사용</th>
-        <th style={{width:35,textAlign:"center"}}>순서</th><th style={{width:65,textAlign:"center"}}>관리</th>
-      </tr></thead><tbody>
-      {(localTabTags.length > 0 ? localTabTags : tabTags).map((tag,i) => {
-        const isSys = SYSTEM_TAG_IDS.includes(tag.id);
-        if(editId===tag.id) return <tr key={tag.id} ref={drag.rowRef(i)} style={{background:T.primaryHover}}>
-          <td>{isSys?<span style={{color:T.gray400,fontSize:T.fs.xs}}>🔒</span>:<input type="checkbox" checked={selected.has(tag.id)} onChange={()=>toggleOne(tag.id)}/>}</td>
-          <td><DragHandle onTouchStart={drag.onTouchStart(i)}/></td><td style={{color:T.gray500}}>{i+1}</td>
-          <td><input className="inp" value={editData.name} onChange={e=>setEditData(p=>({...p,name:e.target.value}))} style={{width:"100%",...inpS}}/></td>
-          <td><input className="inp" type="number" value={editData.dur} onChange={e=>setEditData(p=>({...p,dur:Number(e.target.value)||0}))} style={{width:50,...inpS}}/></td>
-          <td><div style={{display:"flex",alignItems:"center",gap:3}}>
-            <input type="color" value={editData.color||T.primary} onChange={e=>setEditData(p=>({...p,color:e.target.value}))} style={{width:24,height:24,border:"none",borderRadius:T.radius.sm,cursor:"pointer",padding:0}}/>
-            <EyeDrop onPick={c=>setEditData(p=>({...p,color:c}))} size={20}/>
-            <input className="inp" style={{width:60,...inpS,fontFamily:"monospace",fontSize:T.fs.nano}} value={editData.color||""} onChange={e=>setEditData(p=>({...p,color:e.target.value}))}/>
-            {editData.color && <span style={{...tagPillStyle(editData.color,true),fontSize:T.fs.nano,pointerEvents:"none"}}>{editData.name||"미리"}</span>}
-          </div></td>
-          <td style={{textAlign:"center"}}><select className="inp" style={{width:55,...inpS}} value={editData.useYn===false?"N":"Y"} onChange={e=>setEditData(p=>({...p,useYn:e.target.value==="Y"}))}><option value="Y">사용</option><option value="N">미사용</option></select></td>
-          <td style={{textAlign:"center",color:T.gray400,fontSize:T.fs.xs}}>{i+1}</td>
-          <td style={{textAlign:"center"}}><div style={{display:"flex",gap:3,justifyContent:"center"}}>
-            <Btn variant="primary" size="sm" onClick={saveEdit} style={{padding:"1px 6px",fontSize:T.fs.nano}}>저장</Btn>
-            <Btn variant="secondary" size="sm" onClick={()=>setEditId(null)} style={{padding:"1px 4px",fontSize:T.fs.nano}}>취소</Btn>
-          </div></td>
-        </tr>;
-        return <tr key={tag.id} ref={drag.rowRef(i)} draggable onDragStart={()=>drag.onDragStart(i)} onDragEnter={()=>drag.onDragEnter(i)} onDragEnd={drag.onDragEnd} onDragOver={e=>e.preventDefault()}
-          style={{opacity:tag.useYn===false?0.45:1,background:drag.touchOverIdx===i?T.purpleLt:undefined}}>
-          <td>{isSys?<span title="시스템 태그" style={{color:T.gray400,fontSize:T.fs.xs}}>🔒</span>:<input type="checkbox" checked={selected.has(tag.id)} onChange={()=>toggleOne(tag.id)}/>}</td>
-          <td><DragHandle onTouchStart={drag.onTouchStart(i)}/></td>
-          <td style={{color:T.gray500}}>{i+1}</td>
-          <td style={{fontWeight:T.fw.bold,fontSize:T.fs.sm}}>
-            <span style={tagPillStyle(tag.color,tag.useYn)}>{tag.name}</span>
-          </td>
-          <td style={{textAlign:"center",fontSize:T.fs.xxs,color:tag.dur>0?T.danger:T.gray400,fontWeight:tag.dur>0?600:400}}>{tag.dur>0?tag.dur+"분":"-"}</td>
-          <td style={{textAlign:"center"}}>{tag.color?<div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:T.sp.xs}}>
-            <div style={{width:28,height:18,borderRadius:T.radius.sm,background:tag.color}}/>
-            <span style={{fontSize:T.fs.nano,color:T.textSub,fontFamily:"monospace"}}>{tag.color}</span>
-          </div>:<span style={{color:T.gray400,fontSize:T.fs.xs}}>—</span>}</td>
-          <td style={{textAlign:"center"}}><button onClick={()=>toggleUse(tag.id)}
-            style={{fontSize:T.fs.xs,padding:"2px 6px",borderRadius:T.radius.sm,border:"1px solid "+(tag.useYn===false?T.female:T.gray400),cursor:"pointer",fontFamily:"inherit",
-              background:tag.useYn===false?"#e5737320":"transparent",color:tag.useYn===false?T.female:T.gray600}}>{tag.useYn===false?"미사용":"사용"}</button></td>
-          <td style={{textAlign:"center",color:T.gray400,fontSize:T.fs.xs}}>{i+1}</td>
-          <td style={{textAlign:"center"}}><div style={{display:"flex",gap:3,justifyContent:"center"}}>
-            <button onClick={()=>startEdit(tag)} style={{background:"none",border:"none",cursor:"pointer",color:T.primary,fontSize:T.fs.sm}}><I name="edit" size={13}/></button>
-            {isSys ? <span title="삭제 불가" style={{color:T.border,fontSize:T.fs.sm}}><I name="trash" size={13}/></span> : delConfirm===tag.id
-              ? <><Btn variant="danger" size="sm" onClick={()=>deleteTag(tag.id)} style={{padding:"1px 5px",fontSize:T.fs.nano}}>확인</Btn><Btn variant="secondary" size="sm" onClick={()=>setDelConfirm(null)} style={{padding:"1px 4px",fontSize:T.fs.nano}}>취소</Btn></>
-              : <button onClick={()=>setDelConfirm(tag.id)} style={{background:"none",border:"none",cursor:"pointer",color:T.danger,fontSize:T.fs.sm}}><I name="trash" size={13}/></button>}
-          </div></td>
-        </tr>;
-      })}
-      </tbody></DataTable>
-  </div>;
-}
-
-
 function EyeDrop({ onPick, size=20 }) {
   const supported = typeof window !== "undefined" && "EyeDropper" in window;
   if (!supported) return null;
