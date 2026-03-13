@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.151";
+const BLISS_V = "2.69.152";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -3477,7 +3477,9 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
         try {
           const biz = (data?.businesses || data?.businessSettings || [])[0];
           const settings = typeof biz?.settings === "string" ? JSON.parse(biz.settings) : (biz?.settings || {});
-          return Array.isArray(settings.ai_rules) ? settings.ai_rules : [];
+          if(Array.isArray(settings.ai_rules) && settings.ai_rules.length) return settings.ai_rules;
+          // fallback: localStorage
+          return JSON.parse(localStorage.getItem("bliss_ai_rules") || "[]");
         } catch { return []; }
       })();
       const customRulesBlock = customRules.length > 0
@@ -3494,7 +3496,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
 [시술상품 목록] ${svcList}
 
 [판단 기준]
-- 시술메뉴 내용으로 적합한 시술상품 선택
+- 시술상품: 네이버 시술메뉴 또는 고객 요청에 명시된 항목만 선택하세요. 명시되지 않은 항목은 절대 추가하지 마세요.
 - 수량 허용 시술(이름 뒤에 [qty] 표시)은 2개 이상이면 같은 id를 반복해서 넣으세요
 - "예약금완료" 태그는 선택하지 마세요. 이 태그는 시스템이 자동 처리합니다.${customRulesBlock}
 
