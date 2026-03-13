@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.132";
+const BLISS_V = "2.69.133";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -754,13 +754,18 @@ function App() {
         // Load business info
         const bizList = await sb.get("businesses", `&id=eq.${bizId}`);
         setCurrentBiz(bizList[0] || { name: "매장" });
-        // businesses.settings에서 gemini_key / ai_rules 복원 (localStorage 삭제 후 복구)
+        // businesses.settings에서 gemini_key / openai_key / ai_rules 복원 (localStorage 삭제 후 복구)
         try {
           const memo = JSON.parse(bizList[0]?.settings || "{}");
           if (memo.gemini_key) {
             localStorage.setItem("bliss_gemini_key", memo.gemini_key);
             window.__geminiKey = memo.gemini_key;
             console.log("✅ Gemini key 복원");
+          }
+          if (memo.openai_key) {
+            localStorage.setItem("bliss_openai_key", memo.openai_key);
+            window.__openaiKey = memo.openai_key;
+            console.log("✅ OpenAI key 복원");
           }
           const AI_RULES_KEY = "bliss_ai_rules";
           if (memo.ai_rules?.length && !localStorage.getItem(AI_RULES_KEY)) {
@@ -6866,7 +6871,9 @@ function AdminNoti({ data, sb, bizId, branches }) {
 // ═══════════════════════════════════════════
 function AdminAISettings({ data, sb, bizId }) {
   const [apiKey,setApiKey]=useState(()=>window.__geminiKey||localStorage.getItem("bliss_gemini_key")||"");
+  const [openaiKey,setOpenaiKey]=useState(()=>window.__openaiKey||localStorage.getItem("bliss_openai_key")||"");
   const [saved,setSaved]=useState(false);
+  const [openaiSaved,setOpenaiSaved]=useState(false);
   const [testing,setTesting]=useState(false);
   const [testResult,setTestResult]=useState(null);
   const [rules,setRules]=useState(()=>{try{return JSON.parse(localStorage.getItem(AI_RULES_KEY)||"[]");}catch{return [];}});
@@ -6878,6 +6885,7 @@ function AdminAISettings({ data, sb, bizId }) {
       try{
         const memo=JSON.parse(rows[0]?.settings||"{}");
         if(memo.gemini_key){setApiKey(memo.gemini_key);localStorage.setItem("bliss_gemini_key",memo.gemini_key);}
+        if(memo.openai_key){setOpenaiKey(memo.openai_key);localStorage.setItem("bliss_openai_key",memo.openai_key);window.__openaiKey=memo.openai_key;}
         if(memo.ai_rules?.length){setRules(memo.ai_rules);localStorage.setItem(AI_RULES_KEY,JSON.stringify(memo.ai_rules));}
       }catch(e){}
     }).catch(()=>{});
@@ -6901,6 +6909,22 @@ function AdminAISettings({ data, sb, bizId }) {
       }catch(e){}
     }
     setSaved(true); setTimeout(()=>setSaved(false),2000);
+  };
+
+  const saveOpenaiKey=async()=>{
+    const t=openaiKey.trim();
+    localStorage.setItem("bliss_openai_key",t);
+    window.__openaiKey=t;
+    if(bizId){
+      try{
+        const r=await fetch(`${SB_URL}/rest/v1/businesses?id=eq.${bizId}&select=settings`,{headers:sbHeaders});
+        const rows=await r.json();
+        let memo={};try{memo=JSON.parse(rows[0]?.settings||"{}");}catch{}
+        memo.openai_key=t;
+        await fetch(`${SB_URL}/rest/v1/businesses?id=eq.${bizId}`,{method:"PATCH",headers:{...sbHeaders,"Prefer":"return=minimal"},body:JSON.stringify({settings:JSON.stringify(memo)})});
+      }catch(e){}
+    }
+    setOpenaiSaved(true); setTimeout(()=>setOpenaiSaved(false),2000);
   };
 
   const testKey=async()=>{
@@ -6936,10 +6960,23 @@ function AdminAISettings({ data, sb, bizId }) {
     <APageHeader title="AI 설정" desc="예약 분석에 사용되는 AI 기능을 설정하세요"/>
     <div className="card" style={{padding:20,marginBottom:16}}>
       <div style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder,color:T.text,marginBottom:4,display:"flex",alignItems:"center",gap:7}}>
+        <I name="sparkles" size={14} style={{color:"#10a37f"}}/> OpenAI API 키 <span style={{fontSize:10,background:"#10a37f",color:"#fff",padding:"2px 7px",borderRadius:99,fontWeight:700}}>AI Book</span>
+      </div>
+      <div style={{fontSize:T.fs.xs,color:T.textMuted,marginBottom:14,lineHeight:1.6}}>
+        AI Book 대화에 사용됩니다.{" "}
+        <a href="https://platform.openai.com/api-keys" target="_blank" style={{color:"#10a37f",fontWeight:700}}>platform.openai.com</a>에서 발급받을 수 있어요.
+      </div>
+      <AField label="API 키">
+        <input style={AInp} type="password" value={openaiKey} onChange={e=>setOpenaiKey(e.target.value)} placeholder="sk-proj-…" onFocus={e=>e.target.style.borderColor="#10a37f"} onBlur={e=>e.target.style.borderColor="#e8e8f0"}/>
+      </AField>
+      <AIBtn onClick={saveOpenaiKey} disabled={!openaiKey.trim()} label={openaiSaved?"✓ 저장됨":"저장"} style={{width:"100%",background:openaiSaved?T.success:"#10a37f"}}/>
+    </div>
+    <div className="card" style={{padding:20,marginBottom:16}}>
+      <div style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder,color:T.text,marginBottom:4,display:"flex",alignItems:"center",gap:7}}>
         <I name="sparkles" size={14} style={{color:T.primary}}/> Gemini API 키
       </div>
       <div style={{fontSize:T.fs.xs,color:T.textMuted,marginBottom:14,lineHeight:1.6}}>
-        AI Book 기능에 사용됩니다.{" "}
+        네이버 예약 AI 분석에 사용됩니다.{" "}
         <a href="https://aistudio.google.com/app/apikey" target="_blank" style={{color:T.primary,fontWeight:700}}>Google AI Studio</a>에서 무료로 발급받을 수 있어요.
       </div>
       <AField label="API 키">
@@ -7195,6 +7232,7 @@ function QuickBookModal({ onClose, onParsed, data }) {
   const [convoState, setConvoState] = React.useState("idle"); // idle|listening|thinking|speaking
   const [convoTranscript, setConvoTranscript] = React.useState("");
   const [todayStats, setTodayStats] = React.useState(null);
+  const [reservationDraft, setReservationDraft] = React.useState({}); // 수집된 예약 정보 누적
 
   const mediaRecRef = React.useRef(null);
   const chunksRef = React.useRef([]);
@@ -7206,8 +7244,10 @@ function QuickBookModal({ onClose, onParsed, data }) {
   const camRef = React.useRef(null);
   const inputRef = React.useRef(null);
   const msgEndRef = React.useRef(null);
+  const draftRef = React.useRef({});
 
-  const apiKey = window.__geminiKey || localStorage.getItem("bliss_gemini_key") || "";
+  const openaiKey = window.__openaiKey || localStorage.getItem("bliss_openai_key") || "";
+  const apiKey = window.__geminiKey || localStorage.getItem("bliss_gemini_key") || ""; // 이미지용 fallback
   const SUPA_URL = "https://dpftlrsuqxqqeouwbfjd.supabase.co";
   const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwZnRscnN1cXhxcWVvdXdiZmpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5MDU4MjQsImV4cCI6MjA4NzQ4MTgyNH0.iydEkjtPjZ0jXpUUPJben4IWWneDqLomv-HDlcFayE4";
 
@@ -7281,48 +7321,73 @@ function QuickBookModal({ onClose, onParsed, data }) {
     }
   };
 
-  // ── Gemini 호출 ──
-  const callGemini = async (msg, imageData = null) => {
+  // ── GPT-4o-mini 호출 ──
+  const callGPT = async (msg, imageData = null) => {
     const ctx = await buildCtx();
     const rules = (data?.businesses || data?.businessSettings)?.[0]?.settings?.ai_rules || [];
     const rulesText = Array.isArray(rules) ? rules.map((r,i)=>`${i+1}. ${r}`).join("\n") : "";
-    const sys = `당신은 하우스왁싱 원장님 전용 AI 어시스턴트입니다. 친근하고 자연스러운 말투로 대화하세요.
-${ctx}
-운영규칙:
-${rulesText}
-응답규칙: 2~3문장으로 핵심만. 인사 반복 금지. 마크다운(*#_) 절대 금지. 숫자 정확히.
-예약 등록/추가/해줘 요청 시: 반드시 자연스러운 확인 멘트 1문장 먼저 쓰고, 줄바꿈 후 JSON 한 줄 작성. 예시:
-네, 홍길동님 내일 19:30 강남점 예약 확인했어요!
-{"date":"2025-03-14","time":"19:30","custName":"홍길동","custPhone":"01012345678","serviceId":"","staffId":"","dur":60,"memo":"브라질왁싱, 다리왁싱"}
-JSON 필드: date(YYYY-MM-DD), time(HH:MM), custName, custPhone, serviceId, staffId, dur(분), memo`;
 
-    const contents = [...chatHistory.map(m=>({role:m.role,parts:[{text:m.text}]})),
-      {role:"user", parts: imageData
-        ? [{inline_data:{mime_type:"image/jpeg",data:imageData}},{text:msg}]
-        : [{text:msg}]}];
+    // 현재까지 수집된 예약 정보
+    const draft = draftRef.current;
+    const draftFields = Object.entries({
+      이름: draft.custName, 전화: draft.custPhone, 날짜: draft.date,
+      시간: draft.time, 서비스: draft.memo, 지점: draft.branch
+    }).filter(([,v])=>v).map(([k,v])=>`${k}: ${v}`).join(", ");
+    const draftInfo = draftFields ? `\n[지금까지 파악한 예약 정보] ${draftFields}` : "";
 
-    const r = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-      { method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({
-          system_instruction: {parts:[{text:sys}]},
-          contents,
-          generationConfig: {temperature:.75, maxOutputTokens:1200}
-        })
-      }
-    );
+    const sys = `당신은 하우스왁싱 살롱의 원장님 전용 예약 AI 비서 '블리스'입니다.
+말투: 친근하고 따뜻한 한국어. "~요" 체. 짧고 자연스럽게. 이모지 가끔 사용. 마크다운 금지.
+${ctx}${draftInfo}
+운영규칙:${rulesText ? "\n"+rulesText : " 없음"}
+
+[예약 등록 규칙]
+대화를 통해 자연스럽게 정보를 수집하세요. 한 번에 하나씩만 물어보세요.
+필요한 정보: 고객 이름, 전화번호, 날짜, 시간, 서비스, 지점
+모든 정보가 모이면: 확인 멘트 1문장 + 다음 줄에 JSON 한 줄
+JSON 형식: {"date":"YYYY-MM-DD","time":"HH:MM","custName":"","custPhone":"","serviceId":"","staffId":"","dur":60,"memo":"","branch":""}
+이미 파악한 정보는 다시 묻지 마세요.`;
+
+    // 히스토리: fullText(원본) 사용으로 컨텍스트 보존
+    const messages = [
+      {role:"system", content: sys},
+      ...chatHistory.map(m=>({
+        role: m.role === "model" ? "assistant" : "user",
+        content: m.fullText || m.text
+      })),
+    ];
+
+    // 이미지가 있으면 vision 메시지 포맷
+    if(imageData) {
+      messages.push({role:"user", content:[
+        {type:"image_url", image_url:{url:`data:image/jpeg;base64,${imageData}`}},
+        {type:"text", text: msg || "이 예약서의 정보를 읽어줘"}
+      ]});
+    } else {
+      messages.push({role:"user", content: msg});
+    }
+
+    const r = await fetch("https://api.openai.com/v1/chat/completions", {
+      method:"POST",
+      headers:{"Content-Type":"application/json", "Authorization":`Bearer ${openaiKey}`},
+      body: JSON.stringify({
+        model: imageData ? "gpt-4o-mini" : "gpt-4o-mini",
+        messages,
+        max_tokens: 500,
+        temperature: 0.85
+      })
+    });
     if(!r.ok){const e=await r.json();throw new Error(e.error?.message||`HTTP ${r.status}`);}
     const d = await r.json();
-    return d.candidates?.[0]?.content?.parts?.[0]?.text || "다시 말씀해 주세요.";
+    return d.choices?.[0]?.message?.content || "다시 말씀해 주세요.";
   };
 
   // ── 메시지 전송 ──
   const sendMessage = async (overrideText, imageData = null) => {
-    if(!apiKey) { setError("API 키가 없어요. 관리설정에서 Gemini 키를 등록해주세요."); return; }
+    if(!openaiKey) { setError("API 키가 없어요. 관리설정에서 OpenAI 키를 등록해주세요."); return; }
     const text = (overrideText || input).trim();
     if(!text && !imageData && !imgData) return;
 
-    const userMsg = { role:"user", text: text||(imageData?"[이미지]":""), time: new Date().toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"}) };
+    const userMsg = { role:"user", text: text||(imageData?"[이미지]":""), fullText: text||(imageData?"[이미지]":""), time: new Date().toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"}) };
     setChatHistory(prev => [...prev, userMsg]);
     setInput("");
     setImgData(null); setImgPreview(null);
@@ -7331,22 +7396,33 @@ JSON 필드: date(YYYY-MM-DD), time(HH:MM), custName, custPhone, serviceId, staf
     setTimeout(() => msgEndRef.current?.scrollIntoView({behavior:"smooth"}), 50);
 
     try {
-      const reply = await callGemini(text, imageData || imgData);
+      const reply = await callGPT(text, imageData || imgData);
 
-      // 예약 파싱 시도 - JSON 블록 추출 (자연어와 분리)
+      // 예약 JSON 추출 및 draft 누적
       let parsed = null;
       let displayText = reply;
       try {
-        const jsonMatch = reply.match(/\{[\s\S]*?\}/);
+        const jsonMatch = reply.match(/\{[^{}]*"date"[^{}]*\}/s) || reply.match(/\{[\s\S]*?\}/);
         if(jsonMatch) {
-          parsed = JSON.parse(jsonMatch[0]);
-          // JSON 부분 제거 후 자연어만 표시
-          displayText = reply.replace(jsonMatch[0], "").replace(/```json|```/g,"").trim();
-          if(!displayText) displayText = `✅ ${parsed.custName||""}님 ${parsed.date||""} ${parsed.time||""} 예약 확인했어요!`;
+          const candidate = JSON.parse(jsonMatch[0]);
+          if(candidate.date || candidate.custName) {
+            parsed = candidate;
+            const newDraft = {...draftRef.current};
+            if(parsed.custName) newDraft.custName = parsed.custName;
+            if(parsed.custPhone) newDraft.custPhone = parsed.custPhone;
+            if(parsed.date) newDraft.date = parsed.date;
+            if(parsed.time) newDraft.time = parsed.time;
+            if(parsed.memo) newDraft.memo = parsed.memo;
+            if(parsed.branch) newDraft.branch = parsed.branch;
+            draftRef.current = newDraft;
+            setReservationDraft({...newDraft});
+            displayText = reply.replace(jsonMatch[0], "").replace(/```json|```/g,"").trim();
+            if(!displayText) displayText = `✅ ${parsed.custName||""}님 ${parsed.date||""} ${parsed.time||""} 예약 확인했어요!`;
+          }
         }
       } catch(e){}
 
-      const aiMsg = { role:"model", text: displayText, time: new Date().toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"}), parsed };
+      const aiMsg = { role:"model", text: displayText, fullText: reply, time: new Date().toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"}), parsed };
       setChatHistory(prev => [...prev, aiMsg]);
       setTimeout(() => msgEndRef.current?.scrollIntoView({behavior:"smooth"}), 50);
 
