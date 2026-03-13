@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.137";
+const BLISS_V = "2.69.138";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7347,12 +7347,18 @@ function QuickBookModal({ onClose, onParsed, data }) {
 ${ctx}${draftInfo}
 운영규칙:${rulesText ? "\n"+rulesText : " 없음"}
 
-[예약 등록 규칙]
-대화를 통해 자연스럽게 정보를 수집하세요. 한 번에 하나씩만 물어보세요.
-필요한 정보: 고객 이름, 전화번호, 날짜, 시간, 서비스, 지점
+[핵심 원칙 - 반드시 지켜주세요]
+1. 대화 전체를 꼼꼼히 읽고 이미 언급된 정보는 절대 다시 묻지 마세요.
+2. 첫 메시지부터 이름, 날짜, 시간, 서비스, 지점이 포함될 수 있어요. 꼭 추출하세요.
+3. "방금 말했잖아", "앞에서 얘기했잖아" → 대화 히스토리에서 해당 정보를 직접 찾아 확인해주세요.
+4. 한국어 이름(2~4글자 한자)은 고객 이름으로 인식하세요. 예: 이정호, 김민지, 박서준
+5. 날짜 표현: "내일"=오늘+1일, "모레"=오늘+2일, 오늘날짜 기준으로 계산하세요.
+
+[예약 등록 절차]
+대화 히스토리 + 현재 메시지에서 먼저 최대한 정보를 추출한 뒤, 빠진 정보만 물어보세요.
+필요 정보: 고객 이름, 전화번호, 날짜, 시간, 서비스, 지점
 모든 정보가 모이면: 확인 멘트 1문장 + 다음 줄에 JSON 한 줄
-JSON 형식: {"date":"YYYY-MM-DD","time":"HH:MM","custName":"","custPhone":"","serviceId":"","staffId":"","dur":60,"memo":"","branch":""}
-이미 파악한 정보는 다시 묻지 마세요.`;
+JSON: {"date":"YYYY-MM-DD","time":"HH:MM","custName":"","custPhone":"","serviceId":"","staffId":"","dur":60,"memo":"","branch":""}`;
 
     // 히스토리: fullText(원본) 사용으로 컨텍스트 보존
     const messages = [
@@ -7401,6 +7407,37 @@ JSON 형식: {"date":"YYYY-MM-DD","time":"HH:MM","custName":"","custPhone":"","s
     if(!text && !imageData && !imgData) return;
 
     const userMsg = { role:"user", text: text||(imageData?"[이미지]":""), fullText: text||(imageData?"[이미지]":""), time: new Date().toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"}) };
+
+    // 유저 메시지에서 즉시 draft 업데이트
+    if(text) {
+      const nd = {...draftRef.current};
+      // 전화번호
+      const phoneMatch = text.match(/0\d{1,2}[-\s]?\d{3,4}[-\s]?\d{4}/);
+      if(phoneMatch && !nd.custPhone) nd.custPhone = phoneMatch[0].replace(/[-\s]/g,"");
+      // 이름: 한글 2~4글자 (조사 앞)
+      const nameMatch = text.match(/([가-힣]{2,4})(님|씨|고객|이라고|이야|예요|이에요)/) ||
+                        text.match(/^([가-힣]{2,4})\s/) ||
+                        text.match(/\s([가-힣]{2,4})\s/);
+      if(nameMatch && !nd.custName) nd.custName = nameMatch[1];
+      // 시간
+      const timeMatch = text.match(/(\d{1,2})시\s*(\d{0,2})분?/);
+      if(timeMatch && !nd.time) {
+        const h = parseInt(timeMatch[1]); const m = parseInt(timeMatch[2]||"0");
+        nd.time = `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
+      }
+      // 날짜
+      if(!nd.date) {
+        const today = new Date();
+        if(text.includes("내일")) { const d=new Date(today); d.setDate(d.getDate()+1); nd.date=d.toISOString().split("T")[0]; }
+        else if(text.includes("모레")) { const d=new Date(today); d.setDate(d.getDate()+2); nd.date=d.toISOString().split("T")[0]; }
+        else if(text.includes("오늘")) { nd.date=today.toISOString().split("T")[0]; }
+      }
+      if(JSON.stringify(nd) !== JSON.stringify(draftRef.current)) {
+        draftRef.current = nd;
+        setReservationDraft({...nd});
+      }
+    }
+
     setChatHistory(prev => [...prev, userMsg]);
     setInput("");
     setImgData(null); setImgPreview(null);
