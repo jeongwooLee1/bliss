@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.140";
+const BLISS_V = "2.69.141";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7358,8 +7358,9 @@ ${ctx}
 [예약 등록]
 필요 정보: 고객 이름, 전화번호, 날짜, 시간, 서비스, 지점
 모두 파악되면: 확인 멘트 1문장 + 줄바꿈 + JSON 한 줄
-JSON: {"date":"YYYY-MM-DD","time":"HH:MM","custName":"","custPhone":"","serviceId":"","staffId":"","dur":60,"memo":"","branch":""}`;
+JSON: {"date":"YYYY-MM-DD","time":"HH:MM","custName":"","custPhone":"","serviceId":"","staffId":"","dur":60,"memo":"","branch":""}
 
+⚠️ 중요: 위 예약 현황 데이터는 참고용입니다. 시간 중복이나 예약 불가 여부는 절대 판단하지 마세요. 요청된 정보를 수집해서 등록만 하면 됩니다.`;
     // 히스토리: ref에서 최신값 읽기 (클로저 stale 문제 방지)
     // chatHistoryRef.current에는 이미 현재 userMsg가 포함돼 있음
     const historyForGPT = chatHistoryRef.current;
