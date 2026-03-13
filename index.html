@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.139";
+const BLISS_V = "2.69.140";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7216,6 +7216,7 @@ function QuickBookModal({ onClose, onParsed, data }) {
   const [isListening, setIsListening] = React.useState(false);
   const [recordSec, setRecordSec] = React.useState(0);
   const [chatHistory, setChatHistory] = React.useState([]);
+  const chatHistoryRef = React.useRef([]); // ← 클로저 문제 해결용 ref
   const [convoMode, setConvoMode] = React.useState(false);
   const [convoState, setConvoState] = React.useState("idle"); // idle|listening|thinking|speaking
   const [convoTranscript, setConvoTranscript] = React.useState("");
@@ -7359,23 +7360,27 @@ ${ctx}
 모두 파악되면: 확인 멘트 1문장 + 줄바꿈 + JSON 한 줄
 JSON: {"date":"YYYY-MM-DD","time":"HH:MM","custName":"","custPhone":"","serviceId":"","staffId":"","dur":60,"memo":"","branch":""}`;
 
-    // 히스토리: fullText(원본) 사용으로 컨텍스트 보존
+    // 히스토리: ref에서 최신값 읽기 (클로저 stale 문제 방지)
+    // chatHistoryRef.current에는 이미 현재 userMsg가 포함돼 있음
+    const historyForGPT = chatHistoryRef.current;
     const messages = [
       {role:"system", content: sys},
-      ...chatHistory.map(m=>({
+      ...historyForGPT.map(m=>({
         role: m.role === "model" ? "assistant" : "user",
         content: m.fullText || m.text
       })),
     ];
 
-    // 이미지가 있으면 vision 메시지 포맷
+    // 이미지가 있으면 마지막 user 메시지를 vision 포맷으로 교체
     if(imageData) {
-      messages.push({role:"user", content:[
-        {type:"image_url", image_url:{url:`data:image/jpeg;base64,${imageData}`}},
-        {type:"text", text: msg || "이 예약서의 정보를 읽어줘"}
-      ]});
-    } else {
-      messages.push({role:"user", content: msg});
+      // 마지막 user 메시지를 이미지+텍스트로 교체
+      const lastIdx = messages.length - 1;
+      if(messages[lastIdx]?.role === "user") {
+        messages[lastIdx] = {role:"user", content:[
+          {type:"image_url", image_url:{url:`data:image/jpeg;base64,${imageData}`}},
+          {type:"text", text: msg || "이 예약서의 정보를 읽어줘"}
+        ]};
+      }
     }
 
     const r = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -7447,7 +7452,10 @@ JSON: {"date":"YYYY-MM-DD","time":"HH:MM","custName":"","custPhone":"","serviceI
       }
     }
 
-    setChatHistory(prev => [...prev, userMsg]);
+    // chatHistoryRef에 즉시 반영 (callGPT가 최신 히스토리 읽도록)
+    const updatedHistory = [...chatHistoryRef.current, userMsg];
+    chatHistoryRef.current = updatedHistory;
+    setChatHistory(updatedHistory);
     setInput("");
     setImgData(null); setImgPreview(null);
     setLoading(true); setError(null);
@@ -7482,7 +7490,9 @@ JSON: {"date":"YYYY-MM-DD","time":"HH:MM","custName":"","custPhone":"","serviceI
       } catch(e){}
 
       const aiMsg = { role:"model", text: displayText, fullText: reply, time: new Date().toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"}), parsed };
-      setChatHistory(prev => [...prev, aiMsg]);
+      const newHistory = [...chatHistoryRef.current, aiMsg];
+      chatHistoryRef.current = newHistory;
+      setChatHistory(newHistory);
       setTimeout(() => msgEndRef.current?.scrollIntoView({behavior:"smooth"}), 50);
 
       if(parsed && onParsed) {
