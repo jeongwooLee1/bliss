@@ -719,15 +719,22 @@ function App() {
       try{localStorage.setItem("bliss_session",JSON.stringify({userId:user.id,loginId:user.loginId||user.login_id}));}catch(e){}
     }
     if (user.role === "super") {
-      setLoadMsg("관리자 데이터 로딩 중...");
+      setLoadMsg("매장 데이터 로딩 중...");
       setPhase("loading");
       try {
+        // 세션에 저장된 bizId 또는 housewaxing 업체로 바로 진입
+        let targetBiz;
+        try { targetBiz = JSON.parse(localStorage.getItem("bliss_session")||"{}").bizId; } catch(e){}
+        if (!targetBiz) {
+          // businesses 목록에서 housewaxing 찾기
+          const bizList = await sb.get("businesses", "");
+          const hw = bizList.find(b => b.code === "housewaxing" || (b.name && b.name.includes("하우스왁싱")));
+          targetBiz = hw?.id || bizList.find(b => b.id !== "biz_system")?.["id"];
+        }
+        if (targetBiz) { handleEnterBiz(targetBiz); return; }
+        // fallback: 슈퍼 화면
         const sd = await loadAllFromDb(null);
         setSuperData(sd);
-        // Auto re-enter business if saved in session
-        let pendingBiz;
-        try { pendingBiz = JSON.parse(localStorage.getItem("bliss_session")||"{}").bizId; } catch(e){}
-        if (pendingBiz) { handleEnterBiz(pendingBiz); return; }
         setPhase("super");
       } catch(e) {
         console.error(e);
@@ -2342,17 +2349,8 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       const x = pt.clientX - rect.left + sr.scrollLeft;
       const y = pt.clientY - rect.top + sr.scrollTop;
       setDragPos({ x: pt.clientX - rect.left, y: pt.clientY - rect.top });
-      // 실제 DOM 위치로 컬럼 찾기 (marginLeft 등 누적 오프셋 반영)
-      const cols = sr.querySelectorAll('.tl-room-col');
-      let roomIdx = 0;
-      let closestDist = Infinity;
-      cols.forEach((col, i) => {
-        const colRect = col.getBoundingClientRect();
-        const colMid = colRect.left + colRect.width / 2;
-        const dist = Math.abs(pt.clientX - colMid);
-        if (dist < closestDist) { closestDist = dist; roomIdx = i; }
-      });
-      roomIdx = Math.max(0, Math.min(allRooms.length - 1, roomIdx));
+      const colX = x - timeLabelsW;
+      const roomIdx = Math.max(0, Math.min(allRooms.length - 1, Math.floor(colX / colW)));
       const targetRoom = allRooms[roomIdx];
       const gridY = y - clickOffsetY;
       const snappedTime = yToTime(Math.max(0, gridY));
@@ -2993,14 +2991,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
             const snapH = Math.max((dragBlock.dur / timeUnit) * rowH, rowH * 2);
             const roomIdx = allRooms.findIndex(r => r.id === dragSnap.roomId);
             if (roomIdx < 0) return null;
-            const branchGap = (() => {
-              let gaps = 0;
-              for (let i = 1; i <= roomIdx; i++) {
-                if (allRooms[i]?.branch_id !== allRooms[i-1]?.branch_id) gaps++;
-              }
-              return gaps * 4;
-            })();
-            const snapLeft = timeLabelsW + roomIdx * colW + branchGap + 2;
+            const snapLeft = timeLabelsW + roomIdx * colW + 2;
             return <div style={{position:"absolute",top:headerH+snapY,left:snapLeft,width:colW-4,height:snapH,
               background:"#7c7cc815",border:"1.5px solid #7c7cc860",borderRadius:T.radius.md,pointerEvents:"none",zIndex:50,boxShadow:"0 2px 8px rgba(124,124,200,.2)"}}/>;
           })()}
