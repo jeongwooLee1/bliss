@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.150";
+const BLISS_V = "2.69.151";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -3493,13 +3493,9 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
 [태그 목록] ${tagList}
 [시술상품 목록] ${svcList}
 
-[기본 판단 기준]
-- 주차: 고객이 명시적으로 "주차 부탁", "주차 가능한가요" 등 직접 요청한 경우에만 "주차" 태그 선택. 단순히 주차 관련 안내글이나 업체 메모에 주차 언급만으로는 선택하지 마세요.
-- 임산부/산모 → "산모님" 태그
-- 커플룸 요청 → "커플룸" 태그
-- 남자 관리사 요청 → "남자선생님" 태그
+[판단 기준]
 - 시술메뉴 내용으로 적합한 시술상품 선택
-- 수량 허용 시술(이름 뒤에 [qty] 표시)은 2개 이상이면 같은 id를 반복해서 넣으세요. 예: 케어가 2개면 ["케어id","케어id"]
+- 수량 허용 시술(이름 뒤에 [qty] 표시)은 2개 이상이면 같은 id를 반복해서 넣으세요
 - "예약금완료" 태그는 선택하지 마세요. 이 태그는 시스템이 자동 처리합니다.${customRulesBlock}
 
 [예약 기본 정보]
@@ -3515,7 +3511,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
 ${naverText}
 
 응답 형식:
-{"matchedTagIds":["태그id1","태그id2"],"matchedServiceIds":["시술id1"],"gender":"고객이 명시적으로 성별을 언급한 경우에만 F 또는 M, 그 외 빈문자열","reason":"선택 이유 한줄"}`;
+{"matchedTagIds":["태그id1"],"matchedServiceIds":["시술id1"],"gender":"","reason":"선택 이유 한줄"}`;
       const r = await fetch("https://api.openai.com/v1/chat/completions", {
         method:"POST", headers:{"Content-Type":"application/json","Authorization":`Bearer ${apiKey}`},
         body:JSON.stringify({model:"gpt-4o-mini",messages:[{role:"user",content:prompt}],temperature:0,max_tokens:400})
