@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.145";
+const BLISS_V = "2.69.146";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7335,10 +7335,15 @@ function QuickBookModal({ onClose, onParsed, data }) {
     if(!date) return null;
     try {
       const branches = data?.branches || data?.branchSettings || [];
-      const branch = branches.find(b => (b.short||b.name) === branchName);
+      // fuzzy 매칭: 정확 일치 → short/name 포함 → 입력값이 short/name에 포함
+      const branch = branches.find(b => (b.short||b.name) === branchName)
+        || branches.find(b => branchName && ((b.short||b.name||"").includes(branchName) || branchName.includes(b.short||b.name||"")));
       const bid = branch?.id;
-      let url = `${SUPA_URL}/rest/v1/reservations?date=eq.${date}&select=time,dur,cust_name,status,bid&order=time.asc`;
-      if(bid) url += `&bid=eq.${bid}`;
+
+      // 지점 특정 안 됐으면 조회 안 함
+      if(!bid) return branchName ? `"${branchName}" 지점을 찾을 수 없어요. 지점명을 확인해주세요.` : null;
+
+      let url = `${SUPA_URL}/rest/v1/reservations?date=eq.${date}&bid=eq.${bid}&select=time,dur,cust_name,status&order=time.asc`;
       const res = await fetch(url, { headers: { apikey: ANON, Authorization: `Bearer ${ANON}` }});
       const rows = await res.json();
 
@@ -7498,11 +7503,16 @@ JSON: {"date":"YYYY-MM-DD","time":"HH:MM","custName":"","custPhone":"","serviceI
         else if(text.includes("모레")) { const d=new Date(today); d.setDate(d.getDate()+2); nd.date=d.toISOString().split("T")[0]; }
         else if(text.includes("오늘")) { nd.date=today.toISOString().split("T")[0]; }
       }
-      // 지점 추출
+      // 지점 추출 (fuzzy)
       const branches = data?.branches || data?.branchSettings || [];
       for(const b of branches) {
         const bname = b.short || b.name || "";
-        if(bname && text.includes(bname) && !nd.branch) { nd.branch = bname; break; }
+        if(bname && !nd.branch) {
+          if(text.includes(bname) || bname.includes(text.slice(0,3))) { nd.branch = bname; break; }
+          // "강남역" → "강남점" 같은 경우: 앞 2글자 매칭
+          const key = bname.replace(/점$|본점$/,"");
+          if(key.length >= 2 && text.includes(key)) { nd.branch = bname; break; }
+        }
       }
       if(JSON.stringify(nd) !== JSON.stringify(draftRef.current)) {
         draftRef.current = nd;
