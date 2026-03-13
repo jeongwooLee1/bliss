@@ -173,7 +173,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.111";
+const BLISS_V = "2.69.112";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -2923,7 +2923,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                           background:isNaverCancelled?T.warningLt:isNaverUnassigned?T.warningLt:isNaverPending?`${color}15`:`${color}${bgAlpha}`,
                           border:isNaverCancelled?"1.5px dashed #E6A700":isNaverUnassigned?"1.5px dashed #FF9800":isNaverPending?`1.5px dashed ${color}`:"none",
                           borderLeft:`3.5px solid ${isNaverCancelled?T.warning:isNaverUnassigned?T.orange:color}`,
-                          borderRadius:T.radius.md,padding:"4px 6px",fontSize:blockFs,lineHeight:1.2,
+                          borderRadius:T.radius.md,padding:"4px 6px",overflow:"hidden",fontSize:blockFs,lineHeight:1.2,
                           boxShadow:isDrag?"none":"0 1px 4px rgba(0,0,0,.1)",
                           cursor:isEditable?"grab":"pointer",zIndex:isDrag?0:3,transition:(isDrag||isBeingResized)?"none":"all .15s, box-shadow .2s",
                           opacity:isDrag?0.15:1,userSelect:"none",WebkitUserSelect:"none",WebkitTouchCallout:"none"}}
