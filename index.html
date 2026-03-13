@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.122";
+const BLISS_V = "2.69.123";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -2540,14 +2540,14 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
     if (type === "move") {
       const r = (data?.reservations||[]).find(r => r.id === block.id);
       if (r) sb.update("reservations", block.id, {
-        room_id: r.roomId, time: r.time, end_time: r.endTime,
+        room_id: r.roomId, time: r.time,
         bid: r.bid, staff_id: r.staffId || null
       }).catch(console.error);
     }
     if (type === "resize") {
       const r = (data?.reservations||[]).find(r => r.id === block.id);
       if (r) sb.update("reservations", block.id, {
-        dur: r.dur, end_time: r.endTime
+        dur: r.dur
       }).catch(console.error);
     }
     setPendingChange(null);
