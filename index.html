@@ -173,7 +173,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.117";
+const BLISS_V = "2.69.118";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7264,7 +7264,8 @@ function QuickBookModal({ onClose, onParsed, data }) {
       if (!r.ok) throw new Error("API: "+(await r.text()).slice(0,120));
       const d = await r.json();
       const txt = d.candidates?.[0]?.content?.parts?.[0]?.text || "";
-      setResult(JSON.parse(txt.replace(/```json|```/g,"").trim()));
+      const parsed = JSON.parse(txt.replace(/```json|```/g,"").trim());
+      onParsed(parsed);
     } catch(e) { setError("분석 실패: "+e.message); }
     setLoading(false);
   };
