@@ -173,7 +173,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.108";
+const BLISS_V = "2.69.109";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -2918,13 +2918,13 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                           background:isNaverCancelled?T.warningLt:isNaverUnassigned?T.warningLt:isNaverPending?`${color}15`:`${color}${bgAlpha}`,
                           border:isNaverCancelled?"1.5px dashed #E6A700":isNaverUnassigned?"1.5px dashed #FF9800":isNaverPending?`1.5px dashed ${color}`:"none",
                           borderLeft:`3.5px solid ${isNaverCancelled?T.warning:isNaverUnassigned?T.orange:color}`,
-                          borderRadius:T.radius.md,padding:"4px 6px",overflow:"hidden",fontSize:blockFs,lineHeight:1.2,
+                          borderRadius:T.radius.md,padding:"4px 6px",fontSize:blockFs,lineHeight:1.2,
                           boxShadow:isDrag?"none":"0 1px 4px rgba(0,0,0,.1)",
                           cursor:isEditable?"grab":"pointer",zIndex:isDrag?0:3,transition:(isDrag||isBeingResized)?"none":"all .15s, box-shadow .2s",
                           opacity:isDrag?0.15:1,userSelect:"none",WebkitUserSelect:"none",WebkitTouchCallout:"none"}}
                         className="tl-block">
                         {block.type==="reservation" && !block.isSchedule && <>
-                          <div style={{display:"flex",alignItems:"center",gap:2,overflow:"hidden",whiteSpace:"nowrap",flexWrap:"nowrap"}}>
+                          <div style={{display:"flex",alignItems:"center",gap:2,flexWrap:"wrap"}}>
                             {/* 태그 - 이름 앞에 */}
                             {isNaverCancelled && <span style={{fontSize:Math.max(6,blockFs-2),padding:"1px 3px",borderRadius:T.radius.sm,background:T.warning,color:T.bgCard,fontWeight:T.fw.bolder,lineHeight:1,flexShrink:0}}>취소</span>}
                             {isNaverUnassigned && <span style={{fontSize:Math.max(6,blockFs-2),padding:"1px 3px",borderRadius:T.radius.sm,background:T.orange,color:T.bgCard,fontWeight:T.fw.bolder,lineHeight:1,flexShrink:0}}>미배정</span>}
@@ -2939,11 +2939,11 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                             })}
                             {block.selectedTags?.length>3 && <span style={{fontSize:Math.max(6,blockFs-2),color:T.bgCard,background:T.gray500,borderRadius:T.radius.sm,padding:"1px 2px",flexShrink:0}}>+{block.selectedTags.length-3}</span>}
                             {/* 이름 */}
-                            <span style={{fontWeight:T.fw.bold,color:isNaverCancelled?T.gray500:T.text,overflow:"hidden",textOverflow:"ellipsis",textDecoration:isNaverCancelled?"line-through":"none",flexShrink:1,minWidth:0}}>
+                            <span style={{fontWeight:T.fw.bold,color:isNaverCancelled?T.gray500:T.text,textDecoration:isNaverCancelled?"line-through":"none",flexShrink:1,minWidth:0}}>
                               {block.custGender && <span style={{color:block.custGender==="M"?T.male:T.female}}>{block.custGender==="M"?"남":"여"}</span>} {block.custName}
                             </span>
                           </div>
-                          {block.selectedServices?.length>0 && h >= rowH * 1.5 && <div style={{fontSize:Math.max(6,blockFs-2),color:T.text,fontWeight:T.fw.bold,marginTop:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>  
+                          {block.selectedServices?.length>0 && <div style={{fontSize:Math.max(6,blockFs-2),color:T.text,fontWeight:T.fw.bold,marginTop:1}}>
                             {groupSvcNames(block.selectedServices, SVC_LIST).slice(0,2).join(", ")}
                             {block.selectedServices.length>2 && ` +${block.selectedServices.length-2}`}
                           </div>}
@@ -2955,7 +2955,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                               .filter(Boolean);
                             const memo = block.ownerComment || "";
                             if (!naverParts.length && !memo) return null;
-                            return <div style={{marginTop:2,fontSize:Math.max(6,blockFs-2),color:T.gray700,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:h>=90?3:2,WebkitBoxOrient:"vertical"}}>
+                            return <div style={{marginTop:2,fontSize:Math.max(6,blockFs-2),color:T.gray700}}>
                               {naverParts.map((v,i) => <span key={i}>{i>0 && <span style={{color:T.gray400}}> / </span>}{v}</span>)}
                               {naverParts.length>0 && memo && effectiveNaverColShow["직원메모"] !== false && <span style={{color:T.gray400}}> · </span>}
                               {memo && effectiveNaverColShow["직원메모"] !== false && <span style={{color:T.male}}>{memo}</span>}
