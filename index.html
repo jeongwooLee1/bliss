@@ -173,7 +173,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.102";
+const BLISS_V = "2.69.103";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -648,23 +648,23 @@ function App() {
   // Page is persisted directly via setPage → sessionStorage.setItem("bliss_page")
 
   // Safe version check (runs after React mount, no DOM conflict)
+// Safe version check — 새 버전 감지 시 자동 새로고침
   useEffect(() => {
-    let timer;
-    const check = () => {
-      fetch("/bliss/version.txt?t=" + Date.now()).then(r => r.text()).then(remote => {
-        remote = remote.trim();
-        if (remote && remote !== BLISS_V) {
-          const lastReload = sessionStorage.getItem("bliss_reload_v");
-          if (lastReload === remote) return; // already reloaded for this version
-          console.log("New version:", remote);
-          sessionStorage.setItem("bliss_reload_v", remote);
-          location.reload();
-        }
-      }).catch(() => {});
-      timer = setTimeout(check, 30000);
-    };
-    timer = setTimeout(check, 5000); // first check 5s after mount
-    return () => clearTimeout(timer);
+  let timer;
+  const check = () => {
+  fetch("/bliss/version.txt?t=" + Date.now())
+    .then(r => r.text())
+    .then(remote => {
+      remote = remote.trim();
+      if (remote && remote !== BLISS_V) {
+        console.log("[Bliss] 새 버전 감지:", remote, "→ 자동 새로고침");
+        location.reload(true);
+      }
+    }).catch(() => {});
+  timer = setTimeout(check, 30000);
+  };
+  timer = setTimeout(check, 5000);
+  return () => clearTimeout(timer);
   }, []);
 
   // Phase 1: Load all users on mount + auto-login from saved session
