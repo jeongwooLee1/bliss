@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.138";
+const BLISS_V = "2.69.139";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7344,20 +7344,19 @@ function QuickBookModal({ onClose, onParsed, data }) {
 
     const sys = `당신은 하우스왁싱 살롱의 원장님 전용 예약 AI 비서 '블리스'입니다.
 말투: 친근하고 따뜻한 한국어. "~요" 체. 짧고 자연스럽게. 이모지 가끔 사용. 마크다운 금지.
-${ctx}${draftInfo}
+${draftFields ? `\n⚠️ [이미 파악된 예약 정보 - 절대 다시 묻지 마세요]\n${draftFields}\n` : ""}
+${ctx}
 운영규칙:${rulesText ? "\n"+rulesText : " 없음"}
 
-[핵심 원칙 - 반드시 지켜주세요]
-1. 대화 전체를 꼼꼼히 읽고 이미 언급된 정보는 절대 다시 묻지 마세요.
-2. 첫 메시지부터 이름, 날짜, 시간, 서비스, 지점이 포함될 수 있어요. 꼭 추출하세요.
-3. "방금 말했잖아", "앞에서 얘기했잖아" → 대화 히스토리에서 해당 정보를 직접 찾아 확인해주세요.
-4. 한국어 이름(2~4글자 한자)은 고객 이름으로 인식하세요. 예: 이정호, 김민지, 박서준
-5. 날짜 표현: "내일"=오늘+1일, "모레"=오늘+2일, 오늘날짜 기준으로 계산하세요.
+[핵심 원칙]
+1. 위 [이미 파악된 예약 정보]에 있는 항목은 절대 다시 묻지 마세요.
+2. 대화 히스토리 전체를 읽고 이미 언급된 정보를 최대한 추출하세요.
+3. "방금 말했잖아" → 히스토리에서 직접 찾아 "아, [정보]이시군요!" 로 확인해주세요.
+4. 한 번에 하나씩만 질문하세요.
 
-[예약 등록 절차]
-대화 히스토리 + 현재 메시지에서 먼저 최대한 정보를 추출한 뒤, 빠진 정보만 물어보세요.
+[예약 등록]
 필요 정보: 고객 이름, 전화번호, 날짜, 시간, 서비스, 지점
-모든 정보가 모이면: 확인 멘트 1문장 + 다음 줄에 JSON 한 줄
+모두 파악되면: 확인 멘트 1문장 + 줄바꿈 + JSON 한 줄
 JSON: {"date":"YYYY-MM-DD","time":"HH:MM","custName":"","custPhone":"","serviceId":"","staffId":"","dur":60,"memo":"","branch":""}`;
 
     // 히스토리: fullText(원본) 사용으로 컨텍스트 보존
@@ -7414,15 +7413,19 @@ JSON: {"date":"YYYY-MM-DD","time":"HH:MM","custName":"","custPhone":"","serviceI
       // 전화번호
       const phoneMatch = text.match(/0\d{1,2}[-\s]?\d{3,4}[-\s]?\d{4}/);
       if(phoneMatch && !nd.custPhone) nd.custPhone = phoneMatch[0].replace(/[-\s]/g,"");
-      // 이름: 한글 2~4글자 (조사 앞)
+      // 이름: 한글 2~4글자
       const nameMatch = text.match(/([가-힣]{2,4})(님|씨|고객|이라고|이야|예요|이에요)/) ||
-                        text.match(/^([가-힣]{2,4})\s/) ||
-                        text.match(/\s([가-힣]{2,4})\s/);
+                        text.match(/^([가-힣]{2,4})[\s\n]/) ||
+                        text.match(/[\s\n]([가-힣]{2,4})[\s\n]/);
       if(nameMatch && !nd.custName) nd.custName = nameMatch[1];
-      // 시간
+      // 시간 (저녁/오후 → +12h)
+      const isPM = /저녁|오후|밤/.test(text);
+      const isAM = /오전|아침/.test(text);
       const timeMatch = text.match(/(\d{1,2})시\s*(\d{0,2})분?/);
       if(timeMatch && !nd.time) {
-        const h = parseInt(timeMatch[1]); const m = parseInt(timeMatch[2]||"0");
+        let h = parseInt(timeMatch[1]); const m = parseInt(timeMatch[2]||"0");
+        if(isPM && h < 12) h += 12;
+        else if(isAM && h === 12) h = 0;
         nd.time = `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
       }
       // 날짜
@@ -7431,6 +7434,12 @@ JSON: {"date":"YYYY-MM-DD","time":"HH:MM","custName":"","custPhone":"","serviceI
         if(text.includes("내일")) { const d=new Date(today); d.setDate(d.getDate()+1); nd.date=d.toISOString().split("T")[0]; }
         else if(text.includes("모레")) { const d=new Date(today); d.setDate(d.getDate()+2); nd.date=d.toISOString().split("T")[0]; }
         else if(text.includes("오늘")) { nd.date=today.toISOString().split("T")[0]; }
+      }
+      // 지점 추출
+      const branches = data?.branches || data?.branchSettings || [];
+      for(const b of branches) {
+        const bname = b.short || b.name || "";
+        if(bname && text.includes(bname) && !nd.branch) { nd.branch = bname; break; }
       }
       if(JSON.stringify(nd) !== JSON.stringify(draftRef.current)) {
         draftRef.current = nd;
