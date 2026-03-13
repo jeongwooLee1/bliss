@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.142";
+const BLISS_V = "2.69.143";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7330,38 +7330,61 @@ function QuickBookModal({ onClose, onParsed, data }) {
     }
   };
 
+  // ── 특정 날짜/지점 예약 현황 조회 ──
+  const checkAvailability = async (date, branchName) => {
+    if(!date) return null;
+    try {
+      const branches = data?.branches || data?.branchSettings || [];
+      const branch = branches.find(b => (b.short||b.name) === branchName);
+      const bid = branch?.id;
+      let url = `${SUPA_URL}/rest/v1/reservations?date=eq.${date}&select=time,status,bid&order=time.asc`;
+      if(bid) url += `&bid=eq.${bid}`;
+      const res = await fetch(url, { headers: { apikey: ANON, Authorization: `Bearer ${ANON}` }});
+      const rows = await res.json();
+      if(!rows.length) return `${date} ${branchName||"전체"}: 예약 없음 (모든 시간 가능)`;
+      const times = rows.map(r=>`${r.time} (${r.status})`).join(", ");
+      return `${date} ${branchName||"전체"} 기존 예약: ${times}`;
+    } catch(e) { return null; }
+  };
+
   // ── GPT-4o-mini 호출 ──
   const callGPT = async (msg, imageData = null) => {
-    const ctx = await buildCtx();
+    const draft = draftRef.current;
+
+    // 날짜+지점이 파악되면 실제 가용성 조회
+    let availInfo = "";
+    if(draft.date) {
+      const avail = await checkAvailability(draft.date, draft.branch);
+      if(avail) availInfo = `\n[${draft.date} 예약현황] ${avail}`;
+    }
+
     const rules = (data?.businesses || data?.businessSettings)?.[0]?.settings?.ai_rules || [];
     const rulesText = Array.isArray(rules) ? rules.map((r,i)=>`${i+1}. ${r}`).join("\n") : "";
+    const branches = (data?.branches || data?.branchSettings || []).map(b=>b.short||b.name).join(", ");
+    const now = new Date();
+    const ds = now.toLocaleDateString("ko-KR");
+    const ts = now.toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"});
 
-    // 현재까지 수집된 예약 정보
-    const draft = draftRef.current;
     const draftFields = Object.entries({
       이름: draft.custName, 전화: draft.custPhone, 날짜: draft.date,
       시간: draft.time, 서비스: draft.memo, 지점: draft.branch
     }).filter(([,v])=>v).map(([k,v])=>`${k}: ${v}`).join(", ");
-    const draftInfo = draftFields ? `\n[지금까지 파악한 예약 정보] ${draftFields}` : "";
 
-    const sys = `당신은 하우스왁싱 살롱의 원장님 전용 예약 AI 비서 '블리스'입니다.
-말투: 친근하고 따뜻한 한국어. "~요" 체. 짧고 자연스럽게. 이모지 가끔 사용. 마크다운 금지.
-${draftFields ? `\n⚠️ [이미 파악된 예약 정보 - 절대 다시 묻지 마세요]\n${draftFields}\n` : ""}
-${ctx}
+    const sys = `당신은 하우스왁싱 예약 AI 비서입니다. 현재 ${ds} ${ts}.
+전체지점: ${branches||"없음"}
 운영규칙:${rulesText ? "\n"+rulesText : " 없음"}
+${availInfo}
+${draftFields ? `\n✅ 파악된 정보 (다시 묻지 마세요): ${draftFields}` : ""}
 
-[핵심 원칙]
-1. 위 [이미 파악된 예약 정보]에 있는 항목은 절대 다시 묻지 마세요.
-2. 대화 히스토리 전체를 읽고 이미 언급된 정보를 최대한 추출하세요.
-3. "방금 말했잖아" → 히스토리에서 직접 찾아 "아, [정보]이시군요!" 로 확인해주세요.
-4. 한 번에 하나씩만 질문하세요.
-
-[예약 등록]
-필요 정보: 고객 이름, 전화번호, 날짜, 시간, 서비스, 지점
-모두 파악되면: 확인 멘트 1문장 + 줄바꿈 + JSON 한 줄
+[역할]
+예약 정보(이름, 전화, 날짜, 시간, 서비스, 지점)를 수집해서 등록하세요.
+- 파악된 정보는 절대 다시 묻지 마세요
+- 한 번에 하나씩만 질문
+- 위 예약현황에 같은 시간대가 있으면 "이미 예약 있어요. 다른 시간 어떠세요?" 라고 안내
+- 위 예약현황에 없으면 가능한 시간이므로 바로 등록 진행
+- 모든 정보가 모이면: 확인 멘트 1문장 + 줄바꿈 + JSON 한 줄
 JSON: {"date":"YYYY-MM-DD","time":"HH:MM","custName":"","custPhone":"","serviceId":"","staffId":"","dur":60,"memo":"","branch":""}
-
-⚠️ 중요: 위 예약 현황 데이터는 참고용입니다. 시간 중복이나 예약 불가 여부는 절대 판단하지 마세요. 요청된 정보를 수집해서 등록만 하면 됩니다.`;
+말투: 친근한 한국어, "~요" 체, 짧게, 마크다운 금지`;
     // 히스토리: ref에서 최신값 읽기 (클로저 stale 문제 방지)
     // chatHistoryRef.current에는 이미 현재 userMsg가 포함돼 있음
     const historyForGPT = chatHistoryRef.current;
