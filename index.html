@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.133";
+const BLISS_V = "2.69.134";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7246,7 +7246,8 @@ function QuickBookModal({ onClose, onParsed, data }) {
   const msgEndRef = React.useRef(null);
   const draftRef = React.useRef({});
 
-  const openaiKey = window.__openaiKey || localStorage.getItem("bliss_openai_key") || "";
+  // OpenAI 키: 렌더 시 고정 말고 함수 실행 시마다 최신값 읽기
+  const getOpenAIKey = () => window.__openaiKey || localStorage.getItem("bliss_openai_key") || "";
   const apiKey = window.__geminiKey || localStorage.getItem("bliss_gemini_key") || ""; // 이미지용 fallback
   const SUPA_URL = "https://dpftlrsuqxqqeouwbfjd.supabase.co";
   const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwZnRscnN1cXhxcWVvdXdiZmpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5MDU4MjQsImV4cCI6MjA4NzQ4MTgyNH0.iydEkjtPjZ0jXpUUPJben4IWWneDqLomv-HDlcFayE4";
@@ -7262,6 +7263,7 @@ function QuickBookModal({ onClose, onParsed, data }) {
   // ── 오늘 데이터 로드 ──
   React.useEffect(() => {
     loadTodayStats();
+    loadOpenAIKey();
     initRecognition();
     return () => {
       recognitionRef.current?.abort();
@@ -7269,6 +7271,24 @@ function QuickBookModal({ onClose, onParsed, data }) {
       clearInterval(timerRef.current);
     };
   }, []);
+
+  // OpenAI 키 로드 (Supabase → localStorage → window)
+  const loadOpenAIKey = async () => {
+    if(getOpenAIKey()) return; // 이미 있으면 스킵
+    try {
+      const bizList = data?.businesses || data?.businessSettings || [];
+      const bizId = bizList[0]?.id;
+      if(!bizId) return;
+      const res = await fetch(`${SUPA_URL}/rest/v1/businesses?id=eq.${bizId}&select=settings`,
+        { headers: { apikey: ANON, Authorization: `Bearer ${ANON}` } });
+      const rows = await res.json();
+      const memo = JSON.parse(rows[0]?.settings || "{}");
+      if(memo.openai_key) {
+        localStorage.setItem("bliss_openai_key", memo.openai_key);
+        window.__openaiKey = memo.openai_key;
+      }
+    } catch(e) {}
+  };
 
   const loadTodayStats = async () => {
     try {
@@ -7368,7 +7388,7 @@ JSON 형식: {"date":"YYYY-MM-DD","time":"HH:MM","custName":"","custPhone":"","s
 
     const r = await fetch("https://api.openai.com/v1/chat/completions", {
       method:"POST",
-      headers:{"Content-Type":"application/json", "Authorization":`Bearer ${openaiKey}`},
+      headers:{"Content-Type":"application/json", "Authorization":`Bearer ${getOpenAIKey()}`},
       body: JSON.stringify({
         model: imageData ? "gpt-4o-mini" : "gpt-4o-mini",
         messages,
@@ -7383,7 +7403,8 @@ JSON 형식: {"date":"YYYY-MM-DD","time":"HH:MM","custName":"","custPhone":"","s
 
   // ── 메시지 전송 ──
   const sendMessage = async (overrideText, imageData = null) => {
-    if(!openaiKey) { setError("API 키가 없어요. 관리설정에서 OpenAI 키를 등록해주세요."); return; }
+    const key = getOpenAIKey();
+    if(!key) { setError("API 키가 없어요. 관리설정에서 OpenAI 키를 등록해주세요."); return; }
     const text = (overrideText || input).trim();
     if(!text && !imageData && !imgData) return;
 
