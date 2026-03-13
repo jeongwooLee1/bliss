@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.124";
+const BLISS_V = "2.69.125";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -2980,7 +2980,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                             const memo = block.ownerComment || "";
                             if (!naverParts.length && !memo) return null;
                             return <div style={{marginTop:2,fontSize:Math.max(6,blockFs-2),color:T.gray700,whiteSpace:"pre-line",wordBreak:"break-word"}}>
-                              {naverParts.join(" / ")}
+                              {naverParts.join("\n")}
                               {naverParts.length>0 && memo && effectiveNaverColShow["직원메모"] !== false && "\n"}
                               {memo && effectiveNaverColShow["직원메모"] !== false && <span style={{color:T.male}}>{memo}</span>}
                             </div>;
