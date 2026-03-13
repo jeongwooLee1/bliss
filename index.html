@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.147";
+const BLISS_V = "2.69.148";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7717,7 +7717,7 @@ JSON: {"date":"YYYY-MM-DD","time":"HH:MM","custName":"","custPhone":"","serviceI
     return () => vv.removeEventListener("resize", handler);
   }, []);
 
-  return <div style={{position:"fixed",top:0,left:0,right:0,height:vvHeight?vvHeight+"px":"100dvh",zIndex:200,background:T.bg,display:"flex",flexDirection:"column",overflowY:"hidden"}}>
+  return <div style={{position:"fixed",top:0,left:0,right:0,height:vvHeight?vvHeight+"px":"100dvh",zIndex:400,background:T.bg,display:"flex",flexDirection:"column",overflowY:"hidden"}}>
     <style>{`
       @keyframes qb-breathe{0%,100%{transform:scale(1);opacity:.85}50%{transform:scale(1.15);opacity:1}}
       @keyframes qb-orb-ring{0%,100%{transform:scale(1);opacity:.4}50%{transform:scale(1.06);opacity:.12}}
