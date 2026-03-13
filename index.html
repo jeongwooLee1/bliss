@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.135";
+const BLISS_V = "2.69.136";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7262,7 +7262,6 @@ function QuickBookModal({ onClose, onParsed, data }) {
 
   // OpenAI 키 로드 (Supabase → localStorage → window)
   const loadOpenAIKey = async () => {
-    if(getOpenAIKey()) return; // 이미 있으면 스킵
     try {
       const bizList = data?.businesses || data?.businessSettings || [];
       const bizId = bizList[0]?.id;
@@ -7391,7 +7390,12 @@ JSON 형식: {"date":"YYYY-MM-DD","time":"HH:MM","custName":"","custPhone":"","s
 
   // ── 메시지 전송 ──
   const sendMessage = async (overrideText, imageData = null) => {
-    const key = getOpenAIKey();
+    // 키 없으면 Supabase에서 직접 로드 시도
+    let key = getOpenAIKey();
+    if(!key) {
+      await loadOpenAIKey();
+      key = getOpenAIKey();
+    }
     if(!key) { setError("API 키가 없어요. 관리설정에서 OpenAI 키를 등록해주세요."); return; }
     const text = (overrideText || input).trim();
     if(!text && !imageData && !imgData) return;
