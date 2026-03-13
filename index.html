@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.144";
+const BLISS_V = "2.69.145";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7376,10 +7376,13 @@ function QuickBookModal({ onClose, onParsed, data }) {
     // 날짜가 파악되면 실제 가용성 조회 (시간+소요시간도 함께)
     let availInfo = "";
     if(draft.date) {
-      // 서비스 소요시간 찾기
-      const products = data?.products || data?.productItems || [];
-      const svc = products.find(p => draft.memo && p.name?.includes(draft.memo));
-      const durMin = svc?.dur || draft.dur || null;
+      // data.services에서 소요시간 조회
+      let durMin = draft.dur || null;
+      if(!durMin && draft.memo) {
+        const svcs = data?.services || [];
+        const matched = svcs.find(s => s.name && (s.name.includes(draft.memo) || draft.memo.includes(s.name)));
+        if(matched) durMin = matched.dur;
+      }
       const avail = await checkAvailability(draft.date, draft.branch, draft.time, durMin);
       if(avail) availInfo = `\n[예약현황] ${avail}`;
     }
@@ -7396,8 +7399,11 @@ function QuickBookModal({ onClose, onParsed, data }) {
       시간: draft.time, 서비스: draft.memo, 지점: draft.branch
     }).filter(([,v])=>v).map(([k,v])=>`${k}: ${v}`).join(", ");
 
+    const svcList = (data?.services || []).filter(s=>s.name).map(s=>`${s.name}(${s.dur}분,id:${s.id})`).join(", ");
+
     const sys = `당신은 하우스왁싱 예약 AI 비서입니다. 현재 ${ds} ${ts}.
 전체지점: ${branches||"없음"}
+시술목록: ${svcList||"없음"}
 운영규칙:${rulesText ? "\n"+rulesText : " 없음"}
 ${availInfo}
 ${draftFields ? `\n✅ 파악된 정보 (다시 묻지 마세요): ${draftFields}` : ""}
@@ -7409,7 +7415,8 @@ ${draftFields ? `\n✅ 파악된 정보 (다시 묻지 마세요): ${draftFields
 - 위 [예약현황]은 사실 그대로만 전달: "그 시간에 X건 예약이 있어요" 또는 "겹치는 예약 없어요"
 - 예약 가능/불가 판단은 하지 마세요. 현황 안내 후 바로 등록 진행
 - 모든 정보가 모이면: 현황 한 줄 안내 + 확인 멘트 + JSON 한 줄
-JSON: {"date":"YYYY-MM-DD","time":"HH:MM","custName":"","custPhone":"","serviceId":"","staffId":"","dur":60,"memo":"","branch":""}
+- serviceId는 위 시술목록의 id값을 사용
+JSON: {"date":"YYYY-MM-DD","time":"HH:MM","custName":"","custPhone":"","serviceId":"시술id","staffId":"","dur":소요분,"memo":"시술명","branch":""}
 말투: 친근한 한국어, "~요" 체, 짧게, 마크다운 금지`;
     // 히스토리: ref에서 최신값 읽기 (클로저 stale 문제 방지)
     // chatHistoryRef.current에는 이미 현재 userMsg가 포함돼 있음
