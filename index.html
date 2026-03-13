@@ -173,7 +173,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.110";
+const BLISS_V = "2.69.111";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -224,23 +224,23 @@ const T = {
   google:     "#4285f4",
   instagram:  "#e4405f",
   // ── 뉴트럴 ────────────────────
-  gray100:    "#f8f8f8",
-  gray200:    "#f0f0f0",
-  gray300:    "#e0e0e0",
-  gray400:    "#d0d0d0",
-  gray500:    "#aaaaaa",
-  gray600:    "#888888",
-  gray700:    "#555555",
-  gray800:    "#333333",
+  gray100:    "#f9fafb",
+  gray200:    "#f2f4f6",
+  gray300:    "#e5e8eb",
+  gray400:    "#d1d6db",
+  gray500:    "#b0b8c1",
+  gray600:    "#6b7684",
+  gray700:    "#4e5968",
+  gray800:    "#191f28",
   // ── 텍스트 ────────────────────
-  text:       "#333333",
-  textSub:    "#888888",
-  textMuted:  "#aaaaaa",
+  text:       "#191f28",
+  textSub:    "#6b7684",
+  textMuted:  "#b0b8c1",
   // ── 배경 ──────────────────────
-  bg:         "#f8f8f8",
+  bg:         "#f9fafb",
   bgCard:     "#ffffff",
   // ── 테두리 ────────────────────
-  border:     "#e0e0e0",
+  border:     "#e5e8eb",
   borderFocus:"#7c7cc8",
   // ── 라운딩 ────────────────────
   radius: { sm:4, md:8, lg:12, xl:16, full:999 },
@@ -1734,13 +1734,18 @@ function MobileBottomNav({ nav, page, setPage }) {
     ...(nav.find(n=>n.id==="admin")       ? [{id:"admin",      label:"메뉴",       icon:"settings"}]  : []),
   ];
   return (
-    <nav className="mob-bottom-nav" style={{position:"fixed",bottom:0,left:0,right:0,height:56,background:T.bgCard,borderTop:`1px solid ${T.border}`,zIndex:200,display:"flex",alignItems:"center"}}>
-      {items.map(item=>(
-        <button key={item.id} onClick={()=>setPage(item.id)} style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:2,flex:1,height:"100%",border:"none",background:"none",cursor:"pointer",fontFamily:"inherit",color:page===item.id?T.primary:T.textMuted,transition:"color .1s"}}>
-          <I name={item.icon} size={20}/>
-          <span style={{fontSize:T.fs.xs,fontWeight:page===item.id?T.fw.bolder:T.fw.normal}}>{item.label}</span>
-        </button>
-      ))}
+    <nav className="mob-bottom-nav" style={{position:"fixed",bottom:0,left:0,right:0,background:T.bgCard,borderTop:`1px solid ${T.border}`,zIndex:200,display:"flex",alignItems:"flex-start",paddingTop:8,paddingBottom:"env(safe-area-inset-bottom)"}}>
+      {items.map(item=>{
+        const active = page===item.id;
+        return (
+          <button key={item.id} onClick={()=>setPage(item.id)} style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-start",gap:4,flex:1,paddingTop:0,border:"none",background:"none",cursor:"pointer",fontFamily:"inherit",color:active?T.primary:T.textMuted,transition:"color .15s"}}>
+            <div style={{width:24,height:24,display:"flex",alignItems:"center",justifyContent:"center"}}>
+              <I name={item.icon} size={22} style={{strokeWidth: active ? 2.5 : 1.8}}/>
+            </div>
+            <span style={{fontSize:10,fontWeight:active?T.fw.bolder:T.fw.medium,letterSpacing:-0.2}}>{item.label}</span>
+          </button>
+        );
+      })}
     </nav>
   );
 }
