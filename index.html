@@ -173,7 +173,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.113";
+const BLISS_V = "2.69.114";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -2525,11 +2525,16 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
     // 이미 미리보기로 state에 반영됨 → DB만 저장
     if (type === "move") {
       const r = (data?.reservations||[]).find(r => r.id === block.id);
-      if (r) sb.update("reservations", block.id, toDb("reservations", r)).catch(console.error);
+      if (r) sb.update("reservations", block.id, {
+        room_id: r.roomId, time: r.time, end_time: r.endTime,
+        bid: r.bid, staff_id: r.staffId || null
+      }).catch(console.error);
     }
     if (type === "resize") {
       const r = (data?.reservations||[]).find(r => r.id === block.id);
-      if (r) sb.update("reservations", block.id, toDb("reservations", r)).catch(console.error);
+      if (r) sb.update("reservations", block.id, {
+        dur: r.dur, end_time: r.endTime
+      }).catch(console.error);
     }
     setPendingChange(null);
   };
