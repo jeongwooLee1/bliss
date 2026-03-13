@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.154";
+const BLISS_V = "2.69.155";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -3523,10 +3523,9 @@ ${naverText}
       const d2 = await r.json();
       const txt = d2.choices?.[0]?.message?.content || "";
       const parsed = JSON.parse(txt.replace(/```json|```/g,"").trim());
-      // AI 결과에서 신규 태그 제거 후 코드가 직접 판단
+      // AI 결과 그대로 사용 (SYSTEM 태그만 제거)
       let newTags = (parsed.matchedTagIds || []).filter(id => !SYSTEM_TAG_IDS.includes(id));
-      if (effectiveIsNew) newTags = [...newTags, NEW_CUST_TAG_ID];
-      // 예약금완료 자동 처리: isPrepaid=true이면 태그 추가 (totalPrice 무관)
+      // 예약금완료만 시스템 자동 처리 (isPrepaid)
       if (f.isPrepaid && !newTags.includes(PREPAID_TAG_ID)) newTags = [...newTags, PREPAID_TAG_ID];
       const newSvcs = parsed.matchedServiceIds || [];
       const aiGender = parsed.gender || "";
@@ -3537,7 +3536,9 @@ ${naverText}
         const [sh,sm] = p.time.split(":").map(Number);
         const endMin = sh*60+sm+dur;
         const endTime = `${String(Math.min(22,Math.floor(endMin/60))).padStart(2,"0")}:${String(endMin%60).padStart(2,"0")}`;
-        return {...p, selectedTags:newTags, selectedServices:newSvcs, dur, endTime, custGender: aiGender || p.custGender};
+        // gender: AI가 명시적으로 반환한 경우만 적용
+        const newGender = aiGender ? aiGender : p.custGender;
+        return {...p, selectedTags:newTags, selectedServices:newSvcs, dur, endTime, custGender: newGender};
       });
       if (parsed.reason) alert(`✅ AI 분석 완료\n${parsed.reason}`);
     } catch(e) { alert("AI 분석 실패: "+e.message); }
