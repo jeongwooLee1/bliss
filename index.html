@@ -173,7 +173,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.109";
+const BLISS_V = "2.69.110";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -6097,7 +6097,7 @@ function ASheet({ open, onClose, title, children, onSave, saveLabel, saving, sav
         <button onClick={onClose} style={{width:28,height:28,borderRadius:"50%",border:"none",background:T.gray100,color:T.gray500,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><I name="x" size={14}/></button>
       </div>
       <div style={{padding:"20px",overflowY:"auto",flex:1}}>{children}</div>
-      {onSave && <div style={{padding:"12px 20px 20px",borderTop:"1px solid "+T.gray100,flexShrink:0,paddingBottom:"calc(20px + env(safe-area-inset-bottom))"}}><AIBtn onClick={onSave} saving={saving} disabled={saving||saveDisabled} label={saveLabel||"저장"} style={{width:"100%"}}/></div>}
+      {onSave && <div style={{padding:"12px 20px",borderTop:"1px solid "+T.gray100,flexShrink:0,paddingBottom:"calc(90px + env(safe-area-inset-bottom))"}}><AIBtn onClick={onSave} saving={saving} disabled={saving||saveDisabled} label={saveLabel||"저장"} style={{width:"100%"}}/></div>}
     </div>
   </div>;
 }
