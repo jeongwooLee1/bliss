@@ -2342,8 +2342,17 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       const x = pt.clientX - rect.left + sr.scrollLeft;
       const y = pt.clientY - rect.top + sr.scrollTop;
       setDragPos({ x: pt.clientX - rect.left, y: pt.clientY - rect.top });
-      const colX = x - timeLabelsW;
-      const roomIdx = Math.max(0, Math.min(allRooms.length - 1, Math.floor(colX / colW)));
+      // 실제 DOM 위치로 컬럼 찾기 (marginLeft 등 누적 오프셋 반영)
+      const cols = sr.querySelectorAll('.tl-room-col');
+      let roomIdx = 0;
+      let closestDist = Infinity;
+      cols.forEach((col, i) => {
+        const colRect = col.getBoundingClientRect();
+        const colMid = colRect.left + colRect.width / 2;
+        const dist = Math.abs(pt.clientX - colMid);
+        if (dist < closestDist) { closestDist = dist; roomIdx = i; }
+      });
+      roomIdx = Math.max(0, Math.min(allRooms.length - 1, roomIdx));
       const targetRoom = allRooms[roomIdx];
       const gridY = y - clickOffsetY;
       const snappedTime = yToTime(Math.max(0, gridY));
@@ -2984,7 +2993,14 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
             const snapH = Math.max((dragBlock.dur / timeUnit) * rowH, rowH * 2);
             const roomIdx = allRooms.findIndex(r => r.id === dragSnap.roomId);
             if (roomIdx < 0) return null;
-            const snapLeft = timeLabelsW + roomIdx * colW + 2;
+            const branchGap = (() => {
+              let gaps = 0;
+              for (let i = 1; i <= roomIdx; i++) {
+                if (allRooms[i]?.branch_id !== allRooms[i-1]?.branch_id) gaps++;
+              }
+              return gaps * 4;
+            })();
+            const snapLeft = timeLabelsW + roomIdx * colW + branchGap + 2;
             return <div style={{position:"absolute",top:headerH+snapY,left:snapLeft,width:colW-4,height:snapH,
               background:"#7c7cc815",border:"1.5px solid #7c7cc860",borderRadius:T.radius.md,pointerEvents:"none",zIndex:50,boxShadow:"0 2px 8px rgba(124,124,200,.2)"}}/>;
           })()}
