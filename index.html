@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.121";
+const BLISS_V = "2.69.122";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -2237,7 +2237,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       const exists = (prev?.reservations||[]).find(r => r.id === item.id);
       if (exists) {
         const updateRow = toDb("reservations", item);
-        if (!updateRow.reservation_id) delete updateRow.reservation_id;
+        if (!updateRow.reservation_id) updateRow.reservation_id = null;
         sb.update("reservations", item.id, updateRow).catch(console.error);
         return { ...prev, reservations: (prev?.reservations||[]).map(r => r.id === item.id ? item : r) };
       }
@@ -2269,7 +2269,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
     setTimeout(()=>{
       if(allItems.length) sb.upsert("reservations", allItems.map(i=>{
         const row = toDb("reservations", i);
-        if (!row.reservation_id) delete row.reservation_id; // 수동등록 시 null 제외
+        if (!row.reservation_id) row.reservation_id = null; // 수동등록 시 null 명시
         return row;
       })).catch(console.error);
     }, 0);
