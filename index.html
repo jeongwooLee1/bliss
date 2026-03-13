@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.161";
+const BLISS_V = "2.69.162";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -3521,12 +3521,13 @@ ${naverText}
 {"matchedTagIds":["태그id1"],"matchedServiceIds":["시술id1"],"reason":"선택 이유 한줄"}`;
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
         method:"POST", headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0,maxOutputTokens:400}})
+        body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0,maxOutputTokens:800}})
       });
       if (!r.ok) throw new Error("API: "+(await r.text()).slice(0,120));
       const d2 = await r.json();
       const raw = d2.candidates?.[0]?.content?.parts?.[0]?.text || "";
-      const txt = raw.replace(/```json|```/g,"").trim();
+      const jsonMatch = raw.match(/\{[\s\S]*\}/);
+      const txt = jsonMatch ? jsonMatch[0] : raw.replace(/```json|```/g,"").trim();
       const parsed = JSON.parse(txt);
       let newTags = (parsed.matchedTagIds || []).filter(id => !SYSTEM_TAG_IDS.includes(id));
       if (f.isPrepaid && !newTags.includes(PREPAID_TAG_ID)) newTags = [...newTags, PREPAID_TAG_ID];
