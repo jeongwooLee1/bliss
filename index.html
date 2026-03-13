@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.152";
+const BLISS_V = "2.69.153";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -3475,10 +3475,10 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
         .map(s=>`"${s.id}":"${s.name}"`).join(", ");
       const customRules = (() => {
         try {
-          const biz = (data?.businesses || data?.businessSettings || [])[0];
+          const bizList = data?.businesses || data?.businessSettings || [];
+          const biz = bizList.find(b => b.id === "biz_khvurgshb") || bizList.find(b => b.id !== "biz_system") || bizList[0];
           const settings = typeof biz?.settings === "string" ? JSON.parse(biz.settings) : (biz?.settings || {});
           if(Array.isArray(settings.ai_rules) && settings.ai_rules.length) return settings.ai_rules;
-          // fallback: localStorage
           return JSON.parse(localStorage.getItem("bliss_ai_rules") || "[]");
         } catch { return []; }
       })();
@@ -7395,7 +7395,12 @@ function QuickBookModal({ onClose, onParsed, data }) {
       if(avail) availInfo = `\n[예약현황] ${avail}`;
     }
 
-    const rules = (data?.businesses || data?.businessSettings)?.[0]?.settings?.ai_rules || [];
+    const bizList = data?.businesses || data?.businessSettings || [];
+    const biz = bizList.find(b => b.id === "biz_khvurgshb") || bizList.find(b => b.id !== "biz_system") || bizList[0];
+    const bizSettings = typeof biz?.settings === "string" ? JSON.parse(biz?.settings||"{}") : (biz?.settings||{});
+    const rules = Array.isArray(bizSettings.ai_rules) && bizSettings.ai_rules.length
+      ? bizSettings.ai_rules
+      : (data?.businesses || data?.businessSettings)?.[0]?.settings?.ai_rules || [];
     const rulesText = Array.isArray(rules) ? rules.map((r,i)=>`${i+1}. ${r}`).join("\n") : "";
     const branches = (data?.branches || data?.branchSettings || []).map(b=>b.short||b.name).join(", ");
     const now = new Date();
