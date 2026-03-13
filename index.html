@@ -173,7 +173,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.104";
+const BLISS_V = "2.69.107";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -3021,24 +3021,17 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
         const popW = Math.min(320, Math.max(260, Math.round(window.innerWidth * 0.8)));
         const vw = window.innerWidth; const vh = window.innerHeight;
         const px = pendingChange.px; const py = pendingChange.py;
-        // 화면 중간 기준으로 위/아래 결정 — 높이는 DOM이 자동 결정
-        const tabBarH = 90;
+        const popH = 112;
+        const safeB = 110;
         const popLeft = px != null ? Math.min(Math.max(8, px - popW/2), vw - popW - 8) : (vw - popW)/2;
-        const popTop = px != null
-          ? (py > vh * 0.55
-              ? "auto"   // 아래쪽 드롭 → bottom 기준
-              : py + 18) // 위쪽 드롭 → top 기준
-          : (vh * 0.3);
-        const popBottom = (px != null && py > vh * 0.55)
-          ? (vh - py + 10)
-          : "auto";
+        const belowY = py != null ? py + 18 : (vh - popH) / 2;
+        const aboveY = py != null ? py - popH - 10 : (vh - popH) / 2;
+        const rawTop = (belowY + popH + safeB > vh) ? aboveY : belowY;
+        const popTop = Math.min(Math.max(8, rawTop), vh - popH - safeB);
         return <>
           <div style={{position:'fixed',inset:0,zIndex:9997}} onClick={()=>_mc(cancelChange)}/>
           <div onClick={e=>e.stopPropagation()} style={{
-            position:'fixed', left:popLeft,
-            top: popTop !== 'auto' ? popTop : 'auto',
-            bottom: popBottom !== 'auto' ? popBottom : 'auto',
-            width:popW,
+            position:'fixed', left:popLeft, top:popTop, width:popW,
             background:T.bgCard, borderRadius:14, boxShadow:'0 8px 32px rgba(0,0,0,.22)',
             fontFamily:'inherit', zIndex:9998, overflow:'hidden', animation:'fadeIn .18s ease'}}>
             <div style={{padding:'13px 16px 10px'}}>
