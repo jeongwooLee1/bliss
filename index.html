@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.149";
+const BLISS_V = "2.69.150";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -3474,7 +3474,11 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
       const svcList = (data?.services||[]).filter(s=>s.useYn!==false)
         .map(s=>`"${s.id}":"${s.name}"`).join(", ");
       const customRules = (() => {
-        try { return JSON.parse(localStorage.getItem("bliss_ai_rules")||"[]"); } catch{ return []; }
+        try {
+          const biz = (data?.businesses || data?.businessSettings || [])[0];
+          const settings = typeof biz?.settings === "string" ? JSON.parse(biz.settings) : (biz?.settings || {});
+          return Array.isArray(settings.ai_rules) ? settings.ai_rules : [];
+        } catch { return []; }
       })();
       const customRulesBlock = customRules.length > 0
         ? `\n[추가 판단 규칙 - 아래 규칙을 기본 기준보다 우선 적용하세요]\n${customRules.map((r,i)=>`${i+1}. ${r}`).join("\n")}`
