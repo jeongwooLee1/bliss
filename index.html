@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.155";
+const BLISS_V = "2.69.156";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -3514,7 +3514,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
 ${naverText}
 
 응답 형식:
-{"matchedTagIds":["태그id1"],"matchedServiceIds":["시술id1"],"gender":"","reason":"선택 이유 한줄"}`;
+{"matchedTagIds":["태그id1"],"matchedServiceIds":["시술id1"],"reason":"선택 이유 한줄"}`;
       const r = await fetch("https://api.openai.com/v1/chat/completions", {
         method:"POST", headers:{"Content-Type":"application/json","Authorization":`Bearer ${apiKey}`},
         body:JSON.stringify({model:"gpt-4o-mini",messages:[{role:"user",content:prompt}],temperature:0,max_tokens:400})
@@ -3523,12 +3523,9 @@ ${naverText}
       const d2 = await r.json();
       const txt = d2.choices?.[0]?.message?.content || "";
       const parsed = JSON.parse(txt.replace(/```json|```/g,"").trim());
-      // AI 결과 그대로 사용 (SYSTEM 태그만 제거)
       let newTags = (parsed.matchedTagIds || []).filter(id => !SYSTEM_TAG_IDS.includes(id));
-      // 예약금완료만 시스템 자동 처리 (isPrepaid)
       if (f.isPrepaid && !newTags.includes(PREPAID_TAG_ID)) newTags = [...newTags, PREPAID_TAG_ID];
       const newSvcs = parsed.matchedServiceIds || [];
-      const aiGender = parsed.gender || "";
       setF(p => {
         const tagSum = newTags.reduce((s,tid)=>{const t=(data?.serviceTags||[]).find(x=>x.id===tid);return s+(t?.dur||0);},0);
         const svcSum = newSvcs.reduce((s,sid)=>{const sv=(data?.services||[]).find(x=>x.id===sid);return s+(sv?.dur||0);},0);
@@ -3536,9 +3533,7 @@ ${naverText}
         const [sh,sm] = p.time.split(":").map(Number);
         const endMin = sh*60+sm+dur;
         const endTime = `${String(Math.min(22,Math.floor(endMin/60))).padStart(2,"0")}:${String(endMin%60).padStart(2,"0")}`;
-        // gender: AI가 명시적으로 반환한 경우만 적용
-        const newGender = aiGender ? aiGender : p.custGender;
-        return {...p, selectedTags:newTags, selectedServices:newSvcs, dur, endTime, custGender: newGender};
+        return {...p, selectedTags:newTags, selectedServices:newSvcs, dur, endTime};
       });
       if (parsed.reason) alert(`✅ AI 분석 완료\n${parsed.reason}`);
     } catch(e) { alert("AI 분석 실패: "+e.message); }
