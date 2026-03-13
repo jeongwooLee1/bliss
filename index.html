@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.165";
+const BLISS_V = "2.69.166";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -3517,8 +3517,8 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
 [고객 요청 / 업체 메모]
 ${naverText}
 
-응답 형식:
-{"matchedTagIds":["태그id1"],"matchedServiceIds":["시술id1"],"reason":"선택 이유 한줄"}`;
+응답 형식 (반드시 이 JSON만 출력):
+{"matchedTagIds":["태그id1"],"matchedServiceIds":["시술id1"]}`;
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
         method:"POST", headers:{"Content-Type":"application/json"},
         body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0,maxOutputTokens:2000,responseMimeType:"application/json"}})
@@ -3533,7 +3533,6 @@ ${naverText}
       const parsed = JSON.parse(txt);
       let newTags = (parsed.matchedTagIds || []).filter(id => !SYSTEM_TAG_IDS.includes(id));
       if (f.isPrepaid && !newTags.includes(PREPAID_TAG_ID)) newTags = [...newTags, PREPAID_TAG_ID];
-      // 네이버 시술메뉴 없으면 서비스 선택 강제 비움
       const newSvcs = (f.selectedServices||[]).length > 0 ? (parsed.matchedServiceIds || []) : [];
       setF(p => {
         const tagSum = newTags.reduce((s,tid)=>{const t=(data?.serviceTags||[]).find(x=>x.id===tid);return s+(t?.dur||0);},0);
@@ -3544,7 +3543,7 @@ ${naverText}
         const endTime = `${String(Math.min(22,Math.floor(endMin/60))).padStart(2,"0")}:${String(endMin%60).padStart(2,"0")}`;
         return {...p, selectedTags:newTags, selectedServices:newSvcs, dur, endTime};
       });
-      if (parsed.reason) alert(`✅ AI 분석 완료\n${parsed.reason}`);
+      alert(`✅ AI 분석 완료`);
     } catch(e) { alert("AI 분석 실패: "+e.message); }
     setAiAnalyzing(false);
   };
