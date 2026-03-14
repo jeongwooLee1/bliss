@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.205";
+const BLISS_V = "2.69.206";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -1392,8 +1392,8 @@ function SignupWizard({ onComplete, onBack }) {
 
   /* ── 최종 제출 ── */
   const submit = async () => {
-    if (branches.length === 0) { alert('본원을 먼저 등록해주세요.'); return; }
-    if (!bizName.trim()) { alert('브랜드(상호명)를 입력해주세요.'); return; }
+    if (branches.length === 0) { alert('대표 지점을 먼저 등록해주세요.'); return; }
+      if (!bizName.trim()) { alert('브랜드명을 입력해주세요.'); return; }
     setSaving(true);
     try {
       // 아이디 중복 체크
@@ -1510,11 +1510,11 @@ function SignupWizard({ onComplete, onBack }) {
     <div style={{display:'flex',flexDirection:'column',gap:0}}>
       <StepBar/>
       <div style={{fontSize:T.fs.lg,fontWeight:T.fw.black,marginBottom:4}}>사업장 등록</div>
-      <div style={{fontSize:T.fs.sm,color:T.textMuted,marginBottom:16,lineHeight:1.5}}>브랜드명과 지점을 등록하세요. 지점은 최대 3개까지 가능해요.</div>
+      <div style={{fontSize:T.fs.sm,color:T.textMuted,marginBottom:16,lineHeight:1.5}}>운영하시는 브랜드명과 지점을 등록해주세요.</div>
 
       {/* 브랜드명 */}
       <div style={{marginBottom:16}}>
-        <label style={lbl}>브랜드(상호명) <span style={{color:T.danger}}>*</span></label>
+        <label style={lbl}>브랜드명 <span style={{color:T.danger}}>*</span></label>
         <input style={inp} value={bizName} onChange={e=>setBizName(e.target.value)} placeholder="예: 하우스왁싱"/>
       </div>
 
@@ -1522,7 +1522,7 @@ function SignupWizard({ onComplete, onBack }) {
       <div style={{marginBottom:10,display:'flex',flexDirection:'column',gap:8}}>
         {branches.map((b,i)=>(
           <div key={i} style={{border:'1.5px solid '+(i===0?T.primary:T.border),borderRadius:T.radius.lg,padding:'12px 14px',background:i===0?T.primaryHover:'#fff',position:'relative'}}>
-            <div style={{fontSize:10,fontWeight:800,color:i===0?T.primary:T.orange,marginBottom:4}}>{i===0?'🏠 본원':'📍 추가 지점'}</div>
+            <div style={{fontSize:10,fontWeight:800,color:i===0?T.primary:T.orange,marginBottom:4}}>{i===0?'⭐ 대표 지점':'📍 추가 지점'}</div>
             <div style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder,color:T.text}}>{b.name}</div>
             {b.phone&&<div style={{fontSize:T.fs.xxs,color:T.textSub,marginTop:2}}>{b.phone}</div>}
             {i>0&&<button onClick={()=>removeBranch(i)} style={{position:'absolute',top:8,right:10,background:'none',border:'none',cursor:'pointer',color:T.gray400,fontSize:16}} onMouseOver={e=>e.currentTarget.style.color=T.danger} onMouseOut={e=>e.currentTarget.style.color=T.gray400}>✕</button>}
@@ -1533,7 +1533,7 @@ function SignupWizard({ onComplete, onBack }) {
       {/* 추가 폼 */}
       {showAddForm ? (
         <div style={{border:'1.5px solid '+T.border,borderRadius:T.radius.lg,padding:'14px',marginBottom:10,background:'#fafafa'}}>
-          <div style={{fontSize:T.fs.xs,fontWeight:T.fw.bolder,marginBottom:10,color:T.text}}>{branches.length===0?'본원 등록':'추가 지점 등록'}</div>
+          <div style={{fontSize:T.fs.xs,fontWeight:T.fw.bolder,marginBottom:10,color:T.text}}>{branches.length===0?'대표 지점 등록':'추가 지점 등록'}</div>
           <div style={{marginBottom:10}}>
             <label style={lbl}>지점 이름 <span style={{color:T.danger}}>*</span></label>
             <input style={{...inp,borderColor:errs.addName?T.danger:T.border}} value={addName} onChange={e=>{setAddName(e.target.value);setErr('addName','')}} placeholder="예: 강남점"/>
@@ -1551,12 +1551,12 @@ function SignupWizard({ onComplete, onBack }) {
       ) : (
         branches.length < 3 && (
           <button onClick={()=>setShowAddForm(true)} style={{width:'100%',padding:11,border:'1.5px dashed #ccc',borderRadius:T.radius.lg,background:'none',color:T.textMuted,fontSize:T.fs.sm,fontWeight:600,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:6,marginBottom:10,fontFamily:'inherit'}}>
-            ＋ {branches.length===0?'본원 등록하기':`추가 지점 등록 (${branches.length}/3)`}
+            ＋ {branches.length===0?'대표 지점 등록하기':`추가 지점 등록 (${branches.length}/3)`}
           </button>
         )
       )}
 
-      <div style={{fontSize:T.fs.xxs,color:T.textMuted,textAlign:'center',marginBottom:14}}>계정당 최대 <b style={{color:T.primary}}>3개</b> 지점 (본원 포함)</div>
+      <div style={{fontSize:T.fs.xxs,color:T.textMuted,textAlign:'center',marginBottom:14}}>지점은 최대 <b style={{color:T.primary}}>3개</b>까지 등록할 수 있어요</div>
 
       <button onClick={submit} disabled={saving||branches.length===0||!bizName.trim()}
         style={{width:'100%',padding:13,borderRadius:T.radius.lg,border:'none',
