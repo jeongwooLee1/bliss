@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.204";
+const BLISS_V = "2.69.205";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -6306,24 +6306,24 @@ function AdminPage({ data, setData, bizId, serverV, onLogout, currentUser }) {
   const isMaster = currentUser?.role === "owner" || currentUser?.role === "super";
 
   const MENU=[
-    {section:"사업장 관리",items:[
+    ...(isMaster ? [{section:"사업장 관리",items:[
       {key:"places",      icon:"building", label:"예약장소 관리",  desc:"지점 추가·수정·삭제"},
       {key:"workers",     icon:"users",    label:"담당자 관리",    desc:"직원 계정 및 권한 설정"},
       {key:"saleitems",   icon:"scissors", label:"시술 상품 관리", desc:"시술 항목 및 가격 설정"},
       {key:"prodmgmt",    icon:"clipboard",label:"제품 관리",      desc:"판매 제품 관리"},
-      ...(isMaster ? [{key:"brandmembers", icon:"userPlus", label:"브랜드 멤버 관리", desc:"지점 가입 요청 승인/거절", badge:pendingCount}] : []),
-    ]},
-    {section:"예약 설정",items:[
+      {key:"brandmembers", icon:"userPlus", label:"브랜드 멤버 관리", desc:"지점 가입 요청 승인/거절", badge:pendingCount},
+    ]}] : []),
+    ...(isMaster ? [{section:"예약 설정",items:[
       {key:"svctags",     icon:"tag",      label:"태그 관리",      desc:"예약 태그 추가·편집"},
       {key:"ressrc",      icon:"zap",      label:"예약경로 관리",  desc:"예약 유입 경로 설정"},
-    ]},
-    {section:"알림 & AI",items:[
+    ]}] : []),
+    ...(isMaster ? [{section:"알림 & AI",items:[
       {key:"notiSettings",icon:"bell",     label:"알림톡 설정",    desc:"카카오 알림톡 자동 발송 설정"},
       {key:"aisettings",  icon:"sparkles", label:"AI 설정",        desc:"AI 분석 키 및 규칙 관리"},
-    ]},
+    ]}] : []),
     {section:"내 계정",items:[
       {key:"mypage",      icon:"user",     label:"마이페이지",     desc:"내 계정 정보 및 비밀번호 변경"},
-      {key:"joinbrand",   icon:"link",     label:"브랜드 가입 요청", desc:"브랜드 코드로 가입 요청"},
+      ...(!isMaster ? [{key:"joinbrand", icon:"link", label:"브랜드 가입 요청", desc:"브랜드 코드로 가입 요청"}] : []),
     ]},
   ];
 
@@ -6356,17 +6356,22 @@ function AdminPage({ data, setData, bizId, serverV, onLogout, currentUser }) {
 
   return <div>
     <BackBtn/>
-    {tab==="places"       &&<AdminPlaces       data={data} setData={setData} bizId={bizId}/>}
-    {tab==="workers"      &&<AdminWorkers      data={data} setData={setData}/>}
-    {tab==="saleitems"    &&<AdminSaleItems    data={data} setData={setData}/>}
-    {tab==="prodmgmt"     &&<AdminProductItems data={data} setData={setData}/>}
-    {tab==="svctags"      &&<AdminServiceTags  data={data} setData={setData}/>}
-    {tab==="ressrc"       &&<AdminResSources   data={data} setData={setData}/>}
-    {tab==="notiSettings" &&<AdminNoti         data={data} setData={setData} sb={sb} bizId={bizId} branches={data?.branches||[]}/>}
-    {tab==="aisettings"   &&<AdminAISettings   data={data} sb={sb} bizId={bizId}/>}
+    {tab==="places"       && isMaster &&<AdminPlaces       data={data} setData={setData} bizId={bizId}/>}
+    {tab==="workers"      && isMaster &&<AdminWorkers      data={data} setData={setData}/>}
+    {tab==="saleitems"    && isMaster &&<AdminSaleItems    data={data} setData={setData}/>}
+    {tab==="prodmgmt"     && isMaster &&<AdminProductItems data={data} setData={setData}/>}
+    {tab==="svctags"      && isMaster &&<AdminServiceTags  data={data} setData={setData}/>}
+    {tab==="ressrc"       && isMaster &&<AdminResSources   data={data} setData={setData}/>}
+    {tab==="notiSettings" && isMaster &&<AdminNoti         data={data} setData={setData} sb={sb} bizId={bizId} branches={data?.branches||[]}/>}
+    {tab==="aisettings"   && isMaster &&<AdminAISettings   data={data} sb={sb} bizId={bizId}/>}
+    {tab==="brandmembers" && isMaster &&<AdminBrandMembers data={data} setData={setData} bizId={bizId} currentUser={currentUser}/>}
     {tab==="mypage"       &&<AdminMyPage       currentUser={currentUser} onLogout={onLogout}/>}
-    {tab==="brandmembers" &&<AdminBrandMembers data={data} setData={setData} bizId={bizId} currentUser={currentUser}/>}
-    {tab==="joinbrand"    &&<AdminJoinBrand    currentUser={currentUser} onBack={back}/>}
+    {tab==="joinbrand"    && !isMaster &&<AdminJoinBrand   currentUser={currentUser} onBack={back}/>}
+    {tab && !["mypage"].includes(tab) && !isMaster && <div style={{textAlign:"center",padding:"60px 20px",color:T.textMuted}}>
+      <div style={{fontSize:32,marginBottom:12}}>🔒</div>
+      <div style={{fontSize:T.fs.md,fontWeight:T.fw.bolder,color:T.text,marginBottom:8}}>접근 권한이 없어요</div>
+      <div style={{fontSize:T.fs.sm}}>브랜드 어드민에게 문의해주세요</div>
+    </div>}
   </div>;
 }
 
