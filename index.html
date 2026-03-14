@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.184";
+const BLISS_V = "2.69.185";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -3079,31 +3079,62 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
 
       {showQuickBook && <QuickBookModal
         onClose={()=>setShowQuickBook(false)}
-        onParsed={(parsed)=>{
+        onParsed={async (parsed)=>{
           setShowQuickBook(false);
-          // serviceId(단수) → matchedServiceIds(배열) 변환
-          if(parsed.serviceId && !parsed.matchedServiceIds) {
-            parsed.matchedServiceIds = [parsed.serviceId];
+          try {
+            // 서비스 매칭
+            if(parsed.serviceId && !parsed.matchedServiceIds) parsed.matchedServiceIds = [parsed.serviceId];
+            if((!parsed.matchedServiceIds?.length) && parsed.memo) {
+              const svc = (data.services||[]).find(s => s.name && (s.name.includes(parsed.memo) || parsed.memo.includes(s.name)));
+              if(svc) parsed.matchedServiceIds = [svc.id];
+            }
+            // 지점 매칭
+            const branches = data.branches || [];
+            let bid = userBranches[0] || branches[0]?.id;
+            if(parsed.branch) {
+              const b = branches.find(b2 => (b2.short||b2.name||"").includes(parsed.branch) || parsed.branch.includes(b2.short||b2.name||""));
+              if(b) bid = b.id;
+            }
+            const room = (data.rooms||[]).find(r=>r.branch_id===bid);
+            // dur 계산
+            const svcDur = (parsed.matchedServiceIds||[]).reduce((s,sid)=>{const sv=(data.services||[]).find(x=>x.id===sid);return s+(sv?.dur||0);},0);
+            const dur = svcDur || parseInt(parsed.dur)||35;
+            // endTime 계산
+            const [sh,sm] = (parsed.time||"10:00").split(":").map(Number);
+            const em = sh*60+sm+dur;
+            const endTime = `${String(Math.floor(em/60)).padStart(2,"0")}:${String(em%60).padStart(2,"0")}`;
+            // 신규 고객 처리
+            let custId = "";
+            if(parsed.custName && parsed.custPhone) {
+              const existing = (data.customers||[]).find(c=>(c.phone||"").replace(/-/g,"")===parsed.custPhone.replace(/-/g,""));
+              if(existing) { custId = existing.id; }
+              else {
+                custId = "cust_"+uid();
+                const newCust = {id:custId, bid, name:parsed.custName, phone:parsed.custPhone, gender:"", visits:0, lastVisit:null, memo:"", custNum:String(50000+Math.floor(Math.random()*10000))};
+                setData(prev=>({...prev, customers:[...prev.customers, newCust]}));
+                sb.insert("customers", toDb("customers", newCust)).catch(console.error);
+              }
+            }
+            // 예약 객체 생성
+            const newId = "res_"+uid();
+            const item = {
+              id: newId, bid, roomId: room?.id||"", custId, custName: parsed.custName||"",
+              custPhone: parsed.custPhone||"", custGender: "", staffId: room?.id||"",
+              serviceId: parsed.matchedServiceIds?.[0]||"",
+              date: parsed.date||todayStr(), time: parsed.time||"10:00", endDate: parsed.date||todayStr(), endTime,
+              dur, status:"confirmed", memo:"", type:"reservation",
+              selectedTags:[], selectedServices: parsed.matchedServiceIds||[],
+              isNewCust:!custId, isSchedule:false, repeat:"none", repeatUntil:"",
+              repeatSourceId:"", reservationId:"", source:"", isPrepaid:false,
+              npayMethod:"", totalPrice:0, visitCount:0, noShowCount:0
+            };
+            // DB 저장
+            setData(prev=>({...prev, reservations:[...(prev.reservations||[]), item]}));
+            sb.insert("reservations", toDb("reservations", item)).catch(console.error);
+          } catch(ex) {
+            console.error("AI 예약 저장 오류:", ex);
+            alert("저장 오류: "+ex.message);
           }
-          // 서비스명으로 ID 못 찾은 경우 이름으로 매칭
-          if((!parsed.matchedServiceIds || !parsed.matchedServiceIds.length) && parsed.memo) {
-            const svc = (data.services||[]).find(s => s.name && (s.name.includes(parsed.memo) || parsed.memo.includes(s.name)));
-            if(svc) parsed.matchedServiceIds = [svc.id];
-          }
-          // dur이 있고 matchedServiceIds로 계산 안 되는 경우 endTime 직접 계산
-          if(parsed.time && parsed.dur && (!parsed.matchedServiceIds?.length)) {
-            const [h,m] = parsed.time.split(":").map(Number);
-            const em = h*60+m+parseInt(parsed.dur);
-            parsed._endTime = `${String(Math.floor(em/60)).padStart(2,"0")}:${String(em%60).padStart(2,"0")}`;
-          }
-          const room = (data.rooms||[]).find(r=>r.branch_id===(userBranches[0]||(data.branches||[])[0]?.id));
-          setModalData({
-            roomId: room?.id, bid: room?.branch_id || userBranches[0],
-            date: parsed.date || selDate,
-            time: parsed.time || "10:00",
-            _prefill: parsed
-          });
-          setShowModal(true);
         }}
         data={data}
       />}
@@ -7398,15 +7429,17 @@ ${rulesText}
         if(cleaned.startsWith("{")) parsed = JSON.parse(cleaned);
       } catch(e){}
 
-      const aiMsg = { role:"model", text: parsed ? `✅ 예약 정보 인식 완료!\n${parsed.custName||""}님 ${parsed.date||""} ${parsed.time||""}\n\n예약 모달이 열립니다.\n내용 확인 후 반드시 저장 버튼을 눌러야 등록돼요!` : reply, time: new Date().toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"}), parsed };
+      const aiMsg = { role:"model", text: parsed ? `✅ ${parsed.custName||""}님 ${parsed.date||""} ${parsed.time||""} 예약이 등록됐어요!` : reply, time: new Date().toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"}), parsed };
       setChatHistory(prev => [...prev, aiMsg]);
       setTimeout(() => msgEndRef.current?.scrollIntoView({behavior:"smooth"}), 50);
 
       if(parsed && onParsed) {
-        setTimeout(() => onParsed(parsed), 800);
+        // 대화모드 종료 후 등록
+        if(convoModeRef.current) stopConvoMode();
+        setTimeout(() => onParsed(parsed), 500);
+      } else if(convoModeRef.current) {
+        speakReply(reply);
       }
-
-      if(convoModeRef.current) speakReply(reply);
     } catch(e) {
       setError("오류: " + e.message);
       if(convoModeRef.current) setTimeout(restartListening, 800);
