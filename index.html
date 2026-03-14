@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.174";
+const BLISS_V = "2.69.175";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7452,7 +7452,7 @@ function QuickBookModal({ onClose, onParsed, data }) {
 
     const svcList = (data?.services || []).filter(s=>s.name).map(s=>`${s.name}(${s.dur}분,id:${s.id})`).join(", ");
 
-    const isRegisterCmd = /^(등록|등록해|등록해줘|저장|저장해|예약등록|예약해줘?)$/.test((msg||"").trim());
+    const isRegisterCmd = msg && /^(등록|등록해|등록해줘|저장|저장해|예약등록|예약해줘?)$/.test(msg.trim());
     const hasFullDraft = draft.custName && draft.custPhone && draft.date && draft.time;
 
     const sys = `당신은 하우스왁싱 예약 AI 비서입니다. 현재 ${ds} ${ts}.
@@ -7486,12 +7486,11 @@ JSON: {"date":"YYYY-MM-DD","time":"HH:MM","custName":"","custPhone":"","matchedS
 
     // 이미지가 있으면 마지막 user 메시지를 vision 포맷으로 교체
     if(imageData) {
-      // 마지막 user 메시지를 이미지+텍스트로 교체
       const lastIdx = messages.length - 1;
       if(messages[lastIdx]?.role === "user") {
         messages[lastIdx] = {role:"user", content:[
           {type:"image_url", image_url:{url:`data:image/jpeg;base64,${imageData}`}},
-          {type:"text", text: msg || "이 예약서의 정보를 읽어줘"}
+          {type:"text", text: "이 이미지에서 예약 정보(이름, 전화번호, 날짜, 시간, 시술, 지점)를 모두 추출해서 확인 멘트 한 줄 후 JSON으로 응답하세요."}
         ]};
       }
     }
@@ -7500,10 +7499,10 @@ JSON: {"date":"YYYY-MM-DD","time":"HH:MM","custName":"","custPhone":"","matchedS
       method:"POST",
       headers:{"Content-Type":"application/json", "Authorization":`Bearer ${getOpenAIKey()}`},
       body: JSON.stringify({
-        model: imageData ? "gpt-4o-mini" : "gpt-4o-mini",
+        model: "gpt-4o-mini",
         messages,
-        max_tokens: 500,
-        temperature: 0.85
+        max_tokens: imageData ? 1000 : 500,
+        temperature: imageData ? 0.3 : 0.85
       })
     });
     if(!r.ok){const e=await r.json();throw new Error(e.error?.message||`HTTP ${r.status}`);}
