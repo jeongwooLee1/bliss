@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.196";
+const BLISS_V = "2.69.197";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7182,454 +7182,232 @@ const DragHandle = ({onTouchStart}) => <span onTouchStart={onTouchStart} style={
 
 // ─── 시술상품관리 ───
 function QuickBookModal({ onClose, onParsed, data }) {
-  // ── State ──
-  const [input, setInput] = React.useState("");
-  const [imgData, setImgData] = React.useState(null);
-  const [imgPreview, setImgPreview] = React.useState(null);
-  const [loading, setLoading] = React.useState(false);
-  const [error, setError] = React.useState(null);
-  const [isListening, setIsListening] = React.useState(false);
-  const [recordSec, setRecordSec] = React.useState(0);
-  const [chatHistory, setChatHistory] = React.useState([]);
-  const [convoMode, setConvoMode] = React.useState(false);
-  const [convoState, setConvoState] = React.useState("idle"); // idle|listening|thinking|speaking
-  const [convoTranscript, setConvoTranscript] = React.useState("");
-  const [todayStats, setTodayStats] = React.useState(null);
-
-  const mediaRecRef = React.useRef(null);
-  const chunksRef = React.useRef([]);
-  const timerRef = React.useRef(null);
-  const recognitionRef = React.useRef(null);
-  const isSpeakingRef = React.useRef(false);
-  const convoModeRef = React.useRef(false);
-  const fileRef = React.useRef(null);
-  const camRef = React.useRef(null);
-  const inputRef = React.useRef(null);
-  const msgEndRef = React.useRef(null);
-
+  const [input, setInput] = useState("");
+  const [imgData, setImgData] = useState(null);
+  const [imgPreview, setImgPreview] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState(null);
+  const [isListening, setIsListening] = useState(false);
+  const [recordSec, setRecordSec] = useState(0);
+  const mediaRecRef = useRef(null);
+  const chunksRef = useRef([]);
+  const timerRef = useRef(null);
+  const [audioData, setAudioData] = useState(null);
+  const fileRef = useRef(null);
+  const camRef = useRef(null);
+  const inputRef = useRef(null);
   const apiKey = window.__geminiKey || localStorage.getItem("bliss_gemini_key") || "";
-  const SUPA_URL = "https://dpftlrsuqxqqeouwbfjd.supabase.co";
-  const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwZnRscnN1cXhxcWVvdXdiZmpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5MDU4MjQsImV4cCI6MjA4NzQ4MTgyNH0.iydEkjtPjZ0jXpUUPJben4IWWneDqLomv-HDlcFayE4";
+  const C = T.primary;
+  const G1 = T.google, G2 = T.purple, G3 = T.female;
 
-  const CHIPS = [
-    {icon:"📋", text:"오늘 예약 현황 알려줘"},
-    {icon:"⏰", text:"지금 빈 시간 있어?"},
-    {icon:"💰", text:"오늘 매출이 얼마야?"},
-    {icon:"👥", text:"오늘 담당 직원 누구야?"},
-    {icon:"⚠️", text:"노쇼 고객 있어?"},
-  ];
-
-  // ── 오늘 데이터 로드 ──
-  React.useEffect(() => {
-    loadTodayStats();
-    initRecognition();
-    return () => {
-      recognitionRef.current?.abort();
-      window.speechSynthesis?.cancel();
-      clearInterval(timerRef.current);
-    };
-  }, []);
-
-  const loadTodayStats = async () => {
+  const startVoice = async () => {
     try {
-      const today = new Date().toISOString().split("T")[0];
-      const branches = data?.branches || data?.branchSettings || [];
-      const res = await fetch(
-        `${SUPA_URL}/rest/v1/reservations?date=eq.${today}&select=id,bid,cust_name,time,dur,status,type,staff_id,service_id`,
-        { headers: { apikey: ANON, Authorization: `Bearer ${ANON}` } }
-      );
-      const rows = await res.json();
-      const done = rows.filter(r => r.status === "confirmed" || r.status === "done");
-      setTodayStats({ total: rows.length, done: done.length, branches });
-    } catch(e) { /* ignore */ }
+      const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+      const mime = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "audio/mp4";
+      const rec = new MediaRecorder(stream, {mimeType: mime});
+      chunksRef.current = [];
+      rec.ondataavailable = (e) => { if(e.data.size>0) chunksRef.current.push(e.data); };
+      rec.onstop = () => {
+        stream.getTracks().forEach(t=>t.stop());
+        const blob = new Blob(chunksRef.current, {type: mime});
+        const reader = new FileReader();
+        reader.onload = () => setAudioData({base64:reader.result.split(",")[1], mimeType:mime.split(";")[0]});
+        reader.readAsDataURL(blob);
+      };
+      rec.start(1000); mediaRecRef.current = rec;
+      setIsListening(true); setRecordSec(0); setAudioData(null); setResult(null); setError(null);
+      timerRef.current = setInterval(()=>setRecordSec(s=>s+1), 1000);
+    } catch(e) { alert("마이크 권한이 필요합니다"); }
   };
+  const stopVoice = () => { mediaRecRef.current?.stop(); setIsListening(false); clearInterval(timerRef.current); };
+  useEffect(() => { if (audioData) doParse(null, audioData); }, [audioData]);
 
-  // ── Supabase 컨텍스트 빌드 ──
-  const buildCtx = async () => {
-    try {
-      const today = new Date().toISOString().split("T")[0];
-      const now = new Date();
-      const ts = now.toLocaleTimeString("ko-KR", {hour:"2-digit", minute:"2-digit"});
-      const ds = now.toLocaleDateString("ko-KR", {month:"long", day:"numeric", weekday:"short"});
-      const branches = data?.branches || data?.branchSettings || [];
-
-      const res = await fetch(
-        `${SUPA_URL}/rest/v1/reservations?date=eq.${today}&select=bid,cust_name,cust_phone,time,dur,status,type,staff_id,memo,owner_comment,source,room_id`,
-        { headers: { apikey: ANON, Authorization: `Bearer ${ANON}` } }
-      );
-      const rows = await res.json();
-      const services = data?.services || [];
-      const staffList = data?.rooms || [];
-
-      const branchSummaries = branches.slice(0,8).map(b => {
-        const bRows = rows.filter(r => r.bid === b.id);
-        const confirmed = bRows.filter(r => r.status === "confirmed").length;
-        return `${b.short||b.name}(${bRows.length}건/${confirmed}확정)`;
-      }).join(", ");
-
-      const rowLines = rows.slice(0,30).map(r => {
-        const bName = branches.find(b=>b.id===r.bid)?.short || r.bid;
-        return `${bName} ${r.time} ${r.cust_name||"?"} ${r.status}`;
-      }).join(" | ");
-
-      return `[${ds} ${ts}] 하우스왁싱 예약관리 시스템
-지점현황: ${branchSummaries||"없음"}
-오늘예약(${rows.length}건): ${rowLines||"없음"}
-전체지점: ${branches.map(b=>b.short||b.name).join(",")||"없음"}`;
-    } catch(e) {
-      return `[${new Date().toLocaleDateString("ko-KR")}] 하우스왁싱 예약관리`;
-    }
-  };
-
-  // ── Gemini 호출 ──
-  const callGemini = async (msg, imageData = null) => {
-    const ctx = await buildCtx();
-    const rules = (data?.businesses || data?.businessSettings)?.[0]?.settings?.ai_rules || [];
-    const rulesText = Array.isArray(rules) ? rules.map((r,i)=>`${i+1}. ${r}`).join("\n") : "";
-    const sys = `당신은 하우스왁싱 원장님 전용 AI 어시스턴트입니다.
-${ctx}
-운영규칙:
-${rulesText}
-응답규칙: 2~3문장으로 핵심만. 인사 반복 금지. 마크다운(*#_) 절대 금지. 숫자 정확히.
-예약 파싱 요청 시: JSON으로만 응답. {date,time,custName,custPhone,gender,serviceId,staffId,dur,memo}`;
-
-    const contents = [...chatHistory.map(m=>({role:m.role,parts:[{text:m.text}]})),
-      {role:"user", parts: imageData
-        ? [{inline_data:{mime_type:"image/jpeg",data:imageData}},{text:msg}]
-        : [{text:msg}]}];
-
-    const r = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-      { method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({
-          system_instruction: {parts:[{text:sys}]},
-          contents,
-          generationConfig: {temperature:.75, maxOutputTokens:600}
-        })
-      }
-    );
-    if(!r.ok){const e=await r.json();throw new Error(e.error?.message||`HTTP ${r.status}`);}
-    const d = await r.json();
-    return d.candidates?.[0]?.content?.parts?.[0]?.text || "다시 말씀해 주세요.";
-  };
-
-  // ── 메시지 전송 ──
-  const sendMessage = async (overrideText, imageData = null) => {
-    if(!apiKey) { setError("API 키가 없어요. 관리설정에서 Gemini 키를 등록해주세요."); return; }
-    const text = (overrideText || input).trim();
-    if(!text && !imageData && !imgData) return;
-
-    const userMsg = { role:"user", text: text||(imageData?"[이미지]":""), time: new Date().toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"}) };
-    setChatHistory(prev => [...prev, userMsg]);
-    setInput("");
-    setImgData(null); setImgPreview(null);
-    setLoading(true); setError(null);
-
-    setTimeout(() => msgEndRef.current?.scrollIntoView({behavior:"smooth"}), 50);
-
-    try {
-      const reply = await callGemini(text, imageData || imgData);
-
-      // 예약 파싱 시도
-      let parsed = null;
-      try {
-        const cleaned = reply.replace(/```json|```/g,"").trim();
-        if(cleaned.startsWith("{")) parsed = JSON.parse(cleaned);
-      } catch(e){}
-
-      const aiMsg = { role:"model", text: parsed ? `✅ 예약 정보를 인식했어요!\n${parsed.custName||""}님 ${parsed.date||""} ${parsed.time||""}` : reply, time: new Date().toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"}), parsed };
-      setChatHistory(prev => [...prev, aiMsg]);
-      setTimeout(() => msgEndRef.current?.scrollIntoView({behavior:"smooth"}), 50);
-
-      if(parsed && onParsed) {
-        setTimeout(() => onParsed(parsed), 800);
-      }
-
-      if(convoModeRef.current) speakReply(reply);
-    } catch(e) {
-      setError("오류: " + e.message);
-      if(convoModeRef.current) setTimeout(restartListening, 800);
-    }
-    setLoading(false);
-  };
-
-  // ── 음성 인식 초기화 ──
-  const initRecognition = () => {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if(!SR) return;
-    const rec = new SR();
-    rec.lang = "ko-KR"; rec.continuous = false; rec.interimResults = true;
-
-    rec.onstart = () => {
-      setIsListening(true);
-      if(convoModeRef.current) setConvoState("listening");
-    };
-    rec.onresult = e => {
-      let fin="", int="";
-      for(const r of e.results) { if(r.isFinal) fin+=r[0].transcript; else int+=r[0].transcript; }
-      const txt = fin||int;
-      if(convoModeRef.current) { convoTranscriptRef.current = txt; setConvoTranscript(txt); }
-      else setInput(txt);
-    };
-    rec.onend = () => {
-      setIsListening(false);
-      if(convoModeRef.current) {
-        const txt = convoTranscriptRef.current.trim();
-        if(txt) { setConvoState("thinking"); sendMessage(txt); setConvoTranscript(""); }
-        else setTimeout(restartListening, 600);
-      }
-    };
-    rec.onerror = e => {
-      setIsListening(false);
-      if(convoModeRef.current && e.error!=="aborted") setTimeout(restartListening, 800);
-    };
-    recognitionRef.current = rec;
-  };
-
-  const convoTranscriptRef = React.useRef("");
-  React.useEffect(() => { convoTranscriptRef.current = convoTranscript; }, [convoTranscript]);
-
-  const restartListening = () => {
-    if(!convoModeRef.current || isSpeakingRef.current) return;
-    try { recognitionRef.current?.start(); } catch(e){}
-  };
-
-  // ── TTS ──
-  const speakReply = text => {
-    if(!window.speechSynthesis) { setTimeout(restartListening, 500); return; }
-    window.speechSynthesis.cancel();
-    const clean = text.replace(/[*_`#\[\]]/g,"").replace(/\n/g," ").slice(0,200);
-    const u = new SpeechSynthesisUtterance(clean);
-    u.lang = "ko-KR"; u.rate = 1.0; u.pitch = 1.05;
-    const kr = window.speechSynthesis.getVoices().find(v=>v.lang.includes("ko"));
-    if(kr) u.voice = kr;
-    u.onstart = () => { isSpeakingRef.current = true; if(convoModeRef.current) setConvoState("speaking"); };
-    u.onend = u.onerror = () => {
-      isSpeakingRef.current = false;
-      if(convoModeRef.current) { setConvoTranscript(""); setTimeout(restartListening, 400); }
-    };
-    window.speechSynthesis.speak(u);
-  };
-
-  // ── 대화모드 ──
-  const startConvoMode = () => {
-    if(!apiKey) { setError("API 키가 없어요"); return; }
-    if(!recognitionRef.current) { setError("이 브라우저는 음성을 지원하지 않아요"); return; }
-    convoModeRef.current = true;
-    setConvoMode(true); setConvoState("idle");
-    // iOS TTS unlock (사용자 제스처 컨텍스트에서 실행)
-    if(window.speechSynthesis) {
-      const u = new SpeechSynthesisUtterance(" ");
-      u.volume = 0; u.lang = "ko-KR";
-      window.speechSynthesis.speak(u);
-    }
-    setTimeout(restartListening, 800);
-  };
-  const stopConvoMode = () => {
-    convoModeRef.current = false;
-    setConvoMode(false); setConvoState("idle");
-    try { recognitionRef.current?.abort(); } catch(e){}
-    window.speechSynthesis?.cancel();
-    isSpeakingRef.current = false;
-  };
-
-  // ── 단발 마이크 ──
-  const toggleVoice = () => {
-    if(isSpeakingRef.current) { window.speechSynthesis?.cancel(); return; }
-    if(isListening) { recognitionRef.current?.stop(); return; }
-    if(!recognitionRef.current) return;
-    try { recognitionRef.current.start(); } catch(e){}
-  };
-
-  // ── 이미지 처리 ──
-  const handleImage = e => {
-    const file = e.target.files?.[0]; if(!file) return;
+  const handleImage = (e) => {
+    const file = e.target.files?.[0]; if (!file) return;
     const reader = new FileReader();
-    reader.onload = ev => {
-      const b64 = ev.target.result.split(",")[1];
-      setImgData(b64); setImgPreview(ev.target.result);
-    };
+    reader.onload = (ev) => { setImgData({base64:ev.target.result.split(",")[1], mimeType:file.type}); setImgPreview(ev.target.result); };
     reader.readAsDataURL(file);
   };
 
-  // ── 오브 색상 ──
-  const orbColors = {
-    idle:    "radial-gradient(circle at 38% 38%, #e8d5f5, #9b72cb 45%, #5a3a8b 80%, #1a0a2e)",
-    listening: "radial-gradient(circle at 38% 38%, #ffd5cc, #d96570 45%, #8b2a38 80%, #2e0a0e)",
-    thinking:  "radial-gradient(circle at 38% 38%, #ffe8cc, #f0a050 45%, #8b5a20 80%, #2e1a00)",
-    speaking:  "radial-gradient(circle at 38% 38%, #c0e8d5, #4caf82 45%, #2a7a52 80%, #0a3020)",
+  const handlePaste = (e) => {
+    const items = e.clipboardData?.items;
+    if(!items) return;
+    for(let i=0;i<items.length;i++){
+      if(items[i].type.startsWith("image/")){
+        e.preventDefault();
+        const file = items[i].getAsFile();
+        if(!file) continue;
+        const reader = new FileReader();
+        reader.onload = (ev) => { setImgData({base64:ev.target.result.split(",")[1], mimeType:file.type}); setImgPreview(ev.target.result); };
+        reader.readAsDataURL(file);
+        break;
+      }
+    }
   };
-  const orbStatus = { idle:"준비됐어요", listening:"듣고 있어요...", thinking:"생각 중...", speaking:"답변 중..." };
-  const convoStateColor = { idle:"rgba(155,114,203,.7)", listening:"rgba(217,101,112,.7)", thinking:"rgba(240,160,80,.7)", speaking:"rgba(76,175,130,.7)" };
 
-  // sparkle icon
-  const sparkle = <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z" fill={T.primary}/></svg>;
+  const buildPrompt = () => {
+    const today = new Date(), dow = ["일","월","화","수","목","금","토"];
+    const ds = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")} (${dow[today.getDay()]})`;
+    const tags = (data?.serviceTags || []).filter(t=>t.useYn!==false && t.scheduleYn!=="Y");
+    const svcs = (data?.services || []).filter(s=>s.useYn!==false);
+    const tagList = tags.map(t=>`"${t.id}":"${t.name}"${t.dur?`(${t.dur}분)`:""}`).join(", ");
+    const svcList = svcs.map(s=>`"${s.id}":"${s.name}"${s.dur?`(${s.dur}분)`:""}`).join(", ");
+    const srcList = (data?.resSources||[]).filter(s=>s.useYn!==false).map(s=>s.name);
+    return `당신은 미용실/왁싱샵 예약 정보를 추출하는 AI입니다.\n오늘 날짜: ${ds}\n\n아래 텍스트/이미지/음성에서 예약 정보를 추출해 JSON으로만 응답하세요.\n마크다운 백틱이나 설명 없이 순수 JSON만 출력하세요.\n\n[이미지] 채팅 앱 스크린샷 분석 시 반드시 다음 순서로 처리:\n1단계: 화면 최상단 헤더 영역에서 전화번호/이름을 먼저 추출\n2단계: 대화 내용에서 날짜, 시간, 시술 정보 추출\n3단계: 앱 종류 판별\n※ 헤더의 전화번호가 고객 전화번호입니다.\n[음성] 오디오 첨부 시 음성을 듣고 추출. 공=0,일=1,이=2,삼=3,사=4,오=5,육=6,칠=7,팔=8,구=9. 공일공=010.\n\n[등록된 서비스태그] {${tagList || "없음"}}\n[등록된 시술상품] {${svcList || "없음"}}\n[등록된 예약경로] [${srcList.length ? srcList.map(s=>`"${s}"`).join(",") : "없음"}]\n\n시술 내용이 언급되면 위 목록에서 가장 적합한 항목의 ID를 매칭하세요.\n[왁싱 용어 매핑] 음모왁싱=브라질리언왁싱, eyebrows=눈썹, underarm=겨드랑이, leg=다리, arm=팔, bikini=비키니, full body=전신\n\n추출 항목:\n- custName: 고객 이름 (없으면 "")\n- custPhone: 전화번호 (010-XXXX-XXXX. 해외번호 원본유지)\n- date: YYYY-MM-DD\n- time: HH:MM 24시간\n- dur: 소요시간(분) (없으면 0)\n- memo: 시술내용/기타 (없으면 "")\n- source: 예약경로 (반드시 등록된 예약경로 목록에서 선택! WhatsApp→와츠앱, 카카오톡→카톡 등 등록된 이름으로 매칭. 목록에 없으면 "")\n- custGender: "M" or "F" or ""\n- matchedTagIds: 매칭된 서비스태그 ID 배열. 없으면 []\n- matchedServiceIds: 매칭된 시술상품 ID 배열. 없으면 []`;
+  };
 
-  return <div style={{position:"fixed",inset:0,zIndex:200,background:T.bg,display:"flex",flexDirection:"column",overflowY:"hidden"}}>
-    <style>{`
-      @keyframes qb-breathe{0%,100%{transform:scale(1);opacity:.85}50%{transform:scale(1.15);opacity:1}}
-      @keyframes qb-orb-ring{0%,100%{transform:scale(1);opacity:.4}50%{transform:scale(1.06);opacity:.12}}
-      @keyframes qb-orb-pulse{from{transform:scale(1)}to{transform:scale(1.08)}}
-      @keyframes qb-wave{0%,100%{transform:scaleY(.4);opacity:.5}50%{transform:scaleY(1);opacity:1}}
-      @keyframes qb-msg-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-      @keyframes qb-dot{0%,60%,100%{transform:translateY(0);opacity:.4}30%{transform:translateY(-4px);opacity:1}}
-    `}</style>
+  const doParse = async (evt, overrideAudio) => {
+    const ad = overrideAudio || audioData;
+    if (!apiKey) { setError("관리설정 → AI설정에서 API 키를 등록하세요"); return; }
+    if (!input.trim() && !imgData && !ad) { setError("텍스트, 이미지, 또는 음성을 입력하세요"); return; }
+    setLoading(true); setError(null); setResult(null);
+    try {
+      const parts = [{text: buildPrompt()}];
+      if (input.trim()) parts.push({text: "입력:\n" + input.trim()});
+      if (imgData) parts.push({inlineData:{mimeType:imgData.mimeType, data:imgData.base64}});
+      if (ad) parts.push({inlineData:{mimeType:ad.mimeType, data:ad.base64}});
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({contents:[{parts}], generationConfig:{temperature:0}})
+      });
+      if (!r.ok) throw new Error("API: "+(await r.text()).slice(0,120));
+      const d = await r.json();
+      const txt = d.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      const parsed = JSON.parse(txt.replace(/```json|```/g,"").trim());
+      onParsed(parsed);
+    } catch(e) { setError("분석 실패: "+e.message); }
+    setLoading(false);
+  };
 
-    {/* ── Top bar ── */}
-    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 16px",borderBottom:"1px solid "+T.border,flexShrink:0}}>
+  const editResult = (k,v) => setResult(p=>({...p,[k]:v}));
+  const reset = () => { setResult(null);setError(null);setAudioData(null);setRecordSec(0);setImgData(null);setImgPreview(null);setInput(""); };
+  const handleSubmit = () => { if (input.trim() || imgData) doParse(); };
+
+  const sparkle = <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 2L13.09 8.26L18 6L14.74 10.91L21 12L14.74 13.09L18 18L13.09 15.74L12 22L10.91 15.74L6 18L9.26 13.09L3 12L9.26 10.91L6 6L10.91 8.26L12 2Z" fill="url(#gsp)"/><defs><linearGradient id="gsp" x1="3" y1="2" x2="21" y2="22"><stop stopColor={T.google}/><stop offset="0.5" stopColor={T.purple}/><stop offset="1" stopColor={T.female}/></linearGradient></defs></svg>;
+
+  return <div style={{position:"fixed",inset:0,zIndex:500,background:T.bgCard,display:"flex",flexDirection:"column"}}>
+    <style>{`@keyframes qb-spin{to{transform:rotate(360deg)}}@keyframes qb-pulse{0%,100%{transform:scale(1);opacity:.7}50%{transform:scale(1.15);opacity:1}}@keyframes qb-mic-idle{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}@keyframes qb-fade{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}@keyframes qb-breathe{0%{transform:scale(1) rotate(0deg);opacity:.85}15%{transform:scale(1.18) rotate(8deg);opacity:1}30%{transform:scale(.95) rotate(-5deg);opacity:.75}45%{transform:scale(1.22) rotate(12deg);opacity:.95}60%{transform:scale(1.05) rotate(-3deg);opacity:.8}75%{transform:scale(1.3) rotate(6deg);opacity:1}90%{transform:scale(.98) rotate(-8deg);opacity:.7}100%{transform:scale(1) rotate(0deg);opacity:.85}}@keyframes qb-glow{0%{box-shadow:0 0 15px #4285f420,0 0 30px #9b72cb10}33%{box-shadow:0 0 25px #9b72cb30,0 0 45px #d9657015}66%{box-shadow:0 0 20px #d9657025,0 0 40px #4285f410}100%{box-shadow:0 0 15px #4285f420,0 0 30px #9b72cb10}}.qb-field:focus{border-color:#7c7cc850!important;background:#fff!important}`}</style>
+
+    {/* Top bar */}
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 16px",flexShrink:0}}>
       <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",padding:6,display:"flex",color:T.gray600}}>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
       </button>
       <div style={{display:"flex",alignItems:"center",gap:6}}>{sparkle}<span style={{fontSize:T.fs.md,fontWeight:T.fw.bolder,color:T.text}}>AI Book</span></div>
-      <button onClick={startConvoMode}
-        style={{display:"flex",alignItems:"center",gap:5,padding:"6px 12px",borderRadius:20,border:"1px solid "+T.border,background:T.bgCard,cursor:"pointer",fontSize:T.fs.xs,fontWeight:T.fw.medium,color:T.textSub}}>
-        🎙 대화모드
-      </button>
+      <div style={{width:32}}/>
     </div>
 
-    {/* ── Stats bar ── */}
-    {todayStats && chatHistory.length === 0 && <div style={{display:"flex",gap:8,padding:"10px 16px",overflowX:"auto",flexShrink:0,borderBottom:"1px solid "+T.border}}>
-      {[
-        {label:"오늘 예약", val:todayStats.total+"건", color:T.text},
-        {label:"완료", val:todayStats.done+"건", color:T.primary},
-        {label:"지점수", val:(todayStats.branches?.length||0)+"곳", color:T.textSub},
-      ].map((s,i)=><div key={i} style={{flexShrink:0,background:T.bg,border:"1px solid "+T.border,borderRadius:10,padding:"8px 14px",minWidth:80}}>
-        <div style={{fontSize:9,color:T.textMuted,fontWeight:T.fw.medium,letterSpacing:.3,textTransform:"uppercase",marginBottom:3}}>{s.label}</div>
-        <div style={{fontSize:17,fontWeight:T.fw.bolder,color:s.color}}>{s.val}</div>
-      </div>)}
-    </div>}
+    {/* Content */}
+    <div style={{flex:1,overflow:"auto",padding:"0 20px",display:"flex",flexDirection:"column"}}>
 
-    {/* ── Messages ── */}
-    <div style={{flex:1,overflowY:"auto",padding:"12px 0"}}>
-      {/* 웰컴 화면 */}
-      {chatHistory.length === 0 && !loading && <div style={{display:"flex",flexDirection:"column",alignItems:"center",padding:"24px 28px",gap:24}}>
-        <div style={{position:"relative",display:"flex",alignItems:"center",justifyContent:"center"}}>
-          <div style={{position:"absolute",width:144,height:144,borderRadius:"50%",background:"rgba(124,124,200,.06)",animation:"qb-breathe 3s ease-in-out infinite"}}/>
-          <div style={{position:"absolute",width:116,height:116,borderRadius:"50%",background:"rgba(124,124,200,.1)"}}/>
-          <button onClick={toggleVoice} style={{position:"relative",zIndex:1,width:92,height:92,borderRadius:"50%",background:isListening?"linear-gradient(145deg,#d96570,#c0506b)":"linear-gradient(145deg,#7c7cc8,#9b72cb)",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:isListening?"0 8px 32px rgba(217,101,112,.45)":"0 8px 32px rgba(124,124,200,.45)",transition:"all .3s"}}>
-            <svg width="36" height="36" viewBox="0 0 24 24" fill="white"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1 1.93c-3.94-.49-7-3.85-7-7.93H2c0 4.92 3.66 9 8.44 9.44V21h3.11v-3.56C18.34 16.99 22 12.91 22 7.99h-2c0 4.08-3.05 7.44-7 7.93V15h-2v.93z"/></svg>
-          </button>
+      {/* Empty — voice-first */}
+      {!result && !loading && !error && !imgPreview && !isListening && <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:28,padding:"0 28px"}}>
+        <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:18}}>
+          <div style={{position:"relative",display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <div style={{position:"absolute",width:144,height:144,borderRadius:"50%",background:"rgba(217,101,112,.06)",animation:"qb-mic-idle 3s ease-in-out infinite"}}/>
+            <div style={{position:"absolute",width:116,height:116,borderRadius:"50%",background:"rgba(217,101,112,.1)"}}/>
+            <button onClick={startVoice} style={{position:"relative",zIndex:1,width:92,height:92,borderRadius:"50%",background:"linear-gradient(145deg,#d96570,#c0506b)",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 8px 32px rgba(217,101,112,.45)",transition:"transform .12s"}}
+              onTouchStart={e=>e.currentTarget.style.transform="scale(.93)"}
+              onTouchEnd={e=>e.currentTarget.style.transform="scale(1)"}>
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="white"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1 1.93c-3.94-.49-7-3.85-7-7.93H2c0 4.92 3.66 9 8.44 9.44V21h3.11v-3.56C18.34 16.99 22 12.91 22 7.99h-2c0 4.08-3.05 7.44-7 7.93V15h-2v.93z"/></svg>
+            </button>
+          </div>
+          <div style={{textAlign:"center"}}>
+            <div style={{fontSize:22,fontWeight:700,color:T.text,marginBottom:6}}>말씀해 주세요</div>
+            <div style={{fontSize:T.fs.sm,color:T.gray500,lineHeight:1.8}}>마이크를 누르면 잘 듣고 있을게요<br/>카톡 메시지·이미지도 분석해드려요</div>
+          </div>
         </div>
-        {isListening && <div style={{fontSize:T.fs.sm,color:"#d96570",fontWeight:T.fw.medium,animation:"qb-breathe 1s infinite"}}>듣고 있어요...</div>}
-        <div style={{textAlign:"center"}}>
-          <div style={{fontSize:20,fontWeight:T.fw.bolder,color:T.text,marginBottom:6}}>무엇을 도와드릴까요?</div>
-          <div style={{fontSize:T.fs.sm,color:T.gray500,lineHeight:1.8}}>마이크를 누르거나 아래 질문을 눌러보세요<br/><span style={{color:T.primary,fontWeight:T.fw.medium}}>🎙 대화모드</span>로 끊김없이 대화해요</div>
-        </div>
-        {/* 이미지 버튼 */}
-        <div style={{display:"flex",gap:10,width:"100%"}}>
+        <div style={{display:"flex",gap:10}}>
           <input ref={fileRef} type="file" accept="image/*" onChange={handleImage} style={{display:"none"}}/>
           <input ref={camRef} type="file" accept="image/*" capture="environment" onChange={handleImage} style={{display:"none"}}/>
-          {[{label:"이미지",icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>,onClick:()=>fileRef.current?.click()},
-            {label:"카메라",icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>,onClick:()=>camRef.current?.click()}
-          ].map((btn,i)=><button key={i} onClick={btn.onClick} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:7,padding:"14px 0",borderRadius:14,border:"1.5px solid "+T.border,background:T.bgCard,cursor:"pointer",color:T.textSub,fontSize:T.fs.xs,fontWeight:T.fw.medium}}>
-            {btn.icon}{btn.label}
-          </button>)}
-        </div>
-        {/* 빠른 질문 칩 */}
-        <div style={{display:"flex",flexDirection:"column",gap:8,width:"100%"}}>
-          {CHIPS.map((c,i)=><button key={i} onClick={()=>sendMessage(c.text)}
-            style={{display:"flex",alignItems:"center",gap:10,background:T.bgCard,border:"1px solid "+T.border,borderRadius:12,padding:"12px 16px",cursor:"pointer",textAlign:"left",width:"100%",transition:"all .15s"}}>
-            <span style={{fontSize:16,flexShrink:0,width:22,textAlign:"center"}}>{c.icon}</span>
-            <span style={{fontSize:T.fs.sm,fontWeight:T.fw.medium,color:T.text,flex:1}}>{c.text}</span>
-            <span style={{color:T.gray400,fontSize:12}}>›</span>
-          </button>)}
-        </div>
-      </div>}
-
-      {/* 채팅 메시지 */}
-      {chatHistory.map((msg,i)=><div key={i} style={{padding:"3px 16px",animation:"qb-msg-in .25s ease both",display:"flex",justifyContent:msg.role==="user"?"flex-end":"flex-start",alignItems:"flex-end",gap:8}}>
-        {msg.role==="model" && <div style={{width:28,height:28,background:T.primary,borderRadius:10,display:"grid",placeItems:"center",fontSize:13,flexShrink:0,marginBottom:2}}>✨</div>}
-        <div>
-          <div style={{maxWidth:"78%",padding:"12px 16px",borderRadius:18,fontSize:T.fs.sm,lineHeight:1.6,
-            background:msg.role==="user"?T.text:T.bg,
-            color:msg.role==="user"?T.bgCard:T.text,
-            border:msg.role==="model"?"1px solid "+T.border:"none",
-            borderBottomRightRadius:msg.role==="user"?4:18,
-            borderBottomLeftRadius:msg.role==="model"?4:18,
-            whiteSpace:"pre-line",wordBreak:"break-word"}}>
-            {msg.text}
-            {msg.parsed && <button onClick={()=>onParsed&&onParsed(msg.parsed)}
-              style={{display:"block",marginTop:10,width:"100%",padding:"8px 0",borderRadius:10,border:"none",background:"linear-gradient(135deg,#7c7cc8,#9b72cb)",color:"white",fontWeight:T.fw.bolder,fontSize:T.fs.sm,cursor:"pointer"}}>
-              예약폼에 적용 →
-            </button>}
-          </div>
-          <div style={{fontSize:9,color:T.textMuted,marginTop:3,paddingLeft:4,textAlign:msg.role==="user"?"right":"left"}}>{msg.time}</div>
-        </div>
-      </div>)}
-
-      {/* 로딩 */}
-      {loading && <div style={{display:"flex",alignItems:"flex-end",gap:8,padding:"3px 16px"}}>
-        <div style={{width:28,height:28,background:T.primary,borderRadius:10,display:"grid",placeItems:"center",fontSize:13}}>✨</div>
-        <div style={{background:T.bg,border:"1px solid "+T.border,borderRadius:18,borderBottomLeftRadius:4,padding:"14px 18px",display:"flex",gap:4,alignItems:"center"}}>
-          {[0,.15,.3].map((d,i)=><div key={i} style={{width:5,height:5,borderRadius:"50%",background:T.gray400,animation:`qb-dot 1.3s ease-in-out ${d}s infinite`}}/>)}
-        </div>
-      </div>}
-
-      {/* 이미지 프리뷰 */}
-      {imgPreview && <div style={{padding:"8px 16px"}}>
-        <div style={{position:"relative",display:"inline-block"}}>
-          <img src={imgPreview} style={{maxWidth:200,maxHeight:150,borderRadius:12,border:"1px solid "+T.border}}/>
-          <button onClick={()=>{setImgData(null);setImgPreview(null);}} style={{position:"absolute",top:-6,right:-6,width:20,height:20,borderRadius:"50%",background:T.danger,border:"none",color:"white",cursor:"pointer",fontSize:11,display:"grid",placeItems:"center"}}>×</button>
-        </div>
-      </div>}
-
-      {error && <div style={{margin:"8px 16px",padding:"10px 14px",background:"#fff5f5",border:"1px solid #fcc",borderRadius:10,fontSize:T.fs.xs,color:T.danger}}>{error}</div>}
-      <div ref={msgEndRef}/>
-    </div>
-
-    {/* ── Input bar ── */}
-    <div style={{borderTop:"1px solid "+T.border,padding:"10px 14px",paddingBottom:"calc(16px + env(safe-area-inset-bottom,0px))",background:T.bgCard,flexShrink:0}}>
-      <div style={{display:"flex",alignItems:"flex-end",gap:8}}>
-        <div style={{flex:1,background:T.bg,border:"1.5px solid "+T.border,borderRadius:22,display:"flex",alignItems:"flex-end",padding:"10px 14px",gap:8,minHeight:46}}>
-          <button onClick={toggleVoice}
-            style={{width:28,height:28,borderRadius:"50%",border:"none",background:isListening?"rgba(217,101,112,.15)":"none",cursor:"pointer",display:"grid",placeItems:"center",fontSize:15,flexShrink:0,color:isListening?"#d96570":T.gray400,padding:0}}>
-            🎤
+          <button onClick={()=>fileRef.current?.click()} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:7,padding:"16px 0",borderRadius:16,border:"1.5px solid "+T.border,background:T.bgCard,cursor:"pointer",color:T.textSub,fontSize:T.fs.xs,fontWeight:500}}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>이미지
           </button>
-          <textarea value={input} onChange={e=>setInput(e.target.value)}
-            onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMessage();}}}
-            placeholder="메시지 보내기..." rows={1} ref={inputRef}
-            style={{flex:1,background:"none",border:"none",outline:"none",fontFamily:"inherit",fontSize:T.fs.sm,color:T.text,resize:"none",lineHeight:1.5,maxHeight:100,minHeight:22}}
-            onInput={e=>{e.target.style.height="auto";e.target.style.height=Math.min(e.target.scrollHeight,100)+"px"}}/>
+          <button onClick={()=>camRef.current?.click()} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:7,padding:"16px 0",borderRadius:16,border:"1.5px solid "+T.border,background:T.bgCard,cursor:"pointer",color:T.textSub,fontSize:T.fs.xs,fontWeight:500}}>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>카메라
+          </button>
         </div>
-        <button onClick={()=>imgData||input.trim()?sendMessage():null}
-          style={{width:46,height:46,borderRadius:"50%",border:"none",background:(imgData||input.trim())?T.text:T.gray300,color:"white",fontSize:17,cursor:"pointer",display:"grid",placeItems:"center",flexShrink:0,transition:"all .15s"}}>
-          ↑
-        </button>
-      </div>
+        <div style={{width:"100%",background:T.gray100,borderRadius:16,padding:"4px 4px 4px 16px",display:"flex",alignItems:"center",gap:8}}>
+          <textarea ref={inputRef} value={input} onChange={e=>{setInput(e.target.value);e.target.style.height="auto";e.target.style.height=Math.min(e.target.scrollHeight,120)+"px";}}
+            onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();handleSubmit();}}}
+            onPaste={handlePaste} placeholder="카톡 메시지 텍스트 붙여넣기..." rows={1}
+            style={{flex:1,border:"none",background:"transparent",fontSize:T.fs.sm,fontFamily:"inherit",color:T.text,outline:"none",resize:"none",padding:"10px 0",lineHeight:1.5}}/>
+          {input.trim() && <button onClick={handleSubmit} style={{width:36,height:36,borderRadius:12,background:"linear-gradient(135deg,#4285f4,#9b72cb)",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+          </button>}
+        </div>
+        {imgPreview && <div style={{fontSize:T.fs.xxs,color:T.gray500}}>📎 이미지 첨부됨</div>}
+      </div>}
+      {/* Image preview */}
+      {imgPreview && !result && !loading && <div style={{animation:"qb-fade .3s ease",marginTop:16}}>
+        <div style={{position:"relative",borderRadius:T.radius.md,overflow:"hidden",border:"1px solid #eee",display:"inline-block"}}>
+          <img src={imgPreview} style={{maxWidth:"100%",maxHeight:240,display:"block",objectFit:"contain"}} alt=""/>
+          <button onClick={()=>{setImgData(null);setImgPreview(null);}} style={{position:"absolute",top:8,right:8,width:28,height:28,borderRadius:T.radius.md,background:"rgba(0,0,0,.5)",color:T.bgCard,border:"none",cursor:"pointer",fontSize:T.fs.md,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+        </div>
+      </div>}
+
+      {/* Loading */}
+      {loading && <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:T.sp.lg,animation:"qb-fade .3s ease"}}>
+        <div style={{display:"flex",gap:6}}>{[T.google,T.purple,T.female].map((c,i)=><div key={i} style={{width:10,height:10,borderRadius:T.radius.sm,background:c,animation:`qb-pulse .8s ease ${i*.15}s infinite`}}/>)}</div>
+        <div style={{fontSize:T.fs.md,fontWeight:T.fw.bold,color:T.gray700}}>{audioData?"음성을 분석하고 있어요":imgData?"이미지를 읽고 있어요":"분석 중이에요"}</div>
+      </div>}
+
+      {/* Recording — 대화형 */}
+      {isListening && <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:24,animation:"qb-fade .3s ease"}}>
+        <div style={{position:"relative",display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <div style={{position:"absolute",width:170,height:170,borderRadius:"50%",background:"rgba(217,101,112,.06)",animation:"qb-mic-idle 1.4s ease-in-out infinite"}}/>
+          <div style={{position:"absolute",width:136,height:136,borderRadius:"50%",background:"rgba(217,101,112,.1)",animation:"qb-mic-idle 1.4s ease-in-out infinite .3s"}}/>
+          <div style={{position:"relative",zIndex:1,width:108,height:108,borderRadius:"50%",background:"linear-gradient(145deg,#d96570,#c0506b)",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 8px 40px rgba(217,101,112,.5)"}}>
+            <svg width="46" height="46" viewBox="0 0 24 24" fill="white"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1 1.93c-3.94-.49-7-3.85-7-7.93H2c0 4.92 3.66 9 8.44 9.44V21h3.11v-3.56C18.34 16.99 22 12.91 22 7.99h-2c0 4.08-3.05 7.44-7 7.93V15h-2v.93z"/></svg>
+          </div>
+        </div>
+        <div style={{textAlign:"center",display:"flex",flexDirection:"column",gap:6}}>
+          <div style={{fontSize:20,fontWeight:700,color:T.text}}>잘 듣고 있을게요 🎙️</div>
+          <div style={{fontSize:36,fontWeight:700,color:"#d96570",fontFamily:"monospace",letterSpacing:2}}>{Math.floor(recordSec/60)}:{String(recordSec%60).padStart(2,"0")}</div>
+          <div style={{fontSize:T.fs.xs,color:T.gray400}}>말씀이 끝나면 완료를 눌러주세요</div>
+        </div>
+        <button onClick={stopVoice} style={{padding:"13px 48px",fontSize:T.fs.md,fontWeight:700,background:T.gray200,color:T.gray700,border:"none",borderRadius:40,cursor:"pointer"}}>완료</button>
+      </div>}
+      {/* Error */}
+      {error && <div style={{marginTop:20,padding:"14px 16px",background:T.dangerLt,borderRadius:T.radius.lg,fontSize:T.fs.sm,color:T.danger,lineHeight:1.5,animation:"qb-fade .3s ease"}}>{error}<button onClick={reset} style={{display:"block",marginTop:8,fontSize:T.fs.sm,color:T.google,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:T.fw.bold}}>다시 시도</button></div>}
+
+      {/* Results */}
+      {result && <div style={{paddingTop:12,paddingBottom:100,animation:"qb-fade .3s ease"}}>
+        <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:14}}>{sparkle}<span style={{fontSize:T.fs.md,fontWeight:T.fw.bolder,color:T.text}}>분석 완료</span><span style={{fontSize:T.fs.xxs,color:T.gray400,marginLeft:4}}>수정 가능</span></div>
+        <div style={{display:"flex",flexDirection:"column",gap:10}}>
+          {[["custName","고객명"],["custPhone","전화번호"],["date","날짜"],["time","시간"],["memo","시술/메모"],["source","예약경로"]].map(([key,label])=>
+            <div key={key}><div style={{fontSize:T.fs.xxs,color:T.gray500,marginBottom:4,fontWeight:T.fw.medium}}>{label}</div>
+            <input value={result[key]||""} onChange={e=>editResult(key,e.target.value)} className="qb-field"
+              style={{width:"100%",padding:"11px 14px",fontSize:T.fs.md,border:"1.5px solid #e8e8e8",borderRadius:T.radius.lg,fontFamily:"inherit",color:T.text,outline:"none",background:T.bg,transition:"all .15s"}}/></div>
+          )}
+          <div><div style={{fontSize:T.fs.xxs,color:T.gray500,marginBottom:4,fontWeight:T.fw.medium}}>성별</div>
+            <div style={{display:"flex",gap:6}}>{[["","미정"],["M","남"],["F","여"]].map(([v,l])=>
+              <button key={v} onClick={()=>editResult("custGender",v)} style={{padding:"8px 20px",fontSize:T.fs.sm,fontWeight:result.custGender===v?600:400,background:result.custGender===v?"#7c7cc812":T.bg,color:result.custGender===v?T.primary:T.gray500,border:result.custGender===v?"1.5px solid #7c7cc840":"1.5px solid #eee",borderRadius:T.radius.md,cursor:"pointer",fontFamily:"inherit"}}>{l}</button>
+            )}</div>
+          </div>
+          {(()=>{
+            const tags = (data?.serviceTags||[]).filter(t=>t.useYn!==false && t.scheduleYn!=="Y");
+            const svcs = (data?.services||[]).filter(s=>s.useYn!==false);
+            const mTags = result.matchedTagIds || [], mSvcs = result.matchedServiceIds || [];
+            const toggleTag = (id) => editResult("matchedTagIds", mTags.includes(id)?mTags.filter(x=>x!==id):[...mTags,id]);
+            const toggleSvc = (id) => editResult("matchedServiceIds", mSvcs.includes(id)?mSvcs.filter(x=>x!==id):[...mSvcs,id]);
+            if (!tags.length && !svcs.length) return null;
+            return <>{tags.length>0 && <div><div style={{fontSize:T.fs.xxs,color:T.gray500,marginBottom:6,fontWeight:T.fw.medium}}>서비스</div><div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+              {tags.map(t=><button key={t.id} onClick={()=>toggleTag(t.id)} style={{padding:"7px 14px",fontSize:T.fs.sm,fontWeight:mTags.includes(t.id)?600:400,background:mTags.includes(t.id)?(t.color||T.primary)+"15":T.bg,color:mTags.includes(t.id)?t.color||T.primary:T.gray400,border:mTags.includes(t.id)?`1.5px solid ${(t.color||T.primary)}40`:"1.5px solid #eee",borderRadius:T.radius.md,cursor:"pointer",fontFamily:"inherit"}}>{t.name}</button>)}
+            </div></div>}
+            {svcs.length>0 && <div><div style={{fontSize:T.fs.xxs,color:T.gray500,marginBottom:6,fontWeight:T.fw.medium}}>시술</div><div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+              {svcs.map(s=><button key={s.id} onClick={()=>toggleSvc(s.id)} style={{padding:"7px 14px",fontSize:T.fs.sm,fontWeight:mSvcs.includes(s.id)?600:400,background:mSvcs.includes(s.id)?"#7c7cc815":T.bg,color:mSvcs.includes(s.id)?T.primary:T.gray400,border:mSvcs.includes(s.id)?"1.5px solid #7c7cc840":"1.5px solid #eee",borderRadius:T.radius.md,cursor:"pointer",fontFamily:"inherit"}}>{s.name}</button>)}
+            </div></div>}</>;
+          })()}
+        </div>
+        <div style={{display:"flex",gap:10,marginTop:20}}>
+          <button onClick={reset} style={{flex:1,padding:"13px 0",fontSize:T.fs.sm,fontWeight:T.fw.medium,background:T.bg,color:T.textSub,border:"none",borderRadius:T.radius.lg,cursor:"pointer",fontFamily:"inherit"}}>다시</button>
+          <button onClick={()=>onParsed(result)} style={{flex:2,padding:"13px 0",fontSize:T.fs.md,fontWeight:T.fw.bold,background:"linear-gradient(135deg,#4285f4,#9b72cb)",color:T.bgCard,border:"none",borderRadius:T.radius.lg,cursor:"pointer",fontFamily:"inherit"}}>예약폼에 적용</button>
+        </div>
+      </div>}
     </div>
 
-    {/* ── 대화모드 오버레이 ── */}
-    {convoMode && <div style={{position:"absolute",inset:0,zIndex:300,background:"#0e0c0a",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:0}}>
-      <button onClick={stopConvoMode}
-        style={{position:"absolute",top:24,right:20,width:40,height:40,borderRadius:"50%",background:"rgba(255,255,255,.08)",border:"1px solid rgba(255,255,255,.12)",color:"rgba(255,255,255,.6)",fontSize:18,cursor:"pointer",display:"grid",placeItems:"center"}}>
-        ✕
-      </button>
-
-      {/* 오브 */}
-      <div style={{width:160,height:160,borderRadius:"50%",position:"relative",display:"grid",placeItems:"center",marginBottom:32}}>
-        {[0,1,2].map(i=><div key={i} style={{position:"absolute",inset:-i*16,borderRadius:"50%",border:"1.5px solid rgba(255,255,255,.08)",animation:`qb-orb-ring ${3+i*.5}s ease-in-out ${i*.5}s infinite`}}/>)}
-        <div style={{width:100,height:100,borderRadius:"50%",background:orbColors[convoState],boxShadow:"0 0 60px rgba(124,124,200,.3)",display:"grid",placeItems:"center",fontSize:36,position:"relative",zIndex:1,
-          animation:convoState!=="idle"?"qb-orb-pulse .7s ease-in-out infinite alternate":"none",transition:"background .5s"}}>
-          ✨
-        </div>
-      </div>
-
-      {/* 상태 텍스트 */}
-      <div style={{fontSize:18,color:"rgba(255,255,255,.85)",textAlign:"center",minHeight:28,letterSpacing:-.2}}>{orbStatus[convoState]}</div>
-      <div style={{fontSize:13,color:"rgba(255,255,255,.3)",marginTop:8,textAlign:"center"}}>
-        {convoState==="idle"?"말씀하시면 바로 인식해요":convoState==="speaking"?"탭하면 중지":""}
-      </div>
-
-      {/* 파형 */}
-      {(convoState==="listening"||convoState==="speaking") && <div style={{display:"flex",alignItems:"center",gap:4,height:40,marginTop:20}}>
-        {[8,16,24,32,28,20,12,20,28,32,24,16,8].map((h,i)=><div key={i} style={{width:3,borderRadius:2,background:convoStateColor[convoState],animation:`qb-wave .7s ease-in-out ${i*.08}s infinite`,height:h}}/>)}
-      </div>}
-
-      {/* 인식 텍스트 */}
-      {convoTranscript && <div style={{marginTop:24,width:"85%",maxWidth:340,background:"rgba(255,255,255,.06)",border:"1px solid rgba(255,255,255,.08)",borderRadius:16,padding:"14px 18px",fontSize:15,color:"rgba(255,255,255,.8)",lineHeight:1.6,textAlign:"center"}}>
-        {convoTranscript}
-      </div>}
-    </div>}
   </div>;
 }
 
