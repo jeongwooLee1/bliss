@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.179";
+const BLISS_V = "2.69.180";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7727,17 +7727,19 @@ JSON: {"date":"YYYY-MM-DD","time":"HH:MM","custName":"","custPhone":"","matchedS
           src2.connect(analyser);
           const freqData = new Uint8Array(analyser.frequencyBinCount);
           let silenceStart = null;
+          let hasSpeech = false; // 말을 한 번이라도 감지해야 침묵 종료
           const check = () => {
             if(!isRecordingRef.current) return;
             analyser.getByteFrequencyData(freqData);
             const avg = freqData.reduce((a,b)=>a+b,0)/freqData.length;
-            if(avg < 12) {
+            if(avg >= 25) hasSpeech = true; // 말소리 감지
+            if(avg < 25) {
               if(!silenceStart) silenceStart = Date.now();
-              else if(Date.now()-silenceStart > 1500) { stopRecording(); return; }
+              else if(hasSpeech && Date.now()-silenceStart > 2000) { stopRecording(); return; }
             } else silenceStart = null;
             requestAnimationFrame(check);
           };
-          setTimeout(()=>{ if(isRecordingRef.current) check(); }, 800);
+          setTimeout(()=>{ if(isRecordingRef.current) check(); }, 1000);
         } catch(e) {}
         // 최대 30초 안전장치
         setTimeout(()=>{ if(isRecordingRef.current) stopRecording(); }, 30000);
