@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.190";
+const BLISS_V = "2.69.191";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7389,25 +7389,27 @@ ${rulesText}
 예약 파싱 요청 시: JSON으로만 응답. {date,time,custName,custPhone,gender,serviceId,staffId,dur,memo}`;
 
     const contents = [
-      {role:"user", parts:[{text: `[시스템 지시]\n${sys}`}]},
-      {role:"model", parts:[{text:"알겠습니다."}]},
       ...chatHistory.map(m=>({role:m.role,parts:[{text:m.text}]})),
       {role:"user", parts: imageData
         ? [{inline_data:{mime_type:"image/jpeg",data:imageData}},{text:msg||"이 이미지의 예약정보를 추출해줘"}]
         : [{text:msg}]}];
 
     const r = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
       { method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({
+          system_instruction: {parts:[{text:sys}]},
           contents,
-          generationConfig: {temperature:.75, maxOutputTokens:600}
+          generationConfig: {temperature:.75, maxOutputTokens:600},
+          thinkingConfig: {thinkingBudget:0}
         })
       }
     );
     if(!r.ok){const e=await r.json();throw new Error(e.error?.message||`HTTP ${r.status}`);}
     const d = await r.json();
-    return d.candidates?.[0]?.content?.parts?.[0]?.text || "다시 말씀해 주세요.";
+    const parts = d.candidates?.[0]?.content?.parts || [];
+    const textPart = parts.find(p => p.text && !p.thought);
+    return textPart?.text || parts[0]?.text || "다시 말씀해 주세요.";
   };
 
   // ── 메시지 전송 ──
