@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.176";
+const BLISS_V = "2.69.177";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7840,8 +7840,11 @@ JSON: {"date":"YYYY-MM-DD","time":"HH:MM","custName":"","custPhone":"","matchedS
         canvas.width = w; canvas.height = h;
         canvas.getContext("2d").drawImage(img, 0, 0, w, h);
         const compressed = canvas.toDataURL("image/jpeg", 0.7);
-        setImgData(compressed.split(",")[1]);
+        const b64 = compressed.split(",")[1];
+        setImgData(b64);
         setImgPreview(compressed);
+        // 이미지 올리면 바로 분석 시작
+        setTimeout(() => sendMessageRef.current?.("", b64), 100);
       };
       img.src = ev.target.result;
     };
