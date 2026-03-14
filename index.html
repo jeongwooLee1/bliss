@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.167";
+const BLISS_V = "2.69.168";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7438,7 +7438,6 @@ function QuickBookModal({ onClose, onParsed, data }) {
     const sys = `당신은 하우스왁싱 예약 AI 비서입니다. 현재 ${ds} ${ts}.
 전체지점: ${branches||"없음"}
 시술목록: ${svcList||"없음"}
-${ctx}
 운영규칙:${rulesText ? "\n"+rulesText : " 없음"}
 ${availInfo}
 ${draftFields ? `\n✅ 파악된 정보 (다시 묻지 마세요): ${draftFields}` : ""}
@@ -7447,8 +7446,7 @@ ${draftFields ? `\n✅ 파악된 정보 (다시 묻지 마세요): ${draftFields
 예약 정보(이름, 전화, 날짜, 시간, 서비스, 지점)를 수집해서 등록하세요.
 - 파악된 정보는 절대 다시 묻지 마세요
 - 한 번에 하나씩만 질문
-- 위 [예약현황]은 사실 그대로만 전달: "그 시간에 X건 예약이 있어요" 또는 "겹치는 예약 없어요"
-- 예약 가능/불가 판단은 하지 마세요. 현황 안내 후 바로 등록 진행
+- 위 [예약현황]은 해당 날짜+지점의 실제 DB 조회 결과예요. 사실만 전달하고 예약 가능/불가 판단은 절대 하지 마세요.
 - 모든 정보가 모이면: 현황 한 줄 안내 + 확인 멘트 + JSON 한 줄
 - serviceId는 위 시술목록의 id값을 사용
 JSON: {"date":"YYYY-MM-DD","time":"HH:MM","custName":"","custPhone":"","serviceId":"시술id","staffId":"","dur":소요분,"memo":"시술명","branch":""}
