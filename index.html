@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.193";
+const BLISS_V = "2.69.194";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7381,12 +7381,15 @@ function QuickBookModal({ onClose, onParsed, data }) {
     const ctx = await buildCtx();
     const rules = (data?.businesses || data?.businessSettings)?.[0]?.settings?.ai_rules || [];
     const rulesText = Array.isArray(rules) ? rules.map((r,i)=>`${i+1}. ${r}`).join("\n") : "";
+    const today = new Date();
+    const todayKr = today.toLocaleDateString("ko-KR",{year:"numeric",month:"2-digit",day:"2-digit"}).replace(/\. /g,"-").replace(".","");
     const sys = `당신은 하우스왁싱 원장님 전용 AI 어시스턴트입니다.
+오늘 날짜: ${todayKr} (${["일","월","화","수","목","금","토"][today.getDay()]}요일)
 ${ctx}
 운영규칙:
 ${rulesText}
 응답규칙: 2~3문장으로 핵심만. 인사 반복 금지. 마크다운(*#_) 절대 금지. 숫자 정확히.
-예약 파싱 요청 시: JSON으로만 응답. {date,time,custName,custPhone,gender,serviceId,staffId,dur,memo}`;
+예약 요청 시: 반드시 JSON 한 줄로만 응답. 다른 텍스트 없이. {date,time,custName,custPhone,gender,serviceId,staffId,dur,memo,branch}`;
 
     const contents = [
       ...chatHistory.map(m=>({role:m.role,parts:[{text:m.text}]})),
@@ -7400,7 +7403,7 @@ ${rulesText}
         body: JSON.stringify({
           system_instruction: {parts:[{text:sys}]},
           contents,
-          generationConfig: {temperature:.75, maxOutputTokens:600}
+          generationConfig: {temperature:.75, maxOutputTokens:1500}
         })
       }
     );
