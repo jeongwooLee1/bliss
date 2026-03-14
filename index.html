@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.201";
+const BLISS_V = "2.69.202";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -3084,6 +3084,20 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
             );
             if(matched) bid = matched.id;
           }
+          // 전화번호로 기존 고객 검색
+          const phone = (parsed.custPhone||"").replace(/[-\s]/g,"");
+          const existingCust = phone
+            ? (data.customers||[]).find(c => (c.phone||"").replace(/[-\s]/g,"") === phone)
+            : null;
+          if(existingCust) {
+            parsed.custId = existingCust.id;
+            parsed.custName = parsed.custName || existingCust.name;
+            parsed.custPhone = parsed.custPhone || existingCust.phone;
+            parsed.custGender = parsed.custGender || existingCust.gender;
+            parsed._isNewCust = false;
+          } else {
+            parsed._isNewCust = true;
+          }
           const room = (data.rooms||[]).find(r=>r.branch_id===bid);
           setModalData({
             roomId: room?.id, bid,
@@ -3269,7 +3283,8 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
   const defaultEnd = () => { const t = item?.time||"10:00"; const [h,m] = t.split(":").map(Number); const em = m + itemDur; return `${String(h+Math.floor(em/60)).padStart(2,"0")}:${String(em%60).padStart(2,"0")}`; };
   const addMin = (t, mins) => { const [h,m] = t.split(":").map(Number); const em = m + mins; return `${String(h+Math.floor(em/60)).padStart(2,"0")}:${String(em%60).padStart(2,"0")}`; };
   const [f, setF] = useState(isNew && !item?.id ? {
-    id: uid(), bid: branchId, roomId: item?.roomId||branchRooms[0]?.id, custId:null,
+    id: uid(), bid: branchId, roomId: item?.roomId||branchRooms[0]?.id,
+    custId: item?._prefill?.custId || null,
     custName: item?._prefill?.custName || "",
     custPhone: item?._prefill?.custPhone || "",
     custGender: item?._prefill?.custGender || "",
@@ -3277,7 +3292,6 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
     date: item?._prefill?.date || item?.date||todayStr(),
     time: item?._prefill?.time || item?.time||"10:00",
     endDate: item?._prefill?.date || item?.date||todayStr(), endTime: (() => {
-      // Calculate endTime from matched tags/services dur if available
       const pf = item?._prefill;
       if (pf?.matchedTagIds?.length || pf?.matchedServiceIds?.length) {
         const tagDur = (pf.matchedTagIds||[]).reduce((s,tid)=>{const t=(data?.serviceTags||[]).find(x=>x.id===tid);return s+(t?.dur||0);},0);
@@ -3303,7 +3317,8 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
     })(), status:"confirmed",
     memo: "",
     type:"reservation",
-    selectedTags: item?._prefill?.matchedTagIds || [], isNewCust: true, tsLog: [],
+    selectedTags: item?._prefill?.matchedTagIds || [],
+    isNewCust: item?._prefill?._isNewCust !== false, tsLog: [],
     selectedServices: item?._prefill?.matchedServiceIds || [], repeat: "none", repeatUntil: "",
     source: (() => {
       const raw = item?._prefill?.source || "";
