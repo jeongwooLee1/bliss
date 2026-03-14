@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.170";
+const BLISS_V = "2.69.171";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7236,6 +7236,8 @@ function QuickBookModal({ onClose, onParsed, data }) {
   const [recordSec, setRecordSec] = React.useState(0);
   const [chatHistory, setChatHistory] = React.useState([]);
   const chatHistoryRef = React.useRef([]); // ← 클로저 문제 해결용 ref
+  // sendMessageRef: 렌더마다 최신 sendMessage 동기화
+  React.useEffect(() => { sendMessageRef.current = sendMessage; });
   const [convoMode, setConvoMode] = React.useState(false);
   const [convoState, setConvoState] = React.useState("idle"); // idle|listening|thinking|speaking
   const [convoTranscript, setConvoTranscript] = React.useState("");
@@ -7248,6 +7250,7 @@ function QuickBookModal({ onClose, onParsed, data }) {
   const recognitionRef = React.useRef(null);
   const isSpeakingRef = React.useRef(false);
   const convoModeRef = React.useRef(false);
+  const sendMessageRef = React.useRef(null); // ← 콜백 stale 방지용
   const fileRef = React.useRef(null);
   const camRef = React.useRef(null);
   const inputRef = React.useRef(null);
@@ -7490,6 +7493,7 @@ JSON: {"date":"YYYY-MM-DD","time":"HH:MM","custName":"","custPhone":"","serviceI
 
   // ── 메시지 전송 ──
   const sendMessage = async (overrideText, imageData = null) => {
+    sendMessageRef.current = sendMessage; // 항상 최신 함수 유지
     // 키 없으면 Supabase에서 직접 로드 시도
     let key = getOpenAIKey();
     if(!key) {
@@ -7650,7 +7654,7 @@ JSON: {"date":"YYYY-MM-DD","time":"HH:MM","custName":"","custPhone":"","serviceI
           if(convoModeRef.current) setConvoState("thinking");
           const txt = await transcribeAudio(blob);
           if(txt.trim()) {
-            if(convoModeRef.current) { sendMessage(txt); }
+            if(convoModeRef.current) { (sendMessageRef.current||sendMessage)(txt); }
             else { setInput(txt); }
           } else {
             if(convoModeRef.current) setTimeout(restartListening, 600);
