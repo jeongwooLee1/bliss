@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.166";
+const BLISS_V = "2.69.167";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -3521,15 +3521,13 @@ ${naverText}
 {"matchedTagIds":["태그id1"],"matchedServiceIds":["시술id1"]}`;
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
         method:"POST", headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0,maxOutputTokens:2000,responseMimeType:"application/json"}})
+        body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0}})
       });
       if (!r.ok) throw new Error("API: "+(await r.text()).slice(0,200));
       const d2 = await r.json();
       const raw = d2.candidates?.[0]?.content?.parts?.[0]?.text || "";
-      if(!raw) throw new Error("Gemini 응답 비어있음: "+JSON.stringify(d2).slice(0,200));
-      const jsonMatch = raw.match(/\{[\s\S]*\}/);
-      const txt = jsonMatch ? jsonMatch[0] : raw.replace(/```json|```/g,"").trim();
-      if(!txt) throw new Error("JSON 추출 실패: "+raw.slice(0,100));
+      if(!raw) throw new Error("응답 없음");
+      const txt = raw.replace(/```json|```/g,"").trim();
       const parsed = JSON.parse(txt);
       let newTags = (parsed.matchedTagIds || []).filter(id => !SYSTEM_TAG_IDS.includes(id));
       if (f.isPrepaid && !newTags.includes(PREPAID_TAG_ID)) newTags = [...newTags, PREPAID_TAG_ID];
