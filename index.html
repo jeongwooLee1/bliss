@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.191";
+const BLISS_V = "2.69.192";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7491,8 +7491,18 @@ ${rulesText}
       setIsListening(false);
       if(convoModeRef.current) {
         const txt = convoTranscriptRef.current.trim();
-        if(txt) { setConvoState("thinking"); sendMessage(txt); setConvoTranscript(""); }
-        else setTimeout(restartListening, 600);
+        if(txt) {
+          silenceCountRef.current = 0;
+          setConvoState("thinking"); sendMessage(txt); setConvoTranscript("");
+        } else {
+          silenceCountRef.current += 1;
+          if(silenceCountRef.current >= 5) {
+            // 말 없이 5회 반복 → 자동 종료
+            stopConvoMode();
+          } else {
+            setTimeout(restartListening, 600);
+          }
+        }
       }
     };
     rec.onerror = e => {
@@ -7504,6 +7514,8 @@ ${rulesText}
 
   const convoTranscriptRef = React.useRef("");
   React.useEffect(() => { convoTranscriptRef.current = convoTranscript; }, [convoTranscript]);
+
+  const silenceCountRef = React.useRef(0);
 
   const restartListening = () => {
     if(!convoModeRef.current || isSpeakingRef.current) return;
@@ -7531,6 +7543,7 @@ ${rulesText}
   const startConvoMode = () => {
     if(!apiKey) { setError("API 키가 없어요"); return; }
     if(!recognitionRef.current) { setError("이 브라우저는 음성을 지원하지 않아요"); return; }
+    silenceCountRef.current = 0;
     convoModeRef.current = true;
     setConvoMode(true); setConvoState("idle");
     // iOS TTS unlock (사용자 제스처 컨텍스트에서 실행)
