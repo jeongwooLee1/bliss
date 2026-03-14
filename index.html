@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.199";
+const BLISS_V = "2.69.200";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -3301,7 +3301,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
       }
       return pf?.dur || itemDur;
     })(), status:"confirmed",
-    memo: item?._prefill?.memo || "",
+    memo: "",
     type:"reservation",
     selectedTags: item?._prefill?.matchedTagIds || [], isNewCust: true, tsLog: [],
     selectedServices: item?._prefill?.matchedServiceIds || [], repeat: "none", repeatUntil: "",
