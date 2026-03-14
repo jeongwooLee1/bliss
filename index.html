@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.192";
+const BLISS_V = "2.69.193";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7400,8 +7400,7 @@ ${rulesText}
         body: JSON.stringify({
           system_instruction: {parts:[{text:sys}]},
           contents,
-          generationConfig: {temperature:.75, maxOutputTokens:600},
-          thinkingConfig: {thinkingBudget:0}
+          generationConfig: {temperature:.75, maxOutputTokens:600}
         })
       }
     );
