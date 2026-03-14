@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.189";
+const BLISS_V = "2.69.190";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7388,16 +7388,18 @@ ${rulesText}
 응답규칙: 2~3문장으로 핵심만. 인사 반복 금지. 마크다운(*#_) 절대 금지. 숫자 정확히.
 예약 파싱 요청 시: JSON으로만 응답. {date,time,custName,custPhone,gender,serviceId,staffId,dur,memo}`;
 
-    const contents = [...chatHistory.map(m=>({role:m.role,parts:[{text:m.text}]})),
+    const contents = [
+      {role:"user", parts:[{text: `[시스템 지시]\n${sys}`}]},
+      {role:"model", parts:[{text:"알겠습니다."}]},
+      ...chatHistory.map(m=>({role:m.role,parts:[{text:m.text}]})),
       {role:"user", parts: imageData
-        ? [{inline_data:{mime_type:"image/jpeg",data:imageData}},{text:msg}]
+        ? [{inline_data:{mime_type:"image/jpeg",data:imageData}},{text:msg||"이 이미지의 예약정보를 추출해줘"}]
         : [{text:msg}]}];
 
     const r = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
       { method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({
-          system_instruction: {parts:[{text:sys}]},
           contents,
           generationConfig: {temperature:.75, maxOutputTokens:600}
         })
