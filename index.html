@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.182";
+const BLISS_V = "2.69.183";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7398,7 +7398,7 @@ ${rulesText}
         if(cleaned.startsWith("{")) parsed = JSON.parse(cleaned);
       } catch(e){}
 
-      const aiMsg = { role:"model", text: parsed ? `✅ 예약 정보를 인식했어요!\n${parsed.custName||""}님 ${parsed.date||""} ${parsed.time||""}` : reply, time: new Date().toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"}), parsed };
+      const aiMsg = { role:"model", text: parsed ? `✅ 예약 정보 인식 완료!\n${parsed.custName||""}님 ${parsed.date||""} ${parsed.time||""}\n\n예약 모달이 열립니다.\n내용 확인 후 반드시 저장 버튼을 눌러야 등록돼요!` : reply, time: new Date().toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"}), parsed };
       setChatHistory(prev => [...prev, aiMsg]);
       setTimeout(() => msgEndRef.current?.scrollIntoView({behavior:"smooth"}), 50);
 
