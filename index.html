@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.173";
+const BLISS_V = "2.69.174";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7452,6 +7452,9 @@ function QuickBookModal({ onClose, onParsed, data }) {
 
     const svcList = (data?.services || []).filter(s=>s.name).map(s=>`${s.name}(${s.dur}분,id:${s.id})`).join(", ");
 
+    const isRegisterCmd = /^(등록|등록해|등록해줘|저장|저장해|예약등록|예약해줘?)$/.test((msg||"").trim());
+    const hasFullDraft = draft.custName && draft.custPhone && draft.date && draft.time;
+
     const sys = `당신은 하우스왁싱 예약 AI 비서입니다. 현재 ${ds} ${ts}.
 전체지점: ${branches||"없음"}
 시술목록: ${svcList||"없음"}
@@ -7463,11 +7466,13 @@ ${draftFields ? `\n✅ 파악된 정보 (다시 묻지 마세요): ${draftFields
 예약 정보(이름, 전화, 날짜, 시간, 서비스, 지점)를 수집해서 등록하세요.
 - 파악된 정보는 절대 다시 묻지 마세요
 - 한 번에 하나씩만 질문
-- 위 [예약현황]은 해당 날짜+지점의 실제 DB 조회 결과예요. 사실만 전달하고 예약 가능/불가 판단은 절대 하지 마세요.
-- 모든 정보가 모이면: 현황 한 줄 안내 + 확인 멘트 + JSON 한 줄
-- serviceId는 위 시술목록의 id값을 사용
+- 이미지가 주어지면 예약 정보(이름,전화,날짜,시간,서비스,지점)를 모두 추출해서 즉시 JSON으로 응답하세요
+- "등록해", "등록" 같은 명령이 오고 파악된 정보가 있으면 즉시 JSON으로 응답하세요
+- 위 [예약현황]은 사실만 전달, 가능/불가 판단 금지
+- 모든 정보가 모이면: 확인 멘트 한 줄 + JSON 한 줄
+- **절대 마크다운 사용 금지** (**, ##, -, 목록 등 모두 금지)
 JSON: {"date":"YYYY-MM-DD","time":"HH:MM","custName":"","custPhone":"","matchedServiceIds":["시술id"],"staffId":"","dur":소요분,"memo":"시술명","branch":""}
-말투: 친근한 한국어, "~요" 체, 짧게, 마크다운 금지`;
+말투: 친근한 한국어, "~요" 체, 짧게`;
     // 히스토리: ref에서 최신값 읽기 (클로저 stale 문제 방지)
     // chatHistoryRef.current에는 이미 현재 userMsg가 포함돼 있음
     const historyForGPT = chatHistoryRef.current;
@@ -7582,6 +7587,25 @@ JSON: {"date":"YYYY-MM-DD","time":"HH:MM","custName":"","custPhone":"","matchedS
     setLoading(true); setError(null);
 
     setTimeout(() => msgEndRef.current?.scrollIntoView({behavior:"smooth"}), 50);
+
+    // 등록 명령 + 정보 완성 → 바로 JSON 생성
+    if(isRegisterCmd && hasFullDraft) {
+      const svcs = data?.services || [];
+      const svc = svcs.find(s => s.name && draft.memo && (s.name.includes(draft.memo) || draft.memo.includes(s.name)));
+      const autoJson = {
+        date: draft.date, time: draft.time, custName: draft.custName,
+        custPhone: draft.custPhone, branch: draft.branch || "",
+        matchedServiceIds: svc ? [svc.id] : [], memo: draft.memo || "",
+        dur: svc?.dur || draft.dur || 35
+      };
+      const aiMsg = { role:"model", text:`✅ ${draft.custName}님 ${draft.date} ${draft.time} 예약 등록할게요!`, fullText: JSON.stringify(autoJson), time: new Date().toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"}), parsed: autoJson };
+      const newHistory = [...chatHistoryRef.current, aiMsg];
+      chatHistoryRef.current = newHistory;
+      setChatHistory(newHistory);
+      setLoading(false);
+      if(onParsed) setTimeout(() => onParsed(autoJson), 300);
+      return;
+    }
 
     try {
       const reply = await callGPT(text, imageData || imgData);
