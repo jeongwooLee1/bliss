@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.202";
+const BLISS_V = "2.69.203";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -1347,7 +1347,7 @@ function SignupWizard({ onComplete, onBack }) {
   const [saving, setSaving] = useState(false);
 
   // STEP1: 계정 정보
-  const [acct, setAcct] = useState({ name:'', email:'', pw:'', pw2:'' });
+  const [acct, setAcct] = useState({ name:'', loginId:'', pw:'', pw2:'' });
   const setA = (k,v) => setAcct(p=>({...p,[k]:v}));
 
   // STEP2: 사업장 목록 [{name, phone}]
@@ -1364,9 +1364,10 @@ function SignupWizard({ onComplete, onBack }) {
   /* ── STEP1 다음 ── */
   const nextStep1 = () => {
     const e = {};
-    if (!acct.name.trim())  e.name  = '이름을 입력해주세요';
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(acct.email)) e.email = '올바른 이메일을 입력해주세요';
-    if (acct.pw.length < 6) e.pw = '비밀번호는 6자 이상이어야 해요';
+    if (!acct.name.trim()) e.name = '이름을 입력해주세요';
+    if (!acct.loginId.trim()) e.loginId = '아이디를 입력해주세요';
+    if (!/^[a-zA-Z0-9_]{3,20}$/.test(acct.loginId)) e.loginId = '아이디는 영문/숫자/언더바 3~20자로 입력해주세요';
+    if (acct.pw.length < 4) e.pw = '비밀번호는 4자 이상이어야 해요';
     if (acct.pw !== acct.pw2) e.pw2 = '비밀번호가 일치하지 않아요';
     setErrs(e);
     if (Object.keys(e).length === 0) setStep(2);
@@ -1395,9 +1396,9 @@ function SignupWizard({ onComplete, onBack }) {
     if (!bizName.trim()) { alert('브랜드(상호명)를 입력해주세요.'); return; }
     setSaving(true);
     try {
-      // 이메일 중복 체크
-      const ex = await sb.get('app_users','&login_id=eq.'+encodeURIComponent(acct.email));
-      if (ex.length > 0) { alert('이미 사용 중인 이메일입니다.'); setSaving(false); return; }
+      // 아이디 중복 체크
+      const ex = await sb.get('app_users','&login_id=eq.'+encodeURIComponent(acct.loginId));
+      if (ex.length > 0) { alert('이미 사용 중인 아이디입니다.'); setSaving(false); return; }
 
       const bizId = 'biz_'+uid();
       const oId   = 'acc_'+uid();
@@ -1406,7 +1407,7 @@ function SignupWizard({ onComplete, onBack }) {
       // businesses 생성
       await sb.insert('businesses', {
         id: bizId, name: bizName.trim(),
-        code: bizName.trim().toLowerCase().replace(/\s+/g,'_').slice(0,20)+'_'+uid().slice(0,4),
+        code: acct.loginId,
         phone: branches[0].phone||'',
         settings: JSON.stringify({ plan:'trial', planExpiry: exp.toISOString().slice(0,10) }),
         use_yn: true
@@ -1429,7 +1430,7 @@ function SignupWizard({ onComplete, onBack }) {
       // app_users 생성
       await sb.insert('app_users', {
         id: oId, business_id: bizId,
-        login_id: acct.email,
+        login_id: acct.loginId,
         password: acct.pw,
         name: acct.name.trim(),
         role: 'owner',
@@ -1439,7 +1440,7 @@ function SignupWizard({ onComplete, onBack }) {
 
       setStep(3);
       setTimeout(()=>onComplete({
-        id:oId, businessId:bizId, loginId:acct.email, pw:acct.pw,
+        id:oId, businessId:bizId, loginId:acct.loginId, pw:acct.pw,
         name:acct.name.trim(), role:'owner', branchIds:brIds, viewBranchIds:brIds
       }), 2000);
     } catch(e) {
@@ -1476,20 +1477,20 @@ function SignupWizard({ onComplete, onBack }) {
     <div style={{display:'flex',flexDirection:'column',gap:0}}>
       <StepBar/>
       <div style={{fontSize:T.fs.lg,fontWeight:T.fw.black,marginBottom:4}}>계정 만들기</div>
-      <div style={{fontSize:T.fs.sm,color:T.textMuted,marginBottom:20,lineHeight:1.5}}>이메일과 비밀번호로 Bliss 계정을 만들어요.</div>
+      <div style={{fontSize:T.fs.sm,color:T.textMuted,marginBottom:20,lineHeight:1.5}}>아이디와 비밀번호로 Bliss 계정을 만들어요.</div>
       <div style={{marginBottom:13}}>
         <label style={lbl}>이름</label>
         <input style={{...inp,borderColor:errs.name?T.danger:T.border}} value={acct.name} onChange={e=>setA('name',e.target.value)} placeholder="홍길동"/>
         {errs.name&&<div style={errStyle}>{errs.name}</div>}
       </div>
       <div style={{marginBottom:13}}>
-        <label style={lbl}>이메일 (로그인 아이디)</label>
-        <input style={{...inp,borderColor:errs.email?T.danger:T.border}} type="email" value={acct.email} onChange={e=>setA('email',e.target.value)} placeholder="example@email.com"/>
-        {errs.email&&<div style={errStyle}>{errs.email}</div>}
+        <label style={lbl}>아이디 (영문/숫자/언더바 3~20자)</label>
+        <input style={{...inp,borderColor:errs.loginId?T.danger:T.border}} value={acct.loginId} onChange={e=>setA('loginId',e.target.value.toLowerCase())} placeholder="예: housewaxing"/>
+        {errs.loginId&&<div style={errStyle}>{errs.loginId}</div>}
       </div>
       <div style={{marginBottom:13}}>
         <label style={lbl}>비밀번호</label>
-        <input style={{...inp,borderColor:errs.pw?T.danger:T.border}} type="password" value={acct.pw} onChange={e=>setA('pw',e.target.value)} placeholder="6자 이상"/>
+        <input style={{...inp,borderColor:errs.pw?T.danger:T.border}} type="password" value={acct.pw} onChange={e=>setA('pw',e.target.value)} placeholder="4자 이상"/>
         {errs.pw&&<div style={errStyle}>{errs.pw}</div>}
       </div>
       <div style={{marginBottom:20}}>
