@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.180";
+const BLISS_V = "2.69.181";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7495,9 +7495,12 @@ JSON: {"date":"YYYY-MM-DD","time":"HH:MM","custName":"","custPhone":"","matchedS
       }
     }
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
     const r = await fetch("https://api.openai.com/v1/chat/completions", {
       method:"POST",
       headers:{"Content-Type":"application/json", "Authorization":`Bearer ${getOpenAIKey()}`},
+      signal: controller.signal,
       body: JSON.stringify({
         model: "gpt-4o-mini",
         messages,
@@ -7505,6 +7508,7 @@ JSON: {"date":"YYYY-MM-DD","time":"HH:MM","custName":"","custPhone":"","matchedS
         temperature: imageData ? 0.3 : 0.85
       })
     });
+    clearTimeout(timeoutId);
     if(!r.ok){const e=await r.json();throw new Error(e.error?.message||`HTTP ${r.status}`);}
     const d = await r.json();
     return d.choices?.[0]?.message?.content || "다시 말씀해 주세요.";
