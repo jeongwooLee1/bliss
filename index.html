@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.171";
+const BLISS_V = "2.69.172";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -3081,6 +3081,15 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
         onClose={()=>setShowQuickBook(false)}
         onParsed={(parsed)=>{
           setShowQuickBook(false);
+          // serviceId(단수) → matchedServiceIds(배열) 변환
+          if(parsed.serviceId && !parsed.matchedServiceIds) {
+            parsed.matchedServiceIds = [parsed.serviceId];
+          }
+          // 서비스명으로 ID 못 찾은 경우 이름으로 매칭
+          if((!parsed.matchedServiceIds || !parsed.matchedServiceIds.length) && parsed.memo) {
+            const svc = (data.services||[]).find(s => s.name && (s.name.includes(parsed.memo) || parsed.memo.includes(s.name)));
+            if(svc) parsed.matchedServiceIds = [svc.id];
+          }
           const room = (data.rooms||[]).find(r=>r.branch_id===(userBranches[0]||(data.branches||[])[0]?.id));
           setModalData({
             roomId: room?.id, bid: room?.branch_id || userBranches[0],
@@ -7451,7 +7460,7 @@ ${draftFields ? `\n✅ 파악된 정보 (다시 묻지 마세요): ${draftFields
 - 위 [예약현황]은 해당 날짜+지점의 실제 DB 조회 결과예요. 사실만 전달하고 예약 가능/불가 판단은 절대 하지 마세요.
 - 모든 정보가 모이면: 현황 한 줄 안내 + 확인 멘트 + JSON 한 줄
 - serviceId는 위 시술목록의 id값을 사용
-JSON: {"date":"YYYY-MM-DD","time":"HH:MM","custName":"","custPhone":"","serviceId":"시술id","staffId":"","dur":소요분,"memo":"시술명","branch":""}
+JSON: {"date":"YYYY-MM-DD","time":"HH:MM","custName":"","custPhone":"","matchedServiceIds":["시술id"],"staffId":"","dur":소요분,"memo":"시술명","branch":""}
 말투: 친근한 한국어, "~요" 체, 짧게, 마크다운 금지`;
     // 히스토리: ref에서 최신값 읽기 (클로저 stale 문제 방지)
     // chatHistoryRef.current에는 이미 현재 userMsg가 포함돼 있음
