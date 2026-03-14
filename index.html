@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.200";
+const BLISS_V = "2.69.201";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7230,6 +7230,7 @@ function QuickBookModal({ onClose, onParsed, data }) {
   };
   const stopVoice = () => { mediaRecRef.current?.stop(); setIsListening(false); clearInterval(timerRef.current); };
   useEffect(() => { if (audioData) doParse(null, audioData); }, [audioData]);
+  useEffect(() => { if (imgData) doParse(null, null); }, [imgData]);
 
   const handleImage = (e) => {
     const file = e.target.files?.[0]; if (!file) return;
@@ -7247,7 +7248,13 @@ function QuickBookModal({ onClose, onParsed, data }) {
         const file = items[i].getAsFile();
         if(!file) continue;
         const reader = new FileReader();
-        reader.onload = (ev) => { setImgData({base64:ev.target.result.split(",")[1], mimeType:file.type}); setImgPreview(ev.target.result); };
+        reader.onload = (ev) => {
+          const imgObj = {base64:ev.target.result.split(",")[1], mimeType:file.type};
+          setImgData(imgObj);
+          setImgPreview(ev.target.result);
+          // 즉시 분석 (imgData state 업데이트 전이라 직접 전달)
+          setTimeout(() => doParse(null, null), 100);
+        };
         reader.readAsDataURL(file);
         break;
       }
