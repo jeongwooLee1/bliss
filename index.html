@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.175";
+const BLISS_V = "2.69.176";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7645,10 +7645,12 @@ JSON: {"date":"YYYY-MM-DD","time":"HH:MM","custName":"","custPhone":"","matchedS
 
       if(convoModeRef.current) speakReply(displayText);
     } catch(e) {
-      setError("오류: " + e.message);
+      console.error("sendMessage 오류:", e);
+      setError("오류: " + (e.message || "알 수 없는 오류"));
       if(convoModeRef.current) setTimeout(restartListening, 800);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   // ── OpenAI STT (gpt-4o-transcribe) ──
@@ -7826,8 +7828,22 @@ JSON: {"date":"YYYY-MM-DD","time":"HH:MM","custName":"","custPhone":"","matchedS
     const file = e.target.files?.[0]; if(!file) return;
     const reader = new FileReader();
     reader.onload = ev => {
-      const b64 = ev.target.result.split(",")[1];
-      setImgData(b64); setImgPreview(ev.target.result);
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 1024;
+        let w = img.width, h = img.height;
+        if(w > MAX || h > MAX) {
+          if(w > h) { h = Math.round(h * MAX/w); w = MAX; }
+          else { w = Math.round(w * MAX/h); h = MAX; }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = w; canvas.height = h;
+        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+        const compressed = canvas.toDataURL("image/jpeg", 0.7);
+        setImgData(compressed.split(",")[1]);
+        setImgPreview(compressed);
+      };
+      img.src = ev.target.result;
     };
     reader.readAsDataURL(file);
   };
