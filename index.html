@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.168";
+const BLISS_V = "2.69.169";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7603,37 +7603,82 @@ JSON: {"date":"YYYY-MM-DD","time":"HH:MM","custName":"","custPhone":"","serviceI
     setLoading(false);
   };
 
-  // ── 음성 인식 초기화 ──
-  const initRecognition = () => {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if(!SR) return;
-    const rec = new SR();
-    rec.lang = "ko-KR"; rec.continuous = false; rec.interimResults = true;
+  // ── OpenAI STT (gpt-4o-transcribe) ──
+  const transcribeAudio = async (audioBlob) => {
+    const key = getOpenAIKey();
+    if(!key) throw new Error("OpenAI 키 없음");
+    const form = new FormData();
+    form.append("file", audioBlob, "audio.webm");
+    form.append("model", "gpt-4o-transcribe");
+    form.append("language", "ko");
+    const r = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+      method:"POST", headers:{"Authorization":`Bearer ${key}`}, body: form
+    });
+    if(!r.ok) throw new Error("STT "+r.status);
+    const d = await r.json();
+    return d.text || "";
+  };
 
-    rec.onstart = () => {
+  // ── 음성 인식 초기화 (MediaRecorder 기반) ──
+  const initRecognition = () => {
+    // MediaRecorder 지원 여부만 체크 - recognitionRef에 더미값 세팅
+    if(navigator.mediaDevices?.getUserMedia) {
+      recognitionRef.current = { _type: "openai" };
+    }
+  };
+
+  // MediaRecorder 녹음 제어
+  const mediaRecRef2 = React.useRef(null);
+  const audioChunksRef = React.useRef([]);
+  const isRecordingRef = React.useRef(false);
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+      const mr = new MediaRecorder(stream, {mimeType: MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "audio/mp4"});
+      audioChunksRef.current = [];
+      mr.ondataavailable = e => { if(e.data.size > 0) audioChunksRef.current.push(e.data); };
+      mr.onstop = async () => {
+        stream.getTracks().forEach(t => t.stop());
+        const blob = new Blob(audioChunksRef.current, {type: mr.mimeType});
+        setIsListening(false);
+        isRecordingRef.current = false;
+        if(blob.size < 1000) {
+          if(convoModeRef.current) setTimeout(restartListening, 600);
+          return;
+        }
+        try {
+          if(convoModeRef.current) setConvoState("thinking");
+          const txt = await transcribeAudio(blob);
+          if(txt.trim()) {
+            if(convoModeRef.current) { sendMessage(txt); }
+            else { setInput(txt); }
+          } else {
+            if(convoModeRef.current) setTimeout(restartListening, 600);
+          }
+        } catch(e) {
+          console.warn("STT 오류:", e);
+          if(convoModeRef.current) setTimeout(restartListening, 800);
+        }
+      };
+      mr.start();
+      mediaRecRef2.current = mr;
+      isRecordingRef.current = true;
       setIsListening(true);
-      if(convoModeRef.current) setConvoState("listening");
-    };
-    rec.onresult = e => {
-      let fin="", int="";
-      for(const r of e.results) { if(r.isFinal) fin+=r[0].transcript; else int+=r[0].transcript; }
-      const txt = fin||int;
-      if(convoModeRef.current) { convoTranscriptRef.current = txt; setConvoTranscript(txt); }
-      else setInput(txt);
-    };
-    rec.onend = () => {
-      setIsListening(false);
       if(convoModeRef.current) {
-        const txt = convoTranscriptRef.current.trim();
-        if(txt) { setConvoState("thinking"); sendMessage(txt); setConvoTranscript(""); }
-        else setTimeout(restartListening, 600);
+        setConvoState("listening");
+        // 대화모드: 최대 8초 녹음 후 자동 전송
+        setTimeout(() => { if(isRecordingRef.current) stopRecording(); }, 8000);
       }
-    };
-    rec.onerror = e => {
-      setIsListening(false);
-      if(convoModeRef.current && e.error!=="aborted") setTimeout(restartListening, 800);
-    };
-    recognitionRef.current = rec;
+    } catch(e) {
+      setError("마이크 접근 실패: "+e.message);
+    }
+  };
+
+  const stopRecording = () => {
+    if(mediaRecRef2.current && isRecordingRef.current) {
+      mediaRecRef2.current.stop();
+    }
   };
 
   const convoTranscriptRef = React.useRef("");
@@ -7641,7 +7686,7 @@ JSON: {"date":"YYYY-MM-DD","time":"HH:MM","custName":"","custPhone":"","serviceI
 
   const restartListening = () => {
     if(!convoModeRef.current || isSpeakingRef.current) return;
-    try { recognitionRef.current?.start(); } catch(e){}
+    startRecording();
   };
 
   // ── AudioContext (iOS unlock용) ──
@@ -7686,27 +7731,24 @@ JSON: {"date":"YYYY-MM-DD","time":"HH:MM","custName":"","custPhone":"","serviceI
 
   // ── 대화모드 ──
   const startConvoMode = () => {
-    if(!recognitionRef.current) { setError("이 브라우저는 음성을 지원하지 않아요"); return; }
     convoModeRef.current = true;
     setConvoMode(true); setConvoState("idle");
-    // iOS AudioContext unlock (사용자 제스처 컨텍스트에서 실행)
     try { getAudioCtx(); } catch(e){}
     setTimeout(restartListening, 300);
   };
   const stopConvoMode = () => {
     convoModeRef.current = false;
     setConvoMode(false); setConvoState("idle");
-    try { recognitionRef.current?.abort(); } catch(e){}
+    stopRecording();
     isSpeakingRef.current = false;
     audioCtxRef.current?.suspend();
   };
 
-  // ── 단발 마이크 ──
+  // ── 단발 마이크 (누르는 동안 녹음, 떼면 전송) ──
   const toggleVoice = () => {
-    if(isSpeakingRef.current) return; // 말하는 중엔 무시
-    if(isListening) { recognitionRef.current?.stop(); return; }
-    if(!recognitionRef.current) return;
-    try { recognitionRef.current.start(); } catch(e){}
+    if(isSpeakingRef.current) return;
+    if(isListening) { stopRecording(); return; }
+    startRecording();
   };
 
   // ── 이미지 처리 ──
