@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.169";
+const BLISS_V = "2.69.170";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7274,8 +7274,7 @@ function QuickBookModal({ onClose, onParsed, data }) {
     loadOpenAIKey();
     initRecognition();
     return () => {
-      recognitionRef.current?.abort();
-      window.speechSynthesis?.cancel();
+      stopRecording();
       clearInterval(timerRef.current);
     };
   }, []);
@@ -7661,14 +7660,36 @@ JSON: {"date":"YYYY-MM-DD","time":"HH:MM","custName":"","custPhone":"","serviceI
           if(convoModeRef.current) setTimeout(restartListening, 800);
         }
       };
-      mr.start();
+      mr.start(100);
       mediaRecRef2.current = mr;
       isRecordingRef.current = true;
       setIsListening(true);
+
       if(convoModeRef.current) {
         setConvoState("listening");
-        // 대화모드: 최대 8초 녹음 후 자동 전송
-        setTimeout(() => { if(isRecordingRef.current) stopRecording(); }, 8000);
+        // VAD: 침묵 1.5초 지속 시 자동 전송
+        try {
+          const audCtx = getAudioCtx();
+          const src2 = audCtx.createMediaStreamSource(stream);
+          const analyser = audCtx.createAnalyser();
+          analyser.fftSize = 256;
+          src2.connect(analyser);
+          const freqData = new Uint8Array(analyser.frequencyBinCount);
+          let silenceStart = null;
+          const check = () => {
+            if(!isRecordingRef.current) return;
+            analyser.getByteFrequencyData(freqData);
+            const avg = freqData.reduce((a,b)=>a+b,0)/freqData.length;
+            if(avg < 12) {
+              if(!silenceStart) silenceStart = Date.now();
+              else if(Date.now()-silenceStart > 1500) { stopRecording(); return; }
+            } else silenceStart = null;
+            requestAnimationFrame(check);
+          };
+          setTimeout(()=>{ if(isRecordingRef.current) check(); }, 800);
+        } catch(e) {}
+        // 최대 30초 안전장치
+        setTimeout(()=>{ if(isRecordingRef.current) stopRecording(); }, 30000);
       }
     } catch(e) {
       setError("마이크 접근 실패: "+e.message);
