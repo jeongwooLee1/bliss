@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.177";
+const BLISS_V = "2.69.178";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7824,12 +7824,13 @@ JSON: {"date":"YYYY-MM-DD","time":"HH:MM","custName":"","custPhone":"","matchedS
   };
 
   // ── 이미지 처리 ──
-  const handleImage = e => {
+  const handleImage = async e => {
     const file = e.target.files?.[0]; if(!file) return;
+    e.target.value = ""; // 같은 파일 재선택 가능하게
     const reader = new FileReader();
-    reader.onload = ev => {
+    reader.onload = async ev => {
       const img = new Image();
-      img.onload = () => {
+      img.onload = async () => {
         const MAX = 1024;
         let w = img.width, h = img.height;
         if(w > MAX || h > MAX) {
@@ -7839,12 +7840,51 @@ JSON: {"date":"YYYY-MM-DD","time":"HH:MM","custName":"","custPhone":"","matchedS
         const canvas = document.createElement("canvas");
         canvas.width = w; canvas.height = h;
         canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-        const compressed = canvas.toDataURL("image/jpeg", 0.7);
-        const b64 = compressed.split(",")[1];
-        setImgData(b64);
-        setImgPreview(compressed);
-        // 이미지 올리면 바로 분석 시작
-        setTimeout(() => sendMessageRef.current?.("", b64), 100);
+        const b64 = canvas.toDataURL("image/jpeg", 0.7).split(",")[1];
+
+        // 대화창 없이 직접 분석
+        setLoading(true); setError(null);
+        try {
+          const key = getOpenAIKey() || await loadOpenAIKey().then(()=>getOpenAIKey());
+          if(!key) { setError("OpenAI 키가 없어요"); setLoading(false); return; }
+
+          const svcList = (data?.services || []).filter(s=>s.name).map(s=>`${s.name}(${s.dur}분,id:${s.id})`).join(", ");
+          const branches = (data?.branches || []).map(b=>b.short||b.name).join(", ");
+          const now = new Date();
+          const prompt = `이 예약 이미지에서 예약 정보를 추출하세요. 현재 ${now.toLocaleDateString("ko-KR")} ${now.toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"})}.
+전체지점: ${branches}
+시술목록: ${svcList}
+JSON만 응답하세요 (다른 텍스트 없이):
+{"date":"YYYY-MM-DD","time":"HH:MM","custName":"","custPhone":"","matchedServiceIds":["시술id"],"dur":소요분,"memo":"시술명","branch":""}`;
+
+          const r = await fetch("https://api.openai.com/v1/chat/completions", {
+            method:"POST",
+            headers:{"Content-Type":"application/json","Authorization":`Bearer ${key}`},
+            body: JSON.stringify({
+              model:"gpt-4o-mini",
+              messages:[{role:"user", content:[
+                {type:"image_url", image_url:{url:`data:image/jpeg;base64,${b64}`}},
+                {type:"text", text: prompt}
+              ]}],
+              max_tokens: 500,
+              temperature: 0.1
+            })
+          });
+          if(!r.ok) throw new Error("API "+r.status);
+          const d = await r.json();
+          const raw = d.choices?.[0]?.message?.content || "";
+          const jsonMatch = raw.match(/\{[\s\S]*\}/);
+          if(jsonMatch) {
+            const parsed = JSON.parse(jsonMatch[0]);
+            if(onParsed) onParsed(parsed);
+          } else {
+            setError("이미지에서 예약 정보를 찾지 못했어요");
+          }
+        } catch(ex) {
+          setError("분석 실패: " + ex.message);
+        } finally {
+          setLoading(false);
+        }
       };
       img.src = ev.target.result;
     };
