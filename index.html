@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.181";
+const BLISS_V = "2.69.182";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7240,6 +7240,8 @@ function useDragSort(items, setItems, sortKey="sort", onComplete) {
 const DragHandle = ({onTouchStart}) => <span onTouchStart={onTouchStart} style={{cursor:"grab",flexShrink:0,userSelect:"none",touchAction:"none",padding:"4px 2px"}}><I name="grip" size={14} color={T.gray500}/></span>;
 
 // ─── 시술상품관리 ───
+
+// ─── 시술상품관리 ───
 function QuickBookModal({ onClose, onParsed, data }) {
   // ── State ──
   const [input, setInput] = React.useState("");
@@ -7250,14 +7252,10 @@ function QuickBookModal({ onClose, onParsed, data }) {
   const [isListening, setIsListening] = React.useState(false);
   const [recordSec, setRecordSec] = React.useState(0);
   const [chatHistory, setChatHistory] = React.useState([]);
-  const chatHistoryRef = React.useRef([]); // ← 클로저 문제 해결용 ref
-  // sendMessageRef: 렌더마다 최신 sendMessage 동기화
-  React.useEffect(() => { sendMessageRef.current = sendMessage; });
   const [convoMode, setConvoMode] = React.useState(false);
   const [convoState, setConvoState] = React.useState("idle"); // idle|listening|thinking|speaking
   const [convoTranscript, setConvoTranscript] = React.useState("");
   const [todayStats, setTodayStats] = React.useState(null);
-  const [reservationDraft, setReservationDraft] = React.useState({}); // 수집된 예약 정보 누적
 
   const mediaRecRef = React.useRef(null);
   const chunksRef = React.useRef([]);
@@ -7265,16 +7263,12 @@ function QuickBookModal({ onClose, onParsed, data }) {
   const recognitionRef = React.useRef(null);
   const isSpeakingRef = React.useRef(false);
   const convoModeRef = React.useRef(false);
-  const sendMessageRef = React.useRef(null); // ← 콜백 stale 방지용
   const fileRef = React.useRef(null);
   const camRef = React.useRef(null);
   const inputRef = React.useRef(null);
   const msgEndRef = React.useRef(null);
-  const draftRef = React.useRef({});
 
-  // OpenAI 키: 렌더 시 고정 말고 함수 실행 시마다 최신값 읽기
-  const getOpenAIKey = () => window.__openaiKey || localStorage.getItem("bliss_openai_key") || "";
-  const apiKey = window.__geminiKey || localStorage.getItem("bliss_gemini_key") || ""; // 이미지용 fallback
+  const apiKey = window.__geminiKey || localStorage.getItem("bliss_gemini_key") || "";
   const SUPA_URL = "https://dpftlrsuqxqqeouwbfjd.supabase.co";
   const ANON = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwZnRscnN1cXhxcWVvdXdiZmpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5MDU4MjQsImV4cCI6MjA4NzQ4MTgyNH0.iydEkjtPjZ0jXpUUPJben4IWWneDqLomv-HDlcFayE4";
 
@@ -7289,30 +7283,13 @@ function QuickBookModal({ onClose, onParsed, data }) {
   // ── 오늘 데이터 로드 ──
   React.useEffect(() => {
     loadTodayStats();
-    loadOpenAIKey();
     initRecognition();
     return () => {
-      stopRecording();
+      recognitionRef.current?.abort();
+      window.speechSynthesis?.cancel();
       clearInterval(timerRef.current);
     };
   }, []);
-
-  // OpenAI 키 로드 (Supabase → localStorage → window)
-  const loadOpenAIKey = async () => {
-    try {
-      const bizList = data?.businesses || data?.businessSettings || [];
-      const bizId = bizList[0]?.id;
-      if(!bizId) return;
-      const res = await fetch(`${SUPA_URL}/rest/v1/businesses?id=eq.${bizId}&select=settings`,
-        { headers: { apikey: ANON, Authorization: `Bearer ${ANON}` } });
-      const rows = await res.json();
-      const memo = JSON.parse(rows[0]?.settings || "{}");
-      if(memo.openai_key) {
-        localStorage.setItem("bliss_openai_key", memo.openai_key);
-        window.__openaiKey = memo.openai_key;
-      }
-    } catch(e) {}
-  };
 
   const loadTodayStats = async () => {
     try {
@@ -7356,407 +7333,118 @@ function QuickBookModal({ onClose, onParsed, data }) {
         return `${bName} ${r.time} ${r.cust_name||"?"} ${r.status}`;
       }).join(" | ");
 
-      return `[현재시각: ${ds} ${ts}] 하우스왁싱 예약관리 시스템
+      return `[${ds} ${ts}] 하우스왁싱 예약관리 시스템
 지점현황: ${branchSummaries||"없음"}
-오늘(${ds}) 예약(${rows.length}건): ${rowLines||"없음"}
-※ 위 예약 목록은 오늘(${ds}) 데이터만입니다. 다른 날짜 예약 요청 시 위 목록과 무관합니다.
+오늘예약(${rows.length}건): ${rowLines||"없음"}
 전체지점: ${branches.map(b=>b.short||b.name).join(",")||"없음"}`;
     } catch(e) {
       return `[${new Date().toLocaleDateString("ko-KR")}] 하우스왁싱 예약관리`;
     }
   };
 
-  // ── 특정 날짜/지점/시간대 예약 현황 조회 ──
-  const checkAvailability = async (date, branchName, time, durMin) => {
-    if(!date) return null;
-    try {
-      const branches = data?.branches || data?.branchSettings || [];
-      // fuzzy 매칭: 정확 일치 → short/name 포함 → 입력값이 short/name에 포함
-      const branch = branches.find(b => (b.short||b.name) === branchName)
-        || branches.find(b => branchName && ((b.short||b.name||"").includes(branchName) || branchName.includes(b.short||b.name||"")));
-      const bid = branch?.id;
+  // ── Gemini 호출 ──
+  const callGemini = async (msg, imageData = null) => {
+    const ctx = await buildCtx();
+    const rules = (data?.businesses || data?.businessSettings)?.[0]?.settings?.ai_rules || [];
+    const rulesText = Array.isArray(rules) ? rules.map((r,i)=>`${i+1}. ${r}`).join("\n") : "";
+    const sys = `당신은 하우스왁싱 원장님 전용 AI 어시스턴트입니다.
+${ctx}
+운영규칙:
+${rulesText}
+응답규칙: 2~3문장으로 핵심만. 인사 반복 금지. 마크다운(*#_) 절대 금지. 숫자 정확히.
+예약 파싱 요청 시: JSON으로만 응답. {date,time,custName,custPhone,gender,serviceId,staffId,dur,memo}`;
 
-      // 지점 특정 안 됐으면 조회 안 함
-      if(!bid) return branchName ? `"${branchName}" 지점을 찾을 수 없어요. 지점명을 확인해주세요.` : null;
+    const contents = [...chatHistory.map(m=>({role:m.role,parts:[{text:m.text}]})),
+      {role:"user", parts: imageData
+        ? [{inline_data:{mime_type:"image/jpeg",data:imageData}},{text:msg}]
+        : [{text:msg}]}];
 
-      let url = `${SUPA_URL}/rest/v1/reservations?date=eq.${date}&bid=eq.${bid}&select=time,dur,cust_name,status&order=time.asc`;
-      const res = await fetch(url, { headers: { apikey: ANON, Authorization: `Bearer ${ANON}` }});
-      const rows = await res.json();
-
-      if(!rows.length) return `${date} ${branchName||"해당지점"}: 예약 없음`;
-
-      // 시간대 겹침 계산
-      let overlapInfo = "";
-      if(time && durMin) {
-        const [sh, sm] = time.split(":").map(Number);
-        const startMin = sh*60+sm;
-        const endMin = startMin + durMin;
-        const overlaps = rows.filter(r => {
-          const [rh, rm] = (r.time||"00:00").split(":").map(Number);
-          const rStart = rh*60+rm;
-          const rEnd = rStart + (r.dur||60);
-          return rStart < endMin && rEnd > startMin;
-        });
-        if(overlaps.length) {
-          const detail = overlaps.map(r=>`${r.time}~${(()=>{const[h,m]=r.time.split(":").map(Number);const e=h*60+m+(r.dur||60);return `${String(Math.floor(e/60)).padStart(2,"0")}:${String(e%60).padStart(2,"0")}`;})()}(${r.cust_name||"?"})`).join(", ");
-          overlapInfo = `\n→ ${time} 시술 시간(${durMin}분) 겹치는 예약 ${overlaps.length}건: ${detail}`;
-        } else {
-          overlapInfo = `\n→ ${time} 시술 시간(${durMin}분) 겹치는 예약 없음`;
-        }
+    const r = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      { method:"POST", headers:{"Content-Type":"application/json"},
+        body: JSON.stringify({
+          system_instruction: {parts:[{text:sys}]},
+          contents,
+          generationConfig: {temperature:.75, maxOutputTokens:600}
+        })
       }
-
-      const allTimes = rows.map(r=>`${r.time}(${r.cust_name||"?"})`).join(", ");
-      return `${date} ${branchName||"해당지점"} 전체 예약 ${rows.length}건: ${allTimes}${overlapInfo}`;
-    } catch(e) { return null; }
-  };
-
-  // ── GPT-4o-mini 호출 ──
-  const callGPT = async (msg, imageData = null) => {
-    const draft = draftRef.current;
-    const ctx = await buildCtx(); // 오늘 예약 현황
-
-    // 날짜가 파악되면 실제 가용성 조회 (시간+소요시간도 함께)
-    let availInfo = "";
-    if(draft.date) {
-      // data.services에서 소요시간 조회
-      let durMin = draft.dur || null;
-      if(!durMin && draft.memo) {
-        const svcs = data?.services || [];
-        const matched = svcs.find(s => s.name && (s.name.includes(draft.memo) || draft.memo.includes(s.name)));
-        if(matched) durMin = matched.dur;
-      }
-      const avail = await checkAvailability(draft.date, draft.branch, draft.time, durMin);
-      if(avail) availInfo = `\n[예약현황] ${avail}`;
-    }
-
-    let rules = [];
-    try {
-      const rr = await fetch(`${SUPA_URL}/rest/v1/businesses?id=eq.biz_khvurgshb&select=settings`,
-        {headers:{apikey:ANON, Authorization:`Bearer ${ANON}`}});
-      const rrows = await rr.json();
-      const memo = JSON.parse(rrows[0]?.settings || "{}");
-      rules = Array.isArray(memo.ai_rules) ? memo.ai_rules : [];
-    } catch(e) {
-      try { rules = JSON.parse(localStorage.getItem("bliss_ai_rules")||"[]"); } catch{}
-    }
-    const rulesText = rules.map((r,i)=>`${i+1}. ${r}`).join("\n");
-    const branches = (data?.branches || data?.branchSettings || []).map(b=>b.short||b.name).join(", ");
-    const now = new Date();
-    const ds = now.toLocaleDateString("ko-KR");
-    const ts = now.toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"});
-
-    const draftFields = Object.entries({
-      이름: draft.custName, 전화: draft.custPhone, 날짜: draft.date,
-      시간: draft.time, 서비스: draft.memo, 지점: draft.branch
-    }).filter(([,v])=>v).map(([k,v])=>`${k}: ${v}`).join(", ");
-
-    const svcList = (data?.services || []).filter(s=>s.name).map(s=>`${s.name}(${s.dur}분,id:${s.id})`).join(", ");
-
-    const isRegisterCmd = msg && /^(등록|등록해|등록해줘|저장|저장해|예약등록|예약해줘?)$/.test(msg.trim());
-    const hasFullDraft = draft.custName && draft.custPhone && draft.date && draft.time;
-
-    const sys = `당신은 하우스왁싱 예약 AI 비서입니다. 현재 ${ds} ${ts}.
-전체지점: ${branches||"없음"}
-시술목록: ${svcList||"없음"}
-운영규칙:${rulesText ? "\n"+rulesText : " 없음"}
-${availInfo}
-${draftFields ? `\n✅ 파악된 정보 (다시 묻지 마세요): ${draftFields}` : ""}
-
-[역할]
-예약 정보(이름, 전화, 날짜, 시간, 서비스, 지점)를 수집해서 등록하세요.
-- 파악된 정보는 절대 다시 묻지 마세요
-- 한 번에 하나씩만 질문
-- 이미지가 주어지면 예약 정보(이름,전화,날짜,시간,서비스,지점)를 모두 추출해서 즉시 JSON으로 응답하세요
-- "등록해", "등록" 같은 명령이 오고 파악된 정보가 있으면 즉시 JSON으로 응답하세요
-- 위 [예약현황]은 사실만 전달, 가능/불가 판단 금지
-- 모든 정보가 모이면: 확인 멘트 한 줄 + JSON 한 줄
-- **절대 마크다운 사용 금지** (**, ##, -, 목록 등 모두 금지)
-JSON: {"date":"YYYY-MM-DD","time":"HH:MM","custName":"","custPhone":"","matchedServiceIds":["시술id"],"staffId":"","dur":소요분,"memo":"시술명","branch":""}
-말투: 친근한 한국어, "~요" 체, 짧게`;
-    // 히스토리: ref에서 최신값 읽기 (클로저 stale 문제 방지)
-    // chatHistoryRef.current에는 이미 현재 userMsg가 포함돼 있음
-    const historyForGPT = chatHistoryRef.current;
-    const messages = [
-      {role:"system", content: sys},
-      ...historyForGPT.map(m=>({
-        role: m.role === "model" ? "assistant" : "user",
-        content: m.fullText || m.text
-      })),
-    ];
-
-    // 이미지가 있으면 마지막 user 메시지를 vision 포맷으로 교체
-    if(imageData) {
-      const lastIdx = messages.length - 1;
-      if(messages[lastIdx]?.role === "user") {
-        messages[lastIdx] = {role:"user", content:[
-          {type:"image_url", image_url:{url:`data:image/jpeg;base64,${imageData}`}},
-          {type:"text", text: "이 이미지에서 예약 정보(이름, 전화번호, 날짜, 시간, 시술, 지점)를 모두 추출해서 확인 멘트 한 줄 후 JSON으로 응답하세요."}
-        ]};
-      }
-    }
-
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
-    const r = await fetch("https://api.openai.com/v1/chat/completions", {
-      method:"POST",
-      headers:{"Content-Type":"application/json", "Authorization":`Bearer ${getOpenAIKey()}`},
-      signal: controller.signal,
-      body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages,
-        max_tokens: imageData ? 1000 : 500,
-        temperature: imageData ? 0.3 : 0.85
-      })
-    });
-    clearTimeout(timeoutId);
+    );
     if(!r.ok){const e=await r.json();throw new Error(e.error?.message||`HTTP ${r.status}`);}
     const d = await r.json();
-    return d.choices?.[0]?.message?.content || "다시 말씀해 주세요.";
+    return d.candidates?.[0]?.content?.parts?.[0]?.text || "다시 말씀해 주세요.";
   };
 
   // ── 메시지 전송 ──
   const sendMessage = async (overrideText, imageData = null) => {
-    sendMessageRef.current = sendMessage; // 항상 최신 함수 유지
-    // 키 없으면 Supabase에서 직접 로드 시도
-    let key = getOpenAIKey();
-    if(!key) {
-      await loadOpenAIKey();
-      key = getOpenAIKey();
-    }
-    if(!key) { setError("API 키가 없어요. 관리설정에서 OpenAI 키를 등록해주세요."); return; }
+    if(!apiKey) { setError("API 키가 없어요. 관리설정에서 Gemini 키를 등록해주세요."); return; }
     const text = (overrideText || input).trim();
     if(!text && !imageData && !imgData) return;
 
-    const userMsg = { role:"user", text: text||(imageData?"[이미지]":""), fullText: text||(imageData?"[이미지]":""), time: new Date().toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"}) };
-
-    // 유저 메시지에서 즉시 draft 업데이트
-    if(text) {
-      const nd = {...draftRef.current};
-      // 전화번호
-      const phoneMatch = text.match(/0\d{1,2}[-\s]?\d{3,4}[-\s]?\d{4}/);
-      if(phoneMatch && !nd.custPhone) nd.custPhone = phoneMatch[0].replace(/[-\s]/g,"");
-      // 이름: 한글 2~4글자
-      const nameMatch = text.match(/([가-힣]{2,4})(님|씨|고객|이라고|이야|예요|이에요)/) ||
-                        text.match(/^([가-힣]{2,4})[\s\n]/) ||
-                        text.match(/[\s\n]([가-힣]{2,4})[\s\n]/);
-      if(nameMatch && !nd.custName) nd.custName = nameMatch[1];
-      // 시간 (저녁/오후/낮/점심 → +12h)
-      const isPM = /저녁|오후|밤|낮|점심|오후/.test(text);
-      const isAM = /오전|아침|새벽/.test(text);
-      // 한글 숫자 변환
-      const korNum = {"한":1,"두":2,"세":3,"네":4,"다섯":5,"여섯":6,"일곱":7,"여덟":8,"아홉":9,"열":10,"열한":11,"열두":12};
-      let timeMatch = text.match(/(\d{1,2})시\s*(\d{0,2})분?/);
-      if(!timeMatch) {
-        const korMatch = text.match(/(한|두|세|네|다섯|여섯|일곱|여덟|아홉|열한|열두|열)시\s*(\d{0,2})분?/);
-        if(korMatch) timeMatch = [korMatch[0], String(korNum[korMatch[1]]||1), korMatch[2]||""];
-      }
-      if(timeMatch && !nd.time) {
-        let h = parseInt(timeMatch[1]); const m = parseInt(timeMatch[2]||"0");
-        if(isPM && h < 12) h += 12;
-        else if(isAM && h === 12) h = 0;
-        else if(!isPM && !isAM && h >= 1 && h <= 7) h += 12; // 1~7시는 대부분 오후로 추정
-        nd.time = `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
-      }
-      // 날짜
-      if(!nd.date) {
-        const today = new Date();
-        if(text.includes("내일")) { const d=new Date(today); d.setDate(d.getDate()+1); nd.date=d.toISOString().split("T")[0]; }
-        else if(text.includes("모레")) { const d=new Date(today); d.setDate(d.getDate()+2); nd.date=d.toISOString().split("T")[0]; }
-        else if(text.includes("오늘")) { nd.date=today.toISOString().split("T")[0]; }
-      }
-      // 지점 추출 (fuzzy)
-      const branches = data?.branches || data?.branchSettings || [];
-      for(const b of branches) {
-        const bname = b.short || b.name || "";
-        if(bname && !nd.branch) {
-          if(text.includes(bname) || bname.includes(text.slice(0,3))) { nd.branch = bname; break; }
-          // "강남역" → "강남점" 같은 경우: 앞 2글자 매칭
-          const key = bname.replace(/점$|본점$/,"");
-          if(key.length >= 2 && text.includes(key)) { nd.branch = bname; break; }
-        }
-      }
-      if(JSON.stringify(nd) !== JSON.stringify(draftRef.current)) {
-        draftRef.current = nd;
-        setReservationDraft({...nd});
-      }
-    }
-
-    // chatHistoryRef에 즉시 반영 (callGPT가 최신 히스토리 읽도록)
-    const updatedHistory = [...chatHistoryRef.current, userMsg];
-    chatHistoryRef.current = updatedHistory;
-    setChatHistory(updatedHistory);
+    const userMsg = { role:"user", text: text||(imageData?"[이미지]":""), time: new Date().toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"}) };
+    setChatHistory(prev => [...prev, userMsg]);
     setInput("");
     setImgData(null); setImgPreview(null);
     setLoading(true); setError(null);
 
     setTimeout(() => msgEndRef.current?.scrollIntoView({behavior:"smooth"}), 50);
 
-    // 등록 명령 + 정보 완성 → 바로 JSON 생성
-    if(isRegisterCmd && hasFullDraft) {
-      const svcs = data?.services || [];
-      const svc = svcs.find(s => s.name && draft.memo && (s.name.includes(draft.memo) || draft.memo.includes(s.name)));
-      const autoJson = {
-        date: draft.date, time: draft.time, custName: draft.custName,
-        custPhone: draft.custPhone, branch: draft.branch || "",
-        matchedServiceIds: svc ? [svc.id] : [], memo: draft.memo || "",
-        dur: svc?.dur || draft.dur || 35
-      };
-      const aiMsg = { role:"model", text:`✅ ${draft.custName}님 ${draft.date} ${draft.time} 예약 등록할게요!`, fullText: JSON.stringify(autoJson), time: new Date().toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"}), parsed: autoJson };
-      const newHistory = [...chatHistoryRef.current, aiMsg];
-      chatHistoryRef.current = newHistory;
-      setChatHistory(newHistory);
-      setLoading(false);
-      if(onParsed) setTimeout(() => onParsed(autoJson), 300);
-      return;
-    }
-
     try {
-      const reply = await callGPT(text, imageData || imgData);
+      const reply = await callGemini(text, imageData || imgData);
 
-      // 예약 JSON 추출 및 draft 누적
+      // 예약 파싱 시도
       let parsed = null;
-      let displayText = reply;
       try {
-        const jsonMatch = reply.match(/\{[^{}]*"date"[^{}]*\}/s) || reply.match(/\{[\s\S]*?\}/);
-        if(jsonMatch) {
-          const candidate = JSON.parse(jsonMatch[0]);
-          if(candidate.date || candidate.custName) {
-            parsed = candidate;
-            const newDraft = {...draftRef.current};
-            if(parsed.custName) newDraft.custName = parsed.custName;
-            if(parsed.custPhone) newDraft.custPhone = parsed.custPhone;
-            if(parsed.date) newDraft.date = parsed.date;
-            if(parsed.time) newDraft.time = parsed.time;
-            if(parsed.memo) newDraft.memo = parsed.memo;
-            if(parsed.branch) newDraft.branch = parsed.branch;
-            draftRef.current = newDraft;
-            setReservationDraft({...newDraft});
-            displayText = reply.replace(jsonMatch[0], "").replace(/```json|```/g,"").trim();
-            if(!displayText) displayText = `✅ ${parsed.custName||""}님 ${parsed.date||""} ${parsed.time||""} 예약 확인했어요!`;
-          }
-        }
+        const cleaned = reply.replace(/```json|```/g,"").trim();
+        if(cleaned.startsWith("{")) parsed = JSON.parse(cleaned);
       } catch(e){}
 
-      const aiMsg = { role:"model", text: displayText, fullText: reply, time: new Date().toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"}), parsed };
-      const newHistory = [...chatHistoryRef.current, aiMsg];
-      chatHistoryRef.current = newHistory;
-      setChatHistory(newHistory);
+      const aiMsg = { role:"model", text: parsed ? `✅ 예약 정보를 인식했어요!\n${parsed.custName||""}님 ${parsed.date||""} ${parsed.time||""}` : reply, time: new Date().toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"}), parsed };
+      setChatHistory(prev => [...prev, aiMsg]);
       setTimeout(() => msgEndRef.current?.scrollIntoView({behavior:"smooth"}), 50);
 
       if(parsed && onParsed) {
         setTimeout(() => onParsed(parsed), 800);
       }
 
-      if(convoModeRef.current) speakReply(displayText);
+      if(convoModeRef.current) speakReply(reply);
     } catch(e) {
-      console.error("sendMessage 오류:", e);
-      setError("오류: " + (e.message || "알 수 없는 오류"));
+      setError("오류: " + e.message);
       if(convoModeRef.current) setTimeout(restartListening, 800);
-    } finally {
-      setLoading(false);
     }
+    setLoading(false);
   };
 
-  // ── OpenAI STT (gpt-4o-transcribe) ──
-  const transcribeAudio = async (audioBlob) => {
-    const key = getOpenAIKey();
-    if(!key) throw new Error("OpenAI 키 없음");
-    const form = new FormData();
-    form.append("file", audioBlob, "audio.webm");
-    form.append("model", "gpt-4o-transcribe");
-    form.append("language", "ko");
-    const r = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-      method:"POST", headers:{"Authorization":`Bearer ${key}`}, body: form
-    });
-    if(!r.ok) throw new Error("STT "+r.status);
-    const d = await r.json();
-    return d.text || "";
-  };
-
-  // ── 음성 인식 초기화 (MediaRecorder 기반) ──
+  // ── 음성 인식 초기화 ──
   const initRecognition = () => {
-    // MediaRecorder 지원 여부만 체크 - recognitionRef에 더미값 세팅
-    if(navigator.mediaDevices?.getUserMedia) {
-      recognitionRef.current = { _type: "openai" };
-    }
-  };
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if(!SR) return;
+    const rec = new SR();
+    rec.lang = "ko-KR"; rec.continuous = false; rec.interimResults = true;
 
-  // MediaRecorder 녹음 제어
-  const mediaRecRef2 = React.useRef(null);
-  const audioChunksRef = React.useRef([]);
-  const isRecordingRef = React.useRef(false);
-
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({audio:true});
-      const mr = new MediaRecorder(stream, {mimeType: MediaRecorder.isTypeSupported("audio/webm") ? "audio/webm" : "audio/mp4"});
-      audioChunksRef.current = [];
-      mr.ondataavailable = e => { if(e.data.size > 0) audioChunksRef.current.push(e.data); };
-      mr.onstop = async () => {
-        stream.getTracks().forEach(t => t.stop());
-        const blob = new Blob(audioChunksRef.current, {type: mr.mimeType});
-        setIsListening(false);
-        isRecordingRef.current = false;
-        if(blob.size < 1000) {
-          if(convoModeRef.current) setTimeout(restartListening, 600);
-          return;
-        }
-        try {
-          if(convoModeRef.current) setConvoState("thinking");
-          const txt = await transcribeAudio(blob);
-          if(txt.trim()) {
-            if(convoModeRef.current) { (sendMessageRef.current||sendMessage)(txt); }
-            else { setInput(txt); }
-          } else {
-            if(convoModeRef.current) setTimeout(restartListening, 600);
-          }
-        } catch(e) {
-          console.warn("STT 오류:", e);
-          if(convoModeRef.current) setTimeout(restartListening, 800);
-        }
-      };
-      mr.start(100);
-      mediaRecRef2.current = mr;
-      isRecordingRef.current = true;
+    rec.onstart = () => {
       setIsListening(true);
-
+      if(convoModeRef.current) setConvoState("listening");
+    };
+    rec.onresult = e => {
+      let fin="", int="";
+      for(const r of e.results) { if(r.isFinal) fin+=r[0].transcript; else int+=r[0].transcript; }
+      const txt = fin||int;
+      if(convoModeRef.current) { convoTranscriptRef.current = txt; setConvoTranscript(txt); }
+      else setInput(txt);
+    };
+    rec.onend = () => {
+      setIsListening(false);
       if(convoModeRef.current) {
-        setConvoState("listening");
-        // VAD: 침묵 1.5초 지속 시 자동 전송
-        try {
-          const audCtx = getAudioCtx();
-          const src2 = audCtx.createMediaStreamSource(stream);
-          const analyser = audCtx.createAnalyser();
-          analyser.fftSize = 256;
-          src2.connect(analyser);
-          const freqData = new Uint8Array(analyser.frequencyBinCount);
-          let silenceStart = null;
-          let hasSpeech = false; // 말을 한 번이라도 감지해야 침묵 종료
-          const check = () => {
-            if(!isRecordingRef.current) return;
-            analyser.getByteFrequencyData(freqData);
-            const avg = freqData.reduce((a,b)=>a+b,0)/freqData.length;
-            if(avg >= 25) hasSpeech = true; // 말소리 감지
-            if(avg < 25) {
-              if(!silenceStart) silenceStart = Date.now();
-              else if(hasSpeech && Date.now()-silenceStart > 2000) { stopRecording(); return; }
-            } else silenceStart = null;
-            requestAnimationFrame(check);
-          };
-          setTimeout(()=>{ if(isRecordingRef.current) check(); }, 1000);
-        } catch(e) {}
-        // 최대 30초 안전장치
-        setTimeout(()=>{ if(isRecordingRef.current) stopRecording(); }, 30000);
+        const txt = convoTranscriptRef.current.trim();
+        if(txt) { setConvoState("thinking"); sendMessage(txt); setConvoTranscript(""); }
+        else setTimeout(restartListening, 600);
       }
-    } catch(e) {
-      setError("마이크 접근 실패: "+e.message);
-    }
-  };
-
-  const stopRecording = () => {
-    if(mediaRecRef2.current && isRecordingRef.current) {
-      mediaRecRef2.current.stop();
-    }
+    };
+    rec.onerror = e => {
+      setIsListening(false);
+      if(convoModeRef.current && e.error!=="aborted") setTimeout(restartListening, 800);
+    };
+    recognitionRef.current = rec;
   };
 
   const convoTranscriptRef = React.useRef("");
@@ -7764,133 +7452,63 @@ JSON: {"date":"YYYY-MM-DD","time":"HH:MM","custName":"","custPhone":"","matchedS
 
   const restartListening = () => {
     if(!convoModeRef.current || isSpeakingRef.current) return;
-    startRecording();
+    try { recognitionRef.current?.start(); } catch(e){}
   };
 
-  // ── AudioContext (iOS unlock용) ──
-  const audioCtxRef = React.useRef(null);
-  const getAudioCtx = () => {
-    if(!audioCtxRef.current) audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
-    if(audioCtxRef.current.state === "suspended") audioCtxRef.current.resume();
-    return audioCtxRef.current;
-  };
-
-  // ── OpenAI TTS ──
-  const speakReply = async text => {
-    const key = getOpenAIKey();
-    if(!key) { setTimeout(restartListening, 500); return; }
-    isSpeakingRef.current = true;
-    if(convoModeRef.current) setConvoState("speaking");
-    try {
-      const clean = text.replace(/[*_`#\[\]]/g,"").replace(/\n/g," ").slice(0,300);
-      const r = await fetch("https://api.openai.com/v1/audio/speech", {
-        method:"POST",
-        headers:{"Content-Type":"application/json","Authorization":`Bearer ${key}`},
-        body: JSON.stringify({model:"tts-1", voice:"nova", input:clean, response_format:"mp3"})
-      });
-      if(!r.ok) throw new Error("TTS "+r.status);
-      const buf = await r.arrayBuffer();
-      const ctx = getAudioCtx();
-      const decoded = await ctx.decodeAudioData(buf);
-      const src = ctx.createBufferSource();
-      src.buffer = decoded;
-      src.connect(ctx.destination);
-      src.onended = () => {
-        isSpeakingRef.current = false;
-        if(convoModeRef.current) { setConvoTranscript(""); setTimeout(restartListening, 400); }
-      };
-      src.start(0);
-    } catch(e) {
-      console.warn("TTS 오류:", e);
+  // ── TTS ──
+  const speakReply = text => {
+    if(!window.speechSynthesis) { setTimeout(restartListening, 500); return; }
+    window.speechSynthesis.cancel();
+    const clean = text.replace(/[*_`#\[\]]/g,"").replace(/\n/g," ").slice(0,200);
+    const u = new SpeechSynthesisUtterance(clean);
+    u.lang = "ko-KR"; u.rate = 1.0; u.pitch = 1.05;
+    const kr = window.speechSynthesis.getVoices().find(v=>v.lang.includes("ko"));
+    if(kr) u.voice = kr;
+    u.onstart = () => { isSpeakingRef.current = true; if(convoModeRef.current) setConvoState("speaking"); };
+    u.onend = u.onerror = () => {
       isSpeakingRef.current = false;
-      if(convoModeRef.current) setTimeout(restartListening, 500);
-    }
+      if(convoModeRef.current) { setConvoTranscript(""); setTimeout(restartListening, 400); }
+    };
+    window.speechSynthesis.speak(u);
   };
 
   // ── 대화모드 ──
   const startConvoMode = () => {
+    if(!apiKey) { setError("API 키가 없어요"); return; }
+    if(!recognitionRef.current) { setError("이 브라우저는 음성을 지원하지 않아요"); return; }
     convoModeRef.current = true;
     setConvoMode(true); setConvoState("idle");
-    try { getAudioCtx(); } catch(e){}
-    setTimeout(restartListening, 300);
+    // iOS TTS unlock (사용자 제스처 컨텍스트에서 실행)
+    if(window.speechSynthesis) {
+      const u = new SpeechSynthesisUtterance(" ");
+      u.volume = 0; u.lang = "ko-KR";
+      window.speechSynthesis.speak(u);
+    }
+    setTimeout(restartListening, 800);
   };
   const stopConvoMode = () => {
     convoModeRef.current = false;
     setConvoMode(false); setConvoState("idle");
-    stopRecording();
+    try { recognitionRef.current?.abort(); } catch(e){}
+    window.speechSynthesis?.cancel();
     isSpeakingRef.current = false;
-    audioCtxRef.current?.suspend();
   };
 
-  // ── 단발 마이크 (누르는 동안 녹음, 떼면 전송) ──
+  // ── 단발 마이크 ──
   const toggleVoice = () => {
-    if(isSpeakingRef.current) return;
-    if(isListening) { stopRecording(); return; }
-    startRecording();
+    if(isSpeakingRef.current) { window.speechSynthesis?.cancel(); return; }
+    if(isListening) { recognitionRef.current?.stop(); return; }
+    if(!recognitionRef.current) return;
+    try { recognitionRef.current.start(); } catch(e){}
   };
 
   // ── 이미지 처리 ──
-  const handleImage = async e => {
+  const handleImage = e => {
     const file = e.target.files?.[0]; if(!file) return;
-    e.target.value = ""; // 같은 파일 재선택 가능하게
     const reader = new FileReader();
-    reader.onload = async ev => {
-      const img = new Image();
-      img.onload = async () => {
-        const MAX = 1024;
-        let w = img.width, h = img.height;
-        if(w > MAX || h > MAX) {
-          if(w > h) { h = Math.round(h * MAX/w); w = MAX; }
-          else { w = Math.round(w * MAX/h); h = MAX; }
-        }
-        const canvas = document.createElement("canvas");
-        canvas.width = w; canvas.height = h;
-        canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-        const b64 = canvas.toDataURL("image/jpeg", 0.7).split(",")[1];
-
-        // 대화창 없이 직접 분석 (Gemini Vision)
-        setLoading(true); setError(null);
-        try {
-          const geminiKey = window.__geminiKey || localStorage.getItem("bliss_gemini_key") || "";
-          if(!geminiKey) { setError("Gemini 키가 없어요. AI설정에서 등록해주세요."); setLoading(false); return; }
-
-          const svcList = (data?.services || []).filter(s=>s.name).map(s=>`${s.name}(${s.dur}분,id:${s.id})`).join(", ");
-          const branches = (data?.branches || []).map(b=>b.short||b.name).join(", ");
-          const now = new Date();
-          const prompt = `이 예약 이미지에서 예약 정보를 추출하세요. 현재 ${now.toLocaleDateString("ko-KR")} ${now.toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"})}.
-전체지점: ${branches}
-시술목록: ${svcList}
-JSON만 응답하세요 (다른 텍스트 없이):
-{"date":"YYYY-MM-DD","time":"HH:MM","custName":"","custPhone":"","matchedServiceIds":["시술id"],"dur":소요분,"memo":"시술명","branch":""}`;
-
-          const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`, {
-            method:"POST",
-            headers:{"Content-Type":"application/json"},
-            body: JSON.stringify({
-              contents:[{parts:[
-                {inline_data:{mime_type:"image/jpeg", data: b64}},
-                {text: prompt}
-              ]}],
-              generationConfig:{temperature:0}
-            })
-          });
-          if(!r.ok) throw new Error("Gemini API "+r.status);
-          const d = await r.json();
-          const raw = d.candidates?.[0]?.content?.parts?.[0]?.text || "";
-          const jsonMatch = raw.match(/\{[\s\S]*\}/);
-          if(jsonMatch) {
-            const parsed = JSON.parse(jsonMatch[0]);
-            if(onParsed) onParsed(parsed);
-          } else {
-            setError("이미지에서 예약 정보를 찾지 못했어요");
-          }
-        } catch(ex) {
-          setError("분석 실패: " + ex.message);
-        } finally {
-          setLoading(false);
-        }
-      };
-      img.src = ev.target.result;
+    reader.onload = ev => {
+      const b64 = ev.target.result.split(",")[1];
+      setImgData(b64); setImgPreview(ev.target.result);
     };
     reader.readAsDataURL(file);
   };
@@ -7908,17 +7526,7 @@ JSON만 응답하세요 (다른 텍스트 없이):
   // sparkle icon
   const sparkle = <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z" fill={T.primary}/></svg>;
 
-  // iOS 키보드 대응
-  const [vvHeight, setVvHeight] = React.useState(null);
-  React.useEffect(() => {
-    const vv = window.visualViewport;
-    if(!vv) return;
-    const handler = () => setVvHeight(vv.height);
-    vv.addEventListener("resize", handler);
-    return () => vv.removeEventListener("resize", handler);
-  }, []);
-
-  return <div style={{position:"fixed",top:0,left:0,right:0,height:vvHeight?vvHeight+"px":"100dvh",zIndex:400,background:T.bg,display:"flex",flexDirection:"column",overflowY:"hidden"}}>
+  return <div style={{position:"fixed",inset:0,zIndex:200,background:T.bg,display:"flex",flexDirection:"column",overflowY:"hidden"}}>
     <style>{`
       @keyframes qb-breathe{0%,100%{transform:scale(1);opacity:.85}50%{transform:scale(1.15);opacity:1}}
       @keyframes qb-orb-ring{0%,100%{transform:scale(1);opacity:.4}50%{transform:scale(1.06);opacity:.12}}
