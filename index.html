@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.187";
+const BLISS_V = "2.69.188";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -3125,7 +3125,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
               dur, status:"confirmed", memo:"", type:"reservation",
               selectedTags:[], selectedServices: parsed.matchedServiceIds||[],
               isNewCust:!custId, isSchedule:false, repeat:"none", repeatUntil:"",
-              repeatSourceId:"", reservationId:"", source:"", isPrepaid:false,
+              repeatSourceId:"", reservationId: null, source:"", isPrepaid:false,
               npayMethod:"", totalPrice:0, visitCount:0, noShowCount:0
             };
             // DB 저장 - await로 결과 확인
