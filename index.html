@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.172";
+const BLISS_V = "2.69.173";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -3089,6 +3089,12 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
           if((!parsed.matchedServiceIds || !parsed.matchedServiceIds.length) && parsed.memo) {
             const svc = (data.services||[]).find(s => s.name && (s.name.includes(parsed.memo) || parsed.memo.includes(s.name)));
             if(svc) parsed.matchedServiceIds = [svc.id];
+          }
+          // dur이 있고 matchedServiceIds로 계산 안 되는 경우 endTime 직접 계산
+          if(parsed.time && parsed.dur && (!parsed.matchedServiceIds?.length)) {
+            const [h,m] = parsed.time.split(":").map(Number);
+            const em = h*60+m+parseInt(parsed.dur);
+            parsed._endTime = `${String(Math.floor(em/60)).padStart(2,"0")}:${String(em%60).padStart(2,"0")}`;
           }
           const room = (data.rooms||[]).find(r=>r.branch_id===(userBranches[0]||(data.branches||[])[0]?.id));
           setModalData({
@@ -7526,14 +7532,21 @@ JSON: {"date":"YYYY-MM-DD","time":"HH:MM","custName":"","custPhone":"","matchedS
                         text.match(/^([가-힣]{2,4})[\s\n]/) ||
                         text.match(/[\s\n]([가-힣]{2,4})[\s\n]/);
       if(nameMatch && !nd.custName) nd.custName = nameMatch[1];
-      // 시간 (저녁/오후 → +12h)
-      const isPM = /저녁|오후|밤/.test(text);
-      const isAM = /오전|아침/.test(text);
-      const timeMatch = text.match(/(\d{1,2})시\s*(\d{0,2})분?/);
+      // 시간 (저녁/오후/낮/점심 → +12h)
+      const isPM = /저녁|오후|밤|낮|점심|오후/.test(text);
+      const isAM = /오전|아침|새벽/.test(text);
+      // 한글 숫자 변환
+      const korNum = {"한":1,"두":2,"세":3,"네":4,"다섯":5,"여섯":6,"일곱":7,"여덟":8,"아홉":9,"열":10,"열한":11,"열두":12};
+      let timeMatch = text.match(/(\d{1,2})시\s*(\d{0,2})분?/);
+      if(!timeMatch) {
+        const korMatch = text.match(/(한|두|세|네|다섯|여섯|일곱|여덟|아홉|열한|열두|열)시\s*(\d{0,2})분?/);
+        if(korMatch) timeMatch = [korMatch[0], String(korNum[korMatch[1]]||1), korMatch[2]||""];
+      }
       if(timeMatch && !nd.time) {
         let h = parseInt(timeMatch[1]); const m = parseInt(timeMatch[2]||"0");
         if(isPM && h < 12) h += 12;
         else if(isAM && h === 12) h = 0;
+        else if(!isPM && !isAM && h >= 1 && h <= 7) h += 12; // 1~7시는 대부분 오후로 추정
         nd.time = `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
       }
       // 날짜
