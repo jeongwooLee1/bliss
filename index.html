@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.195";
+const BLISS_V = "2.69.196";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -681,7 +681,7 @@ function App() {
           const cfg = await sb.get("businesses", "&code=eq.__system__");
           if (cfg.length > 0) {
             const m = JSON.parse(cfg[0].settings || "{}");
-            if (m.system_openai_key) { window.__systemOpenAIKey = m.system_openai_key; }
+            if (m.system_gemini_key) { window.__systemGeminiKey = m.system_gemini_key; }
           }
         } catch(e) {}
         const users = fromDb("app_users", await sb.get("app_users"));
@@ -754,18 +754,13 @@ function App() {
         // Load business info
         const bizList = await sb.get("businesses", `&id=eq.${bizId}`);
         setCurrentBiz(bizList[0] || { name: "매장" });
-        // businesses.settings에서 gemini_key / openai_key / ai_rules 복원 (localStorage 삭제 후 복구)
+        // businesses.settings에서 gemini_key / ai_rules 복원 (localStorage 삭제 후 복구)
         try {
           const memo = JSON.parse(bizList[0]?.settings || "{}");
           if (memo.gemini_key) {
             localStorage.setItem("bliss_gemini_key", memo.gemini_key);
             window.__geminiKey = memo.gemini_key;
             console.log("✅ Gemini key 복원");
-          }
-          if (memo.openai_key) {
-            localStorage.setItem("bliss_openai_key", memo.openai_key);
-            window.__openaiKey = memo.openai_key;
-            console.log("✅ OpenAI key 복원");
           }
           const AI_RULES_KEY = "bliss_ai_rules";
           if (memo.ai_rules?.length && !localStorage.getItem(AI_RULES_KEY)) {
@@ -1601,7 +1596,7 @@ function SuperSystemSettings() {
         const rows = await sb.get("businesses","&code=eq.__system__");
         if (rows.length > 0) {
           const m = JSON.parse(rows[0].settings||"{}");
-          setKey(m.system_openai_key||m.system_gemini_key||"");
+          setKey(m.system_gemini_key||"");
         }
       } catch(e){}
       finally { setLoading(false); }
@@ -1611,13 +1606,13 @@ function SuperSystemSettings() {
   const save = async () => {
     try {
       const rows = await sb.get("businesses","&code=eq.__system__");
-      const settings = JSON.stringify({ system_openai_key: key.trim() });
+      const settings = JSON.stringify({ system_gemini_key: key.trim() });
       if (rows.length > 0) {
         await sb.update("businesses", rows[0].id, { settings });
       } else {
         await sb.insert("businesses",{ id:"biz_system", name:"[시스템]", code:"__system__", phone:"", settings });
       }
-      window.__systemOpenAIKey = key.trim();
+      window.__systemGeminiKey = key.trim();
       setSaved(true);
       setTimeout(()=>setSaved(false), 2500);
     } catch(e) { alert("저장 실패: "+e.message); }
@@ -1632,7 +1627,7 @@ function SuperSystemSettings() {
 
       <div style={{background:T.bgCard,border:"1px solid #e8e8e8",borderRadius:T.radius.lg,padding:20,display:"flex",flexDirection:"column",gap:T.sp.lg}}>
         <div>
-          <div style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder,color:T.gray700,marginBottom:4}}>OpenAI API 키 (시스템)</div>
+          <div style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder,color:T.gray700,marginBottom:4}}>Gemini API 키 (시스템)</div>
           <div style={{fontSize:T.fs.xxs,color:T.textMuted,marginBottom:10}}>
             가입 시 사업자등록증 자동 인식에 사용됩니다. 사용자에게는 노출되지 않습니다.
           </div>
@@ -1641,7 +1636,7 @@ function SuperSystemSettings() {
               type="password"
               value={key}
               onChange={e=>{setKey(e.target.value);setSaved(false);}}
-              placeholder="sk-proj-..."
+              placeholder="AIza..."
               style={{flex:1,padding:"10px 12px",fontSize:T.fs.sm,borderRadius:T.radius.md,border:"1px solid "+T.border,outline:"none",fontFamily:"inherit"}}
             />
             <button onClick={save}
@@ -2055,7 +2050,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
     }));
     return [...naverRooms, ...regularRooms];
   });
-  const isNaverRes = (r) => !!r.reservationId && !String(r.reservationId).startsWith("ai_");
+  const isNaverRes = (r) => !!r.reservationId;
   
   const blocks = (data?.reservations||[]).filter(r => {
     if (r.date !== selDate) return false;
@@ -3079,65 +3074,16 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
 
       {showQuickBook && <QuickBookModal
         onClose={()=>setShowQuickBook(false)}
-        onParsed={async (parsed)=>{
+        onParsed={(parsed)=>{
           setShowQuickBook(false);
-          try {
-            // 서비스 매칭
-            if(parsed.serviceId && !parsed.matchedServiceIds) parsed.matchedServiceIds = [parsed.serviceId];
-            if((!parsed.matchedServiceIds?.length) && parsed.memo) {
-              const svc = (data.services||[]).find(s => s.name && (s.name.includes(parsed.memo) || parsed.memo.includes(s.name)));
-              if(svc) parsed.matchedServiceIds = [svc.id];
-            }
-            // 지점 매칭
-            const branches = data.branches || [];
-            let bid = userBranches[0] || branches[0]?.id;
-            if(parsed.branch) {
-              const b = branches.find(b2 => (b2.short||b2.name||"").includes(parsed.branch) || parsed.branch.includes(b2.short||b2.name||""));
-              if(b) bid = b.id;
-            }
-            const room = (data.rooms||[]).find(r=>r.branch_id===bid);
-            // dur 계산
-            const svcDur = (parsed.matchedServiceIds||[]).reduce((s,sid)=>{const sv=(data.services||[]).find(x=>x.id===sid);return s+(sv?.dur||0);},0);
-            const dur = svcDur || parseInt(parsed.dur)||35;
-            // endTime 계산
-            const [sh,sm] = (parsed.time||"10:00").split(":").map(Number);
-            const em = sh*60+sm+dur;
-            const endTime = `${String(Math.floor(em/60)).padStart(2,"0")}:${String(em%60).padStart(2,"0")}`;
-            // 신규 고객 처리
-            let custId = "";
-            if(parsed.custName && parsed.custPhone) {
-              const existing = (data.customers||[]).find(c=>(c.phone||"").replace(/-/g,"")===parsed.custPhone.replace(/-/g,""));
-              if(existing) { custId = existing.id; }
-              else {
-                custId = "cust_"+uid();
-                const newCust = {id:custId, bid, name:parsed.custName, phone:parsed.custPhone, gender:"", visits:0, lastVisit:null, memo:"", custNum:String(50000+Math.floor(Math.random()*10000))};
-                setData(prev=>({...prev, customers:[...prev.customers, newCust]}));
-                await sb.insert("customers", toDb("customers", newCust));
-              }
-            }
-            // 예약 객체 생성
-            const newId = "res_"+uid();
-            const item = {
-              id: newId, bid, roomId: room?.id||"", custId, custName: parsed.custName||"",
-              custPhone: parsed.custPhone||"", custGender: "", staffId: room?.id||"",
-              serviceId: parsed.matchedServiceIds?.[0]||"",
-              date: parsed.date||todayStr(), time: parsed.time||"10:00", endDate: parsed.date||todayStr(), endTime,
-              dur, status:"confirmed", memo:"", type:"reservation",
-              selectedTags:[], selectedServices: parsed.matchedServiceIds||[],
-              isNewCust:!custId, isSchedule:false, repeat:"none", repeatUntil:"",
-              repeatSourceId:"", reservationId: "ai_"+uid(), source:"", isPrepaid:false,
-              npayMethod:"", totalPrice:0, visitCount:0, noShowCount:0
-            };
-            // DB 저장 - await로 결과 확인
-            await sb.insert("reservations", toDb("reservations", item));
-            // 성공 시만 UI 반영
-            setData(prev=>({...prev, reservations:[...(prev.reservations||[]), item]}));
-            parsed._saved = true;
-          } catch(ex) {
-            console.error("AI 예약 저장 오류:", ex);
-            parsed._saved = false;
-            parsed._error = ex.message;
-          }
+          const room = (data.rooms||[]).find(r=>r.branch_id===(userBranches[0]||(data.branches||[])[0]?.id));
+          setModalData({
+            roomId: room?.id, bid: room?.branch_id || userBranches[0],
+            date: parsed.date || selDate,
+            time: parsed.time || "10:00",
+            _prefill: parsed
+          });
+          setShowModal(true);
         }}
         data={data}
       />}
@@ -3496,7 +3442,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
     let apiKey = window.__geminiKey || localStorage.getItem("bliss_gemini_key") || "";
     if (!apiKey) {
       try {
-        const r = await fetch(`${SB_URL}/rest/v1/businesses?id=eq.biz_khvurgshb&select=settings`, {headers: sbHeaders});
+        const r = await fetch(`${SB_URL}/rest/v1/businesses?select=settings&limit=1`, {headers: sbHeaders});
         const rows = await r.json();
         const memo = JSON.parse(rows[0]?.settings || "{}");
         apiKey = memo.gemini_key || "";
@@ -3522,65 +3468,60 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
         .map(t=>`"${t.id}":"${t.name}"`).join(", ");
       const svcList = (data?.services||[]).filter(s=>s.useYn!==false)
         .map(s=>`"${s.id}":"${s.name}"`).join(", ");
-      // ai_rules: Supabase에서 직접 로드
-      let customRules = [];
-      try {
-        const rr = await fetch(`${SB_URL}/rest/v1/businesses?id=eq.biz_khvurgshb&select=settings`, {headers: sbHeaders});
-        const rrows = await rr.json();
-        const memo = JSON.parse(rrows[0]?.settings || "{}");
-        customRules = Array.isArray(memo.ai_rules) ? memo.ai_rules : [];
-      } catch(e) {
-        try { customRules = JSON.parse(localStorage.getItem("bliss_ai_rules") || "[]"); } catch{}
-      }
+      const customRules = (() => {
+        try { return JSON.parse(localStorage.getItem("bliss_ai_rules")||"[]"); } catch{ return []; }
+      })();
       const customRulesBlock = customRules.length > 0
         ? `\n[추가 판단 규칙 - 아래 규칙을 기본 기준보다 우선 적용하세요]\n${customRules.map((r,i)=>`${i+1}. ${r}`).join("\n")}`
         : "";
       const NEW_CUST_TAG_ID = NEW_CUST_TAG_ID_GLOBAL;
       const custLinked = !!(f.custId) || !!(data?.customers||[]).find(c=>(c.phone||"").replace(/-/g,"") === (f.custPhone||"").replace(/-/g,""));
       const effectiveIsNew = custLinked ? false : (f.visitCount === 0);
-      const naverSvcNames = (f.selectedServices||[]).length > 0
-        ? (f.selectedServices||[]).map(id=>{const s=(data?.services||[]).find(x=>x.id===id);return s?s.name:id;}).join(", ")
-        : null;
-
       const prompt = `당신은 왁싱샵/미용실 예약 정보를 분석하는 AI입니다.
 아래 네이버 예약 고객 정보를 분석하여 적합한 태그와 시술상품을 선택하세요.
 마크다운 없이 순수 JSON만 출력하세요.
 
 [태그 목록] ${tagList}
-[시술상품 목록(수량허용=[qty])]: ${svcList}
+[시술상품 목록] ${svcList}
 
-[판단 기준 - 반드시 지켜주세요]
-- 시술상품: 아래 [네이버 시술메뉴]에 명시된 항목만 선택하세요.
-- [네이버 시술메뉴]가 없으면 matchedServiceIds는 반드시 빈 배열 []로 응답하세요.
-- 고객 요청/메모/텍스트에서 시술을 추론하거나 추가하지 마세요.
-- "예약금완료" 태그는 선택하지 마세요.${customRulesBlock}
+[기본 판단 기준]
+- 주차 언급 → "주차" 태그
+- 임산부/산모 → "산모님" 태그
+- 커플룸 요청 → "커플룸" 태그
+- 남자 관리사 요청 → "남자선생님" 태그
+- 시술메뉴 내용으로 적합한 시술상품 선택
+- 수량 허용 시술(이름 뒤에 [qty] 표시)은 2개 이상이면 같은 id를 반복해서 넣으세요. 예: 케어가 2개면 ["케어id","케어id"]
+- "예약금완료" 태그는 선택하지 마세요. 이 태그는 시스템이 자동 처리합니다.${customRulesBlock}
 
 [예약 기본 정보]
 - 고객명: ${f.custName||"미상"}
 - 연락처: ${f.custPhone||"미상"}
 - 방문횟수: ${f.visitCount||0}회
 - 예약일시: ${f.date||""} ${f.time||""}
-- 네이버 시술메뉴: ${naverSvcNames || "없음 → matchedServiceIds는 [] 필수"}
+- 시술상품 목록(수량허용=[qty]): ${(data?.services||[]).map(s=>svcAllowQty(s)?`${s.name}[qty](id:${s.id})`:s.name+`(id:${s.id})`).join(', ')}
+- 시술메뉴(네이버): ${(f.selectedServices||[]).length > 0 ? (f.selectedServices||[]).map(id=>{const s=(data?.services||[]).find(x=>x.id===id);return s?s.name:id;}).join(", ") : "미선택"}
 - customers DB 등록 여부: ${custLinked ? "등록된 고객" : "미등록"}
 
 [고객 요청 / 업체 메모]
 ${naverText}
 
-응답 형식 (반드시 이 JSON만 출력):
-{"matchedTagIds":["태그id1"],"matchedServiceIds":["시술id1"]}`;
+응답 형식:
+{"matchedTagIds":["태그id1","태그id2"],"matchedServiceIds":["시술id1"],"gender":"F 또는 M 또는 빈문자열","reason":"선택 이유 한줄"}`;
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
         method:"POST", headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:0}})
+        body:JSON.stringify({contents:[{parts:[{text:prompt}]}], generationConfig:{temperature:0}})
       });
-      if (!r.ok) throw new Error("API: "+(await r.text()).slice(0,200));
+      if (!r.ok) throw new Error("API: "+(await r.text()).slice(0,120));
       const d2 = await r.json();
-      const raw = d2.candidates?.[0]?.content?.parts?.[0]?.text || "";
-      if(!raw) throw new Error("응답 없음");
-      const txt = raw.replace(/```json|```/g,"").trim();
-      const parsed = JSON.parse(txt);
+      const txt = d2.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      const parsed = JSON.parse(txt.replace(/```json|```/g,"").trim());
+      // AI 결과에서 신규 태그 제거 후 코드가 직접 판단
       let newTags = (parsed.matchedTagIds || []).filter(id => !SYSTEM_TAG_IDS.includes(id));
+      if (effectiveIsNew) newTags = [...newTags, NEW_CUST_TAG_ID];
+      // 예약금완료 자동 처리: isPrepaid=true이면 태그 추가 (totalPrice 무관)
       if (f.isPrepaid && !newTags.includes(PREPAID_TAG_ID)) newTags = [...newTags, PREPAID_TAG_ID];
-      const newSvcs = (f.selectedServices||[]).length > 0 ? (parsed.matchedServiceIds || []) : [];
+      const newSvcs = parsed.matchedServiceIds || [];
+      const aiGender = parsed.gender || "";
       setF(p => {
         const tagSum = newTags.reduce((s,tid)=>{const t=(data?.serviceTags||[]).find(x=>x.id===tid);return s+(t?.dur||0);},0);
         const svcSum = newSvcs.reduce((s,sid)=>{const sv=(data?.services||[]).find(x=>x.id===sid);return s+(sv?.dur||0);},0);
@@ -3588,9 +3529,9 @@ ${naverText}
         const [sh,sm] = p.time.split(":").map(Number);
         const endMin = sh*60+sm+dur;
         const endTime = `${String(Math.min(22,Math.floor(endMin/60))).padStart(2,"0")}:${String(endMin%60).padStart(2,"0")}`;
-        return {...p, selectedTags:newTags, selectedServices:newSvcs, dur, endTime};
+        return {...p, selectedTags:newTags, selectedServices:newSvcs, dur, endTime, custGender: aiGender || p.custGender};
       });
-      alert(`✅ AI 분석 완료`);
+      if (parsed.reason) alert(`✅ AI 분석 완료\n${parsed.reason}`);
     } catch(e) { alert("AI 분석 실패: "+e.message); }
     setAiAnalyzing(false);
   };
@@ -6925,9 +6866,7 @@ function AdminNoti({ data, sb, bizId, branches }) {
 // ═══════════════════════════════════════════
 function AdminAISettings({ data, sb, bizId }) {
   const [apiKey,setApiKey]=useState(()=>window.__geminiKey||localStorage.getItem("bliss_gemini_key")||"");
-  const [openaiKey,setOpenaiKey]=useState(()=>window.__openaiKey||localStorage.getItem("bliss_openai_key")||"");
   const [saved,setSaved]=useState(false);
-  const [openaiSaved,setOpenaiSaved]=useState(false);
   const [testing,setTesting]=useState(false);
   const [testResult,setTestResult]=useState(null);
   const [rules,setRules]=useState(()=>{try{return JSON.parse(localStorage.getItem(AI_RULES_KEY)||"[]");}catch{return [];}});
@@ -6939,7 +6878,6 @@ function AdminAISettings({ data, sb, bizId }) {
       try{
         const memo=JSON.parse(rows[0]?.settings||"{}");
         if(memo.gemini_key){setApiKey(memo.gemini_key);localStorage.setItem("bliss_gemini_key",memo.gemini_key);}
-        if(memo.openai_key){setOpenaiKey(memo.openai_key);localStorage.setItem("bliss_openai_key",memo.openai_key);window.__openaiKey=memo.openai_key;}
         if(memo.ai_rules?.length){setRules(memo.ai_rules);localStorage.setItem(AI_RULES_KEY,JSON.stringify(memo.ai_rules));}
       }catch(e){}
     }).catch(()=>{});
@@ -6965,28 +6903,11 @@ function AdminAISettings({ data, sb, bizId }) {
     setSaved(true); setTimeout(()=>setSaved(false),2000);
   };
 
-  const saveOpenaiKey=async()=>{
-    const t=openaiKey.trim();
-    localStorage.setItem("bliss_openai_key",t);
-    window.__openaiKey=t;
-    if(bizId){
-      try{
-        const r=await fetch(`${SB_URL}/rest/v1/businesses?id=eq.${bizId}&select=settings`,{headers:sbHeaders});
-        const rows=await r.json();
-        let memo={};try{memo=JSON.parse(rows[0]?.settings||"{}");}catch{}
-        memo.openai_key=t;
-        await fetch(`${SB_URL}/rest/v1/businesses?id=eq.${bizId}`,{method:"PATCH",headers:{...sbHeaders,"Prefer":"return=minimal"},body:JSON.stringify({settings:JSON.stringify(memo)})});
-      }catch(e){}
-    }
-    setOpenaiSaved(true); setTimeout(()=>setOpenaiSaved(false),2000);
-  };
-
   const testKey=async()=>{
     setTesting(true); setTestResult(null);
     try{
-      const r=await fetch("https://api.openai.com/v1/chat/completions",
-        {method:"POST",headers:{"Content-Type":"application/json","Authorization":"Bearer "+openaiKey.trim()},
-         body:JSON.stringify({model:"gpt-4o-mini",messages:[{role:"user",content:"안녕"}],max_tokens:5})});
+      const r=await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key="+apiKey.trim(),
+        {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({contents:[{parts:[{text:"안녕"}]}]})});
       setTestResult(r.ok?"✓ 연결 성공":"✕ 연결 실패 ("+r.status+")");
     }catch(e){setTestResult("✕ "+e.message);}
     finally{setTesting(false);}
@@ -7015,35 +6936,21 @@ function AdminAISettings({ data, sb, bizId }) {
     <APageHeader title="AI 설정" desc="예약 분석에 사용되는 AI 기능을 설정하세요"/>
     <div className="card" style={{padding:20,marginBottom:16}}>
       <div style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder,color:T.text,marginBottom:4,display:"flex",alignItems:"center",gap:7}}>
-        <I name="sparkles" size={14} style={{color:"#4285f4"}}/> Gemini API 키 <span style={{fontSize:T.fs.xs,color:T.textMuted,fontWeight:400}}>예약 AI 분석(✨)</span>
+        <I name="sparkles" size={14} style={{color:T.primary}}/> Gemini API 키
       </div>
       <div style={{fontSize:T.fs.xs,color:T.textMuted,marginBottom:14,lineHeight:1.6}}>
-        네이버 예약 AI 분석에 사용됩니다.{" "}
-        <a href="https://aistudio.google.com/app/apikey" target="_blank" style={{color:"#4285f4",fontWeight:700}}>aistudio.google.com</a>에서 발급받을 수 있어요.
+        AI Book 기능에 사용됩니다.{" "}
+        <a href="https://aistudio.google.com/app/apikey" target="_blank" style={{color:T.primary,fontWeight:700}}>Google AI Studio</a>에서 무료로 발급받을 수 있어요.
       </div>
       <AField label="API 키">
-        <input style={AInp} type="password" value={apiKey} onChange={e=>setApiKey(e.target.value)} placeholder="AIza…" onFocus={e=>e.target.style.borderColor="#4285f4"} onBlur={e=>e.target.style.borderColor="#e8e8f0"}/>
-      </AField>
-      {saved&&<div style={{fontSize:T.fs.xs,padding:"8px 12px",borderRadius:8,marginBottom:12,background:"#f0faf4",color:T.success}}>✓ 저장됨</div>}
-      <AIBtn onClick={saveKey} disabled={!apiKey.trim()} label={saved?"✓ 저장됨":"저장"} style={{width:"100%",background:saved?T.success:"#4285f4"}}/>
-    </div>
-    <div className="card" style={{padding:20,marginBottom:16}}>
-      <div style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder,color:T.text,marginBottom:4,display:"flex",alignItems:"center",gap:7}}>
-        <I name="sparkles" size={14} style={{color:"#10a37f"}}/> OpenAI API 키 <span style={{fontSize:T.fs.xs,color:T.textMuted,fontWeight:400}}>AI Book 대화</span>
-      </div>
-      <div style={{fontSize:T.fs.xs,color:T.textMuted,marginBottom:14,lineHeight:1.6}}>
-        AI Book 대화에 사용됩니다.{" "}
-        <a href="https://platform.openai.com/api-keys" target="_blank" style={{color:"#10a37f",fontWeight:700}}>platform.openai.com</a>에서 발급받을 수 있어요.
-      </div>
-      <AField label="API 키">
-        <input style={AInp} type="password" value={openaiKey} onChange={e=>setOpenaiKey(e.target.value)} placeholder="sk-proj-…" onFocus={e=>e.target.style.borderColor="#10a37f"} onBlur={e=>e.target.style.borderColor="#e8e8f0"}/>
+        <input style={AInp} type="password" value={apiKey} onChange={e=>setApiKey(e.target.value)} placeholder="AIzaSy…" onFocus={e=>e.target.style.borderColor=T.primary} onBlur={e=>e.target.style.borderColor="#e8e8f0"}/>
       </AField>
       {testResult&&<div style={{fontSize:T.fs.xs,padding:"8px 12px",borderRadius:8,marginBottom:12,background:testResult.startsWith("✓")?"#f0faf4":"#fff5f5",color:testResult.startsWith("✓")?T.success:T.danger}}>{testResult}</div>}
       <div style={{display:"flex",gap:10}}>
-        <button onClick={testKey} disabled={testing||!openaiKey.trim()} style={{flex:1,padding:"11px",borderRadius:10,border:"1.5px solid "+T.border,background:"#fff",fontSize:T.fs.sm,fontWeight:600,color:T.textSub,cursor:"pointer",fontFamily:"inherit"}}>
+        <button onClick={testKey} disabled={testing||!apiKey.trim()} style={{flex:1,padding:"11px",borderRadius:10,border:"1.5px solid "+T.border,background:"#fff",fontSize:T.fs.sm,fontWeight:600,color:T.textSub,cursor:"pointer",fontFamily:"inherit"}}>
           {testing?"테스트 중…":"연결 테스트"}
         </button>
-        <AIBtn onClick={saveOpenaiKey} disabled={!openaiKey.trim()} label={openaiSaved?"✓ 저장됨":"저장"} style={{flex:1,background:openaiSaved?T.success:"#10a37f"}}/>
+        <AIBtn onClick={saveKey} disabled={!apiKey.trim()} label={saved?"✓ 저장됨":"저장"} style={{flex:1,background:saved?T.success:T.primary}}/>
       </div>
     </div>
     <div className="card" style={{padding:20}}>
@@ -7274,8 +7181,6 @@ function useDragSort(items, setItems, sortKey="sort", onComplete) {
 const DragHandle = ({onTouchStart}) => <span onTouchStart={onTouchStart} style={{cursor:"grab",flexShrink:0,userSelect:"none",touchAction:"none",padding:"4px 2px"}}><I name="grip" size={14} color={T.gray500}/></span>;
 
 // ─── 시술상품관리 ───
-
-// ─── 시술상품관리 ───
 function QuickBookModal({ onClose, onParsed, data }) {
   // ── State ──
   const [input, setInput] = React.useState("");
@@ -7381,20 +7286,16 @@ function QuickBookModal({ onClose, onParsed, data }) {
     const ctx = await buildCtx();
     const rules = (data?.businesses || data?.businessSettings)?.[0]?.settings?.ai_rules || [];
     const rulesText = Array.isArray(rules) ? rules.map((r,i)=>`${i+1}. ${r}`).join("\n") : "";
-    const today = new Date();
-    const todayKr = today.toLocaleDateString("ko-KR",{year:"numeric",month:"2-digit",day:"2-digit"}).replace(/\. /g,"-").replace(".","");
     const sys = `당신은 하우스왁싱 원장님 전용 AI 어시스턴트입니다.
-오늘 날짜: ${todayKr} (${["일","월","화","수","목","금","토"][today.getDay()]}요일)
 ${ctx}
 운영규칙:
 ${rulesText}
 응답규칙: 2~3문장으로 핵심만. 인사 반복 금지. 마크다운(*#_) 절대 금지. 숫자 정확히.
-예약 요청 시: 반드시 JSON 한 줄로만 응답. 다른 텍스트 없이. {date,time,custName,custPhone,gender,serviceId,staffId,dur,memo,branch}`;
+예약 파싱 요청 시: JSON으로만 응답. {date,time,custName,custPhone,gender,serviceId,staffId,dur,memo}`;
 
-    const contents = [
-      ...chatHistory.map(m=>({role:m.role,parts:[{text:m.text}]})),
+    const contents = [...chatHistory.map(m=>({role:m.role,parts:[{text:m.text}]})),
       {role:"user", parts: imageData
-        ? [{inline_data:{mime_type:"image/jpeg",data:imageData}},{text:msg||"이 이미지의 예약정보를 추출해줘"}]
+        ? [{inline_data:{mime_type:"image/jpeg",data:imageData}},{text:msg}]
         : [{text:msg}]}];
 
     const r = await fetch(
@@ -7403,15 +7304,13 @@ ${rulesText}
         body: JSON.stringify({
           system_instruction: {parts:[{text:sys}]},
           contents,
-          generationConfig: {temperature:.75, maxOutputTokens:1500}
+          generationConfig: {temperature:.75, maxOutputTokens:600}
         })
       }
     );
     if(!r.ok){const e=await r.json();throw new Error(e.error?.message||`HTTP ${r.status}`);}
     const d = await r.json();
-    const parts = d.candidates?.[0]?.content?.parts || [];
-    const textPart = parts.find(p => p.text && !p.thought);
-    return textPart?.text || parts[0]?.text || "다시 말씀해 주세요.";
+    return d.candidates?.[0]?.content?.parts?.[0]?.text || "다시 말씀해 주세요.";
   };
 
   // ── 메시지 전송 ──
@@ -7431,39 +7330,22 @@ ${rulesText}
     try {
       const reply = await callGemini(text, imageData || imgData);
 
-      // 예약 파싱 시도 - JSON을 어디서든 추출
+      // 예약 파싱 시도
       let parsed = null;
-      let displayText = reply;
       try {
-        const jsonMatch = reply.match(/\{[\s\S]*"date"[\s\S]*\}/) || reply.match(/\{[\s\S]*\}/);
-        if(jsonMatch) {
-          const candidate = JSON.parse(jsonMatch[0]);
-          if(candidate.date || candidate.custName) {
-            parsed = candidate;
-            // JSON 제거한 자연어만 표시
-            displayText = reply.replace(jsonMatch[0], "").replace(/```json|```/g,"").trim();
-          }
-        }
+        const cleaned = reply.replace(/```json|```/g,"").trim();
+        if(cleaned.startsWith("{")) parsed = JSON.parse(cleaned);
       } catch(e){}
 
-      const savedOk = parsed?._saved === true;
-      const savedFail = parsed?._saved === false;
-      const aiText = savedOk
-        ? `✅ ${parsed.custName||""}님 ${parsed.date||""} ${parsed.time||""} 예약 등록 완료`
-        : savedFail
-          ? `❌ 저장 실패: ${parsed._error||"오류"}`
-          : displayText || reply;
-      const aiMsg = { role:"model", text: aiText, time: new Date().toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"}), parsed };
+      const aiMsg = { role:"model", text: parsed ? `✅ 예약 정보를 인식했어요!\n${parsed.custName||""}님 ${parsed.date||""} ${parsed.time||""}` : reply, time: new Date().toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"}), parsed };
       setChatHistory(prev => [...prev, aiMsg]);
       setTimeout(() => msgEndRef.current?.scrollIntoView({behavior:"smooth"}), 50);
 
       if(parsed && onParsed) {
-        if(convoModeRef.current) stopConvoMode();
-        setTimeout(() => onParsed(parsed), 500);
-      } else if(convoModeRef.current) {
-        // 예약 아닌 일반 답변 - 대화 계속
-        setTimeout(restartListening, 400);
+        setTimeout(() => onParsed(parsed), 800);
       }
+
+      if(convoModeRef.current) speakReply(reply);
     } catch(e) {
       setError("오류: " + e.message);
       if(convoModeRef.current) setTimeout(restartListening, 800);
@@ -7493,18 +7375,8 @@ ${rulesText}
       setIsListening(false);
       if(convoModeRef.current) {
         const txt = convoTranscriptRef.current.trim();
-        if(txt) {
-          silenceCountRef.current = 0;
-          setConvoState("thinking"); sendMessage(txt); setConvoTranscript("");
-        } else {
-          silenceCountRef.current += 1;
-          if(silenceCountRef.current >= 5) {
-            // 말 없이 5회 반복 → 자동 종료
-            stopConvoMode();
-          } else {
-            setTimeout(restartListening, 600);
-          }
-        }
+        if(txt) { setConvoState("thinking"); sendMessage(txt); setConvoTranscript(""); }
+        else setTimeout(restartListening, 600);
       }
     };
     rec.onerror = e => {
@@ -7516,8 +7388,6 @@ ${rulesText}
 
   const convoTranscriptRef = React.useRef("");
   React.useEffect(() => { convoTranscriptRef.current = convoTranscript; }, [convoTranscript]);
-
-  const silenceCountRef = React.useRef(0);
 
   const restartListening = () => {
     if(!convoModeRef.current || isSpeakingRef.current) return;
@@ -7545,7 +7415,6 @@ ${rulesText}
   const startConvoMode = () => {
     if(!apiKey) { setError("API 키가 없어요"); return; }
     if(!recognitionRef.current) { setError("이 브라우저는 음성을 지원하지 않아요"); return; }
-    silenceCountRef.current = 0;
     convoModeRef.current = true;
     setConvoMode(true); setConvoState("idle");
     // iOS TTS unlock (사용자 제스처 컨텍스트에서 실행)
@@ -7607,12 +7476,15 @@ ${rulesText}
     `}</style>
 
     {/* ── Top bar ── */}
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 16px",borderBottom:"1px solid "+T.border,flexShrink:0}}>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 16px",borderBottom:"1px solid "+T.border,flexShrink:0}}>
       <button onClick={onClose} style={{background:"none",border:"none",cursor:"pointer",padding:6,display:"flex",color:T.gray600}}>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
       </button>
       <div style={{display:"flex",alignItems:"center",gap:6}}>{sparkle}<span style={{fontSize:T.fs.md,fontWeight:T.fw.bolder,color:T.text}}>AI Book</span></div>
-      <div style={{width:70}}/>
+      <button onClick={startConvoMode}
+        style={{display:"flex",alignItems:"center",gap:5,padding:"6px 12px",borderRadius:20,border:"1px solid "+T.border,background:T.bgCard,cursor:"pointer",fontSize:T.fs.xs,fontWeight:T.fw.medium,color:T.textSub}}>
+        🎙 대화모드
+      </button>
     </div>
 
     {/* ── Stats bar ── */}
@@ -7634,13 +7506,14 @@ ${rulesText}
         <div style={{position:"relative",display:"flex",alignItems:"center",justifyContent:"center"}}>
           <div style={{position:"absolute",width:144,height:144,borderRadius:"50%",background:"rgba(124,124,200,.06)",animation:"qb-breathe 3s ease-in-out infinite"}}/>
           <div style={{position:"absolute",width:116,height:116,borderRadius:"50%",background:"rgba(124,124,200,.1)"}}/>
-          <button onClick={startConvoMode} style={{position:"relative",zIndex:1,width:92,height:92,borderRadius:"50%",background:"linear-gradient(145deg,#7c7cc8,#9b72cb)",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 8px 32px rgba(124,124,200,.45)",transition:"all .3s"}}>
+          <button onClick={toggleVoice} style={{position:"relative",zIndex:1,width:92,height:92,borderRadius:"50%",background:isListening?"linear-gradient(145deg,#d96570,#c0506b)":"linear-gradient(145deg,#7c7cc8,#9b72cb)",border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",boxShadow:isListening?"0 8px 32px rgba(217,101,112,.45)":"0 8px 32px rgba(124,124,200,.45)",transition:"all .3s"}}>
             <svg width="36" height="36" viewBox="0 0 24 24" fill="white"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1 1.93c-3.94-.49-7-3.85-7-7.93H2c0 4.92 3.66 9 8.44 9.44V21h3.11v-3.56C18.34 16.99 22 12.91 22 7.99h-2c0 4.08-3.05 7.44-7 7.93V15h-2v.93z"/></svg>
           </button>
         </div>
+        {isListening && <div style={{fontSize:T.fs.sm,color:"#d96570",fontWeight:T.fw.medium,animation:"qb-breathe 1s infinite"}}>듣고 있어요...</div>}
         <div style={{textAlign:"center"}}>
           <div style={{fontSize:20,fontWeight:T.fw.bolder,color:T.text,marginBottom:6}}>무엇을 도와드릴까요?</div>
-          <div style={{fontSize:T.fs.sm,color:T.gray500,lineHeight:1.8}}>마이크를 누르면 대화가 시작돼요<br/>말이 멈추면 자동으로 인식해요</div>
+          <div style={{fontSize:T.fs.sm,color:T.gray500,lineHeight:1.8}}>마이크를 누르거나 아래 질문을 눌러보세요<br/><span style={{color:T.primary,fontWeight:T.fw.medium}}>🎙 대화모드</span>로 끊김없이 대화해요</div>
         </div>
         {/* 이미지 버튼 */}
         <div style={{display:"flex",gap:10,width:"100%"}}>
@@ -7708,9 +7581,9 @@ ${rulesText}
     <div style={{borderTop:"1px solid "+T.border,padding:"10px 14px",paddingBottom:"calc(16px + env(safe-area-inset-bottom,0px))",background:T.bgCard,flexShrink:0}}>
       <div style={{display:"flex",alignItems:"flex-end",gap:8}}>
         <div style={{flex:1,background:T.bg,border:"1.5px solid "+T.border,borderRadius:22,display:"flex",alignItems:"flex-end",padding:"10px 14px",gap:8,minHeight:46}}>
-          <button onClick={convoMode ? stopConvoMode : startConvoMode}
-            style={{width:28,height:28,borderRadius:"50%",border:"none",background:convoMode?"rgba(124,124,200,.15)":"none",cursor:"pointer",display:"grid",placeItems:"center",fontSize:15,flexShrink:0,color:convoMode?T.primary:T.gray400,padding:0}}>
-            🎙
+          <button onClick={toggleVoice}
+            style={{width:28,height:28,borderRadius:"50%",border:"none",background:isListening?"rgba(217,101,112,.15)":"none",cursor:"pointer",display:"grid",placeItems:"center",fontSize:15,flexShrink:0,color:isListening?"#d96570":T.gray400,padding:0}}>
+            🎤
           </button>
           <textarea value={input} onChange={e=>setInput(e.target.value)}
             onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMessage();}}}
