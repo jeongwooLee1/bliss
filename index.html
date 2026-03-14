@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.186";
+const BLISS_V = "2.69.187";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7425,11 +7425,19 @@ ${rulesText}
     try {
       const reply = await callGemini(text, imageData || imgData);
 
-      // 예약 파싱 시도
+      // 예약 파싱 시도 - JSON을 어디서든 추출
       let parsed = null;
+      let displayText = reply;
       try {
-        const cleaned = reply.replace(/```json|```/g,"").trim();
-        if(cleaned.startsWith("{")) parsed = JSON.parse(cleaned);
+        const jsonMatch = reply.match(/\{[\s\S]*"date"[\s\S]*\}/) || reply.match(/\{[\s\S]*\}/);
+        if(jsonMatch) {
+          const candidate = JSON.parse(jsonMatch[0]);
+          if(candidate.date || candidate.custName) {
+            parsed = candidate;
+            // JSON 제거한 자연어만 표시
+            displayText = reply.replace(jsonMatch[0], "").replace(/```json|```/g,"").trim();
+          }
+        }
       } catch(e){}
 
       const savedOk = parsed?._saved === true;
@@ -7438,7 +7446,7 @@ ${rulesText}
         ? `✅ ${parsed.custName||""}님 ${parsed.date||""} ${parsed.time||""} 예약 등록 완료`
         : savedFail
           ? `❌ 저장 실패: ${parsed._error||"오류"}`
-          : reply;
+          : displayText || reply;
       const aiMsg = { role:"model", text: aiText, time: new Date().toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"}), parsed };
       setChatHistory(prev => [...prev, aiMsg]);
       setTimeout(() => msgEndRef.current?.scrollIntoView({behavior:"smooth"}), 50);
@@ -7446,8 +7454,10 @@ ${rulesText}
       if(parsed && onParsed) {
         if(convoModeRef.current) stopConvoMode();
         setTimeout(() => onParsed(parsed), 500);
+      } else if(convoModeRef.current) {
+        // 예약 아닌 일반 답변 - 대화 계속
+        setTimeout(restartListening, 400);
       }
-      // TTS 없음
     } catch(e) {
       setError("오류: " + e.message);
       if(convoModeRef.current) setTimeout(restartListening, 800);
