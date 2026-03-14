@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.194";
+const BLISS_V = "2.69.195";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -2055,7 +2055,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
     }));
     return [...naverRooms, ...regularRooms];
   });
-  const isNaverRes = (r) => !!r.reservationId;
+  const isNaverRes = (r) => !!r.reservationId && !String(r.reservationId).startsWith("ai_");
   
   const blocks = (data?.reservations||[]).filter(r => {
     if (r.date !== selDate) return false;
