@@ -13,32 +13,48 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
 <script>
-// window.storage polyfill — localStorage 기반
+// window.storage — Supabase 기반 (schedule_data 테이블)
+const _SB_URL = "https://dpftlrsuqxqqeouwbfjd.supabase.co";
+const _SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwZnRscnN1cXhxcWVvdXdiZmpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5MDU4MjQsImV4cCI6MjA4NzQ4MTgyNH0.iydEkjtPjZ0jXpUUPJben4IWWneDqLomv-HDlcFayE4";
+const _SB_H = { "apikey": _SB_KEY, "Authorization": "Bearer " + _SB_KEY, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates,return=minimal" };
+
 window.storage = {
   get: async (key) => {
     try {
-      const v = localStorage.getItem('bliss_sch_' + key);
-      return v !== null ? { key, value: v } : null;
+      const r = await fetch(`${_SB_URL}/rest/v1/schedule_data?key=eq.${encodeURIComponent(key)}&select=key,value`, { headers: _SB_H });
+      const rows = await r.json();
+      if (!rows || rows.length === 0) return null;
+      const raw = rows[0].value;
+      const value = typeof raw === "string" ? raw : JSON.stringify(raw);
+      return { key, value };
     } catch(e) { return null; }
   },
   set: async (key, value) => {
     try {
-      localStorage.setItem('bliss_sch_' + key, value);
+      let jsonValue;
+      try { jsonValue = JSON.parse(value); } catch { jsonValue = value; }
+      await fetch(`${_SB_URL}/rest/v1/schedule_data`, {
+        method: "POST",
+        headers: _SB_H,
+        body: JSON.stringify({ id: key, key, value: jsonValue, updated_at: new Date().toISOString() })
+      });
       return { key, value };
     } catch(e) { return null; }
   },
   delete: async (key) => {
     try {
-      localStorage.removeItem('bliss_sch_' + key);
+      await fetch(`${_SB_URL}/rest/v1/schedule_data?key=eq.${encodeURIComponent(key)}`, { method: "DELETE", headers: _SB_H });
       return { key, deleted: true };
     } catch(e) { return null; }
   },
   list: async (prefix) => {
     try {
-      const keys = Object.keys(localStorage)
-        .filter(k => k.startsWith('bliss_sch_' + (prefix || '')))
-        .map(k => k.replace('bliss_sch_', ''));
-      return { keys };
+      const url = prefix
+        ? `${_SB_URL}/rest/v1/schedule_data?key=like.${encodeURIComponent(prefix + "%")}&select=key`
+        : `${_SB_URL}/rest/v1/schedule_data?select=key`;
+      const r = await fetch(url, { headers: _SB_H });
+      const rows = await r.json();
+      return { keys: (rows || []).map(row => row.key) };
     } catch(e) { return { keys: [] }; }
   }
 };
@@ -874,28 +890,28 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     if (!fixed) break;
   }
 
-  // 8) 연속 근무 초과 해소 swap: 초과 직원 ↔ 같은 지점 동료 휴무 교환
-  {
-    const isWork_ = (empId, ds) => {
-      const s = sch[empId]?.[ds];
-      if (!s || s === "") return false;
-      return s === STATUS.WORK || isSupport(s) || s === STATUS.SHARE;
-    };
+  // 8+9 공통 헬퍼: 블록 밖에 선언 (step 9에서도 사용)
+  const isWork_ = (empId, ds) => {
+    const s = sch[empId]?.[ds];
+    if (!s || s === "") return false;
+    return s === STATUS.WORK || isSupport(s) || s === STATUS.SHARE;
+  };
+  const streakLen = (empId, ds) => {
+    if (!isWork_(empId, ds)) return 0;
+    let start = ds;
+    for (let i = 1; i <= 40; i++) {
+      const pd = addDays(ds, -i);
+      if (isWork_(empId, pd)) start = pd; else break;
+    }
+    let len = 0;
+    for (let i = 0; i <= 40; i++) {
+      if (isWork_(empId, addDays(start, i))) len++; else break;
+    }
+    return len;
+  };
 
-    // ds 포함 연속 근무 블록의 총 길이
-    const streakLen = (empId, ds) => {
-      if (!isWork_(empId, ds)) return 0;
-      let start = ds;
-      for (let i = 1; i <= 40; i++) {
-        const pd = addDays(ds, -i);
-        if (isWork_(empId, pd)) start = pd; else break;
-      }
-      let len = 0;
-      for (let i = 0; i <= 40; i++) {
-        if (isWork_(empId, addDays(start, i))) len++; else break;
-      }
-      return len;
-    };
+  // 8) 연속 근무 초과 해소 swap: 초과 직원 ↔ 같은 지점 우선, 없으면 타지점까지 확대
+  {
 
     // 직원의 현재 스케줄에 초과 블록이 하나라도 있는지
     const hasExceed = (empId) =>
@@ -935,14 +951,32 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
           if (seededDates.has(ds)) continue;
           if (streakLen(emp.id, ds) <= rc.maxConsecWork) continue;
 
-          // 같은 지점 동료 중 이날 일반 휴무인 직원
-          const branchEmps = employees.filter(e => e.branch === emp.branch);
-          const colleagues = branchEmps.filter(c =>
-            c.id !== emp.id && sch[c.id]?.[ds] === STATUS.OFF
-          );
+          // swap 후보: 같은 지점 우선, 없으면 타지점까지 확대 (날짜만 교환, 지점 이동 없음)
+          const sameBranchColleagues = employees.filter(c =>
+            c.id !== emp.id && !c.mustStay && sch[c.id]?.[ds] === STATUS.OFF
+          ).filter(c => c.branch === emp.branch);
+          const otherBranchColleagues = employees.filter(c =>
+            c.id !== emp.id && !c.mustStay && sch[c.id]?.[ds] === STATUS.OFF
+          ).filter(c => c.branch !== emp.branch);
+          // 같은 지점 먼저, 타지점은 후순위
+          const colleagues = [...sameBranchColleagues, ...otherBranchColleagues];
+
+          // 지점 최소인원 검증: 해당 날짜에 지점 근무인원이 minStaff 이상인지
+          const branchMinOk = (empId, dateStr, newStatus) => {
+            const emp_ = employees.find(e => e.id === empId);
+            if (!emp_) return true;
+            const br = BRANCHES.find(b => b.id === emp_.branch);
+            if (!br) return true;
+            const minS = rc.branchMinStaff[br.id] ?? br.minStaff ?? 1;
+            // 해당 날 지점 근무 인원 (임시 변경 반영)
+            const working = employees.filter(e => e.branch === br.id).filter(e => {
+              const s = e.id === empId ? newStatus : (sch[e.id]?.[dateStr] || '');
+              return s === STATUS.WORK || isSupport(s) || s === STATUS.SHARE;
+            }).length;
+            return working >= minS;
+          };
 
           // emp의 교환 가능 휴무날 목록
-          // 남자직원은 일요일 OFF를 swap 대상에서 제외 (STEP A 일요일 배정 보호)
           const empOffDays = scanDates.filter(od =>
             sch[emp.id]?.[od.ds] === STATUS.OFF && !seededDates.has(od.ds)
             && !(emp.isMale && od.dow === 6)
@@ -950,7 +984,6 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
 
           let didSwap = false;
           for (const col of colleagues) {
-            // col의 연속 블록이 긴 날 근처에 emp 휴무를 넣는 게 유리 → 정렬
             const sortedOff = [...empOffDays].sort((a, b) =>
               streakLen(col.id, b.ds) - streakLen(col.id, a.ds)
             );
@@ -967,13 +1000,17 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
               sch[col.id][ds]        = STATUS.WORK;
               sch[col.id][offDay.ds] = STATUS.OFF;
 
-              // 검증: emp 해당 블록 해소 + col 신규 초과 없음 + 3일연속 없음
-              const empOk  = canSwapOff(emp.id, ds);
-              const colOk  = canSwapOff(col.id, offDay.ds);
-              const empFix = streakLen(emp.id, ds) <= rc.maxConsecWork;
+              // 검증: 연속근무 해소 + 3일연속휴무 없음 + 지점최소인원 + mustStay + 일요일남자
+              const empOk   = canSwapOff(emp.id, ds);
+              const colOk   = canSwapOff(col.id, offDay.ds);
+              const empFix  = streakLen(emp.id, ds) <= rc.maxConsecWork;
               const colSafe = streakLen(col.id, ds) <= rc.maxConsecWork;
+              // emp 지점: ds에 emp가 off가 되므로 minStaff 유지 검증
+              const empBrOk = branchMinOk(emp.id, ds, STATUS.OFF);
+              // col 지점: offDay에 col이 off가 되므로 minStaff 유지 검증
+              const colBrOk = branchMinOk(col.id, offDay.ds, STATUS.OFF);
 
-              if (empOk && colOk && empFix && colSafe &&
+              if (empOk && colOk && empFix && colSafe && empBrOk && colBrOk &&
                   maleSundayOk(ds) && maleSundayOk(offDay.ds)) {
                 swapped = true;
                 didSwap = true;
@@ -1014,9 +1051,19 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
         if (excess <= 0) return;
 
         // 일반 휴무만 취소 (휴무(꼭) 보호), seededDates 보호, 남자직원 일요일 보호
+        // ⚠️ 취소 시 연속근무 초과(maxConsecWork)가 생기는 날은 취소 불가
+        const wouldExceedConsec = (empId, ds) => {
+          // ds를 근무로 바꿨을 때 연속근무가 maxConsecWork 초과하는지 체크
+          const orig = sch[empId][ds];
+          sch[empId][ds] = STATUS.WORK;
+          const streak = streakLen(empId, ds);
+          sch[empId][ds] = orig;
+          return streak > rc.maxConsecWork;
+        };
         const cancelCands = offDaysInWk
           .filter(d => sch[emp.id][d.ds] === STATUS.OFF && !seededDates.has(d.ds)
-            && !(emp.isMale && d.dow === 6)) // 남자직원 일요일은 STEP A 배정 보호
+            && !(emp.isMale && d.dow === 6) // 남자직원 일요일은 STEP A 배정 보호
+            && !wouldExceedConsec(emp.id, d.ds)) // 연속근무 초과 유발 시 취소 불가
           .sort((a, b) => {
             // isNext 이월 날짜 우선 취소 (이번달 보호)
             if (!!a.isNext !== !!b.isNext) return (a.isNext ? -1 : 1);
@@ -1110,19 +1157,31 @@ function App() {
   // ownerRepeat: 원장별 반복 설정 { [empId]: { enabled: bool, dows: number[] } }
   const [ownerRepeat, setOwnerRepeat] = useState({});
 
-  // 앱 시작 시 저장된 원장 휴무 + 반복 설정 불러오기
+  // 앱 시작 시 저장된 모든 데이터 불러오기
+  const [dataLoaded, setDataLoaded] = React.useState(false);
   React.useEffect(() => {
     (async () => {
       try {
         const r = await window.storage.get(OWNER_STORAGE_KEY);
         if (r?.value) setOwnerReqs(JSON.parse(r.value));
-      } catch(e) { /* 저장 없음 */ }
+      } catch(e) {}
       try {
         const r2 = await window.storage.get(OWNER_REPEAT_KEY);
         if (r2?.value) setOwnerRepeat(JSON.parse(r2.value));
+      } catch(e) {}
+      try {
         const r3 = await window.storage.get(EMP_REQS_KEY);
         if (r3?.value) setEmpReqs(JSON.parse(r3.value));
-      } catch(e) { /* 저장 없음 */ }
+      } catch(e) {}
+      try {
+        const r4 = await window.storage.get(RULES_KEY);
+        if (r4?.value) setCustomRules(JSON.parse(r4.value));
+      } catch(e) {}
+      try {
+        const r5 = await window.storage.get("schHistory_v1");
+        if (r5?.value) setSchHistory(JSON.parse(r5.value));
+      } catch(e) {}
+      setDataLoaded(true);
     })();
   }, []);
 
@@ -1161,9 +1220,9 @@ function App() {
     ["🔄 전체쉐어 순위",["잠실↔천호: ①수민 ②다해/소이 ③용산여유","홍대↔용산: ①민아 ②혜경 ③희서/민정"]],
   ];
   const [customRules, setCustomRules] = React.useState(() => {
-    try { const r = localStorage.getItem(RULES_KEY); return r ? JSON.parse(r) : defaultRules; } catch { return defaultRules; }
+    return defaultRules; // 초기값, useEffect에서 서버에서 로드
   });
-  const saveRules = (r) => { try { localStorage.setItem(RULES_KEY, JSON.stringify(r)); } catch {} };
+  const saveRules = async (r) => { try { await window.storage.set(RULES_KEY, JSON.stringify(r)); } catch(e) {} };
   const [editingRule, setEditingRule] = React.useState(null); // {gi, ii} or {gi, title}
   const [showEmpSettings, setShowEmpSettings] = useState(false);
   const [showSupportSettings, setShowSupportSettings] = useState(false);
@@ -1298,7 +1357,10 @@ function App() {
   const setSch = (updater) => setSchHistory(prev => {
     const cur = prev[curKey] || {};
     const next = typeof updater === 'function' ? updater(cur) : updater;
-    return {...prev, [curKey]: next};
+    const newHistory = {...prev, [curKey]: next};
+    // 서버에 저장 (debounce 불필요, 매 셀 편집마다 저장)
+    window.storage.set("schHistory_v1", JSON.stringify(newHistory)).catch(()=>{});
+    return newHistory;
   });
 
   const curMonthStr = `${year}-${String(month+1).padStart(2,"0")}`;
@@ -1392,6 +1454,13 @@ function App() {
   };
 
   const shownBranches = filterBranch==="all" ? BRANCHES : filterBranch==="male" ? [] : BRANCHES.filter(b=>b.id===filterBranch);
+
+  if (!dataLoaded) return (
+    <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",background:"#f4f2ef",flexDirection:"column",gap:12}}>
+      <div style={{fontSize:24}}>🌿</div>
+      <div style={{fontSize:14,color:"#8b5c2a",fontWeight:600}}>근무표 데이터 불러오는 중...</div>
+    </div>
+  );
 
   return (
     <div style={{fontFamily:"'Noto Sans KR',sans-serif",minHeight:"100vh",background:"#f4f2ef",color:"#221810"}}>
