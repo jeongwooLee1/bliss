@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.223";
+const BLISS_V = "2.69.224";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -4137,18 +4137,19 @@ return f.requestMsg.split("\n").filter(l=>l.trim()).map((line,i)=>{
 
           {/* Action Buttons - 한 줄 (pinned bottom) */}
         </div>
-        <div style={{padding:"14px 20px",background:T.gray100,borderRadius:_isMob?"0":"0 0 14px 14px",position:_isMob?"static":"sticky",bottom:0,zIndex:10,paddingBottom:_isMob?"14px":"calc(14px + env(safe-area-inset-bottom))"}}>
+        <div style={{padding:"12px 16px",paddingBottom:_isMob?"calc(12px + env(safe-area-inset-bottom))":"calc(12px + env(safe-area-inset-bottom))",background:T.bgCard,borderTop:`1px solid ${T.border}`,borderRadius:_isMob?"0":"0 0 14px 14px",position:_isMob?"static":"sticky",bottom:0,zIndex:10}}>
             {/* 예약상태 버튼 */}
-            {item?.id && !isSchedule && <div style={{display:"flex",gap:6,marginBottom:10,justifyContent:"center"}}>
-              <div style={{display:"flex",gap:T.sp.xs}}>
+            {item?.id && !isSchedule && <div style={{display:"flex",gap:6,marginBottom:12,justifyContent:"center"}}>
+              <div style={{display:"flex",gap:6,background:T.gray100,borderRadius:T.radius.lg,padding:4}}>
               {STATUS_KEYS.map(k=>{const sc=getStatusClr();const sel=f.status===k;return <button key={k} onClick={()=>set("status",k)}
-                style={{padding:"4px 20px",borderRadius:0,border:sel?`1.5px solid ${sc[k]}`:`1.5px solid ${T.border}`,
-                  background:sel?sc[k]:"transparent",color:sel?T.bgCard:sc[k],fontSize:T.fs.xs,fontWeight:sel?T.fw.bolder:T.fw.medium,cursor:"pointer",fontFamily:"inherit",
-                  transition:"all .15s",letterSpacing:-0.2,whiteSpace:"nowrap"}}>
+                style={{padding:"7px 16px",borderRadius:T.radius.md,border:"none",
+                  background:sel?sc[k]:"transparent",color:sel?"#fff":T.textMuted,
+                  fontSize:T.fs.xs,fontWeight:sel?T.fw.bolder:T.fw.medium,cursor:"pointer",fontFamily:"inherit",
+                  transition:"all .15s",whiteSpace:"nowrap",boxShadow:sel?"0 1px 4px rgba(0,0,0,.12)":"none"}}>
                 {STATUS_LABEL[k]}</button>})}
               </div>
             </div>}
-            <div style={{display:"flex",gap:T.sp.sm,alignItems:"center",padding:"14px 24px 20px"}}>
+            <div style={{display:"flex",gap:8,alignItems:"center"}}>
             {!isReadOnly && <><Btn
                 disabled={!isSchedule && f.type==="reservation" && !f.custName?.trim()}
                 style={{padding:"10px 26px",background:isSchedule?T.orange:T.primary,boxShadow:isSchedule?"0 4px 14px rgba(225,112,85,.35)":`0 4px 14px rgba(124,124,200,.35)`}}
