@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.225";
+const BLISS_V = "2.69.226";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -3674,7 +3674,8 @@ ${naverText}
       onClick={_isMob ? undefined : onClose}
       style={_isMob ? {
         position:"fixed",inset:0,zIndex:500,background:T.bgCard,
-        overflowY:"auto",WebkitOverflowScrolling:"touch"
+        overflowY:"auto",WebkitOverflowScrolling:"touch",
+        paddingBottom:"calc(130px + env(safe-area-inset-bottom))"
       } : {
         position:"fixed",top:0,left:0,right:0,bottom:0,
         background:"rgba(0,0,0,.35)",backdropFilter:"blur(2px)",WebkitBackdropFilter:"blur(2px)",
@@ -4137,7 +4138,7 @@ return f.requestMsg.split("\n").filter(l=>l.trim()).map((line,i)=>{
 
           {/* Action Buttons - 한 줄 (pinned bottom) */}
         </div>
-        <div style={{padding:"12px 16px",paddingBottom:_isMob?"calc(12px + env(safe-area-inset-bottom))":"calc(12px + env(safe-area-inset-bottom))",background:T.bgCard,borderTop:`1px solid ${T.border}`,borderRadius:_isMob?"0":"0 0 14px 14px",position:_isMob?"static":"sticky",bottom:0,zIndex:10}}>
+        <div style={{padding:"12px 16px",paddingBottom:_isMob?"calc(12px + env(safe-area-inset-bottom))":"calc(12px + env(safe-area-inset-bottom))",background:T.bgCard,borderTop:`1px solid ${T.border}`,borderRadius:_isMob?"0":"0 0 14px 14px",position:_isMob?"fixed":"sticky",bottom:0,left:_isMob?0:undefined,right:_isMob?0:undefined,zIndex:10}}>
             {/* 예약상태 버튼 */}
             {item?.id && !isSchedule && <div style={{display:"flex",gap:4,marginBottom:10,justifyContent:"center"}}>
               <div style={{display:"flex",gap:3,background:T.gray100,borderRadius:T.radius.lg,padding:3,width:"100%"}}>
