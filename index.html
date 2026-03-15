@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.216";
+const BLISS_V = "2.69.217";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -619,11 +619,12 @@ function App() {
           const lastSeen = new Date(oracleRow.updated_at);
           const lastScraped = oracleRow.last_processed ? new Date(oracleRow.last_processed) : null;
           const diffH = (Date.now() - lastSeen.getTime()) / 3600000;
-          // 마지막 스크래핑 기준으로 12시간 체크
           const scrapedDiffH = lastScraped ? (Date.now() - lastScraped.getTime()) / 3600000 : 999;
           const scraper = oracleRow.scraper_status || "";
+          // 서버가 1시간 이상 응답 없거나 DEAD면 세션 죽은 것
           const isSessionDead = scraper.includes("DEAD") || scraper.includes("error") || diffH > 1;
-          const isScrapingStale = scrapedDiffH > 12;
+          // last_processed가 없고 서버가 살아있으면 경고 안 띄움 (방금 시작한 것)
+          const isScrapingStale = lastScraped ? scrapedDiffH > 12 : false;
           const isWarning = isSessionDead || isScrapingStale;
           setScraperStatus({
             lastSeen, lastScraped, diffH, scrapedDiffH,
