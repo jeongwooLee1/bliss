@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.220";
+const BLISS_V = "2.69.221";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -3773,8 +3773,9 @@ ${naverText}
                   {branchRooms.map(rm => branchStaff.map(st => {
                     const br = (data.branches||[]).find(b=>b.id===branchId);
                     const brName = br?.short||br?.name||"";
-                    const rmLabel = rm.name.startsWith(brName) ? rm.name.slice(brName.length) : rm.name;
-                    const label = `${brName}${rmLabel?" "+rmLabel:""}${st.dn && st.dn!==rm.name ? " · "+st.dn : ""}`.trim();
+                    const rmLabel = rm.name.startsWith(brName) ? rm.name.slice(brName.length).trim() : rm.name;
+                    const stLabel = st.dn && st.dn !== rm.name ? (st.dn.startsWith(brName) ? st.dn.slice(brName.length).trim() : st.dn) : "";
+                    const label = [brName, rmLabel, stLabel].filter(Boolean).join(" · ");
                     return <option key={rm.id+st.id} value={`${rm.id}|${st.id}`}>{label}</option>;
                   }))}
                 </select>
@@ -6866,7 +6867,6 @@ function AdminWorkers({ data, setData }) {
         </select>
       </AField>
       <AField label="색상"><APalette value={form.color} onChange={v=>set("color",v)}/></AField>
-      <AIBtn onClick={save} saving={saving} disabled={saving||!form.name.trim()||!form.branchId} label={edit?"저장":"담당자 추가"} style={{marginTop:8}}/>
     </ASheet>
     <AConfirm open={!!del} title="담당자 삭제" onOk={()=>doDelete(del)} onCancel={()=>setDel(null)}/>
   </div>;
