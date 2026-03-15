@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.222";
+const BLISS_V = "2.69.223";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -4042,16 +4042,16 @@ ${naverText}
             {/* 항목 리스트 - 통일된 row 디자인 */}
             {(()=>{
               // label+value row 컴포넌트 (인라인)
-              const NRow = ({label, value, valueColor, bold, rightEl}) => value ? <div style={{display:"flex",alignItems:"baseline",gap:T.sp.sm,padding:"3px 0",borderBottom:"1px solid #E8F5E9",minHeight:26}}>
-                <span style={{fontSize:T.fs.xxs,color:T.textSub,fontWeight:T.fw.medium,minWidth:52,flexShrink:0}}>{label}</span>
-                <span style={{fontSize:T.fs.sm,color:valueColor||T.text,fontWeight:T.fw.normal,lineHeight:1.4,wordBreak:"break-word",whiteSpace:"pre-line",flex:1}}>{value}</span>
+              const NRow = ({label, value, valueColor, bold, rightEl}) => value ? <div style={{display:"flex",alignItems:"flex-start",gap:6,padding:"4px 0",borderBottom:"1px solid #E8F5E9"}}>
+                <span style={{fontSize:11,color:T.textMuted,fontWeight:500,minWidth:48,flexShrink:0,paddingTop:1}}>{label}</span>
+                <span style={{fontSize:T.fs.sm,color:valueColor||T.text,fontWeight:T.fw.normal,lineHeight:1.45,wordBreak:"break-word",flex:1}}>{value}</span>
                 {rightEl && <span style={{flexShrink:0}}>{rightEl}</span>}
               </div> : null;
               const fmtDt = (v) => { const d=new Date(v); return isNaN(d)?v:`${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`; };
               return <>
                 {/* 신청/확정/취소 */}
-                {(f.naverRegDt || f.naverConfirmedDt || f.naverCancelledDt) && <div style={{display:"flex",alignItems:"baseline",gap:T.sp.sm,padding:"3px 0",borderBottom:"1px solid #E8F5E9",minHeight:26}}>
-                  <span style={{fontSize:T.fs.xxs,color:T.textSub,fontWeight:T.fw.medium,minWidth:52,flexShrink:0}}>일시</span>
+                {(f.naverRegDt || f.naverConfirmedDt || f.naverCancelledDt) && <div style={{display:"flex",alignItems:"flex-start",gap:6,padding:"4px 0",borderBottom:"1px solid #E8F5E9"}}>
+                  <span style={{fontSize:11,color:T.textMuted,fontWeight:500,minWidth:48,flexShrink:0,paddingTop:1}}>일시</span>
                   <span style={{fontSize:T.fs.sm,flex:1,display:"flex",flexWrap:"wrap",gap:10,alignItems:"center"}}>
                     {f.naverRegDt && <span style={{color:T.textSub}}><span style={{color:T.textMuted,marginRight:3}}>신청</span>{fmtDt(f.naverRegDt)}</span>}
                     {f.naverConfirmedDt && <span style={{color:T.successDk,fontWeight:T.fw.bolder}}><span style={{fontWeight:T.fw.medium,color:T.textMuted,marginRight:3}}>확정</span>{fmtDt(f.naverConfirmedDt)}</span>}
@@ -4072,9 +4072,9 @@ return col ? (naverColShow[col.key] !== false) : true;
 };
 return items.filter(it=>it.value && _ncShow(it.label||"")).map((it,i)=>{
                         if (it.label==="시술메뉴") return <NRow key={i} label="시술메뉴" value={it.value} />;
-                        return <div key={i} style={{display:"flex",alignItems:"baseline",gap:T.sp.sm,padding:"3px 0",borderBottom:"1px solid #E8F5E9",minHeight:26}}>
-                          <span style={{fontSize:T.fs.xxs,color:T.textSub,fontWeight:T.fw.medium,minWidth:52,flexShrink:0}}>{it.label}</span>
-                          <span style={{fontSize:T.fs.sm,fontWeight:T.fw.medium,color:T.successDk,background:T.successLt,borderRadius:T.radius.lg,padding:"2px 10px",lineHeight:1.4,wordBreak:"break-word"}}>{it.value}</span>
+                        return <div key={i} style={{display:"flex",alignItems:"flex-start",gap:6,padding:"4px 0",borderBottom:"1px solid #E8F5E9"}}>
+                          <span style={{fontSize:11,color:T.textMuted,fontWeight:500,minWidth:48,flexShrink:0,paddingTop:2}}>{it.label}</span>
+                          <span style={{fontSize:T.fs.sm,fontWeight:T.fw.medium,color:T.successDk,lineHeight:1.45,wordBreak:"break-word",flex:1}}>{it.value}</span>
                         </div>;
                       });
                     } catch(e) {}
@@ -4090,17 +4090,17 @@ return f.requestMsg.split("\n").filter(l=>l.trim()).map((line,i)=>{
                     const val = ci > -1 ? line.slice(ci+2).trim() : line.trim();
                     if (!val) return null;
                     if (key==="시술메뉴") return <NRow key={i} label="시술메뉴" value={val} />;
-                    if (key) return <div key={i} style={{display:"flex",alignItems:"baseline",gap:T.sp.sm,padding:"3px 0",borderBottom:"1px solid #E8F5E9",minHeight:26}}>
-                      <span style={{fontSize:T.fs.xxs,color:T.textSub,fontWeight:T.fw.medium,minWidth:52,flexShrink:0}}>{key}</span>
-                      <span style={{fontSize:T.fs.sm,fontWeight:T.fw.normal,color:T.male,background:T.maleLt,borderRadius:T.radius.sm,padding:"1px 8px",lineHeight:1.4,wordBreak:"break-word"}}>{val}</span>
+                    if (key) return <div key={i} style={{display:"flex",alignItems:"flex-start",gap:6,padding:"4px 0",borderBottom:"1px solid #E8F5E9"}}>
+                      <span style={{fontSize:11,color:T.textMuted,fontWeight:500,minWidth:48,flexShrink:0,paddingTop:2}}>{key}</span>
+                      <span style={{fontSize:T.fs.sm,fontWeight:T.fw.normal,color:T.text,lineHeight:1.45,wordBreak:"break-word",flex:1}}>{val}</span>
                     </div>;
                     return <NRow key={i} label="요청" value={val}/>;
                   });
                 })()}
                 {/* 직원 메모 */}
-                {f.ownerComment && naverColShow["직원메모"] !== false && <div style={{display:"flex",alignItems:"baseline",gap:T.sp.sm,padding:"3px 0",borderBottom:"1px solid #E8F5E9",minHeight:26}}>
-                  <span style={{fontSize:T.fs.xxs,color:T.textSub,fontWeight:T.fw.medium,minWidth:52,flexShrink:0}}>직원메모</span>
-                  <span style={{fontSize:T.fs.sm,fontWeight:T.fw.normal,color:T.male,background:T.maleLt,borderRadius:T.radius.sm,padding:"1px 8px",lineHeight:1.4,wordBreak:"break-word",whiteSpace:"pre-line"}}>{f.ownerComment}</span>
+                {f.ownerComment && naverColShow["직원메모"] !== false && <div style={{display:"flex",alignItems:"flex-start",gap:6,padding:"4px 0",borderBottom:"1px solid #E8F5E9"}}>
+                  <span style={{fontSize:11,color:T.textMuted,fontWeight:500,minWidth:48,flexShrink:0,paddingTop:2}}>직원메모</span>
+                  <span style={{fontSize:T.fs.sm,fontWeight:T.fw.normal,color:T.text,lineHeight:1.45,wordBreak:"break-word",whiteSpace:"pre-line",flex:1}}>{f.ownerComment}</span>
                 </div>}
                 {/* {/* 방문/노쇼 + 바로가기 */}
                 {(()=>{
