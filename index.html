@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.217";
+const BLISS_V = "2.69.218";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -6522,7 +6522,7 @@ function AdminBrandMembers({ data, setData, bizId, currentUser }) {
       try { writeIds = JSON.parse(user.branch_ids||user.branches||"[]"); } catch {}
       try { readIds = JSON.parse(user.view_branch_ids||user.viewBranches||"[]"); } catch {}
       if(type==="write") {
-        if(writeIds.includes(brId)) { writeIds=writeIds.filter(id=>id!==brId); readIds=readIds.filter(id=>id!==brId); }
+        if(writeIds.includes(brId)) { writeIds=writeIds.filter(id=>id!==brId); }
         else { writeIds=[...writeIds,brId]; if(!readIds.includes(brId)) readIds=[...readIds,brId]; }
       } else {
         if(readIds.includes(brId)) { readIds=readIds.filter(id=>id!==brId); writeIds=writeIds.filter(id=>id!==brId); }
