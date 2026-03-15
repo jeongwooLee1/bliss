@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.221";
+const BLISS_V = "2.69.222";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -4043,7 +4043,7 @@ ${naverText}
             {(()=>{
               // label+value row 컴포넌트 (인라인)
               const NRow = ({label, value, valueColor, bold, rightEl}) => value ? <div style={{display:"flex",alignItems:"baseline",gap:T.sp.sm,padding:"3px 0",borderBottom:"1px solid #E8F5E9",minHeight:26}}>
-                <span style={{fontSize:T.fs.xxs,color:T.textSub,fontWeight:T.fw.medium,minWidth:72,flexShrink:0}}>{label}</span>
+                <span style={{fontSize:T.fs.xxs,color:T.textSub,fontWeight:T.fw.medium,minWidth:52,flexShrink:0}}>{label}</span>
                 <span style={{fontSize:T.fs.sm,color:valueColor||T.text,fontWeight:T.fw.normal,lineHeight:1.4,wordBreak:"break-word",whiteSpace:"pre-line",flex:1}}>{value}</span>
                 {rightEl && <span style={{flexShrink:0}}>{rightEl}</span>}
               </div> : null;
@@ -4051,7 +4051,7 @@ ${naverText}
               return <>
                 {/* 신청/확정/취소 */}
                 {(f.naverRegDt || f.naverConfirmedDt || f.naverCancelledDt) && <div style={{display:"flex",alignItems:"baseline",gap:T.sp.sm,padding:"3px 0",borderBottom:"1px solid #E8F5E9",minHeight:26}}>
-                  <span style={{fontSize:T.fs.xxs,color:T.textSub,fontWeight:T.fw.medium,minWidth:72,flexShrink:0}}>일시</span>
+                  <span style={{fontSize:T.fs.xxs,color:T.textSub,fontWeight:T.fw.medium,minWidth:52,flexShrink:0}}>일시</span>
                   <span style={{fontSize:T.fs.sm,flex:1,display:"flex",flexWrap:"wrap",gap:10,alignItems:"center"}}>
                     {f.naverRegDt && <span style={{color:T.textSub}}><span style={{color:T.textMuted,marginRight:3}}>신청</span>{fmtDt(f.naverRegDt)}</span>}
                     {f.naverConfirmedDt && <span style={{color:T.successDk,fontWeight:T.fw.bolder}}><span style={{fontWeight:T.fw.medium,color:T.textMuted,marginRight:3}}>확정</span>{fmtDt(f.naverConfirmedDt)}</span>}
@@ -4073,7 +4073,7 @@ return col ? (naverColShow[col.key] !== false) : true;
 return items.filter(it=>it.value && _ncShow(it.label||"")).map((it,i)=>{
                         if (it.label==="시술메뉴") return <NRow key={i} label="시술메뉴" value={it.value} />;
                         return <div key={i} style={{display:"flex",alignItems:"baseline",gap:T.sp.sm,padding:"3px 0",borderBottom:"1px solid #E8F5E9",minHeight:26}}>
-                          <span style={{fontSize:T.fs.xxs,color:T.textSub,fontWeight:T.fw.medium,minWidth:72,flexShrink:0}}>{it.label}</span>
+                          <span style={{fontSize:T.fs.xxs,color:T.textSub,fontWeight:T.fw.medium,minWidth:52,flexShrink:0}}>{it.label}</span>
                           <span style={{fontSize:T.fs.sm,fontWeight:T.fw.medium,color:T.successDk,background:T.successLt,borderRadius:T.radius.lg,padding:"2px 10px",lineHeight:1.4,wordBreak:"break-word"}}>{it.value}</span>
                         </div>;
                       });
@@ -4091,7 +4091,7 @@ return f.requestMsg.split("\n").filter(l=>l.trim()).map((line,i)=>{
                     if (!val) return null;
                     if (key==="시술메뉴") return <NRow key={i} label="시술메뉴" value={val} />;
                     if (key) return <div key={i} style={{display:"flex",alignItems:"baseline",gap:T.sp.sm,padding:"3px 0",borderBottom:"1px solid #E8F5E9",minHeight:26}}>
-                      <span style={{fontSize:T.fs.xxs,color:T.textSub,fontWeight:T.fw.medium,minWidth:72,flexShrink:0}}>{key}</span>
+                      <span style={{fontSize:T.fs.xxs,color:T.textSub,fontWeight:T.fw.medium,minWidth:52,flexShrink:0}}>{key}</span>
                       <span style={{fontSize:T.fs.sm,fontWeight:T.fw.normal,color:T.male,background:T.maleLt,borderRadius:T.radius.sm,padding:"1px 8px",lineHeight:1.4,wordBreak:"break-word"}}>{val}</span>
                     </div>;
                     return <NRow key={i} label="요청" value={val}/>;
@@ -4099,7 +4099,7 @@ return f.requestMsg.split("\n").filter(l=>l.trim()).map((line,i)=>{
                 })()}
                 {/* 직원 메모 */}
                 {f.ownerComment && naverColShow["직원메모"] !== false && <div style={{display:"flex",alignItems:"baseline",gap:T.sp.sm,padding:"3px 0",borderBottom:"1px solid #E8F5E9",minHeight:26}}>
-                  <span style={{fontSize:T.fs.xxs,color:T.textSub,fontWeight:T.fw.medium,minWidth:72,flexShrink:0}}>직원메모</span>
+                  <span style={{fontSize:T.fs.xxs,color:T.textSub,fontWeight:T.fw.medium,minWidth:52,flexShrink:0}}>직원메모</span>
                   <span style={{fontSize:T.fs.sm,fontWeight:T.fw.normal,color:T.male,background:T.maleLt,borderRadius:T.radius.sm,padding:"1px 8px",lineHeight:1.4,wordBreak:"break-word",whiteSpace:"pre-line"}}>{f.ownerComment}</span>
                 </div>}
                 {/* {/* 방문/노쇼 + 바로가기 */}
@@ -4114,11 +4114,11 @@ return f.requestMsg.split("\n").filter(l=>l.trim()).map((line,i)=>{
                   </a> : null;
                   if (f.visitCount > 0 || f.noShowCount > 0) return <div style={{display:"flex",gap:T.sp.md,padding:"3px 0",minHeight:26,alignItems:"center"}}>
                     {f.visitCount > 0 && <span style={{display:"flex",alignItems:"baseline",gap:T.sp.sm,flex:1}}>
-                      <span style={{fontSize:T.fs.xxs,color:T.textSub,fontWeight:T.fw.medium,minWidth:72,flexShrink:0}}>방문</span>
+                      <span style={{fontSize:T.fs.xxs,color:T.textSub,fontWeight:T.fw.medium,minWidth:52,flexShrink:0}}>방문</span>
                       <strong style={{color:T.successDk,fontSize:T.fs.sm,fontWeight:T.fw.bolder}}>{f.visitCount}회</strong>
                     </span>}
                     {f.noShowCount > 0 && <span style={{display:"flex",alignItems:"baseline",gap:T.sp.sm,flex:1}}>
-                      <span style={{fontSize:T.fs.xxs,color:T.textSub,fontWeight:T.fw.medium,minWidth:72,flexShrink:0}}>노쇼</span>
+                      <span style={{fontSize:T.fs.xxs,color:T.textSub,fontWeight:T.fw.medium,minWidth:52,flexShrink:0}}>노쇼</span>
                       <strong style={{color:T.danger,fontSize:T.fs.sm,fontWeight:T.fw.bolder}}>{f.noShowCount}회</strong>
                     </span>}
                     {linkEl && <span style={{marginLeft:"auto"}}>{linkEl}</span>}
