@@ -359,16 +359,16 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       }
       return len;
     };
-    // 뒤쪽 근무 블록 길이
+    // 뒤쪽 근무 블록 길이 (명시적으로 근무/지원/쉐어로 배정된 날만 카운트, 미배정="" 제외)
     const countConsecWorkAfter = (empId, fromDs) => {
       let len = 0;
       for (let i = 1; i <= rc.maxConsecWork + 2; i++) {
         const d2 = new Date(fromDs); d2.setDate(d2.getDate() + i);
         const ds2 = fmtDs(d2.getFullYear(), d2.getMonth(), d2.getDate());
         const s = getStatus(empId, ds2);
-        // 미배정("")은 아직 근무로 채워질 가능성 → 보수적으로 근무로 간주
+        if (!s || s === "") break; // 미배정은 카운트 중단 (아직 결정 안됨)
         if (s === "휴무" || s === "휴무(꼭)") break;
-        if (s === "" || s === STATUS.WORK || isSupport(s) || s === STATUS.SHARE) len++;
+        if (s === STATUS.WORK || isSupport(s) || s === STATUS.SHARE) len++;
         else break;
       }
       return len;
