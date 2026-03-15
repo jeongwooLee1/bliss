@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.224";
+const BLISS_V = "2.69.225";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -4139,12 +4139,12 @@ return f.requestMsg.split("\n").filter(l=>l.trim()).map((line,i)=>{
         </div>
         <div style={{padding:"12px 16px",paddingBottom:_isMob?"calc(12px + env(safe-area-inset-bottom))":"calc(12px + env(safe-area-inset-bottom))",background:T.bgCard,borderTop:`1px solid ${T.border}`,borderRadius:_isMob?"0":"0 0 14px 14px",position:_isMob?"static":"sticky",bottom:0,zIndex:10}}>
             {/* 예약상태 버튼 */}
-            {item?.id && !isSchedule && <div style={{display:"flex",gap:6,marginBottom:12,justifyContent:"center"}}>
-              <div style={{display:"flex",gap:6,background:T.gray100,borderRadius:T.radius.lg,padding:4}}>
+            {item?.id && !isSchedule && <div style={{display:"flex",gap:4,marginBottom:10,justifyContent:"center"}}>
+              <div style={{display:"flex",gap:3,background:T.gray100,borderRadius:T.radius.lg,padding:3,width:"100%"}}>
               {STATUS_KEYS.map(k=>{const sc=getStatusClr();const sel=f.status===k;return <button key={k} onClick={()=>set("status",k)}
-                style={{padding:"7px 16px",borderRadius:T.radius.md,border:"none",
+                style={{flex:1,padding:"6px 0",borderRadius:T.radius.md,border:"none",
                   background:sel?sc[k]:"transparent",color:sel?"#fff":T.textMuted,
-                  fontSize:T.fs.xs,fontWeight:sel?T.fw.bolder:T.fw.medium,cursor:"pointer",fontFamily:"inherit",
+                  fontSize:12,fontWeight:sel?T.fw.bolder:T.fw.medium,cursor:"pointer",fontFamily:"inherit",
                   transition:"all .15s",whiteSpace:"nowrap",boxShadow:sel?"0 1px 4px rgba(0,0,0,.12)":"none"}}>
                 {STATUS_LABEL[k]}</button>})}
               </div>
