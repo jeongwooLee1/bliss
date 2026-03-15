@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.16-d";
+const SCH_V = "v2026.03.16-e";
 const BRANCHES = [
   { id: "nonhyeon", name: "논현&왕십리", color: "#c8793a", minStaff: 4 },
   { id: "hongdae",  name: "홍대&마곡",   color: "#3a9e8e", minStaff: 2 },
@@ -293,15 +293,30 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     const n2o = ["휴무","휴무(꼭)"].includes(getStatus(emp.id, n2ds));
 
     const R = (r) => { if(debug) console.log(`[canOff BLOCK] ${emp.id} ${ds}: ${r}`); return false; };
-    // 3일 연속 방지
+
+    // 연속근무 임박 여부 계산 (이 날 쉬지 않으면 maxConsecWork 초과할지)
+    const consecBefore = (() => {
+      let len = 0;
+      for (let i = 1; i <= rc.maxConsecWork + 2; i++) {
+        const d2 = new Date(ds); d2.setDate(d2.getDate() - i);
+        const ds2 = fmtDs(d2.getFullYear(), d2.getMonth(), d2.getDate());
+        const s2 = getStatus(emp.id, ds2);
+        if (!s2 || s2 === "휴무" || s2 === "휴무(꼭)") break;
+        len++;
+      }
+      return len;
+    })();
+    // 연속근무가 maxConsecWork에 도달한 경우 퐁당퐁당 예외 허용
+    const consecUrgent = consecBefore >= rc.maxConsecWork;
+
+    // 3일 연속 방지 (연속근무 임박이어도 3일 연속 휴무는 금지)
     if (p1o && p2o) return R("3일연속(p2+p1 휴무)");
     if (p1o && n1o) return R("3일연속(p1+n1 휴무)");
 
-    // 퐁당퐁당 방지 (휴무-근무-휴무)
-    if (p2o && !p1o) return R(`퐁당퐁당(p2=${p2ds}휴무, p1근무)`);  // backward: 이틀전휴-어제근-오늘휴
-    // forward: n1이 실제 배정된 경우에만 체크 (미배정=""이면 !n1o=true로 오탐 방지)
+    // 퐁당퐁당 방지 — 연속근무 임박 시 예외 허용
+    if (!consecUrgent && p2o && !p1o) return R(`퐁당퐁당(p2=${p2ds}휴무, p1근무)`);
     const n1Assigned = getStatus(emp.id, n1ds) !== "";
-    if (n1Assigned && !n1o && n2o) return R(`퐁당퐁당(n1근무, n2휴무)`); // 오늘휴-내일근-모레휴
+    if (!consecUrgent && n1Assigned && !n1o && n2o) return R(`퐁당퐁당(n1근무, n2휴무)`);
 
 
     // 전체 하루 최대 휴무 5명 제한 (남자직원 제외 - 별도 집계)
