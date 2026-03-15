@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.212";
+const BLISS_V = "2.69.213";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -2785,13 +2785,6 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
               style={{height:32,padding:"0 12px",border:"none",borderRadius:T.radius.md,background:"transparent",
                 cursor:"pointer",background:showSettings?T.primaryLt:"none",border:showSettings?"1px solid "+T.primary:"1px solid transparent",borderRadius:T.radius.md,padding:"4px 6px",display:"flex",alignItems:"center",justifyContent:"center"}}><I name="settings" size={17} color={showSettings?T.primary:T.gray500}/></button>
           </div>
-          {/* 타 지점 확장 버튼 - staff만 표시 */}
-          {!isMaster && accessibleBids.length > userBranches.length && (
-            <button onClick={toggleExpand} style={{height:32,padding:"0 10px",borderRadius:T.radius.md,border:`1px solid ${expanded?T.primary:T.border}`,background:expanded?T.primaryHover:"#fff",color:expanded?T.primaryDk:T.gray600,fontSize:T.fs.xs,fontWeight:T.fw.bolder,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:4,flexShrink:0,transition:"all .15s"}}>
-              <I name={expanded?"chevL":"chevR"} size={12}/>
-              {expanded ? "내 지점만" : "타 지점 보기"}
-            </button>
-          )}
           
         </div>
         {/* Row 2 (mobile) / inline (desktop): 7-day buttons */}
@@ -3187,6 +3180,18 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
           maxHeight:"80vh",overflowY:"auto",animation:"bottomSheet .4s cubic-bezier(.22,1,.36,1)",willChange:"transform"}}>
           <div style={{width:36,height:4,borderRadius:T.radius.sm,background:T.gray300,margin:"0 auto 16px",cursor:"grab"}}/>
           <div style={{fontSize:T.fs.md,fontWeight:T.fw.bolder,color:T.text,marginBottom:12}}><I name="settings" size={14}/> 타임라인 설정</div>
+          {/* 지점 보기 토글 - staff만 */}
+          {!isMaster && accessibleBids.length > userBranches.length && (
+            <div style={{background:T.gray100,borderRadius:T.radius.lg,padding:"10px 14px",marginBottom:8,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+              <div>
+                <div style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder,color:T.gray700}}>타 지점 보기</div>
+                <div style={{fontSize:T.fs.xs,color:T.textMuted,marginTop:2}}>{expanded ? "읽기 권한 있는 전 지점 표시 중" : "내 지점만 표시 중"}</div>
+              </div>
+              <div onClick={toggleExpand} style={{width:46,height:26,borderRadius:13,background:expanded?T.primary:T.gray300,cursor:"pointer",position:"relative",transition:"background .2s",flexShrink:0}}>
+                <div style={{position:"absolute",top:3,left:expanded?22:3,width:20,height:20,borderRadius:"50%",background:"#fff",boxShadow:"0 1px 4px rgba(0,0,0,.2)",transition:"left .2s"}}/>
+              </div>
+            </div>
+          )}
           <GridLayout cols={2} gap={8}>
         {[
             {label:"줄간격",val:rowH,dec:()=>setRowH(h=>Math.max(6,h-2)),inc:()=>setRowH(h=>Math.min(30,h+2))},
