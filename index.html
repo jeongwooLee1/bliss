@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.213";
+const BLISS_V = "2.69.215";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -2651,42 +2651,36 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
     <div style={{display:"flex",flexDirection:"column",flex:1,minHeight:0}}>
       {/* Pending Reservations Alert - OUTSIDE scroll, always visible */}
       {(() => {
-        const pendingList = (data?.reservations||[]).filter(r => r.status === "pending" && branchesToShow.some(b => b.id === r.bid) && !(r.memo && r.memo.includes("확정완료")));
+        const pendingList = (data?.reservations||[]).filter(r => r.status === "pending" && (isMaster ? branchesToShow : allBranchList.filter(b => userBranches.includes(b.id))).some(b => b.id === r.bid) && !(r.memo && r.memo.includes("확정완료")));
         if (pendingList.length === 0) return null;
         return <div style={{background:T.orangeLt,borderBottom:"1px solid #FFB74D",padding:"6px 12px",display:"flex",alignItems:"center",gap:T.sp.sm,flexShrink:0,cursor:"pointer",animation:"pendingBlink 2s infinite",width:"100%",boxSizing:"border-box"}}
           onClick={()=>{
             if (pendingList.length === 0) return;
-            const tryScroll = (attempt) => {
-              if (attempt >= pendingList.length) return;
-              const idx = (pendingClickIdx.current + attempt) % pendingList.length;
-              const target = pendingList[idx];
-              setSelDate(target.date);
-              setTimeout(()=>{
-                if(!scrollRef.current) return;
-                const rid = target.reservationId || target.id;
-                const el = scrollRef.current.querySelector(`[data-rid="${rid}"]`);
-                if (el) {
-                  pendingClickIdx.current = idx + 1;
-                  const rect = el.getBoundingClientRect();
-                  const sr = scrollRef.current;
-                  const srRect = sr.getBoundingClientRect();
-                  const elTop = rect.top - srRect.top + sr.scrollTop;
-                  const elLeft = rect.left - srRect.left + sr.scrollLeft;
-                  const stickyH = topbarH + headerH;
-                  const stickyW = window.innerWidth <= 768 ? 52 : 88;
-                  const visibleH = sr.clientHeight - stickyH;
-                  const visibleW = sr.clientWidth - stickyW;
-                  sr.scrollTo({
-                    top: Math.max(0, elTop - stickyH - visibleH / 2 + rect.height / 2),
-                    left: Math.max(0, elLeft - stickyW - visibleW / 2 + rect.width / 2),
-                    behavior: "smooth"
-                  });
-                } else {
-                  tryScroll(attempt + 1);
-                }
-              }, 400);
-            };
-            tryScroll(0);
+            const idx = pendingClickIdx.current % pendingList.length;
+            const target = pendingList[idx];
+            pendingClickIdx.current = idx + 1;
+            setSelDate(target.date);
+            setTimeout(()=>{
+              if(!scrollRef.current) return;
+              const rid = target.reservationId || target.id;
+              const el = scrollRef.current.querySelector(`[data-rid="${rid}"]`);
+              if (el) {
+                const rect = el.getBoundingClientRect();
+                const sr = scrollRef.current;
+                const srRect = sr.getBoundingClientRect();
+                const elTop = rect.top - srRect.top + sr.scrollTop;
+                const elLeft = rect.left - srRect.left + sr.scrollLeft;
+                const stickyH = topbarH + headerH;
+                const stickyW = window.innerWidth <= 768 ? 52 : 88;
+                const visibleH = sr.clientHeight - stickyH;
+                const visibleW = sr.clientWidth - stickyW;
+                sr.scrollTo({
+                  top: Math.max(0, elTop - stickyH - visibleH / 2 + rect.height / 2),
+                  left: Math.max(0, elLeft - stickyW - visibleW / 2 + rect.width / 2),
+                  behavior: "smooth"
+                });
+              }
+            }, 300);
           }}>
           <span style={{fontSize:T.fs.xl}}><I name="bell" size={18} color={T.orange}/></span>
           <div style={{flex:1,minWidth:0}}>
