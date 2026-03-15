@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.215";
+const BLISS_V = "2.69.216";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -605,14 +605,32 @@ function App() {
     try { const p = sessionStorage.getItem("bliss_page"); console.log("[SESSION] page restore:", p); return p || "timeline"; } catch(e){ return "timeline"; }
   });
   const [pendingOpenRes, setPendingOpenRes] = useState(null);
-  const [serverV, setServerV] = useState(null); // 서버 스크래퍼 버전
-  // server_logs에서 서버 버전 1분마다 폴링
+  const [serverV, setServerV] = useState(null);
+  const [scraperStatus, setScraperStatus] = useState(null); // {lastSeen, lastScraped, isAlive, isWarning}
+  // server_logs에서 서버 버전 + 스크래퍼 상태 1분마다 폴링
   React.useEffect(()=>{
     const fetchServerV = async ()=>{
       try {
-        const r = await fetch(`${SB_URL}/rest/v1/server_logs?select=extra,updated_at&limit=1&order=updated_at.desc`,{headers:sbHeaders});
+        const r = await fetch(`${SB_URL}/rest/v1/server_logs?select=extra,updated_at,scraper_status,last_processed&order=updated_at.desc&limit=5`,{headers:sbHeaders});
         const rows = await r.json();
-        if (rows?.[0]?.extra?.scraper_version) setServerV(rows[0].extra.scraper_version);
+        const oracleRow = rows?.find(r=>r.extra?.scraper_version) || rows?.[0];
+        if (oracleRow?.extra?.scraper_version) setServerV(oracleRow.extra.scraper_version);
+        if (oracleRow?.updated_at) {
+          const lastSeen = new Date(oracleRow.updated_at);
+          const lastScraped = oracleRow.last_processed ? new Date(oracleRow.last_processed) : null;
+          const diffH = (Date.now() - lastSeen.getTime()) / 3600000;
+          // 마지막 스크래핑 기준으로 12시간 체크
+          const scrapedDiffH = lastScraped ? (Date.now() - lastScraped.getTime()) / 3600000 : 999;
+          const scraper = oracleRow.scraper_status || "";
+          const isSessionDead = scraper.includes("DEAD") || scraper.includes("error") || diffH > 1;
+          const isScrapingStale = scrapedDiffH > 12;
+          const isWarning = isSessionDead || isScrapingStale;
+          setScraperStatus({
+            lastSeen, lastScraped, diffH, scrapedDiffH,
+            isAlive: !isWarning, isWarning, isSessionDead, isScrapingStale,
+            statusText: scraper
+          });
+        }
       } catch(e){}
     };
     fetchServerV();
@@ -1027,7 +1045,7 @@ function App() {
         </div>
         <div className="page-pad" style={{flex:1,padding:page==="timeline"?"0":"16px 20px 16px",display:"flex",flexDirection:"column",minHeight:0,overflow:"hidden"}}>
           <div className={page==="timeline"?"":"fade-in"} key={page} style={page==="timeline"?{flex:1,display:"flex",flexDirection:"column",minHeight:0}:{overflow:"auto",flex:1,WebkitOverflowScrolling:"touch"}}>
-            {page==="timeline" && <Timeline data={data} setData={setData} userBranches={userBranches} viewBranches={viewBranches} isMaster={isMaster} currentUser={currentUser} setPage={setPage} bizId={currentBizId} onMenuClick={()=>setSideOpen(true)} bizName={bizName} pendingOpenRes={pendingOpenRes} setPendingOpenRes={setPendingOpenRes} naverColShow={naverColShow}/>}
+            {page==="timeline" && <Timeline data={data} setData={setData} userBranches={userBranches} viewBranches={viewBranches} isMaster={isMaster} currentUser={currentUser} setPage={setPage} bizId={currentBizId} onMenuClick={()=>setSideOpen(true)} bizName={bizName} pendingOpenRes={pendingOpenRes} setPendingOpenRes={setPendingOpenRes} naverColShow={naverColShow} scraperStatus={scraperStatus}/>}
             {page==="reservations" && <ReservationList data={data} setData={setData} userBranches={userBranches} isMaster={isMaster} setPage={setPage} setPendingOpenRes={setPendingOpenRes} naverColShow={naverColShow} setNaverColShow={setNaverColShow}/>}
             {page==="sales" && <SalesPage data={data} setData={setData} userBranches={userBranches} isMaster={isMaster} setPage={setPage}/>}
             {page==="stats" && <StatsPage data={data} userBranches={userBranches} isMaster={isMaster} role={role}/>}
@@ -1747,7 +1765,7 @@ function MobileBottomNav({ nav, page, setPage }) {
 
 // ─── Sidebar ───
 
-function Sidebar({ nav, page, setPage, role, branchNames, onLogout, bizName="", isSuper=false, onBackToSuper, serverV }) {
+function Sidebar({ nav, page, setPage, role, branchNames, onLogout, bizName="", isSuper=false, onBackToSuper, serverV, scraperStatus=null }) {
   const cats = [
     { label:"예약 관리", items: nav.filter(n=>["timeline","reservations"].includes(n.id)) },
     { label:"고객 관리", items: nav.filter(n=>["customers"].includes(n.id)) },
@@ -1778,7 +1796,18 @@ function Sidebar({ nav, page, setPage, role, branchNames, onLogout, bizName="", 
     <div style={{padding:T.sp.md,borderTop:`1px solid ${T.border}`,display:"flex",flexDirection:"column",gap:6}}>
       {isSuper && <Btn variant="outline" size="sm" onClick={onBackToSuper} style={{width:"100%"}}><I name="arrowL" size={14}/> 관리자 대시보드</Btn>}
       <Btn variant="ghost" size="sm" onClick={onLogout} style={{width:"100%",color:T.textSub}}>로그아웃</Btn>
-      <div style={{fontSize:T.fs.xs,color:T.textMuted,textAlign:"center",marginTop:2,lineHeight:1.6}}><span style={{color:T.danger}}>앱 v{BLISS_V}</span><br/><span style={{color:serverV?"#03C75A":T.textMuted}}>서버 {serverV?`v${serverV}`:"연결중…"}</span></div>
+      <div style={{fontSize:T.fs.xs,color:T.textMuted,textAlign:"center",marginTop:2,lineHeight:1.8}}>
+        <span style={{color:T.danger}}>앱 v{BLISS_V}</span><br/>
+        <span style={{color:serverV?"#03C75A":T.textMuted}}>서버 {serverV?`v${serverV}`:"연결중…"}</span>
+        {scraperStatus && <><br/>
+          <span style={{color:scraperStatus.isWarning?"#E65100":T.textMuted,fontWeight:scraperStatus.isWarning?700:400}}>
+            {scraperStatus.isWarning?"⚠️ ":"✅ "}스크래핑{" "}
+            {scraperStatus.lastScraped
+              ? (()=>{const h=Math.floor(scraperStatus.scrapedDiffH);const m=Math.floor((scraperStatus.scrapedDiffH%1)*60);return h>0?`${h}시간${m>0?` ${m}분`:""} 전`:`${m}분 전`;})()
+              : "기록 없음"}
+          </span>
+        </>}
+      </div>
     </div>
   </>;
 }
@@ -1843,7 +1872,7 @@ function MiniCal({ selDate, onSelect, onClose }) {
   </div>;
 }
 
-function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, currentUser, setPage, bizId, onMenuClick, bizName, pendingOpenRes, setPendingOpenRes, naverColShow={} }) {
+function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, currentUser, setPage, bizId, onMenuClick, bizName, pendingOpenRes, setPendingOpenRes, naverColShow={}, scraperStatus=null }) {
   // 타임라인 블록 표시 항목 — App에서 prop으로 받음
   const effectiveNaverColShow = naverColShow;
   const SVC_LIST = (data?.services || []).slice().sort((a,b)=>(a.sort||0)-(b.sort||0));
@@ -2649,6 +2678,28 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
 
   return (
     <div style={{display:"flex",flexDirection:"column",flex:1,minHeight:0}}>
+      {/* 스크래퍼 상태 경고 배너 */}
+      {scraperStatus?.isWarning && isMaster && (() => {
+        const fmtAgo = (diffH) => {
+          const h = Math.floor(diffH);
+          const m = Math.floor((diffH - h) * 60);
+          return h > 0 ? `${h}시간 ${m}분 전` : `${m}분 전`;
+        };
+        const lastScrapedStr = scraperStatus.lastScraped
+          ? fmtAgo(scraperStatus.scrapedDiffH)
+          : "기록 없음";
+        const msg = scraperStatus.isSessionDead
+          ? "네이버 세션 만료 — 새 예약이 앱에 반영되지 않아요"
+          : `마지막 스크래핑: ${lastScrapedStr} — 12시간 이상 동기화 안 됨`;
+        return <div style={{background:"#fff3e0",borderBottom:"2px solid #FF6D00",padding:"8px 14px",display:"flex",alignItems:"center",gap:8,flexShrink:0,width:"100%",boxSizing:"border-box"}}>
+          <span style={{fontSize:18}}>⚠️</span>
+          <div style={{flex:1,minWidth:0}}>
+            <span style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder,color:"#E65100"}}>네이버 스크래핑 경고</span>
+            <span style={{fontSize:T.fs.xxs,color:"#BF360C",marginLeft:8}}>{msg}</span>
+          </div>
+          <span style={{fontSize:T.fs.xxs,color:"#E65100",fontWeight:T.fw.bolder,flexShrink:0,whiteSpace:"nowrap"}}>login_local.py 실행 필요</span>
+        </div>;
+      })()}
       {/* Pending Reservations Alert - OUTSIDE scroll, always visible */}
       {(() => {
         const pendingList = (data?.reservations||[]).filter(r => r.status === "pending" && (isMaster ? branchesToShow : allBranchList.filter(b => userBranches.includes(b.id))).some(b => b.id === r.bid) && !(r.memo && r.memo.includes("확정완료")));
