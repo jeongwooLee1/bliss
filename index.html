@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.211";
+const BLISS_V = "2.69.212";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -1973,7 +1973,18 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   // 기본: 본인 지점(쓰기권한)만 표시, isMaster는 전지점
   const defaultViewBids = isMaster ? allBranchList.map(b=>b.id) : (userBranches.length > 0 ? userBranches : accessibleBids);
   const [viewBids, setViewBids] = useState(defaultViewBids);
-  const [expanded, setExpanded] = useState(isMaster); // 타 지점 확장 여부
+  const [expanded, setExpanded] = useState(isMaster);
+
+  // userBranches 변경 시 viewBids 동기화 (로그인 직후 타이밍 이슈 해결)
+  useEffect(() => {
+    if (isMaster) {
+      setViewBids(allBranchList.map(b=>b.id));
+    } else if (userBranches.length > 0) {
+      setExpanded(false);
+      setViewBids(userBranches);
+    }
+  }, [userBranches.join(",")]);
+
   // Sync viewBids when branches change (e.g. added/removed in admin)
   useEffect(() => {
     const newIds = allBranchList.map(b=>b.id);
