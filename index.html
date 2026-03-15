@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.209";
+const BLISS_V = "2.69.210";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -6394,12 +6394,13 @@ function AdminBrandMembers({ data, setData, bizId, currentUser }) {
     setSaving(true);
     try {
       const newUserId = "acc_"+uid();
+      const allBranchIds = (data.branches||[]).map(b=>b.id);
       await sb.insert("app_users", {
         id: newUserId, business_id: bizId,
         login_id: req.loginId, password: req.password || "1234",
         name: req.requesterName, role: "staff",
         branch_ids: permission==="write" ? JSON.stringify([req.branchId]) : JSON.stringify([]),
-        view_branch_ids: JSON.stringify([req.branchId])
+        view_branch_ids: JSON.stringify(allBranchIds)
       });
       const newReqs = requests.map(r=>r.id===req.id ? {...r, status:"approved", permission, approvedAt:new Date().toISOString()} : r);
       await updateSettings(newReqs);
