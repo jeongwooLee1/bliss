@@ -346,6 +346,38 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       if (allOthersOff) return R("남직원 전원휴무 금지");
     }
 
+    // 이 날 쉬면 반대편 근무 블록이 maxConsecWork 초과하는지 체크
+    // 앞쪽 근무 블록 길이
+    const countConsecWorkBefore = (empId, fromDs) => {
+      let len = 0;
+      for (let i = 1; i <= rc.maxConsecWork + 2; i++) {
+        const d2 = new Date(fromDs); d2.setDate(d2.getDate() - i);
+        const ds2 = fmtDs(d2.getFullYear(), d2.getMonth(), d2.getDate());
+        const s = getStatus(empId, ds2);
+        if (s === "휴무" || s === "휴무(꼭)" || s === "") break;
+        len++;
+      }
+      return len;
+    };
+    // 뒤쪽 근무 블록 길이
+    const countConsecWorkAfter = (empId, fromDs) => {
+      let len = 0;
+      for (let i = 1; i <= rc.maxConsecWork + 2; i++) {
+        const d2 = new Date(fromDs); d2.setDate(d2.getDate() + i);
+        const ds2 = fmtDs(d2.getFullYear(), d2.getMonth(), d2.getDate());
+        const s = getStatus(empId, ds2);
+        // 미배정("")은 아직 근무로 채워질 가능성 → 보수적으로 근무로 간주
+        if (s === "휴무" || s === "휴무(꼭)") break;
+        if (s === "" || s === STATUS.WORK || isSupport(s) || s === STATUS.SHARE) len++;
+        else break;
+      }
+      return len;
+    };
+    const beforeLen = countConsecWorkBefore(emp.id, ds);
+    const afterLen  = countConsecWorkAfter(emp.id, ds);
+    if (beforeLen > rc.maxConsecWork) return R(`앞 연속근무 ${beforeLen}일 초과`);
+    if (afterLen  > rc.maxConsecWork) return R(`뒤 연속근무 ${afterLen}일 초과`);
+
     return true;
   };
 
