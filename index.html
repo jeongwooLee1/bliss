@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.207";
+const BLISS_V = "2.69.208";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -6639,11 +6639,13 @@ function AdminHeader({ title, count, onAdd, addLabel, desc }) {
 function AdminWorkers({ data, setData }) {
   const rooms=data.rooms||[];
   const regBranches=(data.branchSettings||data.branches||[]).filter(b=>b.useYn!==false);
+  const users=(data.users||[]).filter(u=>u.role==="staff" || u.role==="branch_owner");
   const [sheet,setSheet]=useState(false);
   const [edit,setEdit]=useState(null);
   const [form,setForm]=useState({name:"",branchId:"",color:""});
   const [saving,setSaving]=useState(false);
   const [del,setDel]=useState(null);
+  const [savingPerm,setSavingPerm]=useState(false);
   const set=(k,v)=>setForm(p=>({...p,[k]:v}));
 
   const openNew=()=>{setEdit(null);setForm({name:"",branchId:regBranches[0]?.id||"",color:""});setSheet(true);};
@@ -6672,9 +6674,110 @@ function AdminWorkers({ data, setData }) {
     setDel(null);
   };
 
-  const branchName=id=>regBranches.find(b=>b.id===id)?.name||id;
+  const branchName=id=>regBranches.find(b=>b.id===id)?.short||regBranches.find(b=>b.id===id)?.name||id;
+
+  // 권한 매트릭스: 사용자별 지점 읽기/쓰기 체크박스
+  const getWrite = (user, brId) => {
+    try { return (JSON.parse(user.branch_ids||user.branches||"[]")).includes(brId); } catch { return false; }
+  };
+  const getRead = (user, brId) => {
+    try { return (JSON.parse(user.view_branch_ids||user.viewBranches||"[]")).includes(brId); } catch { return false; }
+  };
+
+  const togglePerm = async (user, brId, type) => {
+    setSavingPerm(true);
+    try {
+      let writeIds = [];
+      let readIds = [];
+      try { writeIds = JSON.parse(user.branch_ids||user.branches||"[]"); } catch {}
+      try { readIds = JSON.parse(user.view_branch_ids||user.viewBranches||"[]"); } catch {}
+
+      if(type === "write") {
+        if(writeIds.includes(brId)) {
+          writeIds = writeIds.filter(id=>id!==brId);
+          readIds = readIds.filter(id=>id!==brId); // 쓰기 해제시 읽기도 해제
+        } else {
+          writeIds = [...writeIds, brId];
+          if(!readIds.includes(brId)) readIds = [...readIds, brId]; // 쓰기 켜면 읽기도 자동 켜짐
+        }
+      } else {
+        if(readIds.includes(brId)) {
+          readIds = readIds.filter(id=>id!==brId);
+          writeIds = writeIds.filter(id=>id!==brId); // 읽기 해제시 쓰기도 해제
+        } else {
+          readIds = [...readIds, brId];
+        }
+      }
+
+      await sb.update("app_users", user.id, {
+        branch_ids: JSON.stringify(writeIds),
+        view_branch_ids: JSON.stringify(readIds)
+      });
+      setData(prev=>({...prev, users:(prev.users||[]).map(u=>u.id===user.id
+        ? {...u, branch_ids:JSON.stringify(writeIds), branches:writeIds, view_branch_ids:JSON.stringify(readIds), viewBranches:readIds}
+        : u
+      )}));
+    } catch(e) { alert("저장 실패: "+e.message); }
+    setSavingPerm(false);
+  };
+
+  const thStyle = {padding:"10px 8px",fontSize:11,fontWeight:700,color:T.textMuted,textAlign:"center",whiteSpace:"nowrap",background:T.bg,borderBottom:`1px solid ${T.border}`};
+  const tdStyle = {padding:"10px 8px",textAlign:"center",borderBottom:`1px solid ${T.gray100}`,verticalAlign:"middle"};
 
   return <div>
+    {/* 계정 권한 매트릭스 */}
+    {users.length > 0 && <>
+      <div style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder,color:T.text,marginBottom:12}}>계정별 지점 권한</div>
+      <div style={{overflowX:"auto",marginBottom:28,borderRadius:T.radius.lg,border:`1px solid ${T.border}`,background:T.bgCard}}>
+        <table style={{width:"100%",borderCollapse:"collapse",minWidth:500}}>
+          <thead>
+            <tr>
+              <th style={{...thStyle,textAlign:"left",padding:"10px 14px",minWidth:90}}>계정</th>
+              {regBranches.map(b=>(
+                <th key={b.id} style={{...thStyle,minWidth:80}}>
+                  <div>{b.short||b.name}</div>
+                  <div style={{display:"flex",justifyContent:"center",gap:12,marginTop:4}}>
+                    <span style={{fontSize:9,color:T.primary}}>쓰기</span>
+                    <span style={{fontSize:9,color:T.textMuted}}>읽기</span>
+                  </div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {users.map(user=>(
+              <tr key={user.id} style={{background:"#fff"}}>
+                <td style={{...tdStyle,textAlign:"left",padding:"10px 14px"}}>
+                  <div style={{fontWeight:T.fw.bolder,fontSize:T.fs.sm,color:T.text}}>{user.name||user.loginId}</div>
+                  <div style={{fontSize:10,color:T.textMuted}}>{user.loginId||user.login_id}</div>
+                </td>
+                {regBranches.map(b=>(
+                  <td key={b.id} style={tdStyle}>
+                    <div style={{display:"flex",justifyContent:"center",gap:12}}>
+                      {/* 쓰기 체크박스 */}
+                      <input type="checkbox" disabled={savingPerm}
+                        checked={getWrite(user, b.id)}
+                        onChange={()=>togglePerm(user, b.id, "write")}
+                        style={{width:16,height:16,accentColor:T.primary,cursor:"pointer"}}/>
+                      {/* 읽기 체크박스 */}
+                      <input type="checkbox" disabled={savingPerm}
+                        checked={getRead(user, b.id)}
+                        onChange={()=>togglePerm(user, b.id, "read")}
+                        style={{width:16,height:16,accentColor:T.gray500,cursor:"pointer"}}/>
+                    </div>
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div style={{display:"flex",gap:16,fontSize:T.fs.xs,color:T.textMuted,marginBottom:24}}>
+        <span><input type="checkbox" checked readOnly style={{accentColor:T.primary,marginRight:4}}/>쓰기 = 예약/매출 등록·수정 가능</span>
+        <span><input type="checkbox" checked readOnly style={{accentColor:T.gray500,marginRight:4}}/>읽기 = 조회만 가능</span>
+      </div>
+    </>}
+
     <APageHeader title="담당자 관리" count={rooms.length} onAdd={openNew}/>
     {rooms.length===0?<AEmpty icon="users" message="등록된 담당자가 없어요" onAdd={openNew} addLabel="담당자 추가"/>
     :<div className="card" style={{padding:0,overflow:"hidden"}}>
