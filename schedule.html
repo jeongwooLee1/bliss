@@ -66,6 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
+const SCH_V = "v2026.03.16-d";
 const BRANCHES = [
   { id: "nonhyeon", name: "논현&왕십리", color: "#c8793a", minStaff: 4 },
   { id: "hongdae",  name: "홍대&마곡",   color: "#3a9e8e", minStaff: 2 },
@@ -1563,7 +1564,7 @@ function App() {
           <span style={{fontSize:22}}>🌿</span>
           <div>
             <div style={{color:"#f5e8d0",fontSize:16,fontWeight:700,letterSpacing:.5}}>HouseWaxing 근무표</div>
-            <div style={{color:"rgba(255,255,255,.4)",fontSize:10}}>{BRANCHES.length}지점 · {ALL_EMPLOYEES.length}명 통합 관리</div>
+            <div style={{color:"rgba(255,255,255,.4)",fontSize:10}}>{BRANCHES.length}지점 · {ALL_EMPLOYEES.length}명 통합 관리 <span style={{color:"#f0c080",fontWeight:700}}>{SCH_V}</span></div>
           </div>
         </div>
         <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
