@@ -1567,7 +1567,16 @@ function App() {
           </div>
         </div>
         <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
-          <Btn label="⚡ 자동배치" onClick={()=>{setSch(autoAssign(year,month,ownerReqs,prevSch,empSettings,{order:supportOrder},ruleConfig,ownerRepeat,ACTIVE_EMPLOYEES,empReqs));toast_("자동 배치 완료! 세부 조정을 권장합니다.");}} primary/>
+          <Btn label="⚡ 자동배치" onClick={()=>{
+  // 현재 월 데이터 초기화 후 새로 자동배치
+  const freshResult = autoAssign(year,month,ownerReqs,prevSch,empSettings,{order:supportOrder},ruleConfig,ownerRepeat,ACTIVE_EMPLOYEES,empReqs);
+  setSchHistory(prev => {
+    const next = {...prev, [curKey]: freshResult};
+    window.storage.set("schHistory_v1", JSON.stringify(next)).catch(()=>{});
+    return next;
+  });
+  toast_("자동 배치 완료! 세부 조정을 권장합니다.");
+}} primary/>
           <Btn label="📅 이월잠금" onClick={()=>{
             const nextDs = new Set(days.filter(d=>d.isNext).map(d=>d.ds));
             setLockedDates(nextDs);
