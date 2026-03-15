@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.210";
+const BLISS_V = "2.69.211";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -1037,10 +1037,9 @@ function App() {
           </div>
         </div>
       </main>
-      <div className="mob-bottom-nav" style={{position:"fixed",bottom:56,left:0,right:0,height:16,display:"flex",alignItems:"center",justifyContent:"center",gap:6,zIndex:199,pointerEvents:"none"}}>
-        <span style={{fontSize:9,color:T.danger,fontWeight:T.fw.bolder,opacity:.7}}>앱 v{BLISS_V}</span>
-        <span style={{fontSize:9,color:T.textMuted,opacity:.5}}>·</span>
-        <span style={{fontSize:9,color:serverV?"#03C75A":T.textMuted,opacity:.7}}>서버 {serverV?`v${serverV}`:"…"}</span>
+      <div style={{position:"fixed",bottom:"calc(56px + env(safe-area-inset-bottom) + 2px)",left:0,right:0,height:16,display:"flex",alignItems:"center",justifyContent:"center",gap:6,zIndex:199,pointerEvents:"none"}}>
+        <span style={{fontSize:9,color:T.danger,fontWeight:800,opacity:.85,textShadow:"0 0 4px #fff,0 0 4px #fff"}}>v{BLISS_V}</span>
+        <span style={{fontSize:9,color:serverV?"#03C75A":T.textMuted,opacity:.85,textShadow:"0 0 4px #fff,0 0 4px #fff"}}>서버 {serverV?`v${serverV}`:"…"}</span>
       </div>
       <MobileBottomNav nav={nav} page={page} setPage={setPage}/>
     </div>
@@ -1969,9 +1968,12 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   const [topbarH, setTopbarH] = useState(80);
 
   // Branch view: 편집가능(userBranches) + 열람가능(viewBranches)
-  const allBranchList = (data.branchSettings || data.branches || []).filter(b => b.useYn !== false);
+  const allBranchList = [...(data.branchSettings || data.branches || [])].filter(b => b.useYn !== false).sort((a,b)=>(a.sort||0)-(b.sort||0));
   const accessibleBids = [...new Set([...userBranches, ...(viewBranches||[])])];
-  const [viewBids, setViewBids] = useState(isMaster ? allBranchList.map(b=>b.id) : accessibleBids);
+  // 기본: 본인 지점(쓰기권한)만 표시, isMaster는 전지점
+  const defaultViewBids = isMaster ? allBranchList.map(b=>b.id) : (userBranches.length > 0 ? userBranches : accessibleBids);
+  const [viewBids, setViewBids] = useState(defaultViewBids);
+  const [expanded, setExpanded] = useState(isMaster); // 타 지점 확장 여부
   // Sync viewBids when branches change (e.g. added/removed in admin)
   useEffect(() => {
     const newIds = allBranchList.map(b=>b.id);
@@ -1981,6 +1983,17 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       return added.length > 0 ? [...filtered, ...added] : filtered.length !== prev.length ? filtered : prev;
     });
   }, [allBranchList.length]);
+
+  const toggleExpand = () => {
+    const next = !expanded;
+    setExpanded(next);
+    if(next) {
+      setViewBids(accessibleBids);
+    } else {
+      setViewBids(userBranches.length > 0 ? userBranches : accessibleBids);
+    }
+  };
+
   const toggleView = (bid) => setViewBids(prev => (prev||[]).includes(bid) ? (prev||[]).filter(x=>x!==bid) : [...(prev||[]), bid]);
   const canEdit = (bid) => isMaster || userBranches.includes(bid);
 
@@ -2761,6 +2774,13 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
               style={{height:32,padding:"0 12px",border:"none",borderRadius:T.radius.md,background:"transparent",
                 cursor:"pointer",background:showSettings?T.primaryLt:"none",border:showSettings?"1px solid "+T.primary:"1px solid transparent",borderRadius:T.radius.md,padding:"4px 6px",display:"flex",alignItems:"center",justifyContent:"center"}}><I name="settings" size={17} color={showSettings?T.primary:T.gray500}/></button>
           </div>
+          {/* 타 지점 확장 버튼 - staff만 표시 */}
+          {!isMaster && accessibleBids.length > userBranches.length && (
+            <button onClick={toggleExpand} style={{height:32,padding:"0 10px",borderRadius:T.radius.md,border:`1px solid ${expanded?T.primary:T.border}`,background:expanded?T.primaryHover:"#fff",color:expanded?T.primaryDk:T.gray600,fontSize:T.fs.xs,fontWeight:T.fw.bolder,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:4,flexShrink:0,transition:"all .15s"}}>
+              <I name={expanded?"chevL":"chevR"} size={12}/>
+              {expanded ? "내 지점만" : "타 지점 보기"}
+            </button>
+          )}
           
         </div>
         {/* Row 2 (mobile) / inline (desktop): 7-day buttons */}
@@ -6420,10 +6440,18 @@ function AdminBrandMembers({ data, setData, bizId, currentUser }) {
 
   // 권한 매트릭스
   const getWrite = (user, brId) => {
-    try { return (JSON.parse(user.branch_ids||user.branches||"[]")).includes(brId); } catch { return false; }
+    try {
+      const v = user.branches || user.branch_ids;
+      const arr = Array.isArray(v) ? v : JSON.parse(v||"[]");
+      return arr.includes(brId);
+    } catch { return false; }
   };
   const getRead = (user, brId) => {
-    try { return (JSON.parse(user.view_branch_ids||user.viewBranches||"[]")).includes(brId); } catch { return false; }
+    try {
+      const v = user.viewBranches || user.view_branch_ids;
+      const arr = Array.isArray(v) ? v : JSON.parse(v||"[]");
+      return arr.includes(brId);
+    } catch { return false; }
   };
   const togglePerm = async (user, brId, type) => {
     setSavingPerm(true);
