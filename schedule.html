@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.16-r";
+const SCH_V = "v2026.03.16-s";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -337,7 +337,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
   const alreadyOffCount = (empId, week) =>
     week.filter(day => {
       if (day.isNext) return false; // 다음달 날짜만 제외 (이전달 isPrev는 포함 - 격주패턴 연속성)
-      const s = day.isPrev ? (prevSch?.[empId]?.[day.ds] || "") : (sch[empId]?.[day.ds] || "");
+      const s = day.isPrev ? (prevSchData?.[empId]?.[day.ds] || "") : (sch[empId]?.[day.ds] || "");
       return ["휴무","휴무(꼭)"].includes(s);
     }).length;
 
