@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.17-c";
+const SCH_V = "v2026.03.17-d";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -595,14 +595,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       let needed = Math.max(0, target - already);
       if (needed <= 0) return;
       // 현아는 수(2)→목(3) 고정, 나머지는 일반 요일 순
-      // 격주 직원 배정 가능 조건: WORK이거나 빈 날 (seeded 날짜도 WORK면 배정 허용 — 이월 근무 위에 휴무 가능)
-      // 단 seeded 날짜 중 이미 휴무/꼭인 건 건드리지 않음
-      const altCanPlace = (d) => {
-        const s = sch[emp.id][d.ds];
-        if (s === "휴무(꼭)") return false; // 꼭 보호
-        if (!s || s === STATUS.WORK) return true; // 빈 날이나 근무는 가능
-        return false; // 이미 휴무/지원 등이면 스킵
-      };
+      const altCanPlace = (d) => !sch[emp.id][d.ds] && !seededDates.has(d.ds);
       const pref = emp.id === "현아"
         ? [...thisMonthDays.filter(d=>d.dow===2&&altCanPlace(d)),
            ...thisMonthDays.filter(d=>d.dow===3&&altCanPlace(d)),
