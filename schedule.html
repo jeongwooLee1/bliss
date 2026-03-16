@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.16-g";
+const SCH_V = "v2026.03.16-h";
 const BRANCHES = [
   { id: "nonhyeon", name: "논현&왕십리", color: "#c8793a", minStaff: 4 },
   { id: "hongdae",  name: "홍대&마곡",   color: "#3a9e8e", minStaff: 2 },
@@ -120,7 +120,7 @@ function getDow0Mon(y,m,d){ const w=new Date(y,m,d).getDay(); return w===0?6:w-1
 function addDays(ds, n){ const d=new Date(ds); d.setDate(d.getDate()+n); return fmtDs(d.getFullYear(),d.getMonth(),d.getDate()); }
 const DNAMES=["월","화","수","목","금","토","일"];
 
-function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, supportConfig={}, ruleConfig={}, ownerRepeat={}, employees=employees, empReqs={}) {
+function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, supportConfig={}, ruleConfig={}, ownerRepeat={}, employees=employees, empReqs={}, seed=null) {
   const dim = getDim(year, month);
   const rc = {
     minWork:         ruleConfig.minWork         ?? 11,
@@ -133,6 +133,19 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
   };
   const sch = {};
   employees.forEach(e => { sch[e.id] = {}; });
+
+  // 랜덤 시드 기반 셔플 (자동배치마다 다른 결과)
+  const _seed = seed ?? Date.now();
+  let _rng = _seed;
+  const rng = () => { _rng = (_rng * 1664525 + 1013904223) & 0xffffffff; return (_rng >>> 0) / 0xffffffff; };
+  const shuffle = (arr) => {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  };
 
   // 0) 전달 근무표에서 이번달 날짜 이월 데이터 시드
   //    (예: 3월 마지막 주에 배정된 4월 1~5일 데이터를 4월 autoAssign 시작점으로 사용)
@@ -566,32 +579,35 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       !isAltPattern(e) && !e.isMale && forcedOff[e.id]?.has(ds)
     );
     let overCount = cnt - maxAllowed;
-    // streak가 가장 짧은 직원부터 이동 (덜 급한 직원 이동)
-    const sorted = [...empsList].sort((a, b) => {
-      const ca = getCarry(a.id, ds); // 이 날까지의 streak
-      const cb = getCarry(b.id, ds);
-      return ca - cb; // streak 짧은 순
-    });
+    // 원장 제외 + streak 짧은 직원부터 이동
+    const sorted = [...empsList]
+      .filter(e => !e.isOwner)  // 원장은 절대 밀어내지 않음
+      .sort((a, b) => getCarry(a.id, ds) - getCarry(b.id, ds));
     for (const emp of sorted) {
       if (overCount <= 0) break;
-      // ±1~3일 이동 가능한 날 탐색
       let moved = false;
-      for (let delta = -1; delta <= 3 && !moved; delta++) {
-        if (delta === 0) continue;
-        const d2 = new Date(ds); d2.setDate(d2.getDate() + delta);
-        const ds2 = fmtDs(d2.getFullYear(), d2.getMonth(), d2.getDate());
-        if (!allDsOrdered.includes(ds2)) continue;
-        if (seededDates.has(ds2)) continue;
-        if (forcedOff[emp.id]?.has(ds2)) continue;
-        const newCount = (dayForcedCount[ds2] || 0) + 1;
-        if (newCount > maxAllowed) continue;
-        // 이동
-        forcedOff[emp.id].delete(ds);
-        forcedOff[emp.id].add(ds2);
-        dayForcedCount[ds]--;
-        dayForcedCount[ds2] = newCount;
-        overCount--;
-        moved = true;
+      for (let delta = 1; delta <= 4 && !moved; delta++) {
+        for (const sign of [1, -1]) {
+          const d2 = new Date(ds); d2.setDate(d2.getDate() + delta * sign);
+          const ds2 = fmtDs(d2.getFullYear(), d2.getMonth(), d2.getDate());
+          if (!allDsOrdered.includes(ds2)) continue;
+          if (seededDates.has(ds2)) continue;
+          if (forcedOff[emp.id]?.has(ds2)) continue;
+          if ((dayForcedCount[ds2] || 0) + 1 > maxAllowed) continue;
+          // 이동 후 ds2 날 minWork 체크
+          const wkAfterMove = employees.filter(e => {
+            if (e.isMale || e.id === emp.id) return false;
+            return !["휴무","휴무(꼭)"].includes(sch[e.id]?.[ds2] ?? "");
+          }).length - (dayForcedCount[ds2] || 0);
+          if (wkAfterMove < rc.minWork) continue;
+          forcedOff[emp.id].delete(ds);
+          forcedOff[emp.id].add(ds2);
+          dayForcedCount[ds]--;
+          dayForcedCount[ds2] = (dayForcedCount[ds2] || 0) + 1;
+          overCount--;
+          moved = true;
+          break;
+        }
       }
     }
   });
@@ -654,13 +670,16 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
           && sch[emp.id][d.ds] === STATUS.WORK
           && !(emp.isMale && d.dow === 6))
         .sort((a, b) => {
-          const aRun = getCarry(emp.id, a.ds) + (sch[emp.id][a.ds] === STATUS.WORK ? 0 : 0);
+          const aRun = getCarry(emp.id, a.ds);
           const bRun = getCarry(emp.id, b.ds);
-          if (bRun !== aRun) return bRun - aRun;
+          if (Math.abs(bRun - aRun) > 1) return bRun - aRun; // streak 차이 클 때만 우선
           const aOff = branchEmps.filter(be => be.id !== emp.id && ["휴무","휴무(꼭)"].includes(sch[be.id]?.[a.ds]||"")).length;
           const bOff = branchEmps.filter(be => be.id !== emp.id && ["휴무","휴무(꼭)"].includes(sch[be.id]?.[b.ds]||"")).length;
           if (aOff !== bOff) return aOff - bOff;
-          return ((a.dow - rotBase + 7) % 7) - ((b.dow - rotBase + 7) % 7);
+          const dowA = ((a.dow - rotBase + 7) % 7);
+          const dowB = ((b.dow - rotBase + 7) % 7);
+          if (dowA !== dowB) return dowA - dowB;
+          return rng() - 0.5; // 동점 시 랜덤으로 다양성 확보
         });
 
       const prevPatterns = activeWeeks.slice(0, wi).map(pw =>
@@ -1672,7 +1691,7 @@ function App() {
         <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
           <Btn label="⚡ 자동배치" onClick={()=>{
   // 현재 월 데이터 초기화 후 새로 자동배치
-  const freshResult = autoAssign(year,month,ownerReqs,prevSch,empSettings,{order:supportOrder},ruleConfig,ownerRepeat,ACTIVE_EMPLOYEES,empReqs);
+  const freshResult = autoAssign(year,month,ownerReqs,prevSch,empSettings,{order:supportOrder},ruleConfig,ownerRepeat,ACTIVE_EMPLOYEES,empReqs,Date.now());
   setSchHistory(prev => {
     const next = {...prev, [curKey]: freshResult};
     window.storage.set("schHistory_v1", JSON.stringify(next)).catch(()=>{});
