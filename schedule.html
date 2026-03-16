@@ -544,7 +544,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
         const s2 = prevSchData?.[emp.id]?.[ds2];
         if (s2 === STATUS.OFF || s2 === STATUS.MUST_OFF) cnt++;
       }
-      if (cnt === 0) return hyeonaPhaseShift; // 데이터 없으면 App의 기본값 사용
+      if (cnt === 0) return firstDow > 0 ? 1 : 0; // 데이터 없으면 firstDow 기반
       return cnt <= lo2 ? 1 : 0;
     })();
     weeks.forEach((week, wi) => {
@@ -1555,12 +1555,17 @@ function App() {
         const r = await window.storage.get(CUSTOM_EMP_KEY);
         if (r?.value) {
           const emps = JSON.parse(r.value);
-          setCustomEmployees(emps);
-          setEmpSettings(prev => {
-            const next = {...prev};
-            emps.forEach(e => { if (!next[e.id]) next[e.id] = {weeklyWork:7-e.weeklyOff, altPattern:false}; });
-            return next;
-          });
+          if (Array.isArray(emps)) {
+            setCustomEmployees(emps);
+            setEmpSettings(prev => {
+              const next = {...prev};
+              emps.forEach(e => { if (!next[e.id]) next[e.id] = {weeklyWork:7-e.weeklyOff, altPattern:false}; });
+              return next;
+            });
+          } else {
+            // 객체 형태 (empSettings 직접 저장)
+            setEmpSettings(prev => ({...prev, ...emps}));
+          }
         }
       } catch(e) {}
     })();
