@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.16-v";
+const SCH_V = "v2026.03.16-w";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -569,11 +569,16 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       let needed = Math.max(0, target - already);
       if (needed <= 0) return;
       // 현아는 수(2)→목(3) 고정, 나머지는 일반 요일 순
+      // 격주 직원은 seededDates(전달 이월 근무) 무시하고 배정 가능 — MUST_OFF/휴무(꼭)만 제외
+      const altCanPlace = (d) => {
+        const s = sch[emp.id][d.ds];
+        return !s || s === STATUS.WORK; // 비어있거나 근무인 날만 (휴무꼭 제외)
+      };
       const pref = emp.id === "현아"
-        ? [...thisMonthDays.filter(d=>d.dow===2&&!sch[emp.id][d.ds]&&!seededDates.has(d.ds)),
-           ...thisMonthDays.filter(d=>d.dow===3&&!sch[emp.id][d.ds]&&!seededDates.has(d.ds)),
-           ...thisMonthDays.filter(d=>d.dow!==2&&d.dow!==3&&!sch[emp.id][d.ds]&&!seededDates.has(d.ds))]
-        : thisMonthDays.filter(d=>!sch[emp.id][d.ds]&&!seededDates.has(d.ds));
+        ? [...thisMonthDays.filter(d=>d.dow===2&&altCanPlace(d)),
+           ...thisMonthDays.filter(d=>d.dow===3&&altCanPlace(d)),
+           ...thisMonthDays.filter(d=>d.dow!==2&&d.dow!==3&&altCanPlace(d))]
+        : thisMonthDays.filter(d=>altCanPlace(d));
       const branchEmps = employees.filter(e=>e.branch===emp.branch);
       const branch = BRANCHES.find(b=>b.id===emp.branch);
       for (const d of pref) {
