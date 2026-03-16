@@ -1853,11 +1853,15 @@ function App() {
         display:"flex", alignItems:"center", justifyContent:"space-between",
         position:"sticky", top:0, zIndex:50, gap:8
       }}>
-        {/* 왼쪽: 로고 + 연월 */}
-        <div style={{display:"flex",alignItems:"center",gap:10}}>
-          <div style={{width:32,height:32,borderRadius:T.radius.md,background:T.primaryLt,display:"flex",alignItems:"center",justifyContent:"center"}}>
-            <I name="users" size={16} color={T.primary}/>
-          </div>
+        {/* 왼쪽: 뒤로가기 + 연월 */}
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <button onClick={()=>{ try{ window.history.back(); }catch(e){} }} style={{
+            width:32,height:32,borderRadius:T.radius.md,border:"1px solid "+T.border,
+            background:"transparent",cursor:"pointer",display:"flex",alignItems:"center",
+            justifyContent:"center",flexShrink:0,transition:"background .12s"
+          }} onMouseEnter={e=>e.currentTarget.style.background=T.gray100} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+            <I name="chevL" size={16} color={T.textSub}/>
+          </button>
           <div style={{display:"flex",alignItems:"center",gap:6}}>
             <button onClick={()=>{if(month===0){setMonth(11);setYear(y=>y-1);}else setMonth(m=>m-1);}} style={{width:26,height:26,borderRadius:T.radius.sm,border:"1px solid "+T.border,background:"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"background .12s"}} onMouseEnter={e=>e.currentTarget.style.background=T.gray100} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
               <I name="chevL" size={13} color={T.textSub}/>
@@ -2047,9 +2051,9 @@ function App() {
                 const isSun=day.dow===6,isSat=day.dow===5;
                 const wb=isWeekBoundary(day);
                 return (
-                  <th key={day.ds} style={{width:50,minWidth:50,padding:"5px 1px",textAlign:"center",fontSize:11,fontWeight:600,background:day.isNext?T.gray200:isToday?T.primary:T.gray100,color:day.isNext?T.textMuted:isToday?"#fff":isSun?T.danger:isSat?T.primaryDk:T.textSub,borderLeft:wb?`2px solid ${T.primary}55`:"1px solid #ddd5c8",borderTop:"1px solid #ddd5c8",borderBottom:"1px solid #ddd5c8",opacity:day.isNext?0.75:1}}>
-                    <div style={{fontWeight:700}}>{day.d}</div>
-                    <div style={{fontSize:9,fontWeight:400}}>{DNAMES[day.dow]}{day.isNext?<span style={{fontSize:8,color:T.textMuted}}>↑다음달</span>:""}</div>
+                  <th key={day.ds} style={{width:38,minWidth:38,padding:"4px 1px",textAlign:"center",background:day.isNext?T.gray200:isToday?T.primary:T.gray100,color:day.isNext?T.textMuted:isToday?"#fff":isSun?T.danger:isSat?T.purple:T.textSub,borderLeft:wb?`2px solid ${T.primary}44`:"1px solid "+T.border,borderTop:"1px solid "+T.border,borderBottom:"2px solid "+T.border,opacity:day.isNext?0.55:1}}>
+                    <div style={{fontSize:T.fs.sm,fontWeight:T.fw.black,lineHeight:1.2}}>{day.d}</div>
+                    <div style={{fontSize:T.fs.nano,fontWeight:T.fw.normal,opacity:.8}}>{DNAMES[day.dow]}</div>
                   </th>
                 );
               })}
