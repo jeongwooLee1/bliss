@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.239";
+const BLISS_V = "2.69.240";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -2282,6 +2282,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
     const allItems = [];
     const isNewItem = !data?.reservations?.find(r => r.id === item.id);
     const isExistItem = !isNewItem;
+    console.log("알림톡 체크:", {isNewItem, isExistItem, id:item.id, phone:item.custPhone, isSchedule:item.isSchedule});
     setData(prev => {
       const exists = (prev?.reservations||[]).find(r => r.id === item.id);
       if (exists) {
