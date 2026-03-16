@@ -528,7 +528,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     const weeklyOff = getWeeklyOff(emp);
     const lo = Math.max(1, weeklyOff - 1); // 적은 주 휴무
     const hi = weeklyOff;                   // 많은 주 휴무
-    const phaseShift = (emp.id === "현아" ? hyeonaPhaseShift : 0);
+    const phaseShift = hyeonaPhaseShift; // 모든 격주직원에 동일 적용
     weeks.forEach((week, wi) => {
       const thisMonthDays = week.filter(d => !d.isPrev);
       if (thisMonthDays.length === 0) return;
@@ -981,7 +981,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       ).length;
     };
 
-    employees.filter(e => !e.isMale).forEach(emp => {
+    employees.filter(e => !e.isMale && !isAltPattern(e)).forEach(emp => {
       const branch = BRANCHES.find(b => b.id === emp.branch);
       const branchEmps = employees.filter(e => e.branch === emp.branch);
       const wo = getWeeklyOff(emp); // 주당 휴무 기준
@@ -1654,7 +1654,11 @@ function App() {
   const toast_ = (msg,type="ok") => { setToast({msg,type}); setTimeout(()=>setToast(null),2500); };
 
   const setEmpSetting = (eid, key, val) =>
-    setEmpSettings(p => ({...p, [eid]: {...p[eid], [key]: val}}));
+    setEmpSettings(p => {
+      const next = {...p, [eid]: {...p[eid], [key]: val}};
+      window.storage.set(CUSTOM_EMP_KEY, JSON.stringify(next)).catch(()=>{});
+      return next;
+    });
 
   const getS = (eid, ds) => sch[eid]?.[ds] || "";
   const setS = (eid, ds, s) => {
