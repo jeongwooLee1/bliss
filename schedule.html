@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.17-f";
+const SCH_V = "v2026.03.17-g";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -1788,6 +1788,31 @@ function App() {
         } else { streak = 0; }
       });
     });
+    // 2주 연속휴무 보장 검증
+    if (ruleConfig.biweeklyConsecOff) {
+      const realDays = (days||[]).filter(d => !d.isNext);
+      const activeWks = [];
+      let wk = [];
+      realDays.forEach(day => {
+        wk.push(day);
+        if (day.dow === 6) { activeWks.push(wk); wk = []; }
+      });
+      if (wk.length) activeWks.push(wk);
+      const validWks = activeWks.filter(w => w.filter(d => !d.isNext).length >= 2);
+      for (let i = 0; i < validWks.length; i += 2) {
+        const block = validWks.slice(i, Math.min(i + 2, validWks.length));
+        const blockDays = block.flatMap(w => w);
+        empList.filter(e => !e.isMale && !e.isOwner).forEach(emp => {
+          const hasConsec = blockDays.some((d, idx) => {
+            if (idx === 0) return false;
+            const prev = blockDays[idx - 1];
+            const isOff = (ds) => ["휴무","휴무(꼭)"].includes(getV(emp.id, ds));
+            return addDays(prev.ds, 1) === d.ds && isOff(prev.ds) && isOff(d.ds);
+          });
+          if (!hasConsec) v.push(`${emp.name} ${blockDays[0].d}일~${blockDays[blockDays.length-1].d}일 2주연속휴무없음`);
+        });
+      }
+    }
     return v;
   };
 
