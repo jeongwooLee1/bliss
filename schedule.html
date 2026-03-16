@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.16-j";
+const SCH_V = "v2026.03.16-k";
 const BRANCHES = [
   { id: "nonhyeon", name: "논현&왕십리", color: "#c8793a", minStaff: 4 },
   { id: "hongdae",  name: "홍대&마곡",   color: "#3a9e8e", minStaff: 2 },
@@ -601,11 +601,13 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
           if (seededDates.has(ds2)) continue;
           if (forcedOff[emp.id]?.has(ds2)) continue;
           if ((dayForcedCount[ds2] || 0) + 1 > maxAllowed) continue;
-          // 이동 후 ds2 날 minWork 체크
-          const wkAfterMove = employees.filter(e => {
-            if (e.isMale || e.id === emp.id) return false;
-            return !["휴무","휴무(꼭)"].includes(sch[e.id]?.[ds2] ?? "");
-          }).length - (dayForcedCount[ds2] || 0);
+          // 이동 후 ds2 날 minWork 체크 (기존 off + 예정 forcedOff 모두 반영)
+          const alreadyOffOnDs2 = employees.filter(e =>
+            !e.isMale && ["휴무","휴무(꼭)"].includes(sch[e.id]?.[ds2] ?? "")
+          ).length;
+          const forcedOnDs2 = (dayForcedCount[ds2] || 0) + 1; // +1 = 이 직원도 이동
+          const totalFemale = employees.filter(e => !e.isMale).length;
+          const wkAfterMove = totalFemale - alreadyOffOnDs2 - forcedOnDs2;
           if (wkAfterMove < rc.minWork) continue;
           forcedOff[emp.id].delete(ds);
           forcedOff[emp.id].add(ds2);
@@ -631,16 +633,20 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       if (canAssignOffHard(emp, day, branchEmps, branch)) {
         sch[emp.id][ds] = STATUS.OFF;
       } else {
-        // fallback: ±1일 시도
-        for (const delta of [-1, 1, -2, 2]) {
-          const d2 = new Date(ds); d2.setDate(d2.getDate() + delta);
-          const ds2 = fmtDs(d2.getFullYear(), d2.getMonth(), d2.getDate());
-          const day2 = allDates.find(d => d.ds === ds2);
-          if (!day2 || seededDates.has(ds2)) continue;
-          if (sch[emp.id][ds2] !== STATUS.WORK) continue;
-          if (canAssignOffHard(emp, day2, branchEmps, branch)) {
-            sch[emp.id][ds2] = STATUS.OFF;
-            break;
+        // fallback: ±1~5일 탐색
+        let fixed = false;
+        for (let delta = 1; delta <= 5 && !fixed; delta++) {
+          for (const sign of [1, -1]) {
+            const d2 = new Date(ds); d2.setDate(d2.getDate() + delta * sign);
+            const ds2 = fmtDs(d2.getFullYear(), d2.getMonth(), d2.getDate());
+            const day2 = allDates.find(d => d.ds === ds2);
+            if (!day2 || seededDates.has(ds2)) continue;
+            if (sch[emp.id][ds2] !== STATUS.WORK) continue;
+            if (canAssignOffHard(emp, day2, branchEmps, branch)) {
+              sch[emp.id][ds2] = STATUS.OFF;
+              fixed = true;
+              break;
+            }
           }
         }
       }
@@ -705,6 +711,22 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
         sch[emp.id][day.ds] = STATUS.OFF;
         toAssign--;
         monthlyRemaining--;
+      }
+
+      // Phase D 보완: canAssignOff 통과 못해서 부족한 쿼터는 canAssignOffHard로 강제 채움
+      if (toAssign > 0) {
+        const hardCands = thisWeekDays
+          .filter(d => !ignoredDates.has(d.ds) && !seededDates.has(d.ds)
+            && sch[emp.id]?.[d.ds] === STATUS.WORK
+            && !(emp.isMale && d.dow === 6))
+          .sort((a, b) => getCarry(emp.id, b.ds) - getCarry(emp.id, a.ds));
+        for (const day of hardCands) {
+          if (toAssign <= 0) break;
+          if (!canAssignOffHard(emp, day, branchEmps, branch)) continue;
+          sch[emp.id][day.ds] = STATUS.OFF;
+          toAssign--;
+          monthlyRemaining--;
+        }
       }
     });
   });
