@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.17-e";
+const SCH_V = "v2026.03.17-f";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -961,7 +961,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
         // 이 주에 weeklyOff 보다 많이 쉬고 있을 때만 한 개 빼는 것 허용
         const weekOffNow = Object.entries(sch[emp.id])
           .filter(([s_ds, s]) => getWeekIdx(s_ds) === wkIdx && (s===STATUS.OFF||s==="휴무(꼭)")).length;
-        if (weekOffNow <= emp.weeklyOff) continue; // 딱 맞거나 부족하면 절대 건드리지 않음
+        if (weekOffNow <= getWeeklyOff(emp)) continue; // 딱 맞거나 부족하면 절대 건드리지 않음
 
         sch[emp.id][ds] = STATUS.WORK;
         converted++;
@@ -986,7 +986,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       // 이 주 휴무 수를 매번 재계산
       const weekOffNow = () => thisMonthDays.filter(d => ["휴무","휴무(꼭)"].includes(sch[emp.id][d.ds])).length;
       // 월 총량 초과 금지, 주당 weeklyOff 초과 금지
-      const weekDeficit = () => Math.min(emp.weeklyOff - weekOffNow(), monthlyTarget - monthlyOffNow());
+      const weekDeficit = () => Math.min(getWeeklyOff(emp) - weekOffNow(), monthlyTarget - monthlyOffNow());
       if (weekDeficit() <= 0) return;
 
       const cands = thisMonthDays
@@ -1210,7 +1210,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
         // 주간 최소 weeklyOff 보호
         const wkIdx = getWeekIdx(ds);
         const wkOff = Object.entries(sch[emp.id]).filter(([s,v])=>getWeekIdx(s)===wkIdx&&["휴무","휴무(꼭)"].includes(v)).length;
-        if (wkOff <= emp.weeklyOff) continue;
+        if (wkOff <= getWeeklyOff(emp)) continue;
         sch[emp.id][ds] = STATUS.WORK;
         converted++;
         fixed = true;
