@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.228";
+const BLISS_V = "2.69.229";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -405,21 +405,30 @@ const sx = {
   },
 };
 
-// ─── 알림톡 발송 (지점별 설정, Supabase Edge Function 경유) ───
-const sendAlimtalk = async (templateCode, phone, params, action, branchConfig) => {
+// ─── 알림톡 발송 (알리고 API, Supabase Edge Function 경유) ───
+const buildAlimtalkMsg = (tpl, params) => {
+  let msg = tpl || "";
+  Object.entries(params || {}).forEach(([k,v]) => { msg = msg.replaceAll(k, v||""); });
+  return msg;
+};
+const sendAlimtalk = async (notiKey, phone, params, branchCfg) => {
   try {
-    const cfg = branchConfig || {};
-    if(!cfg.appKey||!cfg.secretKey||!cfg.senderKey) return null;
-    if(!action && (!templateCode||!phone)) return null;
-    const payload = { appKey:cfg.appKey, secretKey:cfg.secretKey, senderKey:cfg.senderKey, action:action||"send" };
-    if(templateCode) payload.templateCode = templateCode;
-    if(phone) payload.recipientList = [{recipientNo:phone.replace(/-/g,""), templateParameter:params||{}}];
+    const cfg = branchCfg || {};
+    const noti = cfg[notiKey] || {};
+    if(!noti.on || !noti.tplCode || !noti.msgTpl) return null;
+    if(!cfg.aligoKey || !cfg.aligoId || !cfg.senderKey || !cfg.senderPhone || !phone) return null;
+    const message = buildAlimtalkMsg(noti.msgTpl, params);
+    const payload = {
+      apikey: cfg.aligoKey, userid: cfg.aligoId, senderkey: cfg.senderKey,
+      tpl_code: noti.tplCode, sender: cfg.senderPhone.replace(/-/g,""),
+      receiver: phone.replace(/-/g,""), recvname: params["#{고객명}"]||"", message
+    };
     const r = await fetch(SB_URL+"/functions/v1/send-alimtalk", {
       method:"POST", headers:{"Content-Type":"application/json","Authorization":"Bearer "+SB_KEY},
       body:JSON.stringify(payload)
     });
     const res = await r.json();
-    console.log("알림톡:", res.header?.isSuccessful?"성공":"실패", res);
+    console.log("알림톡:", res.result_code===1?"성공":"실패", res);
     return res;
   } catch(e) { console.warn("알림톡 발송 실패:", e.message); return null; }
 };
@@ -2326,13 +2335,10 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
     if(!item.isSchedule && allItems.length > 0 && item.custPhone) {
       try {
         const branch = (data.branches||[]).find(b=>b.id===item.bid);
-        const nCfg = branch?.notiConfig || {};
-        if(nCfg.autoReservation && nCfg.tplReservation) {
-          sendAlimtalk(nCfg.tplReservation, item.custPhone, {
-            "#{고객명}":item.custName||"고객", "#{날짜}":item.date||"", "#{시간}":item.time||"",
-            "#{장소}":branch?.name||"", "#{전화번호}":branch?.phone||""
-          }, null, nCfg);
-        }
+        sendAlimtalk("rsv_confirm", item.custPhone, {
+          "#{고객명}":item.custName||"고객", "#{날짜}":item.date||"", "#{시간}":item.time||"",
+          "#{지점명}":branch?.name||"", "#{전화번호}":branch?.phone||""
+        }, branch?.notiConfig);
       } catch(e) { console.warn("알림톡:", e); }
     }
     setShowModal(false); setModalData(null);
@@ -7242,8 +7248,10 @@ function AdminNoti({ data, sb, bizId, branches }) {
           <span style={{fontSize:T.fs.sm,fontWeight:500}}>알림 발송</span>
           <AToggle on={!!c.on} onChange={v=>upC("on",v)}/>
         </div>
-        <AField label="템플릿 코드"><input style={AInp} value={c.templateCode||""} onChange={e=>upC("templateCode",e.target.value)} placeholder="예: BLISS_RSV_001" onFocus={e=>e.target.style.borderColor=T.primary} onBlur={e=>e.target.style.borderColor="#e8e8f0"}/></AField>
+        <AField label="템플릿 코드"><input style={AInp} value={c.tplCode||""} onChange={e=>upC("tplCode",e.target.value)} placeholder="예: UG_2264" onFocus={e=>e.target.style.borderColor=T.primary} onBlur={e=>e.target.style.borderColor="#e8e8f0"}/></AField>
         {item?.hasTime&&<AField label="발송 시각"><input style={{...AInp,width:"auto"}} type="time" value={c.sendTime||"09:00"} onChange={e=>upC("sendTime",e.target.value)}/></AField>}
+        <AField label="메시지 템플릿"><textarea style={{...AInp,height:100,resize:"vertical",lineHeight:1.5}} value={c.msgTpl||""} onChange={e=>upC("msgTpl",e.target.value)} placeholder={"예: 안녕하세요 #{고객명}님,\n#{날짜} #{시간} 예약이 확정되었습니다.\n지점: #{지점명}"} onFocus={e=>e.target.style.borderColor=T.primary} onBlur={e=>e.target.style.borderColor="#e8e8f0"}/></AField>
+        <div style={{fontSize:T.fs.xxs,color:T.textMuted,marginTop:-8,marginBottom:4}}>사용 가능 변수: #{"{고객명}"} #{"{날짜}"} #{"{시간}"} #{"{지점명}"} #{"{전화번호}"}</div>
       </div>
       <AIBtn onClick={save} disabled={false} label={saved?"✓ 저장됨":"저장"} style={{background:saved?T.success:T.primary}}/>
     </div>;
@@ -7262,14 +7270,14 @@ function AdminNoti({ data, sb, bizId, branches }) {
           <div style={{width:32,height:32,borderRadius:8,background:"#FEE500",display:"flex",alignItems:"center",justifyContent:"center",fontSize:15,fontWeight:900,color:"#3A1D1D"}}>K</div>
           <div>
             <div style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder}}>카카오 채널 API 설정</div>
-            <div style={{fontSize:T.fs.xxs,color:T.textMuted}}>NHN Cloud 연동 정보</div>
+            <div style={{fontSize:T.fs.xxs,color:T.textMuted}}>알리고 알림톡 연동 정보</div>
           </div>
         </div>
         <I name={apiOpen?"chevU":"chevD"} size={16} style={{color:T.gray400}}/>
       </div>
       {apiOpen&&<div style={{padding:"0 16px 16px",borderTop:"1px solid "+T.gray100}}>
-        {[["앱 키","appKey","발급받은 앱 키"],["발신 채널","senderKey","카카오 채널 발신 키"],["발신 번호","senderPhone","등록된 발신 번호"]].map(([lv,k,ph])=>
-          <AField key={k} label={lv}><input style={AInp} value={(cfg.api||{})[k]||""} onChange={e=>up("api",{...(cfg.api||{}),[k]:e.target.value})} placeholder={ph} onFocus={el=>el.target.style.borderColor=T.primary} onBlur={el=>el.target.style.borderColor="#e8e8f0"}/></AField>)}
+        {[["API Key","aligoKey","aeymilcraepgb3i2lgmyk2iez23iefh9"],["사용자 ID","aligoId","cripiss"],["발신 채널 키(SenderKey)","senderKey","카카오 채널 발신 키"],["발신 번호","senderPhone","010-xxxx-xxxx"]].map(([lv,k,ph])=>
+          <AField key={k} label={lv}><input style={AInp} value={cfg[k]||""} onChange={e=>up(k,e.target.value)} placeholder={ph} onFocus={el=>el.target.style.borderColor=T.primary} onBlur={el=>el.target.style.borderColor="#e8e8f0"}/></AField>)}
         <AIBtn onClick={save} disabled={false} label={saved?"✓ 저장됨":"API 저장"} style={{background:saved?T.success:T.primary}}/>
       </div>}
     </div>
@@ -8216,4 +8224,5 @@ const _obs=new MutationObserver(()=>{
 });
 _obs.observe(document.body,{childList:true,subtree:true});
 </script></body></html>
+
 
