@@ -234,18 +234,18 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
   });
 
   // 1-a-3) 원장 연속근무 보호: maxConsecWork 초과 시 자동으로 휴무 삽입
+  const ownerDsOrdered = allDates.filter(d => !d.isPrev && !d.isNext).map(d => d.ds).sort();
   employees.filter(e => e.isOwner).forEach(emp => {
     let streak = 0;
-    for (const ds of allDsOrdered) {
+    for (const ds of ownerDsOrdered) {
       const s = sch[emp.id]?.[ds];
       const isOff = s === STATUS.OFF || s === STATUS.MUST_OFF;
       if (isOff) { streak = 0; continue; }
       streak++;
       if (streak > rc.maxConsecWork) {
-        // 이미 배정된 ownerReqs 우선 — 없으면 강제 휴무
         if (!sch[emp.id][ds] || sch[emp.id][ds] === STATUS.WORK) {
           sch[emp.id][ds] = STATUS.OFF;
-          streak = 1; // 휴무 후 스트릭 리셋
+          streak = 1;
         }
       }
     }
