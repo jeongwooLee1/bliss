@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.16-m";
+const SCH_V = "v2026.03.16-n";
 const BRANCHES = [
   { id: "nonhyeon", name: "논현&왕십리", color: "#c8793a", minStaff: 4 },
   { id: "hongdae",  name: "홍대&마곡",   color: "#3a9e8e", minStaff: 2 },
@@ -1626,52 +1626,58 @@ function App() {
     }
   };
 
+  // 근무표 검증: 위반 있으면 위반 목록 반환, 없으면 빈 배열
+  const validateSch = (schData, empList) => {
+    const v = [];
+    const getV = (id, ds) => schData[id]?.[ds] ?? "";
+    const isWorkV = (id, ds) => {
+      const s = getV(id, ds);
+      return s === STATUS.WORK || (s && s.startsWith("지원")) || s === STATUS.SHARE;
+    };
+    days.forEach(day => {
+      const assigned = empList.filter(e => getV(e.id, day.ds) !== "");
+      if (assigned.length === 0) return;
+      // 남자직원 제외 근무인원
+      const c = empList.filter(e => {
+        if (e.isMale) return false;
+        const s = getV(e.id, day.ds);
+        return s === STATUS.WORK || isSupport(s) || s === STATUS.SHARE || s === "";
+      }).length;
+      if (c > 0 && c < ruleConfig.minWork) v.push(`${day.d}일 근무${c}명(최소${ruleConfig.minWork})`);
+      if (c > ruleConfig.maxWork) v.push(`${day.d}일 근무${c}명(최대${ruleConfig.maxWork}초과)`);
+      // 하루 최대 휴무
+      const offC = empList.filter(e => !e.isMale && ["휴무","휴무(꼭)"].includes(getV(e.id, day.ds))).length;
+      if (offC > ruleConfig.maxDailyOff) v.push(`${day.d}일 휴무${offC}명(최대${ruleConfig.maxDailyOff}초과)`);
+      // 남자직원 일요일 동시근무
+      if (day.dow === 6) {
+        const mw = empList.filter(e => e.isMale && getV(e.id, day.ds) === STATUS.WORK).length;
+        if (mw > 1) v.push(`${day.d}일(일) 남자직원 ${mw}명 동시근무`);
+      }
+    });
+    // 연속근무 초과 (원장 제외)
+    empList.filter(e => !e.isOwner).forEach(emp => {
+      let streak = 0, streakStart = null;
+      days.forEach(day => {
+        if (isWorkV(emp.id, day.ds)) {
+          if (streak === 0) streakStart = day.d;
+          streak++;
+          if (streak === ruleConfig.maxConsecWork + 1)
+            v.push(`${emp.name} ${streakStart}일~ 연속근무${streak}일 초과`);
+        } else { streak = 0; }
+      });
+    });
+    return v;
+  };
+
   const dailyCount = (ds) => ALL_EMPLOYEES.filter(e => {
     if (e.isMale) return false; // 남자직원 일 근무 인원 미포함
     const s=getS(e.id,ds); return s===STATUS.WORK||isSupport(s)||s===STATUS.SHARE||s==="";
   }).length;
 
-  const violations = useMemo(()=>{
-    const v=[];
-    days.forEach(day=>{
-      // 해당 날짜에 명시적으로 배정된 직원이 있을 때만 위반 체크 (빈칸 무시)
-      const assigned = ALL_EMPLOYEES.filter(e => getS(e.id,day.ds)!=="");
-      if (assigned.length === 0) return;
-      const c=dailyCount(day.ds);
-      if(c>0&&c<ruleConfig.minWork) v.push(`${day.d}일 ${c}명(최소${ruleConfig.minWork})`);
-      if(c>ruleConfig.maxWork) v.push(`${day.d}일 ${c}명(최대${ruleConfig.maxWork}초과)`);
-      // 남자직원 일요일 동시근무 금지
-      if (day.dow === 6) {
-        const maleWorking = ALL_EMPLOYEES.filter(e=>e.isMale && getS(e.id,day.ds)===STATUS.WORK).length;
-        if (maleWorking > 1) v.push(`${day.d}일(일) 남자직원 ${maleWorking}명 동시근무`);
-      }
-
-    });
-
-    // 연속 근무 초과 직원 검출 (원장 제외)
-    const isW_ = (empId, ds) => {
-      const s = getS(empId, ds);
-      return s === STATUS.WORK || (s && s.startsWith("지원")) || s === STATUS.SHARE;
-    };
-    ALL_EMPLOYEES.filter(emp => !emp.isOwner).forEach(emp => {
-      let streak = 0; let maxStreak = 0; let streakStart = null;
-      [...days].forEach(day => {
-        if (isW_(emp.id, day.ds)) {
-          if (streak === 0) streakStart = day.d;
-          streak++;
-          if (streak > maxStreak) maxStreak = streak;
-          if (streak === ruleConfig.maxConsecWork + 1) {
-            // maxConsecWork+1일째 되는 순간 딱 1번만 push
-            v.push(`${emp.name} ${streakStart}일~ 연속근무${streak}일 초과`);
-          }
-        } else {
-          streak = 0;
-        }
-      });
-    });
-
-    return v;
-  },[sch,days,ruleConfig]);
+  // violations: validateSch 재사용
+  const violations = useMemo(() =>
+    validateSch(sch, ALL_EMPLOYEES)
+  , [sch, days, ruleConfig]);
 
   const isWeekBoundary = (dayObj) => {
     // dayObj can be a number (old) or {d, isNext, dow}
@@ -1809,13 +1815,33 @@ function App() {
         <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
           <Btn label="⚡ 자동배치" onClick={()=>{
   // 현재 월 데이터 초기화 후 새로 자동배치
-  const freshResult = autoAssign(year,month,ownerReqs,prevSch,empSettings,{order:supportOrder},ruleConfig,ownerRepeat,ACTIVE_EMPLOYEES,empReqs,Date.now());
+  // 최대 30번 재시도 — 위반 없는 결과 나올 때까지
+  const MAX_RETRY = 30;
+  let bestResult = null;
+  let bestViolations = null;
+  for (let attempt = 0; attempt < MAX_RETRY; attempt++) {
+    const result = autoAssign(year,month,ownerReqs,prevSch,empSettings,{order:supportOrder},ruleConfig,ownerRepeat,ACTIVE_EMPLOYEES,empReqs,Date.now()+attempt*997);
+    const viols = validateSch(result, ACTIVE_EMPLOYEES);
+    if (viols.length === 0) {
+      bestResult = result;
+      bestViolations = [];
+      break;
+    }
+    if (!bestResult || viols.length < bestViolations.length) {
+      bestResult = result;
+      bestViolations = viols;
+    }
+  }
+  if (bestViolations.length > 0) {
+    toast_(`⚠️ ${MAX_RETRY}회 시도 후 최선 결과 적용 (위반 ${bestViolations.length}건 잔존)`, "err");
+  } else {
+    toast_("✅ 자동 배치 완료! 규칙 위반 없음.");
+  }
   setSchHistory(prev => {
-    const next = {...prev, [curKey]: freshResult};
+    const next = {...prev, [curKey]: bestResult};
     window.storage.set("schHistory_v1", JSON.stringify(next)).catch(()=>{});
     return next;
   });
-  toast_("자동 배치 완료! 세부 조정을 권장합니다.");
 }} primary/>
           <Btn label="📅 이월잠금" onClick={()=>{
             const nextDs = new Set(days.filter(d=>d.isNext).map(d=>d.ds));
