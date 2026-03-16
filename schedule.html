@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.16-n";
+const SCH_V = "v2026.03.16-o";
 const BRANCHES = [
   { id: "nonhyeon", name: "논현&왕십리", color: "#c8793a", minStaff: 4 },
   { id: "hongdae",  name: "홍대&마곡",   color: "#3a9e8e", minStaff: 2 },
@@ -1641,7 +1641,7 @@ function App() {
       const c = empList.filter(e => {
         if (e.isMale) return false;
         const s = getV(e.id, day.ds);
-        return s === STATUS.WORK || isSupport(s) || s === STATUS.SHARE || s === "";
+        return s === STATUS.WORK || isSupport(s) || s === STATUS.SHARE;
       }).length;
       if (c > 0 && c < ruleConfig.minWork) v.push(`${day.d}일 근무${c}명(최소${ruleConfig.minWork})`);
       if (c > ruleConfig.maxWork) v.push(`${day.d}일 근무${c}명(최대${ruleConfig.maxWork}초과)`);
@@ -1671,7 +1671,7 @@ function App() {
 
   const dailyCount = (ds) => ALL_EMPLOYEES.filter(e => {
     if (e.isMale) return false; // 남자직원 일 근무 인원 미포함
-    const s=getS(e.id,ds); return s===STATUS.WORK||isSupport(s)||s===STATUS.SHARE||s==="";
+    const s=getS(e.id,ds); return s===STATUS.WORK||isSupport(s)||s===STATUS.SHARE;
   }).length;
 
   // violations: validateSch 재사용
