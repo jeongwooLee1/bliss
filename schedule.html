@@ -356,9 +356,35 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
   };
   const isAltPattern = (emp) => empSettings[emp.id]?.altPattern ?? (emp.id === "현아"); // 현아 기본 ON
 
-  // 현아 격주 패턴: 전달 이월 주가 있으면 패턴 반전
-  // firstDow > 0 이면 첫 주가 전달에서 넘어온 주이므로 패턴 반전
-  const hyeonaPhaseShift = firstDow > 0 ? 1 : 0;
+  // 격주패턴 phaseShift: 이전 달 마지막 실제 주의 휴무 수로 결정
+  // 이전 달 마지막 주가 lo(1일)로 끝났으면 이번 달 첫 주는 hi(2일)부터 시작 → phaseShift=1
+  // 이전 달 마지막 주가 hi(2일)로 끝났으면 이번 달 첫 주는 lo(1일)부터 시작 → phaseShift=0
+  const hyeonaPhaseShift = (() => {
+    // prevSchData에서 이전 달 마지막 주 altPattern 직원 휴무 수 파악
+    // prevSchData가 없으면 firstDow 기반 fallback
+    const altEmps = employees.filter(e => isAltPattern(e));
+    if (!altEmps.length) return firstDow > 0 ? 1 : 0;
+    const sampleEmp = altEmps[0]; // 대표 직원 (현아 또는 첫 번째 격주직원)
+    const weeklyOff = getWeeklyOff(sampleEmp);
+    const lo = Math.max(1, weeklyOff - 1);
+    const hi = weeklyOff;
+    // 이전 달 마지막 실제 주 찾기 (prevSchData 기반)
+    const prevYear = month === 0 ? year - 1 : year;
+    const prevMonth = month === 0 ? 11 : month - 1;
+    const prevLastDay = new Date(year, month, 0).getDate();
+    // 이전 달 마지막 주 (마지막 일요일까지)
+    let prevLastMonday = prevLastDay;
+    while (new Date(prevYear, prevMonth, prevLastMonday).getDay() !== 1) prevLastMonday--;
+    let prevWeekOff = 0;
+    for (let d = prevLastMonday; d <= prevLastDay; d++) {
+      const ds = fmtDs(prevYear, prevMonth, d);
+      const s = prevSchData?.[sampleEmp.id]?.[ds];
+      if (s === STATUS.OFF || s === STATUS.MUST_OFF) prevWeekOff++;
+    }
+    // 이전 주가 lo였으면 이번 주는 hi(shift=1), hi였으면 lo(shift=0)
+    if (prevWeekOff === 0) return firstDow > 0 ? 1 : 0; // 데이터 없으면 fallback
+    return prevWeekOff <= lo ? 1 : 0;
+  })();
 
   // 이번달에 걸친 주 수 (이번달 날짜가 1일 이상 있는 주만)
   const activeWeeks = weeks.filter(w => w.some(d => !d.isPrev));
