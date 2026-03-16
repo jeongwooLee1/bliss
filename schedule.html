@@ -529,22 +529,26 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     const weeklyOff = getWeeklyOff(emp);
     const lo = Math.max(1, weeklyOff - 1); // 적은 주 휴무
     const hi = weeklyOff;                   // 많은 주 휴무
-    // 이전 달 마지막 주 휴무수로 phaseShift 결정 (월간 패턴 연속성)
+    // 이전 달 마지막 완전한 주 휴무수로 phaseShift 결정 (월간 패턴 연속성)
     const phaseShift = (() => {
       const weeklyOff2 = getWeeklyOff(emp);
       const lo2 = Math.max(1, weeklyOff2 - 1);
       const prevYear2 = month === 0 ? year - 1 : year;
       const prevMonth2 = month === 0 ? 11 : month - 1;
       const prevLastDay2 = new Date(year, month, 0).getDate();
+      // 마지막 월요일 찾기
       let prevMon2 = prevLastDay2;
       while (new Date(prevYear2, prevMonth2, prevMon2).getDay() !== 1) prevMon2--;
+      // 마지막 주가 3일 미만(불완전)이면 그 이전 주 사용
+      if (prevLastDay2 - prevMon2 < 2 && prevMon2 >= 8) prevMon2 -= 7;
+      const prevSun2 = prevMon2 + 6;
       let cnt = 0;
-      for (let d2 = prevMon2; d2 <= prevLastDay2; d2++) {
+      for (let d2 = prevMon2; d2 <= Math.min(prevSun2, prevLastDay2); d2++) {
         const ds2 = fmtDs(prevYear2, prevMonth2, d2);
         const s2 = prevSchData?.[emp.id]?.[ds2];
         if (s2 === STATUS.OFF || s2 === STATUS.MUST_OFF) cnt++;
       }
-      if (cnt === 0) return firstDow > 0 ? 1 : 0; // 데이터 없으면 firstDow 기반
+      if (cnt === 0) return firstDow > 0 ? 1 : 0;
       return cnt <= lo2 ? 1 : 0;
     })();
     weeks.forEach((week, wi) => {
