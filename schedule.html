@@ -166,13 +166,13 @@ const DNAMES=["월","화","수","목","금","토","일"];
 function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, supportConfig={}, ruleConfig={}, ownerRepeat={}, employees=employees, empReqs={}, seed=null) {
   const dim = getDim(year, month);
   const rc = {
-    minWork:         ruleConfig.minWork         ?? 11,
-    maxWork:         ruleConfig.maxWork         ?? 15,
-    maxDailyOff:     ruleConfig.maxDailyOff     ?? 5,
-    maxConsecWork:   ruleConfig.maxConsecWork   ?? 6,  // 최대 연속 근무일
-    branchMinStaff:  ruleConfig.branchMinStaff  ?? {},
-    noSimultaneousOff: ruleConfig.noSimultaneousOff ?? {},
-    biweeklyConsecOff: ruleConfig.biweeklyConsecOff ?? true, // 2주마다 연속휴무 1회 보장
+    minWork:         Number(ruleConfig.minWork)         || 11,
+    maxWork:         Number(ruleConfig.maxWork)         || 15,
+    maxDailyOff:     Number(ruleConfig.maxDailyOff)     || 5,
+    maxConsecWork:   Number(ruleConfig.maxConsecWork)   || 6,
+    branchMinStaff:  (ruleConfig.branchMinStaff && typeof ruleConfig.branchMinStaff === "object") ? ruleConfig.branchMinStaff : {},
+    noSimultaneousOff: (ruleConfig.noSimultaneousOff && typeof ruleConfig.noSimultaneousOff === "object") ? ruleConfig.noSimultaneousOff : {},
+    biweeklyConsecOff: ruleConfig.biweeklyConsecOff ?? true,
   };
   const sch = {};
   employees.forEach(e => { sch[e.id] = {}; });
