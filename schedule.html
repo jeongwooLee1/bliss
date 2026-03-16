@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.17-a";
+const SCH_V = "v2026.03.16-z";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -245,20 +245,6 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       if (rep.dows.includes(dow)) {
         const ds = fmtDs(year, month, d);
         if (!sch[emp.id][ds]) sch[emp.id][ds] = STATUS.MUST_OFF;
-      }
-    }
-  });
-
-  // 1-c) 원장 일요일(dow=6) 자동 휴무 — ownerReqs/ownerRepeat 미지정 시 기본 적용
-  employees.filter(e=>e.isOwner).forEach(emp => {
-    for (let d=1; d<=dim; d++) {
-      const dow = getDow0Mon(year, month, d);
-      if (dow === 6) { // 일요일
-        const ds = fmtDs(year, month, d);
-        if (!sch[emp.id][ds]) { // ownerReqs/반복 미설정 날짜만
-          sch[emp.id][ds] = STATUS.OFF;
-          seededDates.add(ds);
-        }
       }
     }
   });
@@ -596,8 +582,8 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       };
       const pref = emp.id === "현아"
         ? [...thisMonthDays.filter(d=>d.dow===2&&altCanPlace(d)),
-           ...thisMonthDays.filter(d=>d.dow===3&&altCanPlace(d))]
-        // 현아는 수/목만 — fallback 없음 (수목에 배정 못하면 그 주는 포기)
+           ...thisMonthDays.filter(d=>d.dow===3&&altCanPlace(d)),
+           ...thisMonthDays.filter(d=>d.dow!==2&&d.dow!==3&&altCanPlace(d))]
         : thisMonthDays.filter(d=>altCanPlace(d));
       const branchEmps = employees.filter(e=>e.branch===emp.branch);
       const branch = BRANCHES.find(b=>b.id===emp.branch);
