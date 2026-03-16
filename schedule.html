@@ -1824,67 +1824,73 @@ function App() {
       )}
 
       {/* 헤더 */}
-      <div className="np" style={{background:T.bgCard,borderBottom:"1px solid "+T.border,padding:"12px 16px",boxShadow:T.shadow.sm,display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:50,gap:8}}>
-        <div style={{display:"flex",alignItems:"center",gap:10}}>
-          <span style={{fontSize:22}}>🌿</span>
-          <div>
-            <div style={{color:T.text,fontSize:T.fs.lg,fontWeight:T.fw.black,letterSpacing:-.3}}>HouseWaxing 근무표</div>
-            <div style={{color:T.textMuted,fontSize:T.fs.nano}}>{BRANCHES.length}지점 · {ALL_EMPLOYEES.length}명 통합 관리 <span style={{color:T.primary,fontWeight:T.fw.bold}}>{SCH_V}</span></div>
+      <div className="np" style={{background:T.bgCard,borderBottom:"1px solid "+T.border,padding:"10px 14px",boxShadow:T.shadow.sm,display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:50,gap:8}}>
+        {/* 왼쪽: 타이틀 */}
+        <div style={{display:"flex",alignItems:"center",gap:8,minWidth:0}}>
+          <span style={{fontSize:20}}>🌿</span>
+          <div style={{minWidth:0}}>
+            <div style={{color:T.text,fontSize:T.fs.md,fontWeight:T.fw.black,letterSpacing:-.3,whiteSpace:"nowrap"}}>HouseWaxing 근무표</div>
+            <div style={{color:T.textMuted,fontSize:T.fs.nano}}>{BRANCHES.length}지점·{ALL_EMPLOYEES.length}명 <span style={{color:T.primary,fontWeight:T.fw.bold}}>{SCH_V}</span></div>
           </div>
         </div>
-        <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
-          <Btn label="⚡ 자동배치" onClick={()=>{
-  // 현재 월 데이터 초기화 후 새로 자동배치
-  // 최대 30번 재시도 — 위반 없는 결과 나올 때까지
+        {/* 오른쪽: 액션 버튼들 */}
+        <div style={{display:"flex",gap:5,alignItems:"center",flexShrink:0}}>
+          {/* 자동배치 - 주요 액션 */}
+          <Btn label="⚡ 배치" onClick={()=>{
   const MAX_RETRY = 30;
-  let bestResult = null;
-  let bestViolations = null;
+  let bestResult = null, bestViolations = null;
   for (let attempt = 0; attempt < MAX_RETRY; attempt++) {
     const result = autoAssign(year,month,ownerReqs,prevSch,empSettings,{order:supportOrder},ruleConfig,ownerRepeat,ACTIVE_EMPLOYEES,empReqs,Date.now()+attempt*997);
     const viols = validateSch(result, ACTIVE_EMPLOYEES);
-    if (viols.length === 0) {
-      bestResult = result;
-      bestViolations = [];
-      break;
-    }
-    if (!bestResult || viols.length < bestViolations.length) {
-      bestResult = result;
-      bestViolations = viols;
-    }
+    if (viols.length === 0) { bestResult = result; bestViolations = []; break; }
+    if (!bestResult || viols.length < bestViolations.length) { bestResult = result; bestViolations = viols; }
   }
-  if (bestViolations.length > 0) {
-    toast_(`⚠️ ${MAX_RETRY}회 시도 후 최선 결과 적용 (위반 ${bestViolations.length}건 잔존)`, "err");
-  } else {
-    toast_("✅ 자동 배치 완료! 규칙 위반 없음.");
-  }
-  setSchHistory(prev => {
-    const next = {...prev, [curKey]: bestResult};
-    window.storage.set("schHistory_v1", JSON.stringify(next)).catch(()=>{});
-    return next;
-  });
+  if (bestViolations.length > 0) toast_("⚠️ "+MAX_RETRY+"회 시도 후 최선 결과 적용 (위반 "+bestViolations.length+"건 잔존)", "err");
+  else toast_("✅ 자동 배치 완료!");
+  setSchHistory(prev => { const next={...prev,[curKey]:bestResult}; window.storage.set("schHistory_v1",JSON.stringify(next)).catch(()=>{}); return next; });
 }} primary/>
-          <Btn label="📅 이월잠금" onClick={()=>{
-            const nextDs = new Set(days.filter(d=>d.isNext).map(d=>d.ds));
-            setLockedDates(nextDs);
-            toast_("이월 주 날짜가 잠금되었습니다.");
-          }} outline/>
-          <Btn label="🗑 초기화" onClick={()=>setShowResetConfirm(true)} outline style={{color:"#c04040",borderColor:"#c04040"}}/>
-          <Btn label="⬇ CSV" onClick={exportCSV} outline/>
-          <Btn label="🖨 인쇄" onClick={()=>window.print()} outline/>
+          {/* 아이콘 버튼들 */}
+          {[
+            {icon:"📅", tip:"이월잠금", fn:()=>{ setLockedDates(new Set(days.filter(d=>d.isNext).map(d=>d.ds))); toast_("이월잠금 완료"); }},
+            {icon:"🗑", tip:"초기화",  fn:()=>setShowResetConfirm(true), danger:true},
+            {icon:"⬇", tip:"CSV",     fn:exportCSV},
+            {icon:"🖨", tip:"인쇄",    fn:()=>window.print()},
+          ].map(({icon,tip,fn,danger})=>(
+            <button key={tip} onClick={fn} title={tip} style={{
+              width:34,height:34,borderRadius:T.radius.md,border:"1px solid "+(danger?"#ef535055":T.border),
+              background:danger?"#fdecea":T.bgCard,cursor:"pointer",fontSize:15,
+              display:"flex",alignItems:"center",justifyContent:"center",transition:"all .15s",flexShrink:0
+            }}
+              onMouseEnter={e=>{e.currentTarget.style.filter="brightness(.93)";e.currentTarget.style.transform="scale(1.05)";}}
+              onMouseLeave={e=>{e.currentTarget.style.filter="";e.currentTarget.style.transform="";}}>
+              {icon}
+            </button>
+          ))}
+          {/* 설정 드롭다운 */}
           <div style={{position:"relative"}}>
-            <Btn label="⚙️ 설정" onClick={()=>setShowSettings(s=>!s)} outline/>
+            <button onClick={()=>setShowSettings(s=>!s)} title="설정" style={{
+              width:34,height:34,borderRadius:T.radius.md,border:"1px solid "+T.border,
+              background:showSettings?T.primaryLt:T.bgCard,cursor:"pointer",fontSize:15,
+              display:"flex",alignItems:"center",justifyContent:"center",transition:"all .15s",flexShrink:0
+            }}>⚙️</button>
             {showSettings && (
               <>
                 <div style={{position:"fixed",inset:0,zIndex:149}} onClick={()=>setShowSettings(false)}/>
-                <div style={{position:"absolute",top:"calc(100% + 4px)",right:0,background:"#fff",borderRadius:10,boxShadow:"0 6px 24px rgba(0,0,0,.18)",zIndex:150,overflow:"hidden",minWidth:140}}>
+                <div style={{position:"absolute",top:"calc(100% + 6px)",right:0,background:T.bgCard,borderRadius:T.radius.lg,boxShadow:T.shadow.lg,zIndex:150,overflow:"hidden",minWidth:160,border:"1px solid "+T.border}}>
                   {[
-                    {label:"⚙️ 규칙설정", action:()=>{setShowRuleConfig(true);setShowSettings(false);}},
-                    {label:"👑 원장설정", action:()=>{setShowOwnerSettings(true);setShowSettings(false);}},
-                    {label:"👤 직원설정", action:()=>{setShowEmpSettings(true);setShowSettings(false);}},
-                    {label:"🏢 지점지원설정", action:()=>{setShowSupportSettings(true);setShowSettings(false);}},
-                  ].map(({label,action})=>(
-                    <button key={label} onClick={action} style={{display:"block",width:"100%",padding:"11px 16px",border:"none",background:"transparent",textAlign:"left",fontSize:13,cursor:"pointer",fontFamily:"inherit",color:"#3a2010",fontWeight:500,transition:"background .1s"}}
-                      onMouseEnter={e=>e.target.style.background="#f5ede2"} onMouseLeave={e=>e.target.style.background="transparent"}>
+                    {label:"⚙️ 규칙 설정",  action:()=>{setShowRuleConfig(true);setShowSettings(false);}},
+                    {label:"👑 원장 설정",  action:()=>{setShowOwnerSettings(true);setShowSettings(false);}},
+                    {label:"👤 직원 설정",  action:()=>{setShowEmpSettings(true);setShowSettings(false);}},
+                    {label:"🏢 지점지원 설정", action:()=>{setShowSupportSettings(true);setShowSettings(false);}},
+                  ].map(({label,action},idx,arr)=>(
+                    <button key={label} onClick={action} style={{
+                      display:"block",width:"100%",padding:"10px 14px",border:"none",
+                      borderBottom:idx<arr.length-1?"1px solid "+T.border:"none",
+                      background:"transparent",textAlign:"left",fontSize:T.fs.sm,
+                      cursor:"pointer",fontFamily:"inherit",color:T.text,fontWeight:T.fw.medium,transition:"background .1s"
+                    }}
+                      onMouseEnter={e=>e.target.style.background=T.gray100}
+                      onMouseLeave={e=>e.target.style.background="transparent"}>
                       {label}
                     </button>
                   ))}
@@ -1895,7 +1901,7 @@ function App() {
         </div>
       </div>
 
-      {/* 배정규칙 모달 - 편집 가능 */}
+      {/* 배정규칙 모달      {/* 배정규칙 모달 - 편집 가능 */}
       {showRules && (
         <>
           <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.45)",zIndex:200}} onClick={()=>setShowRules(false)}/>
