@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.16-t";
+const SCH_V = "v2026.03.16-u";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -534,10 +534,11 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     const phaseShift = (() => {
       const weeklyOff2 = getWeeklyOff(emp);
       const lo2 = Math.max(1, weeklyOff2 - 1);
-      // ① 이전달 배치 저장 시 기록한 __biweeklyLastOff 우선 사용
-      const savedLastOff = prevSchData?.__biweeklyLastOff?.[emp.id];
-      if (savedLastOff !== undefined) {
-        return savedLastOff <= lo2 ? 1 : 0;
+      // ① 이전달 배치 저장 시 기록한 __biweeklyNextPhase 우선 사용
+      // "hi"면 이번달 첫 주를 hi로 시작 → phaseShift=1(hi), "lo"면 phaseShift=0(lo)
+      const savedNextPhase = prevSchData?.__biweeklyNextPhase?.[emp.id];
+      if (savedNextPhase !== undefined) {
+        return savedNextPhase === "hi" ? 1 : 0;
       }
       // ② 폴백: 이전달 sch 날짜 스캔
       const prevYear2 = month === 0 ? year - 1 : year;
@@ -1945,22 +1946,63 @@ function App() {
                 }
                 if(bestV.length>0) toast_("⚠️ "+MAX_RETRY+"회 시도 후 최선 결과 (위반 "+bestV.length+"건)","err");
                 else toast_("✅ 자동 배치 완료!");
-                // 격주 직원별 이번달 마지막 주 휴무 수 저장 (다음달 phaseShift 계산용)
-                const biweeklyLastOff = {};
+                // 격주 직원별 마지막 주 phaseShift 저장 (다음달 phaseShift 계산용)
+                // 마지막 실제 주의 휴무수가 lo이면 다음달 1주는 hi → phaseShift=1
+                // 마지막 실제 주의 휴무수가 hi이면 다음달 1주는 lo → phaseShift=0
+                const biweeklyNextPhase = {};
                 (ACTIVE_EMPLOYEES||[]).filter(e => empSettings[e.id]?.altPattern).forEach(emp => {
-                  const lastDay = new Date(year, month+1, 0).getDate();
-                  let lastMon = lastDay;
-                  while (new Date(year, month, lastMon).getDay() !== 1) lastMon--;
-                  if (lastDay - lastMon < 2 && lastMon >= 8) lastMon -= 7;
-                  let cnt = 0;
-                  for (let d = lastMon; d <= lastDay; d++) {
-                    const ds = fmtDs(year, month, d);
-                    const s = best[emp.id]?.[ds];
-                    if (s === "휴무" || s === "휴무(꼭)") cnt++;
+                  const ws = empSettings[emp.id];
+                  const weeklyOff_ = ws ? (7 - ws.weeklyWork) : emp.weeklyOff;
+                  const lo_ = Math.max(1, weeklyOff_ - 1);
+                  const hi_ = weeklyOff_;
+                  // 이번달 모든 주차 순서대로 스캔해서 마지막 실제 주차의 target 파악
+                  // 간단히: 주차 인덱스와 phaseShift 계산
+                  // best 결과에서 각 주 휴무수 세서 역산
+                  const dim_ = new Date(year, month+1, 0).getDate();
+                  // 주차 목록 생성 (이번달 날짜 기준)
+                  let lastRealWeekPhase = null;
+                  let firstDow_ = new Date(year, month, 1).getDay(); firstDow_ = firstDow_===0?6:firstDow_-1;
+                  // 전체 날짜 배열
+                  const allDs_ = Array.from({length:dim_},(_,i)=>fmtDs(year,month,i+1));
+                  // 주차 그룹화
+                  let wks_ = [];
+                  let wk_ = [];
+                  allDs_.forEach(ds => {
+                    const dow_ = new Date(ds).getDay(); const dow2_=dow_===0?6:dow_-1;
+                    if (dow2_===0 && wk_.length) { wks_.push(wk_); wk_=[]; }
+                    wk_.push({ds, dow:dow2_});
+                  });
+                  if (wk_.length) wks_.push(wk_);
+                  // 각 주차 wi에서 이번달 날짜 수 > 1인 마지막 주 찾기
+                  let lastWi_ = -1;
+                  wks_.forEach((w,wi) => {
+                    if (w.length > 1) lastWi_ = wi;
+                  });
+                  if (lastWi_ >= 0) {
+                    // 마지막 주 실제 휴무수
+                    let cnt_ = 0;
+                    wks_[lastWi_].forEach(({ds}) => {
+                      const s = best[emp.id]?.[ds];
+                      if (s === "휴무" || s === "휴무(꼭)") cnt_++;
+                    });
+                    // cnt가 lo면 마지막주가 lo → 다음달 첫주 hi → nextPhase=hi
+                    // cnt가 hi면 마지막주가 hi → 다음달 첫주 lo → nextPhase=lo
+                    // 단, cnt=0이면 마지막주 배정 실패 → 주차 인덱스로 역산
+                    if (cnt_ === 0) {
+                      // 주차 인덱스로 역산: lastWi_ 주가 어떤 phase였는지
+                      // phaseShift는 autoAssign 내부에서 결정되므로 여기선 모름
+                      // 대신 이전 주차들의 휴무 패턴으로 추정
+                      // 안전하게: lastWi_가 짝수면 lo주, 홀수면 hi주 (phaseShift=0 기준)
+                      // prevSchData.__biweeklyNextPhase 없으면 패리티 추정
+                      lastRealWeekPhase = (lastWi_ % 2 === 0) ? "lo" : "hi";
+                    } else {
+                      lastRealWeekPhase = cnt_ <= lo_ ? "lo" : "hi";
+                    }
                   }
-                  biweeklyLastOff[emp.id] = cnt;
+                  // 다음달 첫 주 target: 마지막 주가 lo→다음hi, hi→다음lo
+                  biweeklyNextPhase[emp.id] = lastRealWeekPhase === "lo" ? "hi" : "lo";
                 });
-                const toSave = {...best, __biweeklyLastOff: biweeklyLastOff};
+                const toSave = {...best, __biweeklyNextPhase: biweeklyNextPhase};
                 setSchHistory(prev=>{const n={...prev,[curKey]:toSave};window.storage.set("schHistory_v1",JSON.stringify(n)).catch(()=>{});return n;});
               } catch(e) {
                 toast_("❌ 배치 오류: "+e.message, "err");
