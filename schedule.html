@@ -1561,6 +1561,7 @@ function App() {
   // 배정 규칙 설정
   const [showRuleConfig, setShowRuleConfig] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [isAssigning, setIsAssigning] = useState(false);
   const [showSettings, setShowSettings] = useState(false); // 설정 드롭다운
   const [ruleConfig, setRuleConfig] = useState({
     minWork: 11,       // 일 최소 근무인원
@@ -1783,6 +1784,7 @@ function App() {
         .cc{cursor:pointer;transition:filter .12s}
         .cc:hover{filter:brightness(.9)}
         @media print{.np{display:none!important}}
+        @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
       `}</style>
 
       {/* Toast */}
@@ -1870,19 +1872,24 @@ function App() {
         <div style={{display:"flex",alignItems:"center",gap:4}}>
           {/* ⚡ 자동배치 - 주 CTA */}
           <button onClick={()=>{
-            const MAX_RETRY=30; let best=null, bestV=null;
-            for(let i=0;i<MAX_RETRY;i++){
-              const r=autoAssign(year,month,ownerReqs,prevSch,empSettings,{order:supportOrder},ruleConfig,ownerRepeat,ACTIVE_EMPLOYEES,empReqs,Date.now()+i*997);
-              const v=validateSch(r,ACTIVE_EMPLOYEES);
-              if(v.length===0){best=r;bestV=[];break;}
-              if(!best||v.length<bestV.length){best=r;bestV=v;}
-            }
-            if(bestV.length>0) toast_("⚠️ "+MAX_RETRY+"회 시도 후 최선 결과 (위반 "+bestV.length+"건)","err");
-            else toast_("✅ 자동 배치 완료!");
-            setSchHistory(prev=>{const n={...prev,[curKey]:best};window.storage.set("schHistory_v1",JSON.stringify(n)).catch(()=>{});return n;});
+            if(isAssigning) return;
+            setIsAssigning(true);
+            setTimeout(()=>{
+              const MAX_RETRY=30; let best=null, bestV=null;
+              for(let i=0;i<MAX_RETRY;i++){
+                const r=autoAssign(year,month,ownerReqs,prevSch,empSettings,{order:supportOrder},ruleConfig,ownerRepeat,ACTIVE_EMPLOYEES,empReqs,Date.now()+i*997);
+                const v=validateSch(r,ACTIVE_EMPLOYEES);
+                if(v.length===0){best=r;bestV=[];break;}
+                if(!best||v.length<bestV.length){best=r;bestV=v;}
+              }
+              if(bestV.length>0) toast_("⚠️ "+MAX_RETRY+"회 시도 후 최선 결과 (위반 "+bestV.length+"건)","err");
+              else toast_("✅ 자동 배치 완료!");
+              setSchHistory(prev=>{const n={...prev,[curKey]:best};window.storage.set("schHistory_v1",JSON.stringify(n)).catch(()=>{});return n;});
+              setIsAssigning(false);
+            }, 50);
           }} style={{
             display:"inline-flex",alignItems:"center",gap:6,
-            background:T.primary,color:"#fff",border:"none",
+            background:isAssigning?T.gray400:T.primary,color:"#fff",border:"none",
             borderRadius:T.radius.md,padding:"7px 14px",
             fontSize:T.fs.sm,fontWeight:T.fw.bolder,cursor:"pointer",
             fontFamily:"inherit",boxShadow:"0 1px 4px rgba(124,124,200,.35)",
@@ -1890,7 +1897,7 @@ function App() {
           }}
             onMouseEnter={e=>{e.currentTarget.style.background=T.primaryDk;e.currentTarget.style.transform="translateY(-1px)";}}
             onMouseLeave={e=>{e.currentTarget.style.background=T.primary;e.currentTarget.style.transform="";}}>
-            <I name="zap" size={14} color="#fff"/> 배치
+            {isAssigning ? <><I name="loader" size={14} color="#fff" style={{animation:"spin .8s linear infinite"}}/> 배치중</> : <><I name="zap" size={14} color="#fff"/> 배치</>}
           </button>
 
           {/* 구분선 */}
