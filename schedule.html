@@ -129,7 +129,7 @@ const S_COLOR = {
 function isSupport(s) { return s && (s === "지원" || s.startsWith("지원(")); }
 function getSColor(s) {
   if (isSupport(s)) return S_COLOR["지원"];
-  return S_COLOR[s] || {bg:"#f8f5f0",text:"#ccc",border:"#eee"};
+  return S_COLOR[s] || {bg:"#f8f5f0",text:T.gray400,border:"#eee"};
 }
 
 
@@ -1747,7 +1747,7 @@ function App() {
   if (!dataLoaded) return (
     <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",background:"#f4f2ef",flexDirection:"column",gap:12}}>
       <div style={{fontSize:24}}>🌿</div>
-      <div style={{fontSize:14,color:"#8b5c2a",fontWeight:600}}>근무표 데이터 불러오는 중...</div>
+      <div style={{fontSize:14,color:T.textSub,fontWeight:600}}>근무표 데이터 불러오는 중...</div>
     </div>
   );
 
@@ -1773,7 +1773,7 @@ function App() {
             <div style={{fontWeight:700,fontSize:15,color:"#221810",marginBottom:8}}>
               {year}년 {month+1}월 초기화
             </div>
-            <div style={{fontSize:12,color:"#888",marginBottom:20,lineHeight:1.6}}>
+            <div style={{fontSize:12,color:T.textSub,marginBottom:20,lineHeight:1.6}}>
               이 달의 근무표와 지정 휴무가 모두 삭제됩니다.<br/>
               되돌릴 수 없습니다.
             </div>
@@ -1798,7 +1798,7 @@ function App() {
           <div style={{position:"fixed",top:"50%",left:"50%",transform:"translate(-50%,-50%)",background:"#fff",borderRadius:14,padding:22,zIndex:201,width:260,boxShadow:"0 10px 40px rgba(0,0,0,.2)"}}>
             <div style={{marginBottom:14}}>
               <div style={{fontWeight:700,fontSize:15,color:"#221810"}}>{editCell.emp.name}</div>
-              <div style={{fontSize:12,color:"#aaa",marginTop:2}}>{editCell.day.d}일 {DNAMES[editCell.day.dow]}요일</div>
+              <div style={{fontSize:12,color:T.textMuted,marginTop:2}}>{editCell.day.d}일 {DNAMES[editCell.day.dow]}요일</div>
             </div>
             <div style={{display:"flex",flexDirection:"column",gap:7}}>
               {["근무","휴무","휴무(꼭)","전체쉐어"].map(s=>{
@@ -1826,12 +1826,9 @@ function App() {
       {/* 헤더 */}
       <div className="np" style={{background:T.bgCard,borderBottom:"1px solid "+T.border,padding:"10px 14px",boxShadow:T.shadow.sm,display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:50,gap:8}}>
         {/* 왼쪽: 타이틀 */}
-        <div style={{display:"flex",alignItems:"center",gap:8,minWidth:0}}>
-          <span style={{fontSize:20}}>🌿</span>
-          <div style={{minWidth:0}}>
-            <div style={{color:T.text,fontSize:T.fs.md,fontWeight:T.fw.black,letterSpacing:-.3,whiteSpace:"nowrap"}}>HouseWaxing 근무표</div>
-            <div style={{color:T.textMuted,fontSize:T.fs.nano}}>{BRANCHES.length}지점·{ALL_EMPLOYEES.length}명 <span style={{color:T.primary,fontWeight:T.fw.bold}}>{SCH_V}</span></div>
-          </div>
+        <div style={{display:"flex",alignItems:"center",gap:6,minWidth:0}}>
+          <span style={{fontSize:18}}>🌿</span>
+          <div style={{color:T.textMuted,fontSize:T.fs.nano,whiteSpace:"nowrap"}}>{BRANCHES.length}지점·{ALL_EMPLOYEES.length}명 <span style={{color:T.primary,fontWeight:T.fw.bold}}>{SCH_V}</span></div>
         </div>
         {/* 오른쪽: 액션 버튼들 */}
         <div style={{display:"flex",gap:5,alignItems:"center",flexShrink:0}}>
@@ -1909,11 +1906,11 @@ function App() {
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6}}>
               <div style={{fontWeight:700,fontSize:14,color:"#4a2c14"}}>📋 배정 규칙</div>
               <div style={{display:"flex",gap:6}}>
-                <button onClick={()=>{setCustomRules(defaultRules);saveRules(defaultRules);}} style={{fontSize:11,padding:"3px 10px",borderRadius:6,border:"1px solid #ddd",background:"#f5f0ea",color:"#888",cursor:"pointer",fontFamily:"inherit"}}>초기화</button>
-                <button onClick={()=>setShowRules(false)} style={{fontSize:16,lineHeight:1,padding:"2px 8px",borderRadius:6,border:"1px solid #ddd",background:"#f5f0ea",color:"#888",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
+                <button onClick={()=>{setCustomRules(defaultRules);saveRules(defaultRules);}} style={{fontSize:11,padding:"3px 10px",borderRadius:6,border:"1px solid #ddd",background:"#f5f0ea",color:T.textSub,cursor:"pointer",fontFamily:"inherit"}}>초기화</button>
+                <button onClick={()=>setShowRules(false)} style={{fontSize:16,lineHeight:1,padding:"2px 8px",borderRadius:6,border:"1px solid #ddd",background:"#f5f0ea",color:T.textSub,cursor:"pointer",fontFamily:"inherit"}}>✕</button>
               </div>
             </div>
-            <div style={{fontSize:11,color:"#aaa",marginBottom:14}}>항목을 클릭하면 편집할 수 있습니다.</div>
+            <div style={{fontSize:11,color:T.textMuted,marginBottom:14}}>항목을 클릭하면 편집할 수 있습니다.</div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:10,fontSize:12,color:"#5c4028"}}>
               {customRules.map(([t,items],gi)=>(
                 <div key={gi} style={{background:"#f5ede2",borderRadius:8,padding:10}}>
@@ -1923,9 +1920,9 @@ function App() {
                       const next=customRules.map((g,i)=>i===gi?[e.target.value,g[1]]:g);
                       setCustomRules(next); saveRules(next); setEditingRule(null);
                     }} onKeyDown={e=>{if(e.key==="Enter")e.target.blur(); if(e.key==="Escape")setEditingRule(null);}}
-                    style={{fontWeight:700,fontSize:12,color:"#8b5c2a",background:"#fff",border:"1px solid #c0a070",borderRadius:4,padding:"2px 6px",width:"100%",fontFamily:"inherit",marginBottom:6}}/>
+                    style={{fontWeight:700,fontSize:12,color:T.textSub,background:"#fff",border:"1px solid #c0a070",borderRadius:4,padding:"2px 6px",width:"100%",fontFamily:"inherit",marginBottom:6}}/>
                   ):(
-                    <div style={{fontWeight:700,marginBottom:6,color:"#8b5c2a",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}
+                    <div style={{fontWeight:700,marginBottom:6,color:T.textSub,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}
                       onClick={()=>setEditingRule({gi,title:true})}>
                       <span>{t}</span>
                       <span style={{fontSize:9,color:"#bbb",fontWeight:400}}>✏️</span>
@@ -1947,7 +1944,7 @@ function App() {
                           <button onClick={()=>{
                             const next=customRules.map((g,gi2)=>gi2===gi?[g[0],g[1].filter((_,ii2)=>ii2!==ii)]:g);
                             setCustomRules(next); saveRules(next);
-                          }} style={{fontSize:9,color:"#ccc",background:"none",border:"none",cursor:"pointer",padding:"0 2px",lineHeight:1}}>✕</button>
+                          }} style={{fontSize:9,color:T.gray400,background:"none",border:"none",cursor:"pointer",padding:"0 2px",lineHeight:1}}>✕</button>
                         </>
                       )}
                     </div>
@@ -1965,33 +1962,18 @@ function App() {
       )}
 
       {/* 네비 */}
-      <div className="np" style={{background:"#fff",borderBottom:"1px solid #e4ddd0",padding:"9px 18px",display:"flex",alignItems:"center",gap:10,flexWrap:"wrap"}}>
+      <div className="np" style={{background:T.bgCard,borderBottom:"1px solid "+T.border,padding:"8px 14px",display:"flex",alignItems:"center",gap:8}}>
         <button onClick={()=>{if(month===0){setMonth(11);setYear(y=>y-1);}else setMonth(m=>m-1);}} style={navBtn}>◀</button>
-        <span style={{fontSize:18,fontWeight:700,minWidth:110,textAlign:"center"}}>{year}년 {month+1}월</span>
-        <button onClick={()=>{
-          if(month===11){setMonth(0);setYear(y=>y+1);}else setMonth(m=>m+1);
-        }} style={navBtn}>▶</button>
-        <button onClick={()=>{setYear(today.getFullYear());setMonth(today.getMonth());}} style={{...navBtn,color:"#aaa",fontSize:11}}>오늘</button>
-        <div style={{display:"flex",gap:6,alignItems:"center",marginLeft:10,paddingLeft:10,borderLeft:"1px solid #e4ddd0",flexWrap:"wrap"}}>
-          {Object.entries(S_COLOR).map(([s,sc])=>(
-            <div key={s} style={{padding:"2px 7px",background:sc.bg,border:`1px solid ${sc.border}`,borderRadius:5}}>
-              <span style={{fontSize:10,color:sc.text,fontWeight:600}}>{s}</span>
-            </div>
-          ))}
-          <span style={{fontSize:10,color:"#ccc"}}>셀 클릭으로 변경</span>
-        </div>
-        <div style={{marginLeft:"auto",display:"flex",gap:5,flexWrap:"wrap"}}>
-          {[{id:"all",name:"전체",color:"#8b5c2a"},...BRANCHES,{id:"male",name:"남직원",color:"#4a80c0"}].map(b=>(
-            <button key={b.id} onClick={()=>setFilterBranch(b.id)} style={{padding:"4px 10px",borderRadius:20,border:`2px solid ${filterBranch===b.id?b.color:"#e4ddd0"}`,background:filterBranch===b.id?b.color:"transparent",color:filterBranch===b.id?"#fff":"#8b7355",fontSize:11,cursor:"pointer",fontFamily:"inherit",fontWeight:filterBranch===b.id?600:400}}>{b.name}</button>
-          ))}
-        </div>
+        <span style={{fontSize:T.fs.lg,fontWeight:T.fw.black,minWidth:100,textAlign:"center",color:T.text}}>{year}년 {month+1}월</span>
+        <button onClick={()=>{if(month===11){setMonth(0);setYear(y=>y+1);}else setMonth(m=>m+1);}} style={navBtn}>▶</button>
+        <button onClick={()=>{setYear(today.getFullYear());setMonth(today.getMonth());}} style={{...navBtn,color:T.textMuted,fontSize:T.fs.xxs}}>오늘</button>
       </div>
 
       {/* 위반 알림 */}
       {violations.length > 0 && (
-        <div className="np" style={{background:"#fde8e8",borderBottom:"1px solid #f5b3b3",padding:"7px 18px",display:"flex",gap:10,flexWrap:"wrap",alignItems:"center"}}>
-          <span style={{fontSize:12,fontWeight:700,color:"#c0392b"}}>⚠ 규칙 위반 ({violations.length}건):</span>
-          {violations.slice(0,6).map((v,i)=><span key={i} style={{fontSize:11,color:"#c0392b",background:"#fde8e8",border:"1px solid #f5b3b3",borderRadius:4,padding:"1px 6px"}}>{v}</span>)}
+        <div className="np" style={{background:T.dangerLt,borderBottom:"1px solid "+T.danger+"44",padding:"6px 14px",display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+          <span style={{fontSize:T.fs.xs,fontWeight:T.fw.bolder,color:T.danger}}>⚠ 규칙 위반 ({violations.length}건):</span>
+          {violations.slice(0,6).map((v,i)=><span key={i} style={{fontSize:T.fs.xxs,color:T.danger,background:T.bgCard,border:"1px solid "+T.danger+"55",borderRadius:T.radius.sm,padding:"1px 7px",fontWeight:T.fw.bold}}>{v}</span>)}
         </div>
       )}
 
@@ -2000,15 +1982,15 @@ function App() {
         <table style={{borderCollapse:"separate",borderSpacing:0,minWidth: dim*54+180,marginTop:14}}>
           <thead>
             <tr>
-              <th style={{...stickyCol,background:"#f0ebe2",fontSize:11,fontWeight:700,color:"#8b5c2a",textAlign:"left",borderRadius:"6px 0 0 0",border:"1px solid #ddd5c8"}}>직원</th>
+              <th style={{...stickyCol,background:T.gray100,fontSize:11,fontWeight:700,color:T.textSub,textAlign:"left",borderRadius:"6px 0 0 0",border:"1px solid #ddd5c8"}}>직원</th>
               {days.map(day=>{
                 const isToday=day.ds===fmtDs(today.getFullYear(),today.getMonth(),today.getDate());
                 const isSun=day.dow===6,isSat=day.dow===5;
                 const wb=isWeekBoundary(day);
                 return (
-                  <th key={day.ds} style={{width:50,minWidth:50,padding:"5px 1px",textAlign:"center",fontSize:11,fontWeight:600,background:day.isNext?"#e8e4f0":isToday?"#b0845a":"#f0ebe2",color:day.isNext?"#9080b0":isToday?"#fff":isSun?"#b83020":isSat?"#1e5a9a":"#8b7355",borderLeft:wb?"2.5px solid #b0845a":"1px solid #ddd5c8",borderTop:"1px solid #ddd5c8",borderBottom:"1px solid #ddd5c8",opacity:day.isNext?0.75:1}}>
+                  <th key={day.ds} style={{width:50,minWidth:50,padding:"5px 1px",textAlign:"center",fontSize:11,fontWeight:600,background:day.isNext?T.gray200:isToday?T.primary:T.gray100,color:day.isNext?T.textMuted:isToday?"#fff":isSun?T.danger:isSat?T.primaryDk:T.textSub,borderLeft:wb?`2px solid ${T.primary}55`:"1px solid #ddd5c8",borderTop:"1px solid #ddd5c8",borderBottom:"1px solid #ddd5c8",opacity:day.isNext?0.75:1}}>
                     <div style={{fontWeight:700}}>{day.d}</div>
-                    <div style={{fontSize:9,fontWeight:400}}>{DNAMES[day.dow]}{day.isNext?<span style={{fontSize:8,color:"#b0a0c8"}}>↑다음달</span>:""}</div>
+                    <div style={{fontSize:9,fontWeight:400}}>{DNAMES[day.dow]}{day.isNext?<span style={{fontSize:8,color:T.textMuted}}>↑다음달</span>:""}</div>
                   </th>
                 );
               })}
@@ -2054,7 +2036,7 @@ function App() {
                             if(!workDays && !offDays) return null;
                             const violations_ = workDays < 11 || workDays > 15;
                             return <>
-                              <span style={{fontSize:9,fontWeight:700,color:violations_?"#c0392b":"#7a5030",background:violations_?"#fde8e8":"#f0ebe2",borderRadius:3,padding:"0 3px"}}>
+                              <span style={{fontSize:9,fontWeight:700,color:violations_?T.danger:T.textSub,background:violations_?T.dangerLt:T.gray100,borderRadius:3,padding:"0 3px"}}>
                                 근{workDays}·휴{offDays}
                               </span>
                               {emp.isMale && (()=>{
@@ -2079,7 +2061,7 @@ function App() {
                     const isToday=day.ds===fmtDs(today.getFullYear(),today.getMonth(),today.getDate());
                     const supportLabel = isSupport(s) && s !== "지원" ? s.replace("지원(","").replace(")","") : null;
                     return (
-                      <td key={day.ds} className="cc" onClick={()=>{ if(lockedDates.has(day.ds)) return; setEditCell({emp,day,cur:s}); }} style={{padding:"2px 1px",textAlign:"center",borderLeft:wb?"2.5px solid #c0a07a":"1px solid #ece5dc",borderBottom:"1px solid #ece5dc",background:lockedDates.has(day.ds)?"#f5f0fa":day.isNext?"#f0edf8":isToday?"#fdf5e8":"#fff",opacity:day.isNext?0.8:1,cursor:lockedDates.has(day.ds)?"not-allowed":"pointer"}}>
+                      <td key={day.ds} className="cc" onClick={()=>{ if(lockedDates.has(day.ds)) return; setEditCell({emp,day,cur:s}); }} style={{padding:"2px 1px",textAlign:"center",borderLeft:wb?`2px solid ${T.primary}55`:"1px solid #ece5dc",borderBottom:"1px solid #ece5dc",background:lockedDates.has(day.ds)?T.primaryLt:day.isNext?"#f0edf8":isToday?T.warningLt:"#fff",opacity:day.isNext?0.8:1,cursor:lockedDates.has(day.ds)?"not-allowed":"pointer"}}>
                         <div style={{
                           background: s?sc.bg:"transparent",
                           color: s?sc.text:"#d8d0c8",
@@ -2109,13 +2091,13 @@ function App() {
 
             {/* 남자직원 행 - 남직원 필터 또는 전체일 때만 표시 */}
             {(()=>{
-              const maleColor = "#4a80c0";
+              const maleColor = T.primary;
               const maleEmps = ALL_EMPLOYEES.filter(e=>e.isMale);
               if (!maleEmps.length) return null;
               if (filterBranch !== "all" && filterBranch !== "male") return null;
               return maleEmps.map((emp, ei) => (
                 <tr key={emp.id}>
-                  <td style={{...stickyCol,padding:"5px 10px",borderLeft:`3px solid ${maleColor}`,borderBottom:"1px solid #d0e0f0",borderRight:"1px solid #ddd5c8",background:ei===0?maleColor+"18":"#f4f8fd",borderTop:ei===0?`2px solid ${maleColor}55`:"none"}}>
+                  <td style={{...stickyCol,padding:"5px 10px",borderLeft:`3px solid ${maleColor}`,borderBottom:"1px solid #d0e0f0",borderRight:"1px solid #ddd5c8",background:ei===0?maleColor+"18":T.gray100,borderTop:ei===0?`2px solid ${maleColor}55`:"none"}}>
                     <div style={{display:"flex",alignItems:"center",gap:6}}>
                       <div style={{width:7,height:7,borderRadius:"50%",background:maleColor,flexShrink:0}}/>
                       <div>
@@ -2152,7 +2134,7 @@ function App() {
                             {s==="휴무(꼭)" && <span style={{position:"absolute",top:-6,right:1,fontSize:8,color:"#9060d0",fontWeight:900}}>★</span>}
                             {s}
                           </div>
-                        ):<span style={{color:"#ddd",fontSize:10}}>—</span>}
+                        ):<span style={{color:T.border,fontSize:10}}>—</span>}
                       </td>
                     );
                   })}
@@ -2165,14 +2147,14 @@ function App() {
 
             {/* 일별 총 인원 */}
             <tr>
-              <td style={{...stickyCol,padding:"6px 10px",fontSize:11,fontWeight:700,color:"#7a5030",background:"#f0ebe2",border:"1px solid #ddd5c8",borderRadius:"0 0 0 6px"}}>일 근무 인원</td>
+              <td style={{...stickyCol,padding:"6px 10px",fontSize:11,fontWeight:700,color:T.textSub,background:T.gray100,border:"1px solid #ddd5c8",borderRadius:"0 0 0 6px"}}>일 근무 인원</td>
               {days.map(day=>{
                 const c=dailyCount(day.ds);
                 const ok=c>=10&&c<=15, wb=isWeekBoundary(day);
                 return (
-                  <td key={day.d} style={{textAlign:"center",fontWeight:700,fontSize:13,padding:"6px 1px",color:c===0?"#ddd":!ok?"#c0392b":c>=13?"#1e7a40":"#7a5030",background:c>0&&!ok?"#fde8e8":"#f0ebe2",borderLeft:wb?"2.5px solid #c0a07a":"1px solid #ddd5c8",borderTop:"1px solid #ddd5c8",borderBottom:"1px solid #ddd5c8"}}>
+                  <td key={day.d} style={{textAlign:"center",fontWeight:700,fontSize:13,padding:"6px 1px",color:c===0?T.border:!ok?T.danger:c>=13?T.successDk:T.textSub,background:c>0&&!ok?T.dangerLt:T.gray100,borderLeft:wb?`2px solid ${T.primary}55`:"1px solid #ddd5c8",borderTop:"1px solid #ddd5c8",borderBottom:"1px solid #ddd5c8"}}>
                     {c>0?c:""}
-                    {c>0&&!ok&&<div style={{fontSize:8,color:"#c0392b"}}>{c<10?"부족":"초과"}</div>}
+                    {c>0&&!ok&&<div style={{fontSize:8,color:T.danger}}>{c<10?"부족":"초과"}</div>}
                   </td>
                 );
               })}
@@ -2193,7 +2175,7 @@ function App() {
                     const wb=isWeekBoundary(day);
                     const under=c<branch.minStaff&&Object.keys(sch).length>0;
                     return (
-                      <td key={day.d} style={{textAlign:"center",fontSize:10,fontWeight:600,padding:"4px 1px",color:under?"#c0392b":branch.color,background:under?"#fde8e8":"transparent",borderLeft:wb?"2.5px solid #c0a07a":"1px solid #ece5dc",borderBottom:"1px solid #ece5dc"}}>
+                      <td key={day.d} style={{textAlign:"center",fontSize:10,fontWeight:600,padding:"4px 1px",color:under?T.danger:branch.color,background:under?T.dangerLt:"transparent",borderLeft:wb?`2px solid ${T.primary}55`:"1px solid #ece5dc",borderBottom:"1px solid #ece5dc"}}>
                         {c}
                       </td>
                     );
@@ -2212,9 +2194,9 @@ function App() {
           <div style={{position:"fixed",top:"50%",left:"50%",transform:"translate(-50%,-50%)",background:"#fff",borderRadius:14,padding:24,zIndex:201,width:"min(96vw,820px)",maxHeight:"85vh",overflowY:"auto",boxShadow:"0 10px 40px rgba(0,0,0,.25)"}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
               <div style={{fontWeight:700,fontSize:14,color:"#4a2c14"}}>⚙️ 배정 규칙 설정</div>
-              <button onClick={()=>setShowRuleConfig(false)} style={{fontSize:16,lineHeight:1,padding:"2px 8px",borderRadius:6,border:"1px solid #ddd",background:"#f5f0ea",color:"#888",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
+              <button onClick={()=>setShowRuleConfig(false)} style={{fontSize:16,lineHeight:1,padding:"2px 8px",borderRadius:6,border:"1px solid #ddd",background:"#f5f0ea",color:T.textSub,cursor:"pointer",fontFamily:"inherit"}}>✕</button>
             </div>
-            <div style={{fontSize:11,color:"#aaa",marginBottom:18}}>변경 후 자동배치를 다시 실행하면 반영됩니다.</div>
+            <div style={{fontSize:11,color:T.textMuted,marginBottom:18}}>변경 후 자동배치를 다시 실행하면 반영됩니다.</div>
 
             {/* 전체 규칙 */}
             <div style={{marginBottom:18}}>
@@ -2226,14 +2208,14 @@ function App() {
                   {key:"maxDailyOff", label:"하루 최대 휴무", unit:"명", min:1, max:10},
                 ].map(({key, label, unit, min, max}) => (
                   <div key={key} style={{background:"#faf8f5",borderRadius:8,padding:"10px 14px",minWidth:160,border:"1px solid #e4ddd0"}}>
-                    <div style={{fontSize:11,color:"#888",marginBottom:8}}>{label}</div>
+                    <div style={{fontSize:11,color:T.textSub,marginBottom:8}}>{label}</div>
                     <div style={{display:"flex",alignItems:"center",gap:8}}>
                       <button onClick={()=>setRule(key, Math.max(min, ruleConfig[key]-1))}
-                        style={{width:26,height:26,borderRadius:5,border:"1px solid #ddd",background:"#f0ebe2",cursor:"pointer",fontSize:14,fontFamily:"inherit",color:"#5c4028",display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
+                        style={{width:26,height:26,borderRadius:5,border:"1px solid #ddd",background:T.gray100,cursor:"pointer",fontSize:14,fontFamily:"inherit",color:"#5c4028",display:"flex",alignItems:"center",justifyContent:"center"}}>−</button>
                       <span style={{fontSize:16,fontWeight:700,color:"#4a2c14",minWidth:28,textAlign:"center"}}>{ruleConfig[key]}</span>
                       <button onClick={()=>setRule(key, Math.min(max, ruleConfig[key]+1))}
-                        style={{width:26,height:26,borderRadius:5,border:"1px solid #ddd",background:"#f0ebe2",cursor:"pointer",fontSize:14,fontFamily:"inherit",color:"#5c4028",display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
-                      <span style={{fontSize:11,color:"#aaa"}}>{unit}</span>
+                        style={{width:26,height:26,borderRadius:5,border:"1px solid #ddd",background:T.gray100,cursor:"pointer",fontSize:14,fontFamily:"inherit",color:"#5c4028",display:"flex",alignItems:"center",justifyContent:"center"}}>+</button>
+                      <span style={{fontSize:11,color:T.textMuted}}>{unit}</span>
                     </div>
                   </div>
                 ))}
@@ -2249,11 +2231,11 @@ function App() {
                     <div style={{fontSize:11,fontWeight:700,color:b.color,marginBottom:8}}>{b.name}</div>
                     <div style={{display:"flex",alignItems:"center",gap:8}}>
                       <button onClick={()=>setRule("branchMinStaff", {...ruleConfig.branchMinStaff, [b.id]: Math.max(0, (ruleConfig.branchMinStaff[b.id]??b.minStaff)-1)})}
-                        style={{width:26,height:26,borderRadius:5,border:"1px solid #ddd",background:"#f0ebe2",cursor:"pointer",fontSize:14,fontFamily:"inherit",color:"#5c4028"}}>−</button>
+                        style={{width:26,height:26,borderRadius:5,border:"1px solid #ddd",background:T.gray100,cursor:"pointer",fontSize:14,fontFamily:"inherit",color:"#5c4028"}}>−</button>
                       <span style={{fontSize:16,fontWeight:700,color:"#4a2c14",minWidth:24,textAlign:"center"}}>{ruleConfig.branchMinStaff[b.id]??b.minStaff}</span>
                       <button onClick={()=>setRule("branchMinStaff", {...ruleConfig.branchMinStaff, [b.id]: Math.min(10, (ruleConfig.branchMinStaff[b.id]??b.minStaff)+1)})}
-                        style={{width:26,height:26,borderRadius:5,border:"1px solid #ddd",background:"#f0ebe2",cursor:"pointer",fontSize:14,fontFamily:"inherit",color:"#5c4028"}}>+</button>
-                      <span style={{fontSize:11,color:"#aaa"}}>명</span>
+                        style={{width:26,height:26,borderRadius:5,border:"1px solid #ddd",background:T.gray100,cursor:"pointer",fontSize:14,fontFamily:"inherit",color:"#5c4028"}}>+</button>
+                      <span style={{fontSize:11,color:T.textMuted}}>명</span>
                     </div>
                   </div>
                 ))}
@@ -2263,17 +2245,17 @@ function App() {
             {/* 지점별 동시 휴무 금지 */}
             <div style={{marginBottom:18}}>
               <div style={{fontSize:12,fontWeight:700,color:"#4a2c14",marginBottom:6,borderBottom:"1px solid #f0ebe2",paddingBottom:6}}>🚫 지점별 일반직원 동시 휴무 금지</div>
-              <div style={{fontSize:11,color:"#aaa",marginBottom:10}}>ON: 해당 지점 일반직원(원장·mustStay 제외) 전원이 같은 날 동시 휴무 금지</div>
+              <div style={{fontSize:11,color:T.textMuted,marginBottom:10}}>ON: 해당 지점 일반직원(원장·mustStay 제외) 전원이 같은 날 동시 휴무 금지</div>
               <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
                 {BRANCHES.map(b => {
                   const normals = ALL_EMPLOYEES.filter(e => e.branch===b.id && !e.isOwner && !e.mustStay);
                   const isOn = ruleConfig.noSimultaneousOff[b.id] ?? false;
                   return (
                     <div key={b.id} onClick={()=>setRule("noSimultaneousOff",{...ruleConfig.noSimultaneousOff,[b.id]:!isOn})}
-                      style={{display:"flex",alignItems:"center",gap:7,padding:"8px 12px",borderRadius:8,border:`1.5px solid ${isOn?b.color:"#ddd"}`,background:isOn?b.color+"15":"#faf8f5",cursor:normals.length===0?"default":"pointer",opacity:normals.length===0?0.4:1}}>
-                      <span style={{fontSize:11,fontWeight:700,color:isOn?b.color:"#aaa"}}>{b.name}</span>
+                      style={{display:"flex",alignItems:"center",gap:7,padding:"8px 12px",borderRadius:8,border:`1.5px solid ${isOn?b.color:T.border}`,background:isOn?b.color+"15":"#faf8f5",cursor:normals.length===0?"default":"pointer",opacity:normals.length===0?0.4:1}}>
+                      <span style={{fontSize:11,fontWeight:700,color:isOn?b.color:T.textMuted}}>{b.name}</span>
                       <span style={{fontSize:10,color:"#bbb"}}>({normals.map(e=>e.name).join("·") || "해당없음"})</span>
-                      <span style={{fontSize:10,background:isOn?b.color:"#ddd",color:"#fff",borderRadius:4,padding:"1px 6px",fontWeight:700,marginLeft:4}}>{isOn?"ON":"OFF"}</span>
+                      <span style={{fontSize:10,background:isOn?b.color:T.border,color:"#fff",borderRadius:4,padding:"1px 6px",fontWeight:700,marginLeft:4}}>{isOn?"ON":"OFF"}</span>
                     </div>
                   );
                 })}
@@ -2283,11 +2265,11 @@ function App() {
             {/* 2주 연속휴무 보장 */}
             <div>
               <div style={{fontSize:12,fontWeight:700,color:"#4a2c14",marginBottom:6,borderBottom:"1px solid #f0ebe2",paddingBottom:6}}>🔁 2주 연속휴무 보장</div>
-              <div style={{fontSize:11,color:"#aaa",marginBottom:10}}>ON: 모든 직원이 2주에 한 번은 연속(2일) 이상 휴무를 갖도록 자동 배정</div>
+              <div style={{fontSize:11,color:T.textMuted,marginBottom:10}}>ON: 모든 직원이 2주에 한 번은 연속(2일) 이상 휴무를 갖도록 자동 배정</div>
               <div onClick={()=>setRule("biweeklyConsecOff", !ruleConfig.biweeklyConsecOff)}
-                style={{display:"inline-flex",alignItems:"center",gap:10,padding:"10px 16px",borderRadius:8,border:`1.5px solid ${ruleConfig.biweeklyConsecOff?"#c0a07a":"#ddd"}`,background:ruleConfig.biweeklyConsecOff?"#fdf8f0":"#faf8f5",cursor:"pointer"}}>
-                <span style={{fontSize:12,fontWeight:700,color:ruleConfig.biweeklyConsecOff?"#7a4a18":"#aaa"}}>2주 연속휴무 보장</span>
-                <span style={{fontSize:11,background:ruleConfig.biweeklyConsecOff?"#c0a07a":"#ddd",color:"#fff",borderRadius:4,padding:"2px 8px",fontWeight:700}}>{ruleConfig.biweeklyConsecOff?"ON":"OFF"}</span>
+                style={{display:"inline-flex",alignItems:"center",gap:10,padding:"10px 16px",borderRadius:8,border:`1.5px solid ${ruleConfig.biweeklyConsecOff?T.primary:T.border}`,background:ruleConfig.biweeklyConsecOff?"#fdf8f0":"#faf8f5",cursor:"pointer"}}>
+                <span style={{fontSize:12,fontWeight:700,color:ruleConfig.biweeklyConsecOff?"#7a4a18":T.textMuted}}>2주 연속휴무 보장</span>
+                <span style={{fontSize:11,background:ruleConfig.biweeklyConsecOff?T.primary:T.border,color:"#fff",borderRadius:4,padding:"2px 8px",fontWeight:700}}>{ruleConfig.biweeklyConsecOff?"ON":"OFF"}</span>
               </div>
             </div>
           </div>
@@ -2306,10 +2288,10 @@ function App() {
                   style={{fontSize:12,padding:"5px 12px",borderRadius:7,border:"1.5px solid #c0a07a",background:"#fdf8f0",color:"#7a4a18",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>
                   ＋ 직원 추가
                 </button>
-                <button onClick={()=>setShowEmpSettings(false)} style={{fontSize:16,lineHeight:1,padding:"2px 8px",borderRadius:6,border:"1px solid #ddd",background:"#f5f0ea",color:"#888",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
+                <button onClick={()=>setShowEmpSettings(false)} style={{fontSize:16,lineHeight:1,padding:"2px 8px",borderRadius:6,border:"1px solid #ddd",background:"#f5f0ea",color:T.textSub,cursor:"pointer",fontFamily:"inherit"}}>✕</button>
               </div>
             </div>
-            <div style={{fontSize:11,color:"#aaa",marginBottom:14}}>주 근무일수와 격주 패턴을 설정합니다. 자동배치에 반영됩니다.</div>
+            <div style={{fontSize:11,color:T.textMuted,marginBottom:14}}>주 근무일수와 격주 패턴을 설정합니다. 자동배치에 반영됩니다.</div>
             {BRANCHES.map(branch => {
               const emps = ALL_EMPLOYEES.filter(e => e.branch === branch.id);
               return (
@@ -2330,10 +2312,10 @@ function App() {
                                   const next=new Set([...deletedEmpIds, emp.id]);
                                   setDeletedEmpIds(next); saveDeletedIds(next);
                                 }
-                              }} style={{fontSize:10,padding:"1px 5px",borderRadius:4,border:"1px solid #f5b3b3",background:"#fde8e8",color:"#c0392b",cursor:"pointer",fontFamily:"inherit"}}>삭제</button>
+                              }} style={{fontSize:10,padding:"1px 5px",borderRadius:4,border:"1px solid #f5b3b3",background:T.dangerLt,color:T.danger,cursor:"pointer",fontFamily:"inherit"}}>삭제</button>
                           </div>
                           {/* 주 근무일수 */}
-                          <div style={{fontSize:11,color:cfg.altPattern?"#ccc":"#888",marginBottom:4}}>
+                          <div style={{fontSize:11,color:cfg.altPattern?T.gray400:T.textSub,marginBottom:4}}>
                             주 근무일수{cfg.altPattern&&<span style={{fontSize:9,color:"#bbb",marginLeft:4}}>(격주패턴 우선)</span>}
                           </div>
                           <div style={{display:"flex",gap:4,marginBottom:8}}>
@@ -2341,25 +2323,25 @@ function App() {
                               <button key={n}
                                 onClick={()=>{ if(!cfg.altPattern) setEmpSetting(emp.id,"weeklyWork",n); }}
                                 style={{flex:1,padding:"4px 0",borderRadius:5,
-                                  border:`1.5px solid ${cfg.altPattern?"#eee":cfg.weeklyWork===n?branch.color:"#ddd"}`,
+                                  border:`1.5px solid ${cfg.altPattern?"#eee":cfg.weeklyWork===n?branch.color:T.border}`,
                                   background:cfg.altPattern?"#f5f5f5":cfg.weeklyWork===n?branch.color+"22":"#fff",
-                                  color:cfg.altPattern?"#ccc":cfg.weeklyWork===n?branch.color:"#999",
+                                  color:cfg.altPattern?T.gray400:cfg.weeklyWork===n?branch.color:"#999",
                                   fontSize:11,fontWeight:(!cfg.altPattern&&cfg.weeklyWork===n)?700:400,
                                   cursor:cfg.altPattern?"not-allowed":"pointer",fontFamily:"inherit"}}>
-                                {n}일<span style={{fontSize:9,display:"block",color:cfg.altPattern?"#ddd":cfg.weeklyWork===n?branch.color:"#bbb"}}>휴무{7-n}일</span>
+                                {n}일<span style={{fontSize:9,display:"block",color:cfg.altPattern?T.border:cfg.weeklyWork===n?branch.color:"#bbb"}}>휴무{7-n}일</span>
                               </button>
                             ))}
                           </div>
                           {/* 격주 패턴 */}
                           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                            <span style={{fontSize:11,color:"#888"}}>격주패턴</span>
+                            <span style={{fontSize:11,color:T.textSub}}>격주패턴</span>
                             <button onClick={()=>setEmpSetting(emp.id,"altPattern",!cfg.altPattern)}
-                              style={{padding:"3px 10px",borderRadius:5,border:`1.5px solid ${cfg.altPattern?branch.color:"#ddd"}`,background:cfg.altPattern?branch.color+"22":"#fff",color:cfg.altPattern?branch.color:"#bbb",fontSize:10,fontWeight:cfg.altPattern?700:400,cursor:"pointer",fontFamily:"inherit"}}>
+                              style={{padding:"3px 10px",borderRadius:5,border:`1.5px solid ${cfg.altPattern?branch.color:T.border}`,background:cfg.altPattern?branch.color+"22":"#fff",color:cfg.altPattern?branch.color:"#bbb",fontSize:10,fontWeight:cfg.altPattern?700:400,cursor:"pointer",fontFamily:"inherit"}}>
                               {cfg.altPattern?"ON":"OFF"}
                             </button>
                           </div>
                           {cfg.altPattern && (
-                            <div style={{fontSize:9,color:"#aaa",marginTop:3}}>
+                            <div style={{fontSize:9,color:T.textMuted,marginTop:3}}>
                               홀수주 {Math.max(1,7-cfg.weeklyWork-1)}일 / 짝수주 {7-cfg.weeklyWork}일
                             </div>
                           )}
@@ -2372,7 +2354,7 @@ function App() {
             })}
           {/* 남자직원 설정 - 천호 아래 */}
           {(()=>{
-            const maleColor = "#4a80c0";
+            const maleColor = T.primary;
             const maleEmps = ALL_EMPLOYEES.filter(e=>e.isMale);
             if (!maleEmps.length) return null;
             return (
@@ -2382,7 +2364,7 @@ function App() {
                   {maleEmps.map(emp=>{
                     const cfg = empSettings[emp.id] || {weeklyWork:5,altPattern:false};
                     return (
-                      <div key={emp.id} style={{border:`1px solid #b8d0e8`,borderRadius:8,padding:"8px 12px",minWidth:160,background:"#f4f8fd"}}>
+                      <div key={emp.id} style={{border:`1px solid #b8d0e8`,borderRadius:8,padding:"8px 12px",minWidth:160,background:T.gray100}}>
                         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
                           <div style={{fontWeight:700,fontSize:12,color:"#2a5080"}}>{emp.name}</div>
                           <button onClick={()=>{
@@ -2393,15 +2375,15 @@ function App() {
                               const next=new Set([...deletedEmpIds, emp.id]);
                               setDeletedEmpIds(next); saveDeletedIds(next);
                             }
-                          }} style={{fontSize:10,padding:"1px 5px",borderRadius:4,border:"1px solid #f5b3b3",background:"#fde8e8",color:"#c0392b",cursor:"pointer",fontFamily:"inherit"}}>삭제</button>
+                          }} style={{fontSize:10,padding:"1px 5px",borderRadius:4,border:"1px solid #f5b3b3",background:T.dangerLt,color:T.danger,cursor:"pointer",fontFamily:"inherit"}}>삭제</button>
                         </div>
-                        <div style={{fontSize:11,color:"#888",marginBottom:4}}>주 근무일수</div>
+                        <div style={{fontSize:11,color:T.textSub,marginBottom:4}}>주 근무일수</div>
                         <div style={{display:"flex",gap:4,marginBottom:4}}>
                           {[5,6].map(n=>(
                             <button key={n}
                               onClick={()=>setEmpSetting(emp.id,"weeklyWork",n)}
                               style={{flex:1,padding:"4px 0",borderRadius:5,
-                                border:`1.5px solid ${cfg.weeklyWork===n?maleColor:"#ddd"}`,
+                                border:`1.5px solid ${cfg.weeklyWork===n?maleColor:T.border}`,
                                 background:cfg.weeklyWork===n?maleColor+"22":"#fff",
                                 color:cfg.weeklyWork===n?maleColor:"#999",
                                 fontSize:11,fontWeight:cfg.weeklyWork===n?700:400,
@@ -2429,9 +2411,9 @@ function App() {
             <div style={{position:"fixed",top:"50%",left:"50%",transform:"translate(-50%,-50%)",background:"#fff",borderRadius:14,padding:24,zIndex:201,width:"min(96vw,480px)",maxHeight:"85vh",overflowY:"auto",boxShadow:"0 10px 40px rgba(0,0,0,.25)"}}>
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
                 <div style={{fontWeight:700,fontSize:14,color:"#4a2c14"}}>🏢 지점지원설정</div>
-                <button onClick={()=>setShowSupportSettings(false)} style={{fontSize:16,lineHeight:1,padding:"2px 8px",borderRadius:6,border:"1px solid #ddd",background:"#f5f0ea",color:"#888",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
+                <button onClick={()=>setShowSupportSettings(false)} style={{fontSize:16,lineHeight:1,padding:"2px 8px",borderRadius:6,border:"1px solid #ddd",background:"#f5f0ea",color:T.textSub,cursor:"pointer",fontFamily:"inherit"}}>✕</button>
               </div>
-              <div style={{fontSize:12,color:"#aaa",marginBottom:18}}>논현&왕십리 인원 부족 시 지원 나가는 지점 우선순위를 설정하세요.</div>
+              <div style={{fontSize:12,color:T.textMuted,marginBottom:18}}>논현&왕십리 인원 부족 시 지원 나가는 지점 우선순위를 설정하세요.</div>
               <div style={{fontSize:12,fontWeight:700,color:"#4a2c14",marginBottom:10}}>📌 논현&왕십리 지원 우선순위</div>
               <div style={{display:"flex",flexDirection:"column",gap:8}}>
                 {BRANCHES.filter(b => b.id !== "nonhyeon").map((b) => {
@@ -2439,18 +2421,18 @@ function App() {
                   const isOn = idx !== -1;
                   return (
                     <div key={b.id}
-                      style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",borderRadius:8,border:`1.5px solid ${isOn ? b.color : "#ddd"}`,background:isOn ? b.color+"18" : "#faf8f5",cursor:"pointer",transition:"all .12s"}}
+                      style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",borderRadius:8,border:`1.5px solid ${isOn ? b.color : T.border}`,background:isOn ? b.color+"18" : "#faf8f5",cursor:"pointer",transition:"all .12s"}}
                       onClick={()=>{
                         const newOrder = isOn ? supportOrder.filter(id=>id!==b.id) : [...supportOrder, b.id];
                         saveSupportOrder(newOrder);
                       }}>
                       <div style={{display:"flex",alignItems:"center",gap:8}}>
-                        <div style={{width:10,height:10,borderRadius:"50%",background:isOn?b.color:"#ddd"}}/>
-                        <span style={{fontSize:13,fontWeight:isOn?700:400,color:isOn?b.color:"#aaa"}}>{b.name}</span>
+                        <div style={{width:10,height:10,borderRadius:"50%",background:isOn?b.color:T.border}}/>
+                        <span style={{fontSize:13,fontWeight:isOn?700:400,color:isOn?b.color:T.textMuted}}>{b.name}</span>
                       </div>
                       {isOn
                         ? <span style={{fontSize:11,background:b.color,color:"#fff",borderRadius:5,padding:"2px 8px",fontWeight:700}}>{supportOrder.indexOf(b.id)+1}순위</span>
-                        : <span style={{fontSize:11,color:"#ccc"}}>미사용</span>
+                        : <span style={{fontSize:11,color:T.gray400}}>미사용</span>
                       }
                     </div>
                   );
@@ -2468,25 +2450,25 @@ function App() {
             <div style={{position:"fixed",top:"50%",left:"50%",transform:"translate(-50%,-50%)",background:"#fff",borderRadius:14,padding:24,zIndex:301,width:"min(96vw,400px)",boxShadow:"0 10px 40px rgba(0,0,0,.3)"}}>
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:18}}>
                 <div style={{fontWeight:700,fontSize:14,color:"#4a2c14"}}>＋ 직원 추가</div>
-                <button onClick={()=>setShowAddEmp(false)} style={{fontSize:16,padding:"2px 8px",borderRadius:6,border:"1px solid #ddd",background:"#f5f0ea",color:"#888",cursor:"pointer",fontFamily:"inherit"}}>✕</button>
+                <button onClick={()=>setShowAddEmp(false)} style={{fontSize:16,padding:"2px 8px",borderRadius:6,border:"1px solid #ddd",background:"#f5f0ea",color:T.textSub,cursor:"pointer",fontFamily:"inherit"}}>✕</button>
               </div>
               {/* 이름 */}
               <div style={{marginBottom:14}}>
-                <div style={{fontSize:11,color:"#888",marginBottom:5,fontWeight:600}}>이름</div>
+                <div style={{fontSize:11,color:T.textSub,marginBottom:5,fontWeight:600}}>이름</div>
                 <input value={newEmp.name} onChange={e=>setNewEmp(p=>({...p,name:e.target.value}))}
                   placeholder="이름 입력"
                   style={{width:"100%",padding:"8px 10px",borderRadius:7,border:"1.5px solid #e4ddd0",fontSize:13,fontFamily:"inherit",outline:"none"}}/>
               </div>
               {/* 지점 */}
               <div style={{marginBottom:14}}>
-                <div style={{fontSize:11,color:"#888",marginBottom:5,fontWeight:600}}>지점</div>
+                <div style={{fontSize:11,color:T.textSub,marginBottom:5,fontWeight:600}}>지점</div>
                 <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-                  {[...BRANCHES,{id:"male",name:"남직원",color:"#4a80c0"}].map(b=>(
+                  {[...BRANCHES,{id:"male",name:"남직원",color:T.primary}].map(b=>(
                     <button key={b.id} onClick={()=>setNewEmp(p=>({...p,branch:b.id,isMale:b.id==="male"}))}
                       style={{padding:"5px 12px",borderRadius:7,fontSize:12,fontFamily:"inherit",cursor:"pointer",
-                        border:`1.5px solid ${newEmp.branch===b.id?b.color:"#ddd"}`,
+                        border:`1.5px solid ${newEmp.branch===b.id?b.color:T.border}`,
                         background:newEmp.branch===b.id?b.color+"22":"#faf8f5",
-                        color:newEmp.branch===b.id?b.color:"#aaa",
+                        color:newEmp.branch===b.id?b.color:T.textMuted,
                         fontWeight:newEmp.branch===b.id?700:400}}>
                       {b.name}
                     </button>
@@ -2495,14 +2477,14 @@ function App() {
               </div>
               {/* 주 휴무 */}
               <div style={{marginBottom:14}}>
-                <div style={{fontSize:11,color:"#888",marginBottom:5,fontWeight:600}}>주 휴무일수</div>
+                <div style={{fontSize:11,color:T.textSub,marginBottom:5,fontWeight:600}}>주 휴무일수</div>
                 <div style={{display:"flex",gap:8}}>
                   {[1,2].map(n=>(
                     <button key={n} onClick={()=>setNewEmp(p=>({...p,weeklyOff:n}))}
                       style={{flex:1,padding:"7px 0",borderRadius:7,fontSize:12,fontFamily:"inherit",cursor:"pointer",
-                        border:`1.5px solid ${newEmp.weeklyOff===n?"#c0a07a":"#ddd"}`,
+                        border:`1.5px solid ${newEmp.weeklyOff===n?T.primary:T.border}`,
                         background:newEmp.weeklyOff===n?"#fdf3e0":"#faf8f5",
-                        color:newEmp.weeklyOff===n?"#7a4a18":"#aaa",
+                        color:newEmp.weeklyOff===n?"#7a4a18":T.textMuted,
                         fontWeight:newEmp.weeklyOff===n?700:400}}>
                       {n}일 휴무
                     </button>
@@ -2517,9 +2499,9 @@ function App() {
                 ].map(({key,label})=>(
                   <button key={key} onClick={()=>setNewEmp(p=>({...p,[key]:!p[key]}))}
                     style={{padding:"5px 12px",borderRadius:7,fontSize:11,fontFamily:"inherit",cursor:"pointer",
-                      border:`1.5px solid ${newEmp[key]?"#8b5c2a":"#ddd"}`,
+                      border:`1.5px solid ${newEmp[key]?T.textSub:T.border}`,
                       background:newEmp[key]?"#f5e8d0":"#faf8f5",
-                      color:newEmp[key]?"#7a4a18":"#aaa",fontWeight:newEmp[key]?700:400}}>
+                      color:newEmp[key]?"#7a4a18":T.textMuted,fontWeight:newEmp[key]?700:400}}>
                     {newEmp[key]?"✓ ":""}{label}
                   </button>
                 ))}
@@ -2539,8 +2521,8 @@ function App() {
                   setShowAddEmp(false);
                 }}
                 style={{width:"100%",padding:"10px 0",borderRadius:8,fontSize:13,fontFamily:"inherit",cursor:"pointer",fontWeight:700,
-                  background:newEmp.name.trim()?"#c0a07a":"#e4ddd0",
-                  color:newEmp.name.trim()?"#2d1a08":"#aaa",border:"none"}}>
+                  background:newEmp.name.trim()?T.primary:T.border,
+                  color:newEmp.name.trim()?"#2d1a08":T.textMuted,border:"none"}}>
                 추가하기
               </button>
             </div>
@@ -2557,26 +2539,26 @@ function App() {
                 <div style={{fontWeight:700,fontSize:14,color:"#4a2c14"}}>👑 원장 지정 휴무 설정</div>
                 <div style={{display:"flex",gap:6,alignItems:"center"}}>
                   {ownerSaveStatus==="saved" && <span style={{fontSize:11,color:"#6b9e6b"}}>✓ 저장됨</span>}
-                  {ownerSaveStatus==="saving" && <span style={{fontSize:11,color:"#aaa"}}>저장중...</span>}
+                  {ownerSaveStatus==="saving" && <span style={{fontSize:11,color:T.textMuted}}>저장중...</span>}
                   {ownerSaveStatus==="error" && <span style={{fontSize:11,color:"#c06060"}}>저장 실패</span>}
                   <button onClick={()=>{ saveOwnerReqs(ownerReqs); }}
                     style={{fontSize:11,padding:"4px 10px",borderRadius:6,border:"1px solid #c0a07a",background:"#fdf8f0",color:"#7a4a18",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>
                     💾 저장
                   </button>
                   <button onClick={()=>{ if(window.confirm("이번달 원장 휴무 설정을 초기화할까요?")){ const next={...ownerReqs}; Object.keys(next).forEach(k=>{if(k.includes("__"+curMonthStr)||k.includes("__"+nextMonthStr)) delete next[k];}); setOwnerReqs(next); saveOwnerReqs(next); }}}
-                    style={{fontSize:11,padding:"4px 10px",borderRadius:6,border:"1px solid #ddd",background:"#faf8f5",color:"#aaa",cursor:"pointer",fontFamily:"inherit"}}>
+                    style={{fontSize:11,padding:"4px 10px",borderRadius:6,border:"1px solid #ddd",background:"#faf8f5",color:T.textMuted,cursor:"pointer",fontFamily:"inherit"}}>
                     🗑 초기화
                   </button>
                   <button onClick={()=>setShowOwnerSettings(false)}
-                    style={{fontSize:16,lineHeight:1,padding:"2px 8px",borderRadius:6,border:"1px solid #ddd",background:"#f5f0ea",color:"#888",cursor:"pointer",fontFamily:"inherit"}}>
+                    style={{fontSize:16,lineHeight:1,padding:"2px 8px",borderRadius:6,border:"1px solid #ddd",background:"#f5f0ea",color:T.textSub,cursor:"pointer",fontFamily:"inherit"}}>
                     ✕
                   </button>
                 </div>
               </div>
-          <div style={{fontSize:12,color:"#aaa",marginBottom:16}}>자동배치 전 원장님 고정 휴무일을 먼저 설정하세요. 요일 버튼으로 매주 반복 지정 또는 날짜 드래그로 개별 선택. 자동배치 시 최우선 적용됩니다.</div>
+          <div style={{fontSize:12,color:T.textMuted,marginBottom:16}}>자동배치 전 원장님 고정 휴무일을 먼저 설정하세요. 요일 버튼으로 매주 반복 지정 또는 날짜 드래그로 개별 선택. 자동배치 시 최우선 적용됩니다.</div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:14}}>
             {ALL_EMPLOYEES.filter(e=>e.isOwner).map(emp=>{
-              const bc=BRANCHES.find(b=>b.id===emp.branch)?.color||"#888";
+              const bc=BRANCHES.find(b=>b.id===emp.branch)?.color||T.textSub;
               const myReqs=Object.entries(ownerReqs).filter(([k])=>k.startsWith(emp.id+"__"));
               // 현재 이 원장의 활성 요일 구하기 (이번달+이월 날짜 기준)
               const activeDows = new Set(
@@ -2628,7 +2610,7 @@ function App() {
                         <div style={{fontWeight:700,fontSize:13,color:bc}}>{emp.name}</div>
                         <button onClick={toggleRepeat}
                           title="반복 ON: 매달 같은 요일 자동 휴무 지정"
-                          style={{padding:"3px 10px",fontSize:11,fontWeight:700,borderRadius:5,border:`1.5px solid ${rep.enabled?"#e0a030":"#ddd"}`,background:rep.enabled?"#fff8e8":"#faf8f5",color:rep.enabled?"#c07000":"#aaa",cursor:"pointer",fontFamily:"inherit",transition:"all .12s",whiteSpace:"nowrap"}}>
+                          style={{padding:"3px 10px",fontSize:11,fontWeight:700,borderRadius:5,border:`1.5px solid ${rep.enabled?"#e0a030":T.border}`,background:rep.enabled?"#fff8e8":"#faf8f5",color:rep.enabled?"#c07000":T.textMuted,cursor:"pointer",fontFamily:"inherit",transition:"all .12s",whiteSpace:"nowrap"}}>
                           {rep.enabled?"🔁 반복중":"🔁 반복"}
                         </button>
                       </div>
@@ -2638,7 +2620,7 @@ function App() {
                           const full=isDowFull(dow);
                           return (
                             <button key={di} onClick={()=>toggleDowWithRepeat(dow)}
-                              style={{flex:1,padding:"4px 0",fontSize:11,fontWeight:700,borderRadius:5,border:`1.5px solid ${full?bc:"#ddd"}`,background:full?bc:"#faf8f5",color:full?"#fff":"#aaa",cursor:"pointer",fontFamily:"inherit",transition:"all .12s"}}>
+                              style={{flex:1,padding:"4px 0",fontSize:11,fontWeight:700,borderRadius:5,border:`1.5px solid ${full?bc:T.border}`,background:full?bc:"#faf8f5",color:full?"#fff":T.textMuted,cursor:"pointer",fontFamily:"inherit",transition:"all .12s"}}>
                               {dn}
                             </button>
                           );
@@ -2683,7 +2665,7 @@ function App() {
                                   return p;
                                 });
                               }}
-                              style={{height:30,borderRadius:5,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:11,fontWeight:700,background:on?bc:day.isNext?"#ede8f5":"#f5f0ea",color:on?"#fff":day.isNext?"#9070d0":isSun?"#e06060":isSat?"#6080c0":"#888",border:`1.5px solid ${on?bc:day.isNext?"#c4b3e0":"#e4ddd0"}`,transition:"all .12s",userSelect:"none",opacity:day.isNext?0.85:1}}>
+                              style={{height:30,borderRadius:5,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:11,fontWeight:700,background:on?bc:day.isNext?"#ede8f5":"#f5f0ea",color:on?"#fff":day.isNext?T.purple:isSun?"#e06060":isSat?"#6080c0":T.textSub,border:`1.5px solid ${on?bc:day.isNext?"#c4b3e0":T.border}`,transition:"all .12s",userSelect:"none",opacity:day.isNext?0.85:1}}>
                               <div style={{fontSize:11,lineHeight:1}}>{day.d}</div>
                               {day.isNext&&<div style={{fontSize:7,lineHeight:1,marginTop:1}}>{(month+2>12?1:month+2)}월</div>}
                             </div>
@@ -2706,7 +2688,7 @@ function App() {
 }
 
 const stickyCol = { position:"sticky",left:0,zIndex:5,width:150,minWidth:150,padding:"6px 10px",verticalAlign:"middle" };
-const navBtn = { background:"none",border:"1px solid #e4ddd0",borderRadius:6,padding:"5px 10px",cursor:"pointer",fontSize:13,fontFamily:"inherit",color:"#555" };
+const navBtn = { background:"none",border:"1px solid #e4ddd0",borderRadius:6,padding:"5px 10px",cursor:"pointer",fontSize:13,fontFamily:"inherit",color:T.textSub };
 
 function Btn({label,onClick,primary,outline,danger,style={}}){
   const bg=primary?T.primary:danger?T.danger:outline?T.bgCard:T.gray200;
