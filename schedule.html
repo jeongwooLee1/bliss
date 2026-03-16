@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.17-i";
+const SCH_V = "v2026.03.17-j";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -2380,26 +2380,21 @@ function App() {
                           cursor:lockedDates.has(day.ds)?"not-allowed":"pointer",
                           opacity:day.isNext?0.5:1
                         }}>
-                        {s&&s!==""?(
-                          <div style={{
-                            margin:"1px",
-                            borderRadius:T.radius.md,
-                            padding:"3px 2px",
-                            background:sc.bg,
-                            borderLeft:"3px solid "+sc.border,
-                            fontSize:T.fs.xxs,
-                            fontWeight:sc.bold?T.fw.bolder:T.fw.bold,
-                            color:sc.text,
-                            lineHeight:1.3,
-                            position:"relative",
-                            whiteSpace:"nowrap",
-                            overflow:"hidden",
-                            textOverflow:"ellipsis"
-                          }}>
-                            {s==="휴무(꼭)"&&<span style={{position:"absolute",top:0,right:1,fontSize:7,color:T.primaryDk,fontWeight:900}}>●</span>}
-                            {s}
-                          </div>
-                        ):<span style={{color:T.gray300,fontSize:T.fs.sm}}>—</span>}
+                        <div style={{
+                          background: s?sc.bg:"transparent",
+                          color: s?sc.text:"#d8d0c8",
+                          border: s==="휴무" || s==="휴무(꼭)" || s==="전체쉐어"
+                            ? `2px solid ${sc.border}`
+                            : s?`1px solid ${sc.border}`:"1px dashed #e8e0d4",
+                          borderRadius: "5px",
+                          padding:"3px 0",fontSize:10,
+                          fontWeight: s==="휴무"||s==="휴무(꼭)" ? 700 : s?600:400,
+                          minWidth:44,
+                          position:"relative",
+                        }}>
+                          {s==="휴무(꼭)" && <span style={{position:"absolute",top:-7,right:2,fontSize:8,color:"#9060d0",lineHeight:"14px",fontWeight:900}}>★</span>}
+                          {s||"—"}
+                        </div>
                       </td>
                     );
                   })}
