@@ -632,8 +632,8 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
   // [Phase B] 충돌 해소: 같은 날 너무 많은 강제 휴무 → 일부를 ±1~3일 이동
   // 각 날짜의 예정 강제 휴무 수 집계
   const dayForcedCount = {};
-  employees.filter(e => !isAltPattern(e) && !e.isMale).forEach(emp => {
-    forcedOff[emp.id].forEach(ds => {
+  employees.filter(e => !isAltPattern(e) && !e.isMale && !e.isOwner).forEach(emp => {
+    (forcedOff[emp.id]||new Set()).forEach(ds => {
       dayForcedCount[ds] = (dayForcedCount[ds] || 0) + 1;
     });
   });
@@ -1873,6 +1873,8 @@ function App() {
 
         {/* 오른쪽: 액션 */}
         <div style={{display:"flex",alignItems:"center",gap:4}}>
+          {/* 버전 */}
+          <span style={{fontSize:T.fs.nano,color:T.textMuted,fontWeight:T.fw.bold,whiteSpace:"nowrap",marginRight:2}}>{SCH_V}</span>
           {/* ⚡ 자동배치 - 주 CTA */}
           <button onClick={()=>{
             if(isAssigning) return;
@@ -1948,8 +1950,6 @@ function App() {
             </button>
           ))}
 
-          {/* 버전 */}
-          <span style={{fontSize:T.fs.nano,color:T.textMuted,fontWeight:T.fw.bold,whiteSpace:"nowrap"}}>{SCH_V}</span>
           {/* 설정 드롭다운 */}
           <div style={{position:"relative"}}>
             <button onClick={()=>setShowSettings(s=>!s)} title="설정" style={{
