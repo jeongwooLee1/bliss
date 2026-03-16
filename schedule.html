@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.16-l";
+const SCH_V = "v2026.03.16-m";
 const BRANCHES = [
   { id: "nonhyeon", name: "논현&왕십리", color: "#c8793a", minStaff: 4 },
   { id: "hongdae",  name: "홍대&마곡",   color: "#3a9e8e", minStaff: 2 },
@@ -1370,6 +1370,8 @@ function App() {
   const [ownerReqs, setOwnerReqs] = useState({});
   const [empReqs, setEmpReqs] = useState({});  // 일반직원 휴무(꼭): { "empId__ds": "휴무(꼭)" }
   const EMP_REQS_KEY = "empReqs_v1";
+  const RULE_CONFIG_KEY = "ruleConfig_v1";
+  const SUPPORT_ORDER_KEY = "supportOrder_v1";
   const ownerDragRef = React.useRef({active:false, empId:null, mode:null}); // mode: 'on'|'off'
   const [ownerSaveStatus, setOwnerSaveStatus] = useState(""); // "", "saving", "saved", "error"
   const OWNER_STORAGE_KEY = "ownerReqs_v1";
@@ -1400,6 +1402,14 @@ function App() {
       try {
         const r5 = await window.storage.get("schHistory_v1");
         if (r5?.value) setSchHistory(JSON.parse(r5.value));
+      } catch(e) {}
+      try {
+        const r6 = await window.storage.get(RULE_CONFIG_KEY);
+        if (r6?.value) setRuleConfig(JSON.parse(r6.value));
+      } catch(e) {}
+      try {
+        const r7 = await window.storage.get(SUPPORT_ORDER_KEY);
+        if (r7?.value) setSupportOrder(JSON.parse(r7.value));
       } catch(e) {}
       setDataLoaded(true);
     })();
@@ -1496,6 +1506,10 @@ function App() {
   };
   // 논현 지원 우선순위: 지점 ID 배열 (순서대로 우선)
   const [supportOrder, setSupportOrder] = useState(["yongsan"]);
+  const saveSupportOrder = (order) => {
+    setSupportOrder(order);
+    window.storage.set(SUPPORT_ORDER_KEY, JSON.stringify(order)).catch(()=>{});
+  };
   // 전체 직원 = 기본 + 커스텀
   // 근무표 표시용: 삭제된 직원도 포함 (기존 근무표 유지)
   const ALL_EMPLOYEES = React.useMemo(() => [...EMPLOYEES, ...customEmployees], [customEmployees]);
@@ -1521,7 +1535,11 @@ function App() {
       })
     ),
   });
-  const setRule = (key, val) => setRuleConfig(p => ({...p, [key]: val}));
+  const setRule = (key, val) => setRuleConfig(p => {
+    const next = {...p, [key]: val};
+    window.storage.set(RULE_CONFIG_KEY, JSON.stringify(next)).catch(()=>{});
+    return next;
+  });
 
   const dim = getDim(year, month);
   // 월 변경 시: schHistory에 월별로 저장되므로 별도 처리 불필요
@@ -2371,7 +2389,8 @@ function App() {
                     <div key={b.id}
                       style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",borderRadius:8,border:`1.5px solid ${isOn ? b.color : "#ddd"}`,background:isOn ? b.color+"18" : "#faf8f5",cursor:"pointer",transition:"all .12s"}}
                       onClick={()=>{
-                        setSupportOrder(prev => isOn ? prev.filter(id=>id!==b.id) : [...prev, b.id]);
+                        const newOrder = isOn ? supportOrder.filter(id=>id!==b.id) : [...supportOrder, b.id];
+                        saveSupportOrder(newOrder);
                       }}>
                       <div style={{display:"flex",alignItems:"center",gap:8}}>
                         <div style={{width:10,height:10,borderRadius:"50%",background:isOn?b.color:"#ddd"}}/>
