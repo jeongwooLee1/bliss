@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.234";
+const BLISS_V = "2.69.235";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -2326,7 +2326,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       try {
         const branch = (data.branches||[]).find(b=>b.id===item.bid);
         const rsvUrlId = item.reservationId || item.id || "";
-        const rsvUrl = rsvUrlId ? "https://jeongwoolee1.github.io/bliss/rsv.html?id="+encodeURIComponent(rsvUrlId) : "";
+        const rsvUrl = rsvUrlId ? "https://jeongwoolee1.github.io/bliss/r/?"+encodeURIComponent(rsvUrlId) : "";
         sendAlimtalk("rsv_confirm", item.custPhone, {
           "#{사용자명}":branch?.name||"", "#{날짜}":item.date||"", "#{시간}":item.time||"",
           "#{작업자}":item.worker||"", "#{작업장소}":branch?.name||"",
