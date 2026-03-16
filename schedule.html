@@ -584,7 +584,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
   const forcedOff = {}; // { empId: Set<ds> }
 
   // 직원 처리 순서를 랜덤화 → 같은 날 충돌 시 매번 다른 직원이 양보
-  const shuffledEmps = shuffle(employees.filter(e => !isAltPattern(e) && !e.isMale));
+  const shuffledEmps = shuffle(employees.filter(e => !isAltPattern(e) && !e.isMale && !e.isOwner));
   shuffledEmps.forEach(emp => {
     forcedOff[emp.id] = new Set();
     let streak = getCarry(emp.id, allDsOrdered[0]);
@@ -716,8 +716,8 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     });
   });
 
-  // [Phase D] 주간 쿼터 채우기
-  shuffle(employees.filter(e => !isAltPattern(e))).forEach(emp => {
+  // [Phase D] 주간 쿼터 채우기 (원장 제외 - ownerReqs로만 배정)
+  shuffle(employees.filter(e => !isAltPattern(e) && !e.isOwner)).forEach(emp => {
     const branch = BRANCHES.find(b => b.id === emp.branch);
     const branchEmps = employees.filter(e => e.branch === emp.branch);
     const monthlyTarget = getWeeklyOff(emp) * weekCount;
@@ -1299,7 +1299,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
   //    2회 패스: 1패스(초과 줄이기) → 2패스(부족 채우기)
   //    대상: altPattern·원장 제외 전 직원 (원장은 weeklyOff:1이므로 별도 처리 없음)
   {
-    const targetEmps = employees.filter(e => !isAltPattern(e));
+    const targetEmps = employees.filter(e => !isAltPattern(e) && !e.isOwner);
 
     // ── 패스 1: 초과 주 줄이기 (off > weeklyOff) ──
     // 휴무(꼭) 제외, 주간 초과분만 off→work (canAssignOff 무시, 단순 전환)
