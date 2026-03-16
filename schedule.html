@@ -1875,17 +1875,22 @@ function App() {
             if(isAssigning) return;
             setIsAssigning(true);
             setTimeout(()=>{
-              const MAX_RETRY=30; let best=null, bestV=null;
-              for(let i=0;i<MAX_RETRY;i++){
-                const r=autoAssign(year,month,ownerReqs,prevSch,empSettings,{order:supportOrder},ruleConfig,ownerRepeat,ACTIVE_EMPLOYEES,empReqs,Date.now()+i*997);
-                const v=validateSch(r,ACTIVE_EMPLOYEES);
-                if(v.length===0){best=r;bestV=[];break;}
-                if(!best||v.length<bestV.length){best=r;bestV=v;}
+              try {
+                const MAX_RETRY=30; let best=null, bestV=null;
+                for(let i=0;i<MAX_RETRY;i++){
+                  const r=autoAssign(year,month,ownerReqs,prevSch,empSettings,{order:supportOrder},ruleConfig,ownerRepeat,ACTIVE_EMPLOYEES,empReqs,Date.now()+i*997);
+                  const v=validateSch(r,ACTIVE_EMPLOYEES);
+                  if(v.length===0){best=r;bestV=[];break;}
+                  if(!best||v.length<bestV.length){best=r;bestV=v;}
+                }
+                if(bestV.length>0) toast_("⚠️ "+MAX_RETRY+"회 시도 후 최선 결과 (위반 "+bestV.length+"건)","err");
+                else toast_("✅ 자동 배치 완료!");
+                setSchHistory(prev=>{const n={...prev,[curKey]:best};window.storage.set("schHistory_v1",JSON.stringify(n)).catch(()=>{});return n;});
+              } catch(e) {
+                toast_("❌ 배치 오류: "+e.message, "err");
+              } finally {
+                setIsAssigning(false);
               }
-              if(bestV.length>0) toast_("⚠️ "+MAX_RETRY+"회 시도 후 최선 결과 (위반 "+bestV.length+"건)","err");
-              else toast_("✅ 자동 배치 완료!");
-              setSchHistory(prev=>{const n={...prev,[curKey]:best};window.storage.set("schHistory_v1",JSON.stringify(n)).catch(()=>{});return n;});
-              setIsAssigning(false);
             }, 50);
           }} style={{
             display:"inline-flex",alignItems:"center",gap:6,
@@ -2065,7 +2070,7 @@ function App() {
                     <div style={{display:"flex",alignItems:"center",gap:6}}>
                       <div style={{width:7,height:7,borderRadius:"50%",background:branch.color,flexShrink:0}}/>
                       <div>
-                        <div style={{fontSize:12,fontWeight:emp.isOwner?700:500,lineHeight:1.2,display:"flex",alignItems:"center",gap:4}}>
+                        <div style={{fontSize:12,fontWeight:emp.isOwner?700:500,lineHeight:1.2,display:"flex",alignItems:"center",gap:4,overflow:"hidden"}}>
                           {emp.name}
                           {(()=>{
                             // 지원 횟수 집계 (지점별)
@@ -2768,7 +2773,7 @@ function App() {
   );
 }
 
-const stickyCol = { position:"sticky",left:0,zIndex:10,width:150,minWidth:150,padding:"6px 8px",verticalAlign:"middle",background:T.bgCard,boxShadow:"2px 0 4px rgba(0,0,0,.07)" };
+const stickyCol = { position:"sticky",left:0,zIndex:10,width:170,minWidth:170,padding:"6px 10px",verticalAlign:"middle",background:T.bgCard,boxShadow:"2px 0 4px rgba(0,0,0,.07)" };
 const navBtn = { background:"none",border:"1px solid #e4ddd0",borderRadius:6,padding:"5px 10px",cursor:"pointer",fontSize:13,fontFamily:"inherit",color:T.textSub };
 
 function Btn({label,onClick,primary,outline,danger,style={}}){
