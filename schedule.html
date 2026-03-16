@@ -2031,9 +2031,9 @@ function App() {
       )}
 
       {/* 메인 테이블 */}
-      <div style={{overflowX:"auto",overflowY:"auto",padding:"0 0 80px",height:"calc(100vh - 110px)"}}>
-        <table style={{borderCollapse:"separate",borderSpacing:0,minWidth: dim*54+180,marginTop:14}}>
-          <thead style={{position:"sticky",top:0,zIndex:20}}>
+      <div style={{overflowX:"auto",overflowY:"auto",height:"calc(100vh - 105px)"}}>
+        <table style={{borderCollapse:"separate",borderSpacing:0,minWidth: dim*38+160}}>
+          <thead style={{position:"sticky",top:0,zIndex:20,background:T.bgCard}}>
             <tr>
               <th style={{...stickyCol,background:T.gray100,fontSize:T.fs.xxs,fontWeight:T.fw.bolder,color:T.textSub,textAlign:"left",borderBottom:"2px solid "+T.border,zIndex:30}}>직원</th>
               {days.map(day=>{
