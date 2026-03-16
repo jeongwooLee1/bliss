@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.227";
+const BLISS_V = "2.69.228";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -6380,7 +6380,7 @@ function AdminSchedule() {
   const [loaded, setLoaded] = React.useState(false);
   const iframeRef = React.useRef(null);
 
-  return <div style={{display:"flex",flexDirection:"column",height:"calc(100vh - 120px)"}}>
+  return <div style={{display:"flex",flexDirection:"column",height:"calc(100vh - 90px)",margin:"0 -24px -24px"}}>
     {!loaded && <div style={{display:"flex",alignItems:"center",justifyContent:"center",flex:1,gap:10,color:T.textMuted}}>
       <I name="loader" size={18}/> <span style={{fontSize:T.fs.sm}}>근무표 불러오는 중...</span>
     </div>}
@@ -6460,7 +6460,7 @@ function AdminPage({ data, setData, bizId, serverV, onLogout, currentUser }) {
     </div>)}
   </div>;
 
-  const BackBtn=()=><button onClick={back} style={{display:"inline-flex",alignItems:"center",gap:5,background:"none",border:"none",cursor:"pointer",fontSize:T.fs.sm,color:T.primary,fontWeight:T.fw.bolder,fontFamily:"inherit",marginBottom:20,padding:0}}>
+  const BackBtn=()=><button onClick={back} style={{display:"inline-flex",alignItems:"center",gap:5,background:"none",border:"none",cursor:"pointer",fontSize:T.fs.sm,color:T.primary,fontWeight:T.fw.bolder,fontFamily:"inherit",marginBottom:tab==="schedule"?0:20,padding:0}}>
     <I name="arrowL" size={14}/> 메뉴
   </button>;
 
