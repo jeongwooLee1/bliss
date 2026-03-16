@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.16-h";
+const SCH_V = "v2026.03.16-i";
 const BRANCHES = [
   { id: "nonhyeon", name: "논현&왕십리", color: "#c8793a", minStaff: 4 },
   { id: "hongdae",  name: "홍대&마곡",   color: "#3a9e8e", minStaff: 2 },
@@ -1454,6 +1454,7 @@ function App() {
   const ACTIVE_EMPLOYEES = React.useMemo(() => ALL_EMPLOYEES.filter(e => !deletedEmpIds.has(e.id)), [ALL_EMPLOYEES, deletedEmpIds]);
   // 배정 규칙 설정
   const [showRuleConfig, setShowRuleConfig] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [showSettings, setShowSettings] = useState(false); // 설정 드롭다운
   const [ruleConfig, setRuleConfig] = useState({
     minWork: 11,       // 일 최소 근무인원
@@ -1614,6 +1615,30 @@ function App() {
     return getDow0Mon(year,month,d)===0;
   };
 
+  const resetMonth = async () => {
+    // 현재 월 근무표만 삭제 후 서버 저장
+    setSchHistory(prev => {
+      const next = {...prev};
+      delete next[curKey];
+      window.storage.set("schHistory_v1", JSON.stringify(next)).catch(()=>{});
+      return next;
+    });
+    // 원장휴무·직원휴무(꼭)도 현재 월 항목만 삭제
+    const monthPrefix = curKey; // "2026-03"
+    setOwnerReqs(prev => {
+      const next = Object.fromEntries(Object.entries(prev).filter(([k]) => !k.includes(`__${monthPrefix}`)));
+      window.storage.set(OWNER_STORAGE_KEY, JSON.stringify(next)).catch(()=>{});
+      return next;
+    });
+    setEmpReqs(prev => {
+      const next = Object.fromEntries(Object.entries(prev).filter(([k]) => !k.includes(`__${monthPrefix}`)));
+      window.storage.set(EMP_REQS_KEY, JSON.stringify(next)).catch(()=>{});
+      return next;
+    });
+    setShowResetConfirm(false);
+    toast_(`${year}년 ${month+1}월 근무표가 초기화되었습니다.`);
+  };
+
   const exportCSV = () => {
     const header=["직원","지점",...days.map(d=>`${d.d}(${DNAMES[d.dow]})`)];
     const rows=ALL_EMPLOYEES.map(e=>[e.name,BRANCHES.find(b=>b.id===e.branch)?.name||"",...days.map(d=>getS(e.id,d.ds)||"근무")]);
@@ -1645,6 +1670,32 @@ function App() {
       `}</style>
 
       {/* Toast */}
+      {/* 월 초기화 확인 모달 */}
+      {showResetConfirm && (
+        <>
+          <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.4)",zIndex:300}} onClick={()=>setShowResetConfirm(false)}/>
+          <div style={{position:"fixed",top:"50%",left:"50%",transform:"translate(-50%,-50%)",
+            background:"#fff",borderRadius:14,padding:"24px 20px",zIndex:301,width:280,textAlign:"center",boxShadow:"0 8px 32px rgba(0,0,0,.2)"}}>
+            <div style={{fontSize:20,marginBottom:8}}>🗑</div>
+            <div style={{fontWeight:700,fontSize:15,color:"#221810",marginBottom:8}}>
+              {year}년 {month+1}월 초기화
+            </div>
+            <div style={{fontSize:12,color:"#888",marginBottom:20,lineHeight:1.6}}>
+              이 달의 근무표와 지정 휴무가 모두 삭제됩니다.<br/>
+              되돌릴 수 없습니다.
+            </div>
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={()=>setShowResetConfirm(false)}
+                style={{flex:1,padding:"10px 0",borderRadius:8,border:"1px solid #ddd",background:"#f5f5f5",
+                  cursor:"pointer",fontSize:13,fontFamily:"inherit",fontWeight:600}}>취소</button>
+              <button onClick={resetMonth}
+                style={{flex:1,padding:"10px 0",borderRadius:8,border:"none",background:"#c04040",color:"#fff",
+                  cursor:"pointer",fontSize:13,fontFamily:"inherit",fontWeight:700}}>초기화</button>
+            </div>
+          </div>
+        </>
+      )}
+
       {toast && <div style={{position:"fixed",bottom:20,left:"50%",transform:"translateX(-50%)",background:toast.type==="err"?"#b03020":"#1e6e3a",color:"#fff",padding:"9px 22px",borderRadius:8,fontSize:13,zIndex:999,boxShadow:"0 4px 14px rgba(0,0,0,.2)"}}>{toast.msg}</div>}
 
       {/* 셀 편집 모달 */}
@@ -1704,6 +1755,7 @@ function App() {
             setLockedDates(nextDs);
             toast_("이월 주 날짜가 잠금되었습니다.");
           }} outline/>
+          <Btn label="🗑 초기화" onClick={()=>setShowResetConfirm(true)} outline style={{color:"#c04040",borderColor:"#c04040"}}/>
           <Btn label="⬇ CSV" onClick={exportCSV} outline/>
           <Btn label="🖨 인쇄" onClick={()=>window.print()} outline/>
           <div style={{position:"relative"}}>
