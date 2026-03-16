@@ -332,26 +332,6 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
   // 이번달 + 이월 날짜 전체 (isPrev 제외, ignoredDates 제외) — step3~7 루프 공통 사용
   const allDates = weeks.flatMap(w => w.filter(d => !d.isPrev && !ignoredDates.has(d.ds)));
 
-  // 1-a-3) 원장 연속근무 보호: maxConsecWork 초과 시 자동 휴무 삽입
-  {
-    const ownerDsOrdered = allDates.filter(d => !d.isNext).map(d => d.ds).sort();
-    employees.filter(e => e.isOwner).forEach(emp => {
-      let streak = 0;
-      for (const ds of ownerDsOrdered) {
-        const s = sch[emp.id]?.[ds];
-        const isOff = s === STATUS.OFF || s === STATUS.MUST_OFF;
-        if (isOff) { streak = 0; continue; }
-        streak++;
-        if (streak > rc.maxConsecWork) {
-          if (!sch[emp.id][ds] || sch[emp.id][ds] === STATUS.WORK) {
-            sch[emp.id][ds] = STATUS.OFF;
-            streak = 1;
-          }
-        }
-      }
-    });
-  }
-
   // 한 주에서 이미 쉰 일수 (전달 이월 날짜 제외 — 이번달 날짜만)
   // 이월 날짜를 포함하면 첫 주에 toAssign=0이 되어 배정이 안됨
   const alreadyOffCount = (empId, week) =>
@@ -892,7 +872,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     for (const _day5 of allDates) {
       const ds = _day5.ds;
       const workCount = employees.filter(e => {
-        if (e.isMale) return false;
+        if (e.isMale || e.isOwner) return false;
         const s = sch[e.id][ds];
         return s === STATUS.WORK || isSupport(s) || s === STATUS.SHARE;
       }).length;
@@ -1704,9 +1684,9 @@ function App() {
     (days||[]).forEach(day => {
       const assigned = empList.filter(e => getV(e.id, day.ds) !== "");
       if (assigned.length === 0) return;
-      // 남자직원 제외 근무인원
+      // 남자직원·원장 제외 근무인원 (원장은 별도 설정으로 관리)
       const c = empList.filter(e => {
-        if (e.isMale) return false;
+        if (e.isMale || e.isOwner) return false;
         const s = getV(e.id, day.ds);
         return s === STATUS.WORK || isSupport(s) || s === STATUS.SHARE;
       }).length;
@@ -1737,7 +1717,7 @@ function App() {
   };
 
   const dailyCount = (ds) => ALL_EMPLOYEES.filter(e => {
-    if (e.isMale) return false;
+    if (e.isMale || e.isOwner) return false;
     const s=getS(e.id,ds); return s===STATUS.WORK||isSupport(s)||s===STATUS.SHARE;
   }).length;
 
