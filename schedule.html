@@ -778,7 +778,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     const supportLabel = `지원(${nonhyeonLabel})`;
     const nonhyeonBase = nonhyeonEmps.filter(e => {
       const s = sch[e.id][ds];
-      return s === STATUS.WORK || s === "" || isSupport(s) || s === STATUS.SHARE;
+      return s === STATUS.WORK || isSupport(s) || s === STATUS.SHARE;
     }).length;
     const nonhyeonSupporters = employees.filter(e =>
       e.branch !== "nonhyeon" && sch[e.id][ds] === supportLabel
@@ -831,7 +831,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       const workCount = employees.filter(e => {
         if (e.isMale) return false; // 남자직원 제외 (violations 기준과 통일)
         const s = sch[e.id][ds];
-        return s === STATUS.WORK || s === "" || isSupport(s) || s === STATUS.SHARE;
+        return s === STATUS.WORK || isSupport(s) || s === STATUS.SHARE;
       }).length;
       if (workCount >= rc.minWork) continue;
 
