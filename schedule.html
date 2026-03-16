@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.16-q";
+const SCH_V = "v2026.03.16-r";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -872,7 +872,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     for (const _day5 of allDates) {
       const ds = _day5.ds;
       const workCount = employees.filter(e => {
-        if (e.isMale || e.isOwner) return false;
+        if (e.isMale) return false;
         const s = sch[e.id][ds];
         return s === STATUS.WORK || isSupport(s) || s === STATUS.SHARE;
       }).length;
@@ -1684,9 +1684,9 @@ function App() {
     (days||[]).forEach(day => {
       const assigned = empList.filter(e => getV(e.id, day.ds) !== "");
       if (assigned.length === 0) return;
-      // 남자직원·원장 제외 근무인원 (원장은 별도 설정으로 관리)
+      // 남자직원만 제외 (원장 포함)
       const c = empList.filter(e => {
-        if (e.isMale || e.isOwner) return false;
+        if (e.isMale) return false;
         const s = getV(e.id, day.ds);
         return s === STATUS.WORK || isSupport(s) || s === STATUS.SHARE;
       }).length;
@@ -1717,7 +1717,7 @@ function App() {
   };
 
   const dailyCount = (ds) => ALL_EMPLOYEES.filter(e => {
-    if (e.isMale || e.isOwner) return false;
+    if (e.isMale) return false;
     const s=getS(e.id,ds); return s===STATUS.WORK||isSupport(s)||s===STATUS.SHARE;
   }).length;
 
