@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.16-z";
+const SCH_V = "v2026.03.17-b";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -236,10 +236,11 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     }
   });
 
-  // 1-b) 반복 설정: ownerRepeat dows → 이번달 + 이월 날짜 자동 적용 (ownerReqs 우선)
+  // 1-b) 반복 설정: ownerRepeat dows → 이번달 + 이월(isNext) 날짜 자동 적용 (ownerReqs 우선)
   employees.filter(e=>e.isOwner).forEach(emp => {
     const rep = (ownerRepeat||{})[emp.id];
     if (!rep?.enabled || !rep.dows?.length) return;
+    // 이번달 날짜
     for (let d=1; d<=dim; d++) {
       const dow = getDow0Mon(year, month, d);
       if (rep.dows.includes(dow)) {
@@ -247,6 +248,15 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
         if (!sch[emp.id][ds]) sch[emp.id][ds] = STATUS.MUST_OFF;
       }
     }
+    // 이월(isNext) 날짜 — 마지막 주에 포함된 다음달 날짜도 적용
+    const nextYear_ = month === 11 ? year + 1 : year;
+    const nextMonth_ = month === 11 ? 0 : month + 1;
+    const lastWeek = weeks[weeks.length - 1] || [];
+    lastWeek.filter(d => d.isNext).forEach(day => {
+      if (rep.dows.includes(day.dow)) {
+        if (!sch[emp.id][day.ds]) sch[emp.id][day.ds] = STATUS.MUST_OFF;
+      }
+    });
   });
 
   // ── 연속근무 계산 공통 헬퍼 ──────────────────────────────────────────────────
