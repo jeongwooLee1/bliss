@@ -892,7 +892,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     for (const _day5 of allDates) {
       const ds = _day5.ds;
       const workCount = employees.filter(e => {
-        if (e.isMale || e.isOwner) return false; // 남자직원·원장 제외
+        if (e.isMale) return false;
         const s = sch[e.id][ds];
         return s === STATUS.WORK || isSupport(s) || s === STATUS.SHARE;
       }).length;
@@ -1711,9 +1711,7 @@ function App() {
         return s === STATUS.WORK || isSupport(s) || s === STATUS.SHARE;
       }).length;
       if (c > 0 && c < ruleConfig.minWork) v.push(`${day.d}일 근무${c}명(최소${ruleConfig.minWork})`);
-      // maxWork 체크: 원장 제외한 카운트로 비교
-      const cNoOwner = empList.filter(e => !e.isMale && !e.isOwner && (() => { const s=getV(e.id,day.ds); return s===STATUS.WORK||isSupport(s)||s===STATUS.SHARE; })()).length;
-      if (cNoOwner > ruleConfig.maxWork) v.push(`${day.d}일 근무${cNoOwner}명(최대${ruleConfig.maxWork}초과-원장제외)`);
+      if (c > ruleConfig.maxWork) v.push(`${day.d}일 근무${c}명(최대${ruleConfig.maxWork}초과)`);
       // 하루 최대 휴무
       const offC = empList.filter(e => !e.isMale && ["휴무","휴무(꼭)"].includes(getV(e.id, day.ds))).length;
       if (offC > ruleConfig.maxDailyOff) v.push(`${day.d}일 휴무${offC}명(최대${ruleConfig.maxDailyOff}초과)`);
@@ -1739,7 +1737,7 @@ function App() {
   };
 
   const dailyCount = (ds) => ALL_EMPLOYEES.filter(e => {
-    if (e.isMale || e.isOwner) return false; // 남자직원·원장 제외
+    if (e.isMale) return false;
     const s=getS(e.id,ds); return s===STATUS.WORK||isSupport(s)||s===STATUS.SHARE;
   }).length;
 
