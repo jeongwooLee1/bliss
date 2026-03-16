@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.242";
+const BLISS_V = "2.69.243";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -2322,37 +2322,20 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
         return row;
       })).catch(console.error);
     }, 0);
-    // 알림톡 자동 발송 (신규 예약 & 내부일정 아닌 경우)
+    // 알림톡 신규 등록 팝업
     if(!item.isSchedule && isNewItem && item.custPhone) {
-      try {
-        const branch = (data.branches||[]).find(b=>b.id===item.bid);
-        const rsvUrlId = item.reservationId || item.id || "";
-        const rsvUrl = rsvUrlId ? "https://jeongwoolee1.github.io/bliss/r.html?"+encodeURIComponent(rsvUrlId) : "";
-        sendAlimtalk("rsv_confirm", item.custPhone, {
-          "#{사용자명}":branch?.name||"", "#{날짜}":item.date||"", "#{시간}":item.time||"",
-          "#{작업자}":item.worker||"", "#{작업장소}":branch?.name||"",
-          "#{대표전화번호}":branch?.phone||"", "#{예약URL}":rsvUrl
-        }, (typeof branch?.notiConfig==="string"?JSON.parse(branch?.notiConfig)||{}:branch?.notiConfig||{}), branch?.id);
-      } catch(e) { console.warn("알림톡:", e); }
+      setAlimtalkConfirm({...item, _alimtalkType: "confirm"});
     }
-    // 알림톡 변경 발송 (setData 밖에서)
+    // 알림톡 변경 팝업 (isExistItem이고 고객 전화번호 있을 때)
     if(isExistItem && !item.isSchedule && item.custPhone) {
-      try {
-        const branch = (data?.branches||[]).find(b=>b.id===item.bid);
-        const rsvUrlId = item.reservationId || item.id || "";
-        const rsvUrl = rsvUrlId ? "https://jeongwoolee1.github.io/bliss/r.html?"+encodeURIComponent(rsvUrlId) : "";
-        sendAlimtalk("rsv_change", item.custPhone, {
-          "#{사용자명}":branch?.name||"", "#{날짜}":item.date||"", "#{시간}":item.time||"",
-          "#{작업자}":item.worker||"", "#{작업장소}":branch?.name||"",
-          "#{대표전화번호}":branch?.phone||"", "#{예약URL}":rsvUrl
-        }, (typeof branch?.notiConfig==="string"?JSON.parse(branch?.notiConfig)||{}:branch?.notiConfig||{}), branch?.id);
-      } catch(e) { console.warn("알림톡 변경:", e); }
+      setAlimtalkConfirm(item);
     }
     setShowModal(false); setModalData(null);
   };
 
   // ── Delete with repeat options ──
   const [deletePopup, setDeletePopup] = useState(null);
+  const [alimtalkConfirm, setAlimtalkConfirm] = useState(null); // {item} 저장 후 알림톡 발송 여부 팝업
 
   const handleDeleteRequest = (block) => {
     const sourceId = block.repeatSourceId || block.id;
@@ -3128,6 +3111,44 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       </div>}
 
       {/* 이동/리사이즈 확인 팝업 */}
+      {alimtalkConfirm && (() => {
+        const item = alimtalkConfirm;
+        const isChange = !item._alimtalkType || item._alimtalkType === "change";
+        const label = isChange ? "예약 변경" : "예약 확정";
+        const notiKey = isChange ? "rsv_change" : "rsv_confirm";
+        const sendIt = () => {
+          try {
+            const branch = (data?.branches||[]).find(b=>b.id===item.bid);
+            const rsvUrlId = item.reservationId || item.id || "";
+            const rsvUrl = rsvUrlId ? "https://jeongwoolee1.github.io/bliss/r.html?"+encodeURIComponent(rsvUrlId) : "";
+            sendAlimtalk(notiKey, item.custPhone, {
+              "#{사용자명}":branch?.name||"", "#{날짜}":item.date||"", "#{시간}":item.time||"",
+              "#{작업자}":item.worker||"", "#{작업장소}":branch?.name||"",
+              "#{대표전화번호}":branch?.phone||"", "#{예약URL}":rsvUrl
+            }, (typeof branch?.notiConfig==="string"?JSON.parse(branch?.notiConfig)||{}:branch?.notiConfig||{}), branch?.id);
+          } catch(e) { console.warn("알림톡:", e); }
+          setAlimtalkConfirm(null);
+        };
+        const vw = window.innerWidth; const vh = window.innerHeight;
+        const popW = Math.min(300, vw - 32);
+        return <>
+          <div style={{position:'fixed',inset:0,zIndex:9997,background:'rgba(0,0,0,.15)'}} onClick={()=>setAlimtalkConfirm(null)}/>
+          <div onClick={e=>e.stopPropagation()} style={{
+            position:'fixed', left:(vw-popW)/2, top:'40%',
+            width:popW, background:T.bgCard, borderRadius:14,
+            boxShadow:'0 8px 32px rgba(0,0,0,.22)', fontFamily:'inherit', zIndex:9998, overflow:'hidden'}}>
+            <div style={{padding:'16px 16px 10px', textAlign:'center'}}>
+              <div style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder,color:T.text,marginBottom:4}}>{label} 알림톡</div>
+              <div style={{fontSize:T.fs.xs,color:T.gray600}}>{item.custName} 고객님께 알림톡을 발송하시겠습니까?</div>
+            </div>
+            <div style={{display:'flex',borderTop:'1px solid '+T.gray100}}>
+              <button onClick={()=>setAlimtalkConfirm(null)} style={{flex:1,padding:'12px 0',fontSize:T.fs.sm,fontWeight:600,border:'none',borderRight:'1px solid '+T.gray100,background:'none',color:T.textSub,cursor:'pointer',fontFamily:'inherit'}}>발송 안함</button>
+              <button onClick={sendIt} style={{flex:1,padding:'12px 0',fontSize:T.fs.sm,fontWeight:700,border:'none',background:'none',color:T.primary,cursor:'pointer',fontFamily:'inherit'}}>발송</button>
+            </div>
+          </div>
+        </>;
+      })()}
+
       {pendingChange && (() => {
         const { type, block, data: d, orig } = pendingChange;
         const name = block.custName || "일정";
