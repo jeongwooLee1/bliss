@@ -2181,13 +2181,34 @@ function App() {
                     const isSun=day.dow===6;
                     return (
                       <td key={day.ds} className="cc" onClick={()=>{ if(lockedDates.has(day.ds)) return; setEditCell({emp,day,cur:s}); }}
-                        style={{padding:"2px 1px",textAlign:"center",borderLeft:wb?"2.5px solid #4a80c0":"1px solid #d0e0f0",borderBottom:"1px solid #d0e0f0",background:isSun?"#eef4fa":day.isNext?"#f0edf8":"#fff",cursor:"pointer"}}>
+                        style={{
+                          padding:"2px 3px",textAlign:"center",
+                          borderLeft:wb?"2px solid "+T.primary+"44":"1px solid "+T.border,
+                          borderBottom:"1px solid "+T.border,
+                          background:day.isNext?T.gray200:T.bgCard,
+                          cursor:lockedDates.has(day.ds)?"not-allowed":"pointer",
+                          opacity:day.isNext?0.5:1
+                        }}>
                         {s&&s!==""?(
-                          <div style={{margin:"1px",borderRadius:5,padding:"3px 1px",background:sc.bg,border:`1px solid ${sc.border}`,fontSize:10,fontWeight:sc.bold?700:600,color:sc.text,lineHeight:1.2,position:"relative"}}>
-                            {s==="휴무(꼭)" && <span style={{position:"absolute",top:-6,right:1,fontSize:8,color:"#9060d0",fontWeight:900}}>★</span>}
+                          <div style={{
+                            margin:"1px",
+                            borderRadius:T.radius.md,
+                            padding:"3px 2px",
+                            background:sc.bg,
+                            borderLeft:"3px solid "+sc.border,
+                            fontSize:T.fs.xxs,
+                            fontWeight:sc.bold?T.fw.bolder:T.fw.bold,
+                            color:sc.text,
+                            lineHeight:1.3,
+                            position:"relative",
+                            whiteSpace:"nowrap",
+                            overflow:"hidden",
+                            textOverflow:"ellipsis"
+                          }}>
+                            {s==="휴무(꼭)"&&<span style={{position:"absolute",top:0,right:1,fontSize:7,color:T.primaryDk,fontWeight:900}}>●</span>}
                             {s}
                           </div>
-                        ):<span style={{color:T.border,fontSize:10}}>—</span>}
+                        ):<span style={{color:T.gray300,fontSize:T.fs.sm}}>—</span>}
                       </td>
                     );
                   })}
@@ -2718,7 +2739,7 @@ function App() {
                                   return p;
                                 });
                               }}
-                              style={{height:30,borderRadius:5,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:11,fontWeight:700,background:on?bc:day.isNext?"#ede8f5":"#f5f0ea",color:on?"#fff":day.isNext?T.purple:isSun?"#e06060":isSat?"#6080c0":T.textSub,border:`1.5px solid ${on?bc:day.isNext?"#c4b3e0":T.border}`,transition:"all .12s",userSelect:"none",opacity:day.isNext?0.85:1}}>
+                              style={{height:30,borderRadius:5,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:11,fontWeight:700,background:on?bc:day.isNext?"#ede8f5":"#f5f0ea",color:on?"#fff":day.isNext?T.purple:isSun?T.danger:isSat?T.primary:T.textSub,border:`1.5px solid ${on?bc:day.isNext?"#c4b3e0":T.border}`,transition:"all .12s",userSelect:"none",opacity:day.isNext?0.85:1}}>
                               <div style={{fontSize:11,lineHeight:1}}>{day.d}</div>
                               {day.isNext&&<div style={{fontSize:7,lineHeight:1,marginTop:1}}>{(month+2>12?1:month+2)}월</div>}
                             </div>
