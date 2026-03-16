@@ -1827,7 +1827,7 @@ function App() {
               {["근무","휴무","휴무(꼭)","전체쉐어"].map(s=>{
                 const sc=getSColor(s); const active=editCell.cur===s;
                 return (
-                  <button key={s} onClick={()=>{setS(editCell.emp.id,editCell.day.ds,s);setEditCell(null);}} style={{padding:"9px 14px",borderRadius:8,border:`2px solid ${active?sc.border:"#e4ddd6"}`,background:active?sc.bg:"#faf8f5",color:active?sc.text:"#666",fontFamily:"inherit",fontSize:13,fontWeight:active?700:400,cursor:"pointer",textAlign:"left",transition:"all .12s"}}>
+                  <button key={s} onClick={()=>{setS(editCell.emp.id,editCell.day.ds,s);setEditCell(null);}} style={{padding:"9px 14px",borderRadius:8,border:`2px solid ${active?sc.border:"#e4ddd6"}`,background:active?sc.bg:T.bgCard,color:active?sc.text:"#666",fontFamily:"inherit",fontSize:13,fontWeight:active?700:400,cursor:"pointer",textAlign:"left",transition:"all .12s"}}>
                     {s} {active?"✓":""}
                   </button>
                 );
@@ -1835,7 +1835,7 @@ function App() {
               {BRANCHES.map(b=>{
                 const sv=`지원(${b.name})`; const sc=getSColor(sv); const active=editCell.cur===sv;
                 return (
-                  <button key={sv} onClick={()=>{setS(editCell.emp.id,editCell.day.ds,sv);setEditCell(null);}} style={{padding:"9px 14px",borderRadius:8,border:`2px solid ${active?sc.border:"#e4ddd6"}`,background:active?sc.bg:"#faf8f5",color:active?sc.text:"#c87020",fontFamily:"inherit",fontSize:13,fontWeight:active?700:400,cursor:"pointer",textAlign:"left",transition:"all .12s"}}>
+                  <button key={sv} onClick={()=>{setS(editCell.emp.id,editCell.day.ds,sv);setEditCell(null);}} style={{padding:"9px 14px",borderRadius:8,border:`2px solid ${active?sc.border:"#e4ddd6"}`,background:active?sc.bg:T.bgCard,color:active?sc.text:"#c87020",fontFamily:"inherit",fontSize:13,fontWeight:active?700:400,cursor:"pointer",textAlign:"left",transition:"all .12s"}}>
                     지원 → {b.name} {active?"✓":""}
                   </button>
                 );
@@ -2031,17 +2031,17 @@ function App() {
       )}
 
       {/* 메인 테이블 */}
-      <div style={{overflowX:"auto",padding:"0 0 120px"}}>
+      <div style={{overflowX:"auto",overflowY:"auto",padding:"0 0 80px",height:"calc(100vh - 110px)"}}>
         <table style={{borderCollapse:"separate",borderSpacing:0,minWidth: dim*54+180,marginTop:14}}>
-          <thead>
+          <thead style={{position:"sticky",top:0,zIndex:20}}>
             <tr>
-              <th style={{...stickyCol,background:T.gray100,fontSize:11,fontWeight:700,color:T.textSub,textAlign:"left",borderRadius:"6px 0 0 0",border:"1px solid #ddd5c8"}}>직원</th>
+              <th style={{...stickyCol,background:T.gray100,fontSize:T.fs.xxs,fontWeight:T.fw.bolder,color:T.textSub,textAlign:"left",borderBottom:"2px solid "+T.border,zIndex:30}}>직원</th>
               {days.map(day=>{
                 const isToday=day.ds===fmtDs(today.getFullYear(),today.getMonth(),today.getDate());
                 const isSun=day.dow===6,isSat=day.dow===5;
                 const wb=isWeekBoundary(day);
                 return (
-                  <th key={day.ds} style={{width:38,minWidth:38,padding:"4px 1px",textAlign:"center",background:day.isNext?T.gray200:isToday?T.primary:T.gray100,color:day.isNext?T.textMuted:isToday?"#fff":isSun?T.danger:isSat?T.purple:T.textSub,borderLeft:wb?`2px solid ${T.primary}44`:"1px solid "+T.border,borderTop:"1px solid "+T.border,borderBottom:"2px solid "+T.border,opacity:day.isNext?0.55:1}}>
+                  <th key={day.ds} style={{width:38,minWidth:38,padding:"4px 1px",textAlign:"center",position:"sticky",top:0,zIndex:15,background:day.isNext?T.gray200:isToday?T.primary:T.gray100,color:day.isNext?T.textMuted:isToday?"#fff":isSun?T.danger:isSat?T.purple:T.textSub,borderLeft:wb?`2px solid ${T.primary}44`:"1px solid "+T.border,borderTop:"1px solid "+T.border,borderBottom:"2px solid "+T.border,opacity:day.isNext?0.55:1}}>
                     <div style={{fontSize:T.fs.sm,fontWeight:T.fw.black,lineHeight:1.2}}>{day.d}</div>
                     <div style={{fontSize:T.fs.nano,fontWeight:T.fw.normal,opacity:.8}}>{DNAMES[day.dow]}</div>
                   </th>
@@ -2054,7 +2054,7 @@ function App() {
               const emps=ALL_EMPLOYEES.filter(e=>e.branch===branch.id);
               return emps.map((emp,ei)=>(
                 <tr key={emp.id}>
-                  <td style={{...stickyCol,padding:"5px 10px",borderLeft:`3px solid ${branch.color}`,borderBottom:"1px solid #ece5dc",borderRight:"1px solid #ddd5c8",background:ei===0?branch.color+"18":"#faf8f4",borderTop:ei===0?`2px solid ${branch.color}55`:"none"}}>
+                  <td style={{...stickyCol,padding:"5px 10px",borderLeft:`3px solid ${branch.color}`,borderBottom:"1px solid "+T.border,borderRight:"1px solid "+T.border,background:ei===0?branch.color+"18":T.bgCard,borderTop:ei===0?`2px solid ${branch.color}55`:"none"}}>
                     <div style={{display:"flex",alignItems:"center",gap:6}}>
                       <div style={{width:7,height:7,borderRadius:"50%",background:branch.color,flexShrink:0}}/>
                       <div>
@@ -2114,7 +2114,7 @@ function App() {
                     const isToday=day.ds===fmtDs(today.getFullYear(),today.getMonth(),today.getDate());
                     const supportLabel = isSupport(s) && s !== "지원" ? s.replace("지원(","").replace(")","") : null;
                     return (
-                      <td key={day.ds} className="cc" onClick={()=>{ if(lockedDates.has(day.ds)) return; setEditCell({emp,day,cur:s}); }} style={{padding:"2px 1px",textAlign:"center",borderLeft:wb?`2px solid ${T.primary}55`:"1px solid #ece5dc",borderBottom:"1px solid #ece5dc",background:lockedDates.has(day.ds)?T.primaryLt:day.isNext?"#f0edf8":isToday?T.warningLt:"#fff",opacity:day.isNext?0.8:1,cursor:lockedDates.has(day.ds)?"not-allowed":"pointer"}}>
+                      <td key={day.ds} className="cc" onClick={()=>{ if(lockedDates.has(day.ds)) return; setEditCell({emp,day,cur:s}); }} style={{padding:"2px 1px",textAlign:"center",borderLeft:wb?`2px solid ${T.primary}55`:"1px solid "+T.border,borderBottom:"1px solid "+T.border,background:lockedDates.has(day.ds)?T.primaryLt:day.isNext?"#f0edf8":isToday?T.warningLt:"#fff",opacity:day.isNext?0.8:1,cursor:lockedDates.has(day.ds)?"not-allowed":"pointer"}}>
                         <div style={{
                           background: s?sc.bg:"transparent",
                           color: s?sc.text:"#d8d0c8",
@@ -2150,7 +2150,7 @@ function App() {
               if (filterBranch !== "all" && filterBranch !== "male") return null;
               return maleEmps.map((emp, ei) => (
                 <tr key={emp.id}>
-                  <td style={{...stickyCol,padding:"5px 10px",borderLeft:`3px solid ${maleColor}`,borderBottom:"1px solid #d0e0f0",borderRight:"1px solid #ddd5c8",background:ei===0?maleColor+"18":T.gray100,borderTop:ei===0?`2px solid ${maleColor}55`:"none"}}>
+                  <td style={{...stickyCol,padding:"5px 10px",borderLeft:`3px solid ${maleColor}`,borderBottom:"1px solid #d0e0f0",borderRight:"1px solid "+T.border,background:ei===0?maleColor+"18":T.gray100,borderTop:ei===0?`2px solid ${maleColor}55`:"none"}}>
                     <div style={{display:"flex",alignItems:"center",gap:6}}>
                       <div style={{width:7,height:7,borderRadius:"50%",background:maleColor,flexShrink:0}}/>
                       <div>
@@ -2221,12 +2221,12 @@ function App() {
 
             {/* 일별 총 인원 */}
             <tr>
-              <td style={{...stickyCol,padding:"6px 10px",fontSize:11,fontWeight:700,color:T.textSub,background:T.gray100,border:"1px solid #ddd5c8",borderRadius:"0 0 0 6px"}}>일 근무 인원</td>
+              <td style={{...stickyCol,padding:"6px 10px",fontSize:11,fontWeight:700,color:T.textSub,background:T.gray100,border:"1px solid "+T.border,borderRadius:"0 0 0 6px"}}>일 근무 인원</td>
               {days.map(day=>{
                 const c=dailyCount(day.ds);
                 const ok=c>=10&&c<=15, wb=isWeekBoundary(day);
                 return (
-                  <td key={day.d} style={{textAlign:"center",fontWeight:700,fontSize:13,padding:"6px 1px",color:c===0?T.border:!ok?T.danger:c>=13?T.successDk:T.textSub,background:c>0&&!ok?T.dangerLt:T.gray100,borderLeft:wb?`2px solid ${T.primary}55`:"1px solid #ddd5c8",borderTop:"1px solid #ddd5c8",borderBottom:"1px solid #ddd5c8"}}>
+                  <td key={day.d} style={{textAlign:"center",fontWeight:700,fontSize:13,padding:"6px 1px",color:c===0?T.border:!ok?T.danger:c>=13?T.successDk:T.textSub,background:c>0&&!ok?T.dangerLt:T.gray100,borderLeft:wb?`2px solid ${T.primary}55`:"1px solid "+T.border,borderTop:"1px solid "+T.border,borderBottom:"1px solid "+T.border}}>
                     {c>0?c:""}
                     {c>0&&!ok&&<div style={{fontSize:8,color:T.danger}}>{c<10?"부족":"초과"}</div>}
                   </td>
@@ -2239,7 +2239,7 @@ function App() {
               const emps=ALL_EMPLOYEES.filter(e=>e.branch===branch.id);
               return (
                 <tr key={branch.id+"-cnt"}>
-                  <td style={{...stickyCol,padding:"4px 10px",fontSize:10,color:branch.color,fontWeight:700,background:"#faf8f4",borderLeft:`3px solid ${branch.color}`,borderRight:"1px solid #ddd5c8",borderBottom:"1px solid #ece5dc"}}>
+                  <td style={{...stickyCol,padding:"4px 10px",fontSize:10,color:branch.color,fontWeight:700,background:T.bgCard,borderLeft:`3px solid ${branch.color}`,borderRight:"1px solid "+T.border,borderBottom:"1px solid "+T.border}}>
                     {branch.name}
                   </td>
                   {days.map(day=>{
@@ -2249,7 +2249,7 @@ function App() {
                     const wb=isWeekBoundary(day);
                     const under=c<branch.minStaff&&Object.keys(sch).length>0;
                     return (
-                      <td key={day.d} style={{textAlign:"center",fontSize:10,fontWeight:600,padding:"4px 1px",color:under?T.danger:branch.color,background:under?T.dangerLt:"transparent",borderLeft:wb?`2px solid ${T.primary}55`:"1px solid #ece5dc",borderBottom:"1px solid #ece5dc"}}>
+                      <td key={day.d} style={{textAlign:"center",fontSize:10,fontWeight:600,padding:"4px 1px",color:under?T.danger:branch.color,background:under?T.dangerLt:"transparent",borderLeft:wb?`2px solid ${T.primary}55`:"1px solid "+T.border,borderBottom:"1px solid "+T.border}}>
                         {c}
                       </td>
                     );
@@ -2281,7 +2281,7 @@ function App() {
                   {key:"maxWork", label:"일 최대 근무인원", unit:"명", min:8, max:18},
                   {key:"maxDailyOff", label:"하루 최대 휴무", unit:"명", min:1, max:10},
                 ].map(({key, label, unit, min, max}) => (
-                  <div key={key} style={{background:"#faf8f5",borderRadius:8,padding:"10px 14px",minWidth:160,border:"1px solid #e4ddd0"}}>
+                  <div key={key} style={{background:T.bgCard,borderRadius:8,padding:"10px 14px",minWidth:160,border:"1px solid #e4ddd0"}}>
                     <div style={{fontSize:11,color:T.textSub,marginBottom:8}}>{label}</div>
                     <div style={{display:"flex",alignItems:"center",gap:8}}>
                       <button onClick={()=>setRule(key, Math.max(min, ruleConfig[key]-1))}
@@ -2301,7 +2301,7 @@ function App() {
               <div style={{fontSize:12,fontWeight:700,color:"#4a2c14",marginBottom:10,borderBottom:"1px solid #f0ebe2",paddingBottom:6}}>📍 지점별 최소 근무인원</div>
               <div style={{display:"flex",flexWrap:"wrap",gap:10}}>
                 {BRANCHES.map(b => (
-                  <div key={b.id} style={{background:"#faf8f5",borderRadius:8,padding:"10px 14px",minWidth:140,border:`1.5px solid ${b.color}44`}}>
+                  <div key={b.id} style={{background:T.bgCard,borderRadius:8,padding:"10px 14px",minWidth:140,border:`1.5px solid ${b.color}44`}}>
                     <div style={{fontSize:11,fontWeight:700,color:b.color,marginBottom:8}}>{b.name}</div>
                     <div style={{display:"flex",alignItems:"center",gap:8}}>
                       <button onClick={()=>setRule("branchMinStaff", {...ruleConfig.branchMinStaff, [b.id]: Math.max(0, (ruleConfig.branchMinStaff[b.id]??b.minStaff)-1)})}
@@ -2326,7 +2326,7 @@ function App() {
                   const isOn = ruleConfig.noSimultaneousOff[b.id] ?? false;
                   return (
                     <div key={b.id} onClick={()=>setRule("noSimultaneousOff",{...ruleConfig.noSimultaneousOff,[b.id]:!isOn})}
-                      style={{display:"flex",alignItems:"center",gap:7,padding:"8px 12px",borderRadius:8,border:`1.5px solid ${isOn?b.color:T.border}`,background:isOn?b.color+"15":"#faf8f5",cursor:normals.length===0?"default":"pointer",opacity:normals.length===0?0.4:1}}>
+                      style={{display:"flex",alignItems:"center",gap:7,padding:"8px 12px",borderRadius:8,border:`1.5px solid ${isOn?b.color:T.border}`,background:isOn?b.color+"15":T.bgCard,cursor:normals.length===0?"default":"pointer",opacity:normals.length===0?0.4:1}}>
                       <span style={{fontSize:11,fontWeight:700,color:isOn?b.color:T.textMuted}}>{b.name}</span>
                       <span style={{fontSize:10,color:"#bbb"}}>({normals.map(e=>e.name).join("·") || "해당없음"})</span>
                       <span style={{fontSize:10,background:isOn?b.color:T.border,color:"#fff",borderRadius:4,padding:"1px 6px",fontWeight:700,marginLeft:4}}>{isOn?"ON":"OFF"}</span>
@@ -2341,7 +2341,7 @@ function App() {
               <div style={{fontSize:12,fontWeight:700,color:"#4a2c14",marginBottom:6,borderBottom:"1px solid #f0ebe2",paddingBottom:6}}>🔁 2주 연속휴무 보장</div>
               <div style={{fontSize:11,color:T.textMuted,marginBottom:10}}>ON: 모든 직원이 2주에 한 번은 연속(2일) 이상 휴무를 갖도록 자동 배정</div>
               <div onClick={()=>setRule("biweeklyConsecOff", !ruleConfig.biweeklyConsecOff)}
-                style={{display:"inline-flex",alignItems:"center",gap:10,padding:"10px 16px",borderRadius:8,border:`1.5px solid ${ruleConfig.biweeklyConsecOff?T.primary:T.border}`,background:ruleConfig.biweeklyConsecOff?"#fdf8f0":"#faf8f5",cursor:"pointer"}}>
+                style={{display:"inline-flex",alignItems:"center",gap:10,padding:"10px 16px",borderRadius:8,border:`1.5px solid ${ruleConfig.biweeklyConsecOff?T.primary:T.border}`,background:ruleConfig.biweeklyConsecOff?"#fdf8f0":T.bgCard,cursor:"pointer"}}>
                 <span style={{fontSize:12,fontWeight:700,color:ruleConfig.biweeklyConsecOff?"#7a4a18":T.textMuted}}>2주 연속휴무 보장</span>
                 <span style={{fontSize:11,background:ruleConfig.biweeklyConsecOff?T.primary:T.border,color:"#fff",borderRadius:4,padding:"2px 8px",fontWeight:700}}>{ruleConfig.biweeklyConsecOff?"ON":"OFF"}</span>
               </div>
@@ -2375,7 +2375,7 @@ function App() {
                     {emps.map(emp => {
                       const cfg = empSettings[emp.id] || {weeklyWork:5,altPattern:false};
                       return (
-                        <div key={emp.id} style={{border:`1px solid #e4ddd0`,borderRadius:8,padding:"8px 12px",minWidth:160,background:"#faf8f5",position:"relative"}}>
+                        <div key={emp.id} style={{border:`1px solid #e4ddd0`,borderRadius:8,padding:"8px 12px",minWidth:160,background:T.bgCard,position:"relative"}}>
                           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
                             <div style={{fontWeight:700,fontSize:12,color:"#3a2010"}}>{emp.name}</div>
                             <button onClick={()=>{
@@ -2495,7 +2495,7 @@ function App() {
                   const isOn = idx !== -1;
                   return (
                     <div key={b.id}
-                      style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",borderRadius:8,border:`1.5px solid ${isOn ? b.color : T.border}`,background:isOn ? b.color+"18" : "#faf8f5",cursor:"pointer",transition:"all .12s"}}
+                      style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",borderRadius:8,border:`1.5px solid ${isOn ? b.color : T.border}`,background:isOn ? b.color+"18" : T.bgCard,cursor:"pointer",transition:"all .12s"}}
                       onClick={()=>{
                         const newOrder = isOn ? supportOrder.filter(id=>id!==b.id) : [...supportOrder, b.id];
                         saveSupportOrder(newOrder);
@@ -2541,7 +2541,7 @@ function App() {
                     <button key={b.id} onClick={()=>setNewEmp(p=>({...p,branch:b.id,isMale:b.id==="male"}))}
                       style={{padding:"5px 12px",borderRadius:7,fontSize:12,fontFamily:"inherit",cursor:"pointer",
                         border:`1.5px solid ${newEmp.branch===b.id?b.color:T.border}`,
-                        background:newEmp.branch===b.id?b.color+"22":"#faf8f5",
+                        background:newEmp.branch===b.id?b.color+"22":T.bgCard,
                         color:newEmp.branch===b.id?b.color:T.textMuted,
                         fontWeight:newEmp.branch===b.id?700:400}}>
                       {b.name}
@@ -2557,7 +2557,7 @@ function App() {
                     <button key={n} onClick={()=>setNewEmp(p=>({...p,weeklyOff:n}))}
                       style={{flex:1,padding:"7px 0",borderRadius:7,fontSize:12,fontFamily:"inherit",cursor:"pointer",
                         border:`1.5px solid ${newEmp.weeklyOff===n?T.primary:T.border}`,
-                        background:newEmp.weeklyOff===n?"#fdf3e0":"#faf8f5",
+                        background:newEmp.weeklyOff===n?"#fdf3e0":T.bgCard,
                         color:newEmp.weeklyOff===n?"#7a4a18":T.textMuted,
                         fontWeight:newEmp.weeklyOff===n?700:400}}>
                       {n}일 휴무
@@ -2574,7 +2574,7 @@ function App() {
                   <button key={key} onClick={()=>setNewEmp(p=>({...p,[key]:!p[key]}))}
                     style={{padding:"5px 12px",borderRadius:7,fontSize:11,fontFamily:"inherit",cursor:"pointer",
                       border:`1.5px solid ${newEmp[key]?T.textSub:T.border}`,
-                      background:newEmp[key]?"#f5e8d0":"#faf8f5",
+                      background:newEmp[key]?"#f5e8d0":T.bgCard,
                       color:newEmp[key]?"#7a4a18":T.textMuted,fontWeight:newEmp[key]?700:400}}>
                     {newEmp[key]?"✓ ":""}{label}
                   </button>
@@ -2620,7 +2620,7 @@ function App() {
                     💾 저장
                   </button>
                   <button onClick={()=>{ if(window.confirm("이번달 원장 휴무 설정을 초기화할까요?")){ const next={...ownerReqs}; Object.keys(next).forEach(k=>{if(k.includes("__"+curMonthStr)||k.includes("__"+nextMonthStr)) delete next[k];}); setOwnerReqs(next); saveOwnerReqs(next); }}}
-                    style={{fontSize:11,padding:"4px 10px",borderRadius:6,border:"1px solid #ddd",background:"#faf8f5",color:T.textMuted,cursor:"pointer",fontFamily:"inherit"}}>
+                    style={{fontSize:11,padding:"4px 10px",borderRadius:6,border:"1px solid #ddd",background:T.bgCard,color:T.textMuted,cursor:"pointer",fontFamily:"inherit"}}>
                     🗑 초기화
                   </button>
                   <button onClick={()=>setShowOwnerSettings(false)}
@@ -2684,7 +2684,7 @@ function App() {
                         <div style={{fontWeight:700,fontSize:13,color:bc}}>{emp.name}</div>
                         <button onClick={toggleRepeat}
                           title="반복 ON: 매달 같은 요일 자동 휴무 지정"
-                          style={{padding:"3px 10px",fontSize:11,fontWeight:700,borderRadius:5,border:`1.5px solid ${rep.enabled?"#e0a030":T.border}`,background:rep.enabled?"#fff8e8":"#faf8f5",color:rep.enabled?"#c07000":T.textMuted,cursor:"pointer",fontFamily:"inherit",transition:"all .12s",whiteSpace:"nowrap"}}>
+                          style={{padding:"3px 10px",fontSize:11,fontWeight:700,borderRadius:5,border:`1.5px solid ${rep.enabled?"#e0a030":T.border}`,background:rep.enabled?"#fff8e8":T.bgCard,color:rep.enabled?"#c07000":T.textMuted,cursor:"pointer",fontFamily:"inherit",transition:"all .12s",whiteSpace:"nowrap"}}>
                           {rep.enabled?"🔁 반복중":"🔁 반복"}
                         </button>
                       </div>
@@ -2694,7 +2694,7 @@ function App() {
                           const full=isDowFull(dow);
                           return (
                             <button key={di} onClick={()=>toggleDowWithRepeat(dow)}
-                              style={{flex:1,padding:"4px 0",fontSize:11,fontWeight:700,borderRadius:5,border:`1.5px solid ${full?bc:T.border}`,background:full?bc:"#faf8f5",color:full?"#fff":T.textMuted,cursor:"pointer",fontFamily:"inherit",transition:"all .12s"}}>
+                              style={{flex:1,padding:"4px 0",fontSize:11,fontWeight:700,borderRadius:5,border:`1.5px solid ${full?bc:T.border}`,background:full?bc:T.bgCard,color:full?"#fff":T.textMuted,cursor:"pointer",fontFamily:"inherit",transition:"all .12s"}}>
                               {dn}
                             </button>
                           );
@@ -2761,7 +2761,7 @@ function App() {
   );
 }
 
-const stickyCol = { position:"sticky",left:0,zIndex:5,width:150,minWidth:150,padding:"6px 10px",verticalAlign:"middle" };
+const stickyCol = { position:"sticky",left:0,zIndex:10,width:155,minWidth:155,padding:"6px 10px",verticalAlign:"middle",boxShadow:"2px 0 6px rgba(0,0,0,.06)" };
 const navBtn = { background:"none",border:"1px solid #e4ddd0",borderRadius:6,padding:"5px 10px",cursor:"pointer",fontSize:13,fontFamily:"inherit",color:T.textSub };
 
 function Btn({label,onClick,primary,outline,danger,style={}}){
