@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.241";
+const BLISS_V = "2.69.242";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -2595,7 +2595,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   };
 
   // ── 이동/리사이즈 확인/취소 ──
-  const confirmChange = () => {
+  const confirmChange = (sendAlimtalkFlag) => {
     if (!pendingChange) return;
     const { type, block, data: d } = pendingChange;
     // 이미 미리보기로 state에 반영됨 → DB만 저장
@@ -2611,6 +2611,20 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       if (r) sb.update("reservations", block.id, {
         dur: r.dur
       }).catch(console.error);
+    }
+    // 알림톡 발송
+    if (sendAlimtalkFlag && block.custPhone && !block.isSchedule) {
+      try {
+        const r = (data?.reservations||[]).find(rv => rv.id === block.id);
+        const branch = (data?.branches||[]).find(b => b.id === (r?.bid || block.bid));
+        const rsvUrlId = (r?.reservationId) || block.id || "";
+        const rsvUrl = rsvUrlId ? "https://jeongwoolee1.github.io/bliss/r.html?"+encodeURIComponent(rsvUrlId) : "";
+        sendAlimtalk("rsv_change", block.custPhone, {
+          "#{사용자명}":branch?.name||"", "#{날짜}":r?.date||block.date||"", "#{시간}":r?.time||block.time||"",
+          "#{작업자}":r?.worker||"", "#{작업장소}":branch?.name||"",
+          "#{대표전화번호}":branch?.phone||"", "#{예약URL}":rsvUrl
+        }, (typeof branch?.notiConfig==="string"?JSON.parse(branch?.notiConfig)||{}:branch?.notiConfig||{}), branch?.id);
+      } catch(e) { console.warn("알림톡 변경:", e); }
     }
     setPendingChange(null);
   };
@@ -3140,9 +3154,12 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
               <div style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder,color:T.text,marginBottom:3}}>{type==="move"?"예약 이동":"시간 변경"}</div>
               <div style={{fontSize:T.fs.xs,color:T.gray600}}>{desc}</div>
             </div>
-            <div style={{display:'flex',borderTop:'1px solid '+T.gray100}}>
-              <button onClick={()=>_mc(cancelChange)} style={{flex:1,padding:'11px 0',fontSize:T.fs.sm,fontWeight:600,border:'none',borderRight:'1px solid '+T.gray100,background:'none',color:T.textSub,cursor:'pointer',fontFamily:'inherit'}}>취소</button>
-              <button onClick={confirmChange} style={{flex:1,padding:'11px 0',fontSize:T.fs.sm,fontWeight:700,border:'none',background:'none',color:T.primary,cursor:'pointer',fontFamily:'inherit'}}>확인</button>
+            <div style={{display:'flex',flexDirection:'column',borderTop:'1px solid '+T.gray100}}>
+              {!block.isSchedule && block.custPhone && <button onClick={()=>_mc(()=>confirmChange(true))} style={{padding:'11px 0',fontSize:T.fs.sm,fontWeight:700,border:'none',borderBottom:'1px solid '+T.gray100,background:'none',color:T.primary,cursor:'pointer',fontFamily:'inherit'}}>확인 + 알림톡 발송</button>}
+              <div style={{display:'flex'}}>
+                <button onClick={()=>_mc(cancelChange)} style={{flex:1,padding:'11px 0',fontSize:T.fs.sm,fontWeight:600,border:'none',borderRight:'1px solid '+T.gray100,background:'none',color:T.textSub,cursor:'pointer',fontFamily:'inherit'}}>취소</button>
+                <button onClick={()=>_mc(()=>confirmChange(false))} style={{flex:1,padding:'11px 0',fontSize:T.fs.sm,fontWeight:600,border:'none',background:'none',color:T.text,cursor:'pointer',fontFamily:'inherit'}}>알림톡 없이 확인</button>
+              </div>
             </div>
           </div>
         </>;
