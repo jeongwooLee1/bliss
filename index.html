@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.232";
+const BLISS_V = "2.69.233";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -2280,6 +2280,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       sb.insert("customers", toDb("customers", newCust)).catch(console.error);
     }
     const allItems = [];
+    const isNewItem = !data?.reservations?.find(r => r.id === item.id);
     setData(prev => {
       const exists = (prev?.reservations||[]).find(r => r.id === item.id);
       if (exists) {
@@ -2321,7 +2322,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       })).catch(console.error);
     }, 0);
     // 알림톡 자동 발송 (신규 예약 & 내부일정 아닌 경우)
-    if(!item.isSchedule && allItems.length > 0 && item.custPhone) {
+    if(!item.isSchedule && isNewItem && item.custPhone) {
       try {
         const branch = (data.branches||[]).find(b=>b.id===item.bid);
         sendAlimtalk("rsv_confirm", item.custPhone, {
