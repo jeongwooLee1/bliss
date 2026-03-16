@@ -1775,7 +1775,7 @@ function App() {
   );
 
   return (
-    <div style={{fontFamily:"'Noto Sans KR',sans-serif",minHeight:"100vh",background:"#f4f2ef",color:"#221810"}}>
+    <div style={{fontFamily:"'Noto Sans KR',sans-serif",height:"100dvh",overflow:"hidden",display:"flex",flexDirection:"column",background:T.bg,color:T.text}}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap');
         *{box-sizing:border-box;margin:0;padding:0}
@@ -1849,7 +1849,7 @@ function App() {
       {/* 헤더 */}
       <div className="np" style={{
         background:T.bgCard, borderBottom:"1px solid "+T.border,
-        padding:"8px 12px", boxShadow:"none",
+        padding:"8px 12px", flexShrink:0, boxShadow:T.shadow.sm,
         display:"flex", alignItems:"center", justifyContent:"space-between",
         position:"sticky", top:0, zIndex:50, gap:8
       }}>
@@ -2024,18 +2024,18 @@ function App() {
 
       {/* 위반 알림 */}
       {violations.length > 0 && (
-        <div className="np" style={{background:T.dangerLt,borderBottom:"1px solid "+T.danger+"44",padding:"6px 14px",display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+        <div className="np" style={{background:T.dangerLt,borderBottom:"1px solid "+T.danger+"44",padding:"6px 14px",display:"flex",gap:6,flexWrap:"wrap",alignItems:"center",flexShrink:0}}>
           <span style={{fontSize:T.fs.xs,fontWeight:T.fw.bolder,color:T.danger}}>⚠ 규칙 위반 ({violations.length}건):</span>
           {violations.slice(0,6).map((v,i)=><span key={i} style={{fontSize:T.fs.xxs,color:T.danger,background:T.bgCard,border:"1px solid "+T.danger+"55",borderRadius:T.radius.sm,padding:"1px 7px",fontWeight:T.fw.bold}}>{v}</span>)}
         </div>
       )}
 
       {/* 메인 테이블 */}
-      <div style={{overflowX:"auto",overflowY:"auto",height:"calc(100vh - 105px)"}}>
+      <div style={{flex:1,overflow:"auto",minHeight:0,overscrollBehavior:"none"}}>
         <table style={{borderCollapse:"separate",borderSpacing:0,minWidth: dim*38+160}}>
           <thead style={{position:"sticky",top:0,zIndex:20,background:T.bgCard}}>
             <tr>
-              <th style={{...stickyCol,background:T.gray100,fontSize:T.fs.xxs,fontWeight:T.fw.bolder,color:T.textSub,textAlign:"left",borderBottom:"2px solid "+T.border,zIndex:30}}>직원</th>
+              <th style={{...stickyCol,background:T.gray100,fontSize:T.fs.xxs,fontWeight:T.fw.bolder,color:T.textSub,textAlign:"left",borderBottom:"2px solid "+T.border,zIndex:30,top:0,position:"sticky"}}>직원</th>
               {days.map(day=>{
                 const isToday=day.ds===fmtDs(today.getFullYear(),today.getMonth(),today.getDate());
                 const isSun=day.dow===6,isSat=day.dow===5;
@@ -2761,7 +2761,7 @@ function App() {
   );
 }
 
-const stickyCol = { position:"sticky",left:0,zIndex:10,width:155,minWidth:155,padding:"6px 10px",verticalAlign:"middle",boxShadow:"2px 0 6px rgba(0,0,0,.06)" };
+const stickyCol = { position:"sticky",left:0,zIndex:10,width:150,minWidth:150,padding:"6px 8px",verticalAlign:"middle",background:T.bgCard,boxShadow:"2px 0 4px rgba(0,0,0,.07)" };
 const navBtn = { background:"none",border:"1px solid #e4ddd0",borderRadius:6,padding:"5px 10px",cursor:"pointer",fontSize:13,fontFamily:"inherit",color:T.textSub };
 
 function Btn({label,onClick,primary,outline,danger,style={}}){
