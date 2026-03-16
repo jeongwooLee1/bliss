@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.16-u";
+const SCH_V = "v2026.03.16-v";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -578,9 +578,16 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       const branch = BRANCHES.find(b=>b.id===emp.branch);
       for (const d of pref) {
         if (needed <= 0) break;
-        if (!canAssignOff(emp, d, branchEmps, branch)) continue;
+        const canOff = canAssignOff(emp, d, branchEmps, branch, true);
+        if (!canOff) {
+          console.log(`[격주SKIP] ${emp.id} ${d.ds}(dow=${d.dow}) target=${target} already=${already} needed=${needed}`);
+          continue;
+        }
         sch[emp.id][d.ds] = STATUS.OFF;
         needed--;
+      }
+      if (needed > 0) {
+        console.log(`[격주FAIL] ${emp.id} wi=${wi} target=${target} already=${already} pref=[${pref.map(d=>d.ds+"("+d.dow+")").join(",")}] needed=${needed}개 미배정`);
       }
     });
   });
