@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.16-s";
+const SCH_V = "v2026.03.16-t";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -534,6 +534,12 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     const phaseShift = (() => {
       const weeklyOff2 = getWeeklyOff(emp);
       const lo2 = Math.max(1, weeklyOff2 - 1);
+      // ① 이전달 배치 저장 시 기록한 __biweeklyLastOff 우선 사용
+      const savedLastOff = prevSchData?.__biweeklyLastOff?.[emp.id];
+      if (savedLastOff !== undefined) {
+        return savedLastOff <= lo2 ? 1 : 0;
+      }
+      // ② 폴백: 이전달 sch 날짜 스캔
       const prevYear2 = month === 0 ? year - 1 : year;
       const prevMonth2 = month === 0 ? 11 : month - 1;
       const prevLastDay2 = new Date(year, month, 0).getDate();
@@ -1939,7 +1945,23 @@ function App() {
                 }
                 if(bestV.length>0) toast_("⚠️ "+MAX_RETRY+"회 시도 후 최선 결과 (위반 "+bestV.length+"건)","err");
                 else toast_("✅ 자동 배치 완료!");
-                setSchHistory(prev=>{const n={...prev,[curKey]:best};window.storage.set("schHistory_v1",JSON.stringify(n)).catch(()=>{});return n;});
+                // 격주 직원별 이번달 마지막 주 휴무 수 저장 (다음달 phaseShift 계산용)
+                const biweeklyLastOff = {};
+                (ACTIVE_EMPLOYEES||[]).filter(e => empSettings[e.id]?.altPattern).forEach(emp => {
+                  const lastDay = new Date(year, month+1, 0).getDate();
+                  let lastMon = lastDay;
+                  while (new Date(year, month, lastMon).getDay() !== 1) lastMon--;
+                  if (lastDay - lastMon < 2 && lastMon >= 8) lastMon -= 7;
+                  let cnt = 0;
+                  for (let d = lastMon; d <= lastDay; d++) {
+                    const ds = fmtDs(year, month, d);
+                    const s = best[emp.id]?.[ds];
+                    if (s === "휴무" || s === "휴무(꼭)") cnt++;
+                  }
+                  biweeklyLastOff[emp.id] = cnt;
+                });
+                const toSave = {...best, __biweeklyLastOff: biweeklyLastOff};
+                setSchHistory(prev=>{const n={...prev,[curKey]:toSave};window.storage.set("schHistory_v1",JSON.stringify(n)).catch(()=>{});return n;});
               } catch(e) {
                 toast_("❌ 배치 오류: "+e.message, "err");
               } finally {
