@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.16-e";
+const SCH_V = "v2026.03.16-f";
 const BRANCHES = [
   { id: "nonhyeon", name: "논현&왕십리", color: "#c8793a", minStaff: 4 },
   { id: "hongdae",  name: "홍대&마곡",   color: "#3a9e8e", minStaff: 2 },
@@ -190,6 +190,45 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     }
   });
 
+  // ── 연속근무 계산 공통 헬퍼 ──────────────────────────────────────────────────
+  // ds 직전까지의 연속 근무일수 (sch + prevSchData 참조)
+  const getCarry = (empId, ds) => {
+    let len = 0;
+    for (let i = 1; i <= rc.maxConsecWork + 2; i++) {
+      const d2 = new Date(ds); d2.setDate(d2.getDate() - i);
+      const ds2 = fmtDs(d2.getFullYear(), d2.getMonth(), d2.getDate());
+      const s = sch[empId]?.[ds2] ?? prevSchData?.[empId]?.[ds2] ?? "";
+      if (!s || s === "휴무" || s === "휴무(꼭)") break;
+      len++;
+    }
+    return len;
+  };
+
+  // 강제 휴무 배정 가능 여부 (3일연속 + minStaff + maxDailyOff만 체크, 퐁당퐁당 무시)
+  const canAssignOffHard = (emp, day, branchEmps, branch) => {
+    const ds = day.ds;
+    const getS = (id, dStr) => sch[id]?.[dStr] ?? prevSchData?.[id]?.[dStr] ?? "";
+    const isOff2 = (id, dStr) => ["휴무","휴무(꼭)"].includes(getS(id, dStr));
+    const p1h = addDays(ds,-1), p2h = addDays(ds,-2), n1h = addDays(ds,1);
+    // 3일 연속 휴무 절대 금지
+    if (isOff2(emp.id,p1h) && isOff2(emp.id,p2h)) return false;
+    if (isOff2(emp.id,p1h) && isOff2(emp.id,n1h)) return false;
+    // 전체 하루 최대 휴무 (강제 배정은 maxDailyOff+1 까지 허용)
+    if (!emp.isMale) {
+      const totalOff = employees.filter(e => !e.isMale && ["휴무","휴무(꼭)"].includes(sch[e.id]?.[ds]||"")).length;
+      if (totalOff >= rc.maxDailyOff + 1) return false;
+    }
+    // 지점 최소 인원 (강제 배정도 최소 1명은 지켜야)
+    if (branch) {
+      const minRequired = emp.branch === "nonhyeon" ? 1 : (rc.branchMinStaff[branch.id] ?? branch.minStaff ?? 1);
+      const working = branchEmps.filter(be =>
+        be.id !== emp.id && !["휴무","휴무(꼭)"].includes(sch[be.id]?.[ds]||"")
+      ).length;
+      if (working < minRequired) return false;
+    }
+    return true;
+  };
+
   // 2) 주 단위 처리 — 이번달 1일이 속한 주에 전달 날짜 포함 (이월 처리)
   const firstDow = getDow0Mon(year, month, 1); // 0=월요일
   const prevYear = month === 0 ? year - 1 : year;
@@ -293,30 +332,14 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     const n2o = ["휴무","휴무(꼭)"].includes(getStatus(emp.id, n2ds));
 
     const R = (r) => { if(debug) console.log(`[canOff BLOCK] ${emp.id} ${ds}: ${r}`); return false; };
-
-    // 연속근무 임박 여부 계산 (이 날 쉬지 않으면 maxConsecWork 초과할지)
-    const consecBefore = (() => {
-      let len = 0;
-      for (let i = 1; i <= rc.maxConsecWork + 2; i++) {
-        const d2 = new Date(ds); d2.setDate(d2.getDate() - i);
-        const ds2 = fmtDs(d2.getFullYear(), d2.getMonth(), d2.getDate());
-        const s2 = getStatus(emp.id, ds2);
-        if (!s2 || s2 === "휴무" || s2 === "휴무(꼭)") break;
-        len++;
-      }
-      return len;
-    })();
-    // 연속근무가 maxConsecWork에 도달한 경우 퐁당퐁당 예외 허용
-    const consecUrgent = consecBefore >= rc.maxConsecWork;
-
-    // 3일 연속 방지 (연속근무 임박이어도 3일 연속 휴무는 금지)
+    // 3일 연속 방지
     if (p1o && p2o) return R("3일연속(p2+p1 휴무)");
     if (p1o && n1o) return R("3일연속(p1+n1 휴무)");
 
-    // 퐁당퐁당 방지 — 연속근무 임박 시 예외 허용
-    if (!consecUrgent && p2o && !p1o) return R(`퐁당퐁당(p2=${p2ds}휴무, p1근무)`);
+    // 퐁당퐁당 방지 (휴무-근무-휴무)
+    if (p2o && !p1o) return R(`퐁당퐁당(p2=${p2ds}휴무, p1근무)`);
     const n1Assigned = getStatus(emp.id, n1ds) !== "";
-    if (!consecUrgent && n1Assigned && !n1o && n2o) return R(`퐁당퐁당(n1근무, n2휴무)`);
+    if (n1Assigned && !n1o && n2o) return R(`퐁당퐁당(n1근무, n2휴무)`);
 
 
     // 전체 하루 최대 휴무 5명 제한 (남자직원 제외 - 별도 집계)
@@ -361,38 +384,6 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       );
       if (allOthersOff) return R("남직원 전원휴무 금지");
     }
-
-    // 이 날 쉬면 반대편 근무 블록이 maxConsecWork 초과하는지 체크
-    // 앞쪽 근무 블록 길이
-    const countConsecWorkBefore = (empId, fromDs) => {
-      let len = 0;
-      for (let i = 1; i <= rc.maxConsecWork + 2; i++) {
-        const d2 = new Date(fromDs); d2.setDate(d2.getDate() - i);
-        const ds2 = fmtDs(d2.getFullYear(), d2.getMonth(), d2.getDate());
-        const s = getStatus(empId, ds2);
-        if (s === "휴무" || s === "휴무(꼭)" || s === "") break;
-        len++;
-      }
-      return len;
-    };
-    // 뒤쪽 근무 블록 길이 (명시적으로 근무/지원/쉐어로 배정된 날만 카운트, 미배정="" 제외)
-    const countConsecWorkAfter = (empId, fromDs) => {
-      let len = 0;
-      for (let i = 1; i <= rc.maxConsecWork + 2; i++) {
-        const d2 = new Date(fromDs); d2.setDate(d2.getDate() + i);
-        const ds2 = fmtDs(d2.getFullYear(), d2.getMonth(), d2.getDate());
-        const s = getStatus(empId, ds2);
-        if (!s || s === "") break; // 미배정은 카운트 중단 (아직 결정 안됨)
-        if (s === "휴무" || s === "휴무(꼭)") break;
-        if (s === STATUS.WORK || isSupport(s) || s === STATUS.SHARE) len++;
-        else break;
-      }
-      return len;
-    };
-    const beforeLen = countConsecWorkBefore(emp.id, ds);
-    const afterLen  = countConsecWorkAfter(emp.id, ds);
-    if (beforeLen > rc.maxConsecWork) return R(`앞 연속근무 ${beforeLen}일 초과`);
-    if (afterLen  > rc.maxConsecWork) return R(`뒤 연속근무 ${afterLen}일 초과`);
 
     return true;
   };
@@ -510,82 +501,135 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
 
 
 
-  // 나머지 직원: 월 총 휴무 = 주 수 × weeklyOff, 주 단위로 분산 배정
+  // 2.5) 미배정 날 전부 WORK로 pre-fill
+  //      → getCarry 호출 시 정확한 연속근무 수 계산 가능
+  //      → Step 2 새 로직이 이 위에서 일부를 OFF로 덮어씀
+  employees.forEach(emp => {
+    allDates.forEach(day => {
+      if (emp.isMale && day.dow === 6) return; // 남자직원 일요일 제외 (STEP A에서 처리)
+      if (!sch[emp.id][day.ds]) sch[emp.id][day.ds] = STATUS.WORK;
+    });
+  });
+
+  // 나머지 직원: 연속근무 위반 없는 carry-aware 2-pass 배정
+  // Pass A (강제): 시뮬레이션 후 maxConsecWork 초과 유발 날 먼저 OFF
+  // Pass B (쿼터): 남은 주간 쿼터를 연속근무 높은 날 우선 OFF
   employees.filter(e => !isAltPattern(e)).forEach(emp => {
     const branch = BRANCHES.find(b => b.id === emp.branch);
     const branchEmps = employees.filter(e => e.branch === emp.branch);
+
     const monthlyTarget = getWeeklyOff(emp) * weekCount;
     let monthlyRemaining = monthlyTarget
       - Object.values(sch[emp.id]).filter(s => ["휴무","휴무(꼭)"].includes(s)).length;
 
-    // 주 단위로 최대 weeklyOff 씩 분산, 월 총량 초과 금지
     activeWeeks.forEach((week, wi) => {
       if (monthlyRemaining <= 0) return;
-      const thisMonthDays = week.filter(d => !d.isPrev);
-      if (thisMonthDays.length === 0) return;
-      // 이번달 날짜가 1일뿐인 주는 마지막 주가 아닐 때만 스킵 (첫 주 단독 방지)
-      // 마지막 주에 단독 1일(예: 8/31)이 있어도 배정 진행
-      const realDays = thisMonthDays.filter(d => !d.isNext);
+      const thisWeekDays = week.filter(d => !d.isPrev);
+      const realDays = thisWeekDays.filter(d => !d.isNext);
       if (realDays.length <= 1 && wi < activeWeeks.length - 1) return;
 
-      // weekOffNow: 남자직원은 isNext(이월일요일) 포함 카운트 - 일요일도 주 쿼터에 포함
-      // 여직원은 isNext 제외 - 이월 일요일이 쿼터를 잡아먹지 않도록
-      const weekOffNow = thisMonthDays.filter(d =>
-        (emp.isMale || !d.isNext) && ["휴무","휴무(꼭)"].includes(sch[emp.id][d.ds])
+      // 시간순 정렬 (이월 날짜 포함)
+      const orderedDays = [...thisWeekDays]
+        .filter(d => !ignoredDates.has(d.ds))
+        .sort((a, b) => new Date(a.ds) - new Date(b.ds));
+      if (orderedDays.length === 0) return;
+
+      // ── PASS A: 시뮬레이션 → 강제 휴무 날 계산 ──────────────────────────
+      // 현재 sch 기준 (pre-fill 완료 상태이므로 미배정=WORK 없음)
+      const carry = getCarry(emp.id, orderedDays[0].ds);
+      let simStreak = carry;
+      const mandatoryOff = new Set();
+
+      for (const day of orderedDays) {
+        if (seededDates.has(day.ds)) {
+          const s = sch[emp.id][day.ds];
+          simStreak = (s === "휴무" || s === "휴무(꼭)") ? 0 : simStreak + 1;
+          continue;
+        }
+        const s = sch[emp.id][day.ds];
+        if (s === "휴무" || s === "휴무(꼭)") { simStreak = 0; continue; }
+        simStreak++;
+        // simStreak가 maxConsecWork에 도달한 미배정 날 → 강제 휴무
+        if (simStreak >= rc.maxConsecWork && s === STATUS.WORK && !seededDates.has(day.ds)) {
+          mandatoryOff.add(day.ds);
+          simStreak = 0; // 이 날을 off로 처리한 것으로 가정
+        }
+      }
+
+      // 강제 휴무 배정 (relaxed 규칙)
+      for (const day of orderedDays) {
+        if (!mandatoryOff.has(day.ds)) continue;
+        if (sch[emp.id][day.ds] !== STATUS.WORK) continue; // 이미 off이면 스킵
+        if (seededDates.has(day.ds)) continue;
+
+        if (canAssignOffHard(emp, day, branchEmps, branch)) {
+          sch[emp.id][day.ds] = STATUS.OFF;
+          monthlyRemaining--;
+        } else {
+          // 강제 배정 실패 → 인접 날짜 fallback (±2일)
+          const fallbacks = orderedDays
+            .filter(d => !seededDates.has(d.ds) && sch[emp.id][d.ds] === STATUS.WORK
+              && !mandatoryOff.has(d.ds) && d.ds !== day.ds)
+            .sort((a, b) => {
+              const da = Math.abs(new Date(a.ds) - new Date(day.ds));
+              const db = Math.abs(new Date(b.ds) - new Date(day.ds));
+              return da - db;
+            });
+          for (const fb of fallbacks) {
+            if (Math.abs(new Date(fb.ds) - new Date(day.ds)) > 2 * 86400000) break;
+            if (canAssignOffHard(emp, fb, branchEmps, branch)) {
+              sch[emp.id][fb.ds] = STATUS.OFF;
+              monthlyRemaining--;
+              break;
+            }
+          }
+        }
+      }
+
+      // ── PASS B: 주간 쿼터 채우기 ──────────────────────────────────────────
+      const weekOffNow = orderedDays.filter(d =>
+        (emp.isMale || !d.isNext) && ["휴무","휴무(꼭)"].includes(sch[emp.id]?.[d.ds])
       ).length;
-      const weekTarget = Math.min(getWeeklyOff(emp), monthlyRemaining);
+      const weekTarget = Math.min(getWeeklyOff(emp), monthlyRemaining + weekOffNow);
       let toAssign = Math.max(0, weekTarget - weekOffNow);
       if (toAssign <= 0) return;
 
-      // 지점 내 요일 분산: 동료 휴무 적은 날 우선 (isNext 동등 취급)
-      // 주차(wi)와 직원별 오프셋으로 요일 우선순위를 매주 회전 → 반복 패턴 방지
-      const empOffset = emp.id.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
-      const rotBase = (wi * 3 + empOffset) % 7; // 매주 3요일씩 회전
-      // 이 날까지의 연속근무일 수 (이전달 포함) — 높을수록 휴무 우선
-      const runLen = (ds) => {
-        let len = 0;
-        for (let i = 1; i <= rc.maxConsecWork + 2; i++) {
-          const d2 = new Date(ds); d2.setDate(d2.getDate() - i);
-          const ds2 = fmtDs(d2.getFullYear(), d2.getMonth(), d2.getDate());
-          const s = sch[emp.id]?.[ds2] ?? prevSchData?.[emp.id]?.[ds2] ?? "";
-          if (!s || s === "휴무" || s === "휴무(꼭)") break;
-          len++;
-        }
-        return len;
-      };
-      let cands = thisMonthDays
-        .filter(d => !sch[emp.id][d.ds] && !seededDates.has(d.ds)
-          && !(emp.isMale && d.dow === 6)) // 남자직원 일요일은 sunday 블록에서 배정
+      // 시뮬레이션 streak 재계산 (Pass A 결과 반영)
+      const simSt2 = {};
+      let ss = carry;
+      for (const day of orderedDays) {
+        const s = sch[emp.id]?.[day.ds] ?? "";
+        if (s === "휴무" || s === "휴무(꼭)") { ss = 0; }
+        else { ss++; }
+        simSt2[day.ds] = ss;
+      }
+
+      // 쿼터 후보: 미배정(WORK) 날, 시뮬 streak 높은 순
+      const quotaCands = orderedDays
+        .filter(d => !seededDates.has(d.ds) && sch[emp.id][d.ds] === STATUS.WORK
+          && !(emp.isMale && d.dow === 6))
         .sort((a, b) => {
-          // 1순위: 연속근무일 많은 날 → 먼저 쉬어야 위반 방지
-          const aRun = runLen(a.ds);
-          const bRun = runLen(b.ds);
-          if (bRun !== aRun) return bRun - aRun;
-          // 2순위: 동료 휴무 적은 날 (지점 분산)
-          const aColleagueOff = branchEmps.filter(be => be.id !== emp.id && ["휴무","휴무(꼭)"].includes(sch[be.id][a.ds])).length;
-          const bColleagueOff = branchEmps.filter(be => be.id !== emp.id && ["휴무","휴무(꼭)"].includes(sch[be.id][b.ds])).length;
-          if (aColleagueOff !== bColleagueOff) return aColleagueOff - bColleagueOff;
-          // 3순위: 요일 회전
-          const aDowRot = (a.dow - rotBase + 7) % 7;
-          const bDowRot = (b.dow - rotBase + 7) % 7;
-          return aDowRot - bDowRot;
+          if (simSt2[b.ds] !== simSt2[a.ds]) return simSt2[b.ds] - simSt2[a.ds];
+          const aOff = branchEmps.filter(be => be.id !== emp.id && ["휴무","휴무(꼭)"].includes(sch[be.id]?.[a.ds]||"")).length;
+          const bOff = branchEmps.filter(be => be.id !== emp.id && ["휴무","휴무(꼭)"].includes(sch[be.id]?.[b.ds]||"")).length;
+          return aOff - bOff;
         });
 
       // 패턴 반복 방지 (최근 2주와 동일 요일 조합 금지)
       const prevPatterns = activeWeeks.slice(0, wi).map(pw =>
-        pw.filter(d=>!d.isPrev && ["휴무","휴무(꼭)"].includes(sch[emp.id][d.ds])).map(d=>d.dow).sort().join(",")
-      ).filter(p=>p.length>0);
+        pw.filter(d => !d.isPrev && ["휴무","휴무(꼭)"].includes(sch[emp.id][d.ds])).map(d => d.dow).sort().join(",")
+      ).filter(p => p.length > 0);
 
-      for (const day of cands) {
+      for (const day of quotaCands) {
         if (toAssign <= 0) break;
         if (emp.isMale ? !canMaleOff(emp, day, branchEmps, branch) : !canAssignOff(emp, day, branchEmps, branch)) continue;
 
         // 패턴 반복 방지: 마지막 배정 시 요일 조합 체크
         if (prevPatterns.length >= 2 && toAssign === 1) {
-          const alreadyDows = thisMonthDays.filter(d=>d.ds!==day.ds&&["휴무","휴무(꼭)"].includes(sch[emp.id][d.ds])).map(d=>d.dow);
+          const alreadyDows = orderedDays.filter(d => d.ds !== day.ds && ["휴무","휴무(꼭)"].includes(sch[emp.id][d.ds])).map(d => d.dow);
           const proj = [...alreadyDows, day.dow].sort().join(",");
           const last2 = prevPatterns.slice(-2);
-          if (last2[0]===proj && last2[1]===proj) continue;
+          if (last2[0] === proj && last2[1] === proj) continue;
         }
 
         sch[emp.id][day.ds] = STATUS.OFF;
@@ -600,11 +644,10 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     ignoredDates.forEach(ds => { delete sch[emp.id][ds]; });
   });
 
-  // 3) 미지정 → 근무 (이번달 + 이월 날짜 전체)
-  // 남자직원 일요일은 빈칸 유지 → 뒤에서 1명 근무 배치
+  // 3) 미배정 → 근무 (pre-fill 이후엔 사실상 불필요, 안전을 위해 유지)
   employees.forEach(emp => {
     allDates.forEach(day => {
-      if (emp.isMale && day.dow === 6) return; // 남자직원 일요일 제외
+      if (emp.isMale && day.dow === 6) return;
       if (!sch[emp.id][day.ds]) sch[emp.id][day.ds] = STATUS.WORK;
     });
   });
