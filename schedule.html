@@ -233,24 +233,6 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     }
   });
 
-  // 1-a-3) 원장 연속근무 보호: maxConsecWork 초과 시 자동으로 휴무 삽입
-  const ownerDsOrdered = allDates.filter(d => !d.isPrev && !d.isNext).map(d => d.ds).sort();
-  employees.filter(e => e.isOwner).forEach(emp => {
-    let streak = 0;
-    for (const ds of ownerDsOrdered) {
-      const s = sch[emp.id]?.[ds];
-      const isOff = s === STATUS.OFF || s === STATUS.MUST_OFF;
-      if (isOff) { streak = 0; continue; }
-      streak++;
-      if (streak > rc.maxConsecWork) {
-        if (!sch[emp.id][ds] || sch[emp.id][ds] === STATUS.WORK) {
-          sch[emp.id][ds] = STATUS.OFF;
-          streak = 1;
-        }
-      }
-    }
-  });
-
   // 1-b) 반복 설정: ownerRepeat dows → 이번달 + 이월 날짜 자동 적용 (ownerReqs 우선)
   employees.filter(e=>e.isOwner).forEach(emp => {
     const rep = (ownerRepeat||{})[emp.id];
@@ -349,6 +331,26 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
 
   // 이번달 + 이월 날짜 전체 (isPrev 제외, ignoredDates 제외) — step3~7 루프 공통 사용
   const allDates = weeks.flatMap(w => w.filter(d => !d.isPrev && !ignoredDates.has(d.ds)));
+
+  // 1-a-3) 원장 연속근무 보호: maxConsecWork 초과 시 자동 휴무 삽입
+  {
+    const ownerDsOrdered = allDates.filter(d => !d.isNext).map(d => d.ds).sort();
+    employees.filter(e => e.isOwner).forEach(emp => {
+      let streak = 0;
+      for (const ds of ownerDsOrdered) {
+        const s = sch[emp.id]?.[ds];
+        const isOff = s === STATUS.OFF || s === STATUS.MUST_OFF;
+        if (isOff) { streak = 0; continue; }
+        streak++;
+        if (streak > rc.maxConsecWork) {
+          if (!sch[emp.id][ds] || sch[emp.id][ds] === STATUS.WORK) {
+            sch[emp.id][ds] = STATUS.OFF;
+            streak = 1;
+          }
+        }
+      }
+    });
+  }
 
   // 한 주에서 이미 쉰 일수 (전달 이월 날짜 제외 — 이번달 날짜만)
   // 이월 날짜를 포함하면 첫 주에 toAssign=0이 되어 배정이 안됨
