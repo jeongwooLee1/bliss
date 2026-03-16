@@ -204,6 +204,9 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     });
   }
 
+  // ownerRepeat 이월(isNext) 날짜 처리 — weeks 정의 전이므로 pending으로 등록, weeks 이후 처리
+  let ownerRepeat_pending = null;
+
   // step0에서 시드된 날짜 = 전달 이월로 이미 결정된 날 → 이후 단계에서 건드리지 않음
   const seededDates = new Set();
   if (prevSchData) {
@@ -254,16 +257,10 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     // 이월(isNext) 날짜 — 마지막 주에 포함된 다음달 날짜도 적용
     const nextYear_ = month === 11 ? year + 1 : year;
     const nextMonth_ = month === 11 ? 0 : month + 1;
-    const lastWeek = weeks[weeks.length - 1] || [];
-    lastWeek.filter(d => d.isNext).forEach(day => {
-      if (rep.dows.includes(day.dow)) {
-        // seeded(이월 근무)여도 원장 반복 설정이 우선 — WORK인 날 덮어쓰기
-        if (!sch[emp.id][day.ds] || sch[emp.id][day.ds] === STATUS.WORK) {
-          sch[emp.id][day.ds] = STATUS.MUST_OFF;
-          seededDates.add(day.ds); // 이후 단계에서 보호
-        }
-      }
-    });
+    // isNext 이월 날짜는 weeks 생성 후 별도 처리 (ownerRepeat_pending에 등록)
+    // → weeks 정의 이후 step1-b-post에서 처리
+    if (!ownerRepeat_pending) ownerRepeat_pending = [];
+    ownerRepeat_pending.push({ emp, rep });
   });
 
   // ── 연속근무 계산 공통 헬퍼 ──────────────────────────────────────────────────
@@ -339,6 +336,21 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       }
       weeks.push(wk); wk=[];
     }
+  }
+
+  // 1-b-post) ownerRepeat 이월(isNext) 날짜 처리 — weeks 완성 후
+  if (ownerRepeat_pending) {
+    const lastWeek = weeks[weeks.length - 1] || [];
+    ownerRepeat_pending.forEach(({ emp, rep }) => {
+      lastWeek.filter(d => d.isNext).forEach(day => {
+        if (rep.dows.includes(day.dow)) {
+          if (!sch[emp.id][day.ds] || sch[emp.id][day.ds] === STATUS.WORK) {
+            sch[emp.id][day.ds] = STATUS.MUST_OFF;
+            seededDates.add(day.ds);
+          }
+        }
+      });
+    });
   }
 
   // 1일짜리 단독 주: 첫 주에만 적용 (예: 3월 1일이 일요일인 경우)
