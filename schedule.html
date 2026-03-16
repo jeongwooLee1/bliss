@@ -1849,7 +1849,7 @@ function App() {
       {/* 헤더 */}
       <div className="np" style={{
         background:T.bgCard, borderBottom:"1px solid "+T.border,
-        padding:"10px 14px", boxShadow:T.shadow.sm,
+        padding:"8px 12px", boxShadow:"none",
         display:"flex", alignItems:"center", justifyContent:"space-between",
         position:"sticky", top:0, zIndex:50, gap:8
       }}>
@@ -1860,7 +1860,7 @@ function App() {
           </button>
           <div style={{textAlign:"center",minWidth:80}}>
             <div style={{fontSize:T.fs.md,fontWeight:T.fw.black,color:T.text,lineHeight:1.1,whiteSpace:"nowrap"}}>{year}년 {month+1}월</div>
-            <div style={{fontSize:T.fs.nano,color:T.textMuted}}>{BRANCHES.length}지점·{ALL_EMPLOYEES.length}명</div>
+            <div style={{fontSize:T.fs.nano,color:T.textMuted,display:"none"}}>{BRANCHES.length}지점·{ALL_EMPLOYEES.length}명</div>
           </div>
           <button onClick={()=>{if(month===11){setMonth(0);setYear(y=>y+1);}else setMonth(m=>m+1);}} style={{width:30,height:30,borderRadius:T.radius.md,border:"1px solid "+T.border,background:"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"background .12s"}} onMouseEnter={e=>e.currentTarget.style.background=T.gray100} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
             <I name="chevR" size={14} color={T.textSub}/>
@@ -2032,7 +2032,7 @@ function App() {
       )}
 
       {/* 메인 테이블 */}
-      <div style={{overflowX:"auto",padding:"0 18px 32px"}}>
+      <div style={{overflowX:"auto",padding:"0 0 120px"}}>
         <table style={{borderCollapse:"separate",borderSpacing:0,minWidth: dim*54+180,marginTop:14}}>
           <thead>
             <tr>
