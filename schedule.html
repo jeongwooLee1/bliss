@@ -1780,7 +1780,7 @@ function App() {
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap');
         *{box-sizing:border-box;margin:0;padding:0}
-        ::-webkit-scrollbar{height:5px;width:5px}::-webkit-scrollbar-track{background:#ede8e0}::-webkit-scrollbar-thumb{background:#c0a07a;border-radius:3px}
+        ::-webkit-scrollbar{height:5px;width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#b0b8c1;border-radius:3px}
         .cc{cursor:pointer;transition:filter .12s}
         .cc:hover{filter:brightness(.9)}
         @media print{.np{display:none!important}}
@@ -2038,7 +2038,7 @@ function App() {
       )}
 
       {/* 메인 테이블 */}
-      <div style={{flex:1,overflow:"auto",minHeight:0,overscrollBehavior:"none"}}>
+      <div style={{flex:1,overflow:"auto",minHeight:0,overscrollBehavior:"none",background:T.bg}}>
         <table style={{borderCollapse:"separate",borderSpacing:0,minWidth: dim*38+160}}>
           <thead style={{position:"sticky",top:0,zIndex:20,background:T.bgCard}}>
             <tr>
