@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.16-x";
+const SCH_V = "v2026.03.16-y";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -2815,10 +2815,11 @@ function App() {
                       saveOwnerRepeat(newRep);
                     };
                     const toggleDowWithRepeat = (dow) => {
+                      const wasFullBefore = isDowFull(dow); // 토글 전 상태로 계산
                       toggleDow(dow);
                       if(rep.enabled){
-                        const full_=isDowFull(dow);
-                        const newDows = full_ ? rep.dows.filter(d=>d!==dow) : [...new Set([...rep.dows,dow])];
+                        // wasFullBefore: 토글 전에 full이었으면 → 이제 off → dows에서 제거
+                        const newDows = wasFullBefore ? rep.dows.filter(d=>d!==dow) : [...new Set([...rep.dows,dow])];
                         const newRep={...ownerRepeat,[emp.id]:{...rep,dows:newDows}};
                         setOwnerRepeat(newRep); saveOwnerRepeat(newRep);
                       }
