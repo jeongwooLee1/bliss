@@ -683,7 +683,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
   });
 
   // [Phase C] 강제 휴무 실제 배정
-  employees.filter(e => !isAltPattern(e) && !e.isMale).forEach(emp => {
+  employees.filter(e => !isAltPattern(e) && !e.isMale && !e.isOwner).forEach(emp => {
     const branch = BRANCHES.find(b => b.id === emp.branch);
     const branchEmps = employees.filter(e => e.branch === emp.branch);
     (forcedOff[emp.id] || new Set()).forEach(ds => {
@@ -1448,7 +1448,10 @@ function App() {
       } catch(e) {}
       try {
         const r6 = await window.storage.get(RULE_CONFIG_KEY);
-        if (r6?.value) setRuleConfig(JSON.parse(r6.value));
+        if (r6?.value) {
+          const saved = JSON.parse(r6.value);
+          setRuleConfig(prev => ({...prev, ...saved}));
+        }
       } catch(e) {}
       try {
         const r7 = await window.storage.get(SUPPORT_ORDER_KEY);
