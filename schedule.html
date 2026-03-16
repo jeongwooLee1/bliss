@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.17-g";
+const SCH_V = "v2026.03.17-h";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -2911,7 +2911,8 @@ function App() {
                         {cells.map((day,ci)=>{
                           if(!day) return <div key={"e"+ci} style={{height:30}}/>;
                           const key=emp.id+"__"+day.ds;
-                          const on=!!ownerReqs[key];
+                          // ownerReqs 직접 지정 OR ownerRepeat 반복 요일에 해당하면 on
+                          const on=!!ownerReqs[key] || (rep.enabled && rep.dows.includes(day.dow));
                           const isSun=day.dow===6; const isSat=day.dow===5;
                           return (
                             <div key={day.ds}
