@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>예약 확인 - 하우스왁싱</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: -apple-system, 'Noto Sans KR', sans-serif; background:#f5f5f5; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:20px; }
+  .card { background:#fff; border-radius:16px; box-shadow:0 2px 20px rgba(0,0,0,0.08); max-width:400px; width:100%; overflow:hidden; }
+  .header { background:#7c6af7; padding:28px 24px; color:#fff; text-align:center; }
+  .header .logo { font-size:13px; font-weight:600; opacity:0.85; margin-bottom:6px; letter-spacing:1px; }
+  .header h1 { font-size:20px; font-weight:700; }
+  .body { padding:28px 24px; }
+  .row { display:flex; align-items:flex-start; gap:12px; padding:12px 0; border-bottom:1px solid #f0f0f0; }
+  .row:last-child { border-bottom:none; }
+  .label { font-size:12px; color:#999; width:70px; flex-shrink:0; padding-top:2px; }
+  .value { font-size:14px; color:#222; font-weight:500; flex:1; line-height:1.5; }
+  .status-badge { display:inline-block; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600; }
+  .status-confirmed { background:#e8f5e9; color:#2e7d32; }
+  .status-pending { background:#fff8e1; color:#f57f17; }
+  .status-cancelled { background:#fce4ec; color:#c62828; }
+  .footer { padding:16px 24px; background:#fafafa; border-top:1px solid #f0f0f0; text-align:center; font-size:12px; color:#aaa; }
+  .loading { text-align:center; padding:60px 24px; color:#aaa; font-size:14px; }
+  .error { text-align:center; padding:60px 24px; }
+  .error h2 { color:#e57373; font-size:16px; margin-bottom:8px; }
+  .error p { color:#999; font-size:13px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="header">
+    <div class="logo">BLISS</div>
+    <h1>예약 확인</h1>
+  </div>
+  <div id="content">
+    <div class="loading">예약 정보를 불러오는 중...</div>
+  </div>
+  <div class="footer" id="footer"></div>
+</div>
+
+<script>
+const SB_URL = "https://dpftlrsuqxqqeouwbfjd.supabase.co";
+const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwZnRscnN1cXhxcWVvdXdiZmpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5MDU4MjQsImV4cCI6MjA4NzQ4MTgyNH0.iydEkjtPjZ0jXpUUPJben4IWWneDqLomv-HDlcFayE4";
+
+const params = new URLSearchParams(location.search);
+const rsvId = params.get("id");
+
+const statusMap = {
+  confirmed: { label:"예약확정", cls:"status-confirmed" },
+  pending:   { label:"대기중",   cls:"status-pending" },
+  cancelled: { label:"취소됨",   cls:"status-cancelled" },
+};
+
+async function load() {
+  if (!rsvId) { showError("잘못된 접근", "예약 ID가 없습니다."); return; }
+  try {
+    // reservation_id(네이버) 또는 id(내부) 로 조회
+    let rows = [];
+    const h = { "apikey": SB_KEY, "Authorization": "Bearer " + SB_KEY };
+    // 먼저 reservation_id로 시도
+    let r = await fetch(`${SB_URL}/rest/v1/reservations?reservation_id=eq.${encodeURIComponent(rsvId)}&select=*&limit=1`, { headers: h });
+    rows = await r.json();
+    // 없으면 내부 id로
+    if (!rows.length) {
+      r = await fetch(`${SB_URL}/rest/v1/reservations?id=eq.${encodeURIComponent(rsvId)}&select=*&limit=1`, { headers: h });
+      rows = await r.json();
+    }
+    if (!rows.length) { showError("예약을 찾을 수 없습니다", "예약 정보가 존재하지 않거나 삭제되었습니다."); return; }
+    const rsv = rows[0];
+
+    // 지점 정보
+    let branchName = "", branchPhone = "";
+    if (rsv.bid) {
+      const br = await fetch(`${SB_URL}/rest/v1/branches?id=eq.${rsv.bid}&select=name,phone&limit=1`, { headers: h });
+      const brows = await br.json();
+      if (brows.length) { branchName = brows[0].name; branchPhone = brows[0].phone; }
+    }
+
+    const st = statusMap[rsv.status] || { label: rsv.status || "-", cls: "" };
+    const fmtDate = (d) => d ? d.replace(/-/g, ".") : "-";
+
+    document.getElementById("content").innerHTML = `
+      <div class="body">
+        <div class="row"><span class="label">상태</span><span class="value"><span class="status-badge ${st.cls}">${st.label}</span></span></div>
+        <div class="row"><span class="label">고객명</span><span class="value">${rsv.cust_name || "-"}</span></div>
+        <div class="row"><span class="label">날짜</span><span class="value">${fmtDate(rsv.date)}</span></div>
+        <div class="row"><span class="label">시간</span><span class="value">${rsv.time || "-"}${rsv.dur ? " ("+rsv.dur+"분)" : ""}</span></div>
+        <div class="row"><span class="label">지점</span><span class="value">${branchName || "-"}</span></div>
+        ${branchPhone ? `<div class="row"><span class="label">전화번호</span><span class="value">${branchPhone}</span></div>` : ""}
+        ${rsv.staff_id ? `<div class="row"><span class="label">담당자</span><span class="value">${rsv.staff_id}</span></div>` : ""}
+      </div>`;
+    document.getElementById("footer").textContent = "BLISS 뷰티살롱 예약 시스템";
+  } catch(e) {
+    showError("오류 발생", e.message);
+  }
+}
+
+function showError(title, msg) {
+  document.getElementById("content").innerHTML = `<div class="error"><h2>${title}</h2><p>${msg}</p></div>`;
+}
+
+load();
+</script>
+</body>
+</html>
