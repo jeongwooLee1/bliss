@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.231";
+const BLISS_V = "2.69.232";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -2328,7 +2328,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
           "#{사용자명}":branch?.name||"", "#{날짜}":item.date||"", "#{시간}":item.time||"",
           "#{작업자}":item.worker||"", "#{작업장소}":branch?.name||"",
           "#{대표전화번호}":branch?.phone||"", "#{예약URL}":""
-        }, branch?.notiConfig, branch?.id);
+        }, (typeof branch?.notiConfig==="string"?JSON.parse(branch?.notiConfig)||{}:branch?.notiConfig||{}), branch?.id);
       } catch(e) { console.warn("알림톡:", e); }
     }
     setShowModal(false); setModalData(null);
@@ -7184,7 +7184,7 @@ function AdminNoti({ data, sb, bizId, branches }) {
 
   useEffect(()=>{
     if(!selBranch)return;
-    setCfg(branch?.notiConfig||{}); setDetail(null);
+    const raw=branch?.notiConfig; setCfg(typeof raw==="string"?JSON.parse(raw)||{}:raw||{}); setDetail(null);
   },[selBranch]);
 
   const up=(k,v)=>{setCfg(p=>({...p,[k]:v}));setSaved(false);};
