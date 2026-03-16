@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.230";
+const BLISS_V = "2.69.231";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -2325,8 +2325,9 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       try {
         const branch = (data.branches||[]).find(b=>b.id===item.bid);
         sendAlimtalk("rsv_confirm", item.custPhone, {
-          "#{고객명}":item.custName||"고객", "#{날짜}":item.date||"", "#{시간}":item.time||"",
-          "#{지점명}":branch?.name||"", "#{전화번호}":branch?.phone||""
+          "#{사용자명}":branch?.name||"", "#{날짜}":item.date||"", "#{시간}":item.time||"",
+          "#{작업자}":item.worker||"", "#{작업장소}":branch?.name||"",
+          "#{대표전화번호}":branch?.phone||"", "#{예약URL}":""
         }, branch?.notiConfig, branch?.id);
       } catch(e) { console.warn("알림톡:", e); }
     }
@@ -7240,7 +7241,7 @@ function AdminNoti({ data, sb, bizId, branches }) {
         <AField label="템플릿 코드"><input style={AInp} value={c.tplCode||""} onChange={e=>upC("tplCode",e.target.value)} placeholder="예: UG_2264" onFocus={e=>e.target.style.borderColor=T.primary} onBlur={e=>e.target.style.borderColor="#e8e8f0"}/></AField>
         {item?.hasTime&&<AField label="발송 시각"><input style={{...AInp,width:"auto"}} type="time" value={c.sendTime||"09:00"} onChange={e=>upC("sendTime",e.target.value)}/></AField>}
         <AField label="메시지 템플릿"><textarea style={{...AInp,height:100,resize:"vertical",lineHeight:1.5}} value={c.msgTpl||""} onChange={e=>upC("msgTpl",e.target.value)} placeholder={"예: 안녕하세요 #{고객명}님,\n#{날짜} #{시간} 예약이 확정되었습니다.\n지점: #{지점명}"} onFocus={e=>e.target.style.borderColor=T.primary} onBlur={e=>e.target.style.borderColor="#e8e8f0"}/></AField>
-        <div style={{fontSize:T.fs.xxs,color:T.textMuted,marginTop:-8,marginBottom:4}}>사용 가능 변수: #{"{고객명}"} #{"{날짜}"} #{"{시간}"} #{"{지점명}"} #{"{전화번호}"}</div>
+        <div style={{fontSize:T.fs.xxs,color:T.textMuted,marginTop:-8,marginBottom:4}}>예약알림 변수: #{"{사용자명}"} #{"{날짜}"} #{"{시간}"} #{"{작업자}"} #{"{작업장소}"} #{"{대표전화번호}"} #{"{예약URL}"}</div>
       </div>
       <AIBtn onClick={save} disabled={false} label={saved?"✓ 저장됨":"저장"} style={{background:saved?T.success:T.primary}}/>
     </div>;
