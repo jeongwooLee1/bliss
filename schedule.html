@@ -336,8 +336,9 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
   // 이월 날짜를 포함하면 첫 주에 toAssign=0이 되어 배정이 안됨
   const alreadyOffCount = (empId, week) =>
     week.filter(day => {
-      if (day.isPrev || day.isNext) return false; // 전달/다음달 날짜 제외
-      return ["휴무","휴무(꼭)"].includes(sch[empId][day.ds]);
+      if (day.isNext) return false; // 다음달 날짜만 제외 (이전달 isPrev는 포함 - 격주패턴 연속성)
+      const s = day.isPrev ? (prevSch?.[empId]?.[day.ds] || "") : (sch[empId]?.[day.ds] || "");
+      return ["휴무","휴무(꼭)"].includes(s);
     }).length;
 
   // 주의 실제 월~일 인덱스 계산 (주 경계 판별용)
