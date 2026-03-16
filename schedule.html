@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.16-k";
+const SCH_V = "v2026.03.16-l";
 const BRANCHES = [
   { id: "nonhyeon", name: "논현&왕십리", color: "#c8793a", minStaff: 4 },
   { id: "hongdae",  name: "홍대&마곡",   color: "#3a9e8e", minStaff: 2 },
@@ -226,10 +226,10 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     // 3일 연속 휴무 절대 금지
     if (isOff2(emp.id,p1h) && isOff2(emp.id,p2h)) return false;
     if (isOff2(emp.id,p1h) && isOff2(emp.id,n1h)) return false;
-    // 전체 하루 최대 휴무 (강제 배정은 maxDailyOff+1 까지 허용)
+    // 전체 하루 최대 휴무 — 강제 배정도 maxDailyOff 엄격 준수
     if (!emp.isMale) {
       const totalOff = employees.filter(e => !e.isMale && ["휴무","휴무(꼭)"].includes(sch[e.id]?.[ds]||"")).length;
-      if (totalOff >= rc.maxDailyOff + 1) return false;
+      if (totalOff >= rc.maxDailyOff) return false;
     }
     // 지점 최소 인원 (강제 배정도 최소 1명은 지켜야)
     if (branch) {
@@ -557,11 +557,29 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       streak++;
       if (streak >= rc.maxConsecWork) {
         // maxConsecWork 도달 시 ±1일 범위에서 랜덤으로 강제 휴무 날 선택
-        const candidates = [ds];
-        const prev1 = addDays(ds, -1), next1 = addDays(ds, 1);
-        if (allDsOrdered.includes(prev1) && !seededDates.has(prev1)) candidates.push(prev1);
-        if (allDsOrdered.includes(next1) && !seededDates.has(next1)) candidates.push(next1);
-        const picked = candidates[Math.floor(rng() * candidates.length)];
+        // ±1일 후보 중 forcedOff 예정이 적은 날 우선 선택 (maxDailyOff 초과 방지)
+        const candidates = [];
+        for (const cds of [addDays(ds,-1), ds, addDays(ds,1)]) {
+          if (!allDsOrdered.includes(cds)) continue;
+          if (seededDates.has(cds)) continue;
+          if (forcedOff[emp.id]?.has(cds)) continue;
+          candidates.push(cds);
+        }
+        if (candidates.length === 0) { streak = 0; continue; }
+        // forcedOff 수가 적은 날 + 랜덤으로 선택
+        candidates.sort((a, b) => {
+          const fa = Object.values(forcedOff).filter(s => s.has(a)).length;
+          const fb = Object.values(forcedOff).filter(s => s.has(b)).length;
+          if (fa !== fb) return fa - fb;
+          return rng() - 0.5;
+        });
+        // maxDailyOff 미만인 후보만 허용
+        const validCands = candidates.filter(cds => {
+          const alreadyOff = employees.filter(e => !e.isMale && ["휴무","휴무(꼭)"].includes(sch[e.id]?.[cds]||"")).length;
+          const plannedOff = Object.values(forcedOff).filter(s => s.has(cds)).length;
+          return alreadyOff + plannedOff < rc.maxDailyOff;
+        });
+        const picked = validCands.length > 0 ? validCands[0] : candidates[0];
         forcedOff[emp.id].add(picked);
         streak = 0;
       }
@@ -629,7 +647,9 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       if (seededDates.has(ds)) return;
       const day = allDates.find(d => d.ds === ds);
       if (!day) return;
-      // 실제 배정 가능 여부 (minStaff + 3일연속 체크)
+      // 이미 off인 경우 스킵
+      if (sch[emp.id]?.[ds] === STATUS.OFF || sch[emp.id]?.[ds] === "휴무(꼭)") return;
+      // 실제 배정 가능 여부 (minStaff + maxDailyOff + 3일연속 체크)
       if (canAssignOffHard(emp, day, branchEmps, branch)) {
         sch[emp.id][ds] = STATUS.OFF;
       } else {
