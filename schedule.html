@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.17-j";
+const SCH_V = "v2026.03.17-k";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -578,8 +578,13 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       if (prevLastDay2 - prevMon2 < 2 && prevMon2 >= 8) prevMon2 -= 7;
       const prevSun2 = prevMon2 + 6;
       let cnt = 0;
-      for (let d2 = prevMon2; d2 <= Math.min(prevSun2, prevLastDay2); d2++) {
-        const ds2 = fmtDs(prevYear2, prevMonth2, d2);
+      for (let d2 = prevMon2; d2 <= prevSun2; d2++) {
+        let ds2;
+        if (d2 <= prevLastDay2) {
+          ds2 = fmtDs(prevYear2, prevMonth2, d2); // 전달 날짜
+        } else {
+          ds2 = fmtDs(year, month, d2 - prevLastDay2); // isNext(현재달 1,2,3일...)
+        }
         const s2 = prevSchData?.[emp.id]?.[ds2];
         if (s2 === STATUS.OFF || s2 === STATUS.MUST_OFF) cnt++;
       }
@@ -2040,9 +2045,19 @@ function App() {
                     if (w.length > 1) lastWi_ = wi;
                   });
                   if (lastWi_ >= 0) {
-                    // 마지막 주 실제 휴무수
+                    // 마지막 주 실제 휴무수 (isNext 날짜 포함 - 다음달 이월 날짜도 이 주 소속)
                     let cnt_ = 0;
-                    wks_[lastWi_].forEach(({ds}) => {
+                    const lastWkDays = wks_[lastWi_];
+                    // 마지막 주 일요일 이후 isNext 날짜 추가 (최대 6일 스캔)
+                    const lastDs = lastWkDays[lastWkDays.length-1].ds;
+                    const nextYear_ = month === 11 ? year+1 : year;
+                    const nextMonth_ = month === 11 ? 0 : month+1;
+                    const lastDow_ = lastWkDays[lastWkDays.length-1].dow;
+                    const extendedDays = [...lastWkDays];
+                    for (let nd=1; nd<=6-lastDow_; nd++) {
+                      extendedDays.push({ds: fmtDs(nextYear_, nextMonth_, nd)});
+                    }
+                    extendedDays.forEach(({ds}) => {
                       const s = best[emp.id]?.[ds];
                       if (s === "휴무" || s === "휴무(꼭)") cnt_++;
                     });
