@@ -13,12 +13,10 @@ body { font-family:-apple-system,'Noto Sans KR',sans-serif; background:#f0f0f0; 
 .row { display:flex; gap:10px; padding:10px 16px; border-bottom:1px solid #f5f5f5; }
 .row:last-child { border-bottom:none; }
 .lbl { font-size:12px; color:#e05a5a; font-weight:600; width:60px; flex-shrink:0; padding-top:1px; }
-.val { font-size:13px; color:#333; flex:1; line-height:1.6; }
-.val a { color:#333; text-decoration:none; }
-.val.addr { font-size:12px; color:#555; }
-.notice { font-size:12px; color:#444; line-height:1.8; padding:12px 16px; white-space:pre-line; }
-.map-wrap { width:100%; height:180px; background:#e8e8e8; position:relative; overflow:hidden; border-radius:0 0 12px 12px; }
-.map-wrap iframe { width:100%; height:100%; border:none; }
+.val { font-size:14px; color:#222; font-weight:500; flex:1; line-height:1.6; }
+.val a { color:#222; text-decoration:none; }
+.notice { font-size:12px; color:#444; line-height:1.8; padding:12px 16px; white-space:pre-line; border-top:1px solid #f5f5f5; }
+.map-btn { display:block; margin:12px 16px 16px; padding:11px; background:#f8f8ff; border:1px solid #e0dcff; border-radius:10px; text-align:center; font-size:13px; font-weight:600; color:#7c6af7; text-decoration:none; }
 .badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; }
 .badge-confirmed { background:#e8f5e9; color:#2e7d32; }
 .badge-pending   { background:#fff8e1; color:#e65100; }
@@ -55,18 +53,16 @@ async function load() {
   const id = new URLSearchParams(location.search).get("id");
   if (!id) { err("잘못된 접근", "예약 ID가 없습니다."); return; }
   try {
-    // 예약 조회 (reservation_id 우선, 없으면 id)
-    let rsv;
+    let rows = [];
     let r = await fetch(`${SB}/rest/v1/reservations?reservation_id=eq.${encodeURIComponent(id)}&select=*&limit=1`, {headers:H});
-    let rows = await r.json();
+    rows = await r.json();
     if (!rows.length) {
       r = await fetch(`${SB}/rest/v1/reservations?id=eq.${encodeURIComponent(id)}&select=*&limit=1`, {headers:H});
       rows = await r.json();
     }
     if (!rows.length) { err("예약 정보 없음", "예약 정보를 찾을 수 없습니다."); return; }
-    rsv = rows[0];
+    const rsv = rows[0];
 
-    // 지점 조회
     let branch = {};
     if (rsv.bid) {
       r = await fetch(`${SB}/rest/v1/branches?id=eq.${rsv.bid}&select=name,phone,address,noti_config&limit=1`, {headers:H});
@@ -79,12 +75,10 @@ async function load() {
 
     const [stLabel, stCls] = statusMap[rsv.status] || [rsv.status || "-", ""];
     const fmtDate = d => d ? d.replace(/-/g, ".") : "-";
-
-    // 안내사항 (notiConfig.branchNotice)
     const notice = branch.cfg?.branchNotice || "";
-    // 지도 embed URL (주소 기반 네이버 지도)
-    const mapAddr = encodeURIComponent(branch.address || branch.name || "");
-    const mapUrl = mapAddr ? `https://map.naver.com/v5/search/${mapAddr}?embed=true` : "";
+    const addr = branch.address || "";
+    const naverMapUrl = addr ? `https://map.naver.com/v5/search/${encodeURIComponent(addr)}` : "";
+    const kakaoMapUrl = addr ? `https://map.kakao.com/?q=${encodeURIComponent(addr)}` : "";
 
     document.getElementById("app").innerHTML = `
       <div class="section">
@@ -97,10 +91,10 @@ async function load() {
       <div class="section">
         <div class="section-title">지점 정보</div>
         <div class="row"><span class="lbl">상호</span><span class="val">${branch.name || "-"}</span></div>
-        ${branch.address ? `<div class="row"><span class="lbl">주소</span><span class="val addr">${branch.address}</span></div>` : ""}
+        ${addr ? `<div class="row"><span class="lbl">주소</span><span class="val" style="font-size:13px;color:#555">${addr}</span></div>` : ""}
         ${branch.phone ? `<div class="row"><span class="lbl">전화번호</span><span class="val"><a href="tel:${branch.phone.replace(/-/g,"")}">${branch.phone}</a></span></div>` : ""}
         ${notice ? `<div class="notice">${notice}</div>` : ""}
-        ${mapAddr ? `<div class="map-wrap"><iframe src="https://map.naver.com/v5/search/${mapAddr}" allowfullscreen></iframe></div>` : ""}
+        ${naverMapUrl ? `<a href="${naverMapUrl}" target="_blank" class="map-btn">🗺 네이버 지도에서 길찾기</a>` : ""}
       </div>`;
   } catch(e) { err("오류", e.message); }
 }
