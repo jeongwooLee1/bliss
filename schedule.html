@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.16-y";
+const SCH_V = "v2026.03.16-z";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -572,10 +572,13 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       let needed = Math.max(0, target - already);
       if (needed <= 0) return;
       // 현아는 수(2)→목(3) 고정, 나머지는 일반 요일 순
-      // 격주 직원은 seededDates(전달 이월 근무) 무시하고 배정 가능 — MUST_OFF/휴무(꼭)만 제외
+      // 격주 직원 배정 가능 조건: WORK이거나 빈 날 (seeded 날짜도 WORK면 배정 허용 — 이월 근무 위에 휴무 가능)
+      // 단 seeded 날짜 중 이미 휴무/꼭인 건 건드리지 않음
       const altCanPlace = (d) => {
         const s = sch[emp.id][d.ds];
-        return !s || s === STATUS.WORK; // 비어있거나 근무인 날만 (휴무꼭 제외)
+        if (s === "휴무(꼭)") return false; // 꼭 보호
+        if (!s || s === STATUS.WORK) return true; // 빈 날이나 근무는 가능
+        return false; // 이미 휴무/지원 등이면 스킵
       };
       const pref = emp.id === "현아"
         ? [...thisMonthDays.filter(d=>d.dow===2&&altCanPlace(d)),
@@ -926,8 +929,8 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       const needed = rc.minWork - workCount;
       const wkIdx = getWeekIdx(ds);
 
-      // 이 날 일반휴무인 직원만 대상 (휴무(꼭) 제외, 남자직원 제외, 원장 제외)
-      const candidates = employees.filter(e => !e.isOwner && !e.isMale && sch[e.id][ds] === STATUS.OFF)
+      // 이 날 일반휴무인 직원만 대상 (휴무(꼭) 제외, 남자직원 제외, 원장 제외, seeded 보호)
+      const candidates = employees.filter(e => !e.isOwner && !e.isMale && sch[e.id][ds] === STATUS.OFF && !seededDates.has(ds))
         .sort((a, b) => {
           // 같은 주에 더 많이 쉰 직원 우선 (여유분 있음)
           const count = (emp) => Object.entries(sch[emp.id])
@@ -1082,6 +1085,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
           const wkOffDays = wkDays.filter(d =>
             !d.isNext &&                              // isNext 이월 날짜 MOVE 금지
             !(emp.isMale && d.dow === 6) &&           // 남자직원 일요일 MOVE 금지
+            !seededDates.has(d.ds) &&                 // seeded 날짜 MOVE 금지 (이월 보호)
             sch[emp.id]?.[d.ds] === STATUS.OFF        // 휴무(꼭) 제외 — 이동 불가
           );
           if (wkOffDays.length < 1) continue;
