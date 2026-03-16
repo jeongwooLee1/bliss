@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.237";
+const BLISS_V = "2.69.238";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7206,7 +7206,9 @@ function AdminNoti({ data, sb, bizId, branches }) {
   const up=(k,v)=>{setCfg(p=>({...p,[k]:v}));setSaved(false);};
   const save=async()=>{
     if(!selBranch)return;
-    await sb.update("branches",selBranch,{noti_config:JSON.stringify(cfg)}).catch(console.error);
+    const cfgStr=JSON.stringify(cfg);
+    await sb.update("branches",selBranch,{noti_config:cfgStr}).catch(console.error);
+    setData(prev=>prev?{...prev,branches:(prev.branches||[]).map(b=>b.id===selBranch?{...b,notiConfig:cfg}:b)}:prev);
     setSaved(true); setTimeout(()=>setSaved(false),2000);
   };
 
