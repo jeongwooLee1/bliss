@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<script>
+const id = location.search.slice(1) || location.hash.slice(1);
+if (id) location.replace("./rsv.html?id=" + id);
+else location.replace("./");
+</script>
+</head>
+<body></body>
+</html>
