@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.16-i";
+const SCH_V = "v2026.03.16-j";
 const BRANCHES = [
   { id: "nonhyeon", name: "논현&왕십리", color: "#c8793a", minStaff: 4 },
   { id: "hongdae",  name: "홍대&마곡",   color: "#3a9e8e", minStaff: 2 },
@@ -540,7 +540,9 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
   // [Phase A] 직원별 강제 휴무 위치 계산
   const forcedOff = {}; // { empId: Set<ds> }
 
-  employees.filter(e => !isAltPattern(e) && !e.isMale).forEach(emp => {
+  // 직원 처리 순서를 랜덤화 → 같은 날 충돌 시 매번 다른 직원이 양보
+  const shuffledEmps = shuffle(employees.filter(e => !isAltPattern(e) && !e.isMale));
+  shuffledEmps.forEach(emp => {
     forcedOff[emp.id] = new Set();
     let streak = getCarry(emp.id, allDsOrdered[0]);
 
@@ -554,8 +556,13 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       if (s === "휴무" || s === "휴무(꼭)") { streak = 0; continue; }
       streak++;
       if (streak >= rc.maxConsecWork) {
-        // 이 날을 강제 휴무로 지정 → streak 리셋
-        forcedOff[emp.id].add(ds);
+        // maxConsecWork 도달 시 ±1일 범위에서 랜덤으로 강제 휴무 날 선택
+        const candidates = [ds];
+        const prev1 = addDays(ds, -1), next1 = addDays(ds, 1);
+        if (allDsOrdered.includes(prev1) && !seededDates.has(prev1)) candidates.push(prev1);
+        if (allDsOrdered.includes(next1) && !seededDates.has(next1)) candidates.push(next1);
+        const picked = candidates[Math.floor(rng() * candidates.length)];
+        forcedOff[emp.id].add(picked);
         streak = 0;
       }
     }
@@ -641,7 +648,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
   });
 
   // [Phase D] 주간 쿼터 채우기
-  employees.filter(e => !isAltPattern(e)).forEach(emp => {
+  shuffle(employees.filter(e => !isAltPattern(e))).forEach(emp => {
     const branch = BRANCHES.find(b => b.id === emp.branch);
     const branchEmps = employees.filter(e => e.branch === emp.branch);
     const monthlyTarget = getWeeklyOff(emp) * weekCount;
