@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.229";
+const BLISS_V = "2.69.230";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -405,32 +405,21 @@ const sx = {
   },
 };
 
-// ─── 알림톡 발송 (알리고 API, Supabase Edge Function 경유) ───
-const buildAlimtalkMsg = (tpl, params) => {
-  let msg = tpl || "";
-  Object.entries(params || {}).forEach(([k,v]) => { msg = msg.replaceAll(k, v||""); });
-  return msg;
-};
-const sendAlimtalk = async (notiKey, phone, params, branchCfg) => {
+// ─── 알림톡 발송 (alimtalk_queue INSERT → Oracle 서버가 알리고 직접 호출) ───
+const sendAlimtalk = async (notiKey, phone, params, branchCfg, branchId) => {
   try {
     const cfg = branchCfg || {};
     const noti = cfg[notiKey] || {};
     if(!noti.on || !noti.tplCode || !noti.msgTpl) return null;
     if(!cfg.aligoKey || !cfg.aligoId || !cfg.senderKey || !cfg.senderPhone || !phone) return null;
-    const message = buildAlimtalkMsg(noti.msgTpl, params);
-    const payload = {
-      apikey: cfg.aligoKey, userid: cfg.aligoId, senderkey: cfg.senderKey,
-      tpl_code: noti.tplCode, sender: cfg.senderPhone.replace(/-/g,""),
-      receiver: phone.replace(/-/g,""), recvname: params["#{고객명}"]||"", message
-    };
-    const r = await fetch(SB_URL+"/functions/v1/send-alimtalk", {
-      method:"POST", headers:{"Content-Type":"application/json","Authorization":"Bearer "+SB_KEY},
-      body:JSON.stringify(payload)
+    const r = await fetch(SB_URL+"/rest/v1/alimtalk_queue", {
+      method:"POST",
+      headers:{"Content-Type":"application/json","Authorization":"Bearer "+SB_KEY,"apikey":SB_KEY,"Prefer":"return=minimal"},
+      body:JSON.stringify({branch_id:branchId||"", noti_key:notiKey, phone, params:params||{}})
     });
-    const res = await r.json();
-    console.log("알림톡:", res.result_code===1?"성공":"실패", res);
-    return res;
-  } catch(e) { console.warn("알림톡 발송 실패:", e.message); return null; }
+    if(r.ok) console.log("알림톡 큐 등록:", notiKey, phone);
+    return r.ok;
+  } catch(e) { console.warn("알림톡 큐 등록 실패:", e.message); return null; }
 };
 const fmt = n => (n || 0).toLocaleString("ko-KR");
 const fmtLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
@@ -2338,7 +2327,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
         sendAlimtalk("rsv_confirm", item.custPhone, {
           "#{고객명}":item.custName||"고객", "#{날짜}":item.date||"", "#{시간}":item.time||"",
           "#{지점명}":branch?.name||"", "#{전화번호}":branch?.phone||""
-        }, branch?.notiConfig);
+        }, branch?.notiConfig, branch?.id);
       } catch(e) { console.warn("알림톡:", e); }
     }
     setShowModal(false); setModalData(null);
