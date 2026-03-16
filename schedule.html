@@ -221,12 +221,12 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
   const monthStr = `${year}-${String(month+1).padStart(2,"0")}`;
   const nextYear3b = month === 11 ? year + 1 : year;
   const nextMonthStr = `${nextYear3b}-${String((month+2 > 12 ? 1 : month+2)).padStart(2,"0")}`;
-  Object.entries(ownerReqs).forEach(([key, status]) => {
+  Object.entries(ownerReqs||{}).forEach(([key, status]) => {
     const [eid, ds] = key.split("__");
     if (sch[eid] && (ds.startsWith(monthStr) || ds.startsWith(nextMonthStr))) sch[eid][ds] = status;
   });
   // 1-a-2) 일반직원 휴무(꼭) 우선 적용 — seededDates에 추가해 이후 단계에서 건드리지 않음
-  Object.entries(empReqs).forEach(([key, status]) => {
+  Object.entries(empReqs||{}).forEach(([key, status]) => {
     const [eid, ds] = key.split("__");
     if (sch[eid] && (ds.startsWith(monthStr) || ds.startsWith(nextMonthStr))) {
       sch[eid][ds] = status;
@@ -235,7 +235,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
 
   // 1-b) 반복 설정: ownerRepeat dows → 이번달 + 이월 날짜 자동 적용 (ownerReqs 우선)
   employees.filter(e=>e.isOwner).forEach(emp => {
-    const rep = ownerRepeat[emp.id];
+    const rep = (ownerRepeat||{})[emp.id];
     if (!rep?.enabled || !rep.dows?.length) return;
     for (let d=1; d<=dim; d++) {
       const dow = getDow0Mon(year, month, d);
@@ -1879,9 +1879,26 @@ function App() {
             setIsAssigning(true);
             setTimeout(()=>{
               try {
+                // 디버그: 각 단계에서 에러 위치 찾기
+                if(!ownerReqs) throw new Error("ownerReqs undefined");
+                if(!empReqs) throw new Error("empReqs undefined");
+                if(!ACTIVE_EMPLOYEES?.length) throw new Error("ACTIVE_EMPLOYEES empty/undefined");
+                if(!ruleConfig) throw new Error("ruleConfig undefined");
+                if(!Array.isArray(supportOrder)) throw new Error("supportOrder not array: "+typeof supportOrder);
                 const MAX_RETRY=30; let best=null, bestV=null;
                 for(let i=0;i<MAX_RETRY;i++){
-                  const r=autoAssign(year,month,ownerReqs,prevSch,empSettings,{order:supportOrder},ruleConfig,ownerRepeat,ACTIVE_EMPLOYEES,empReqs,Date.now()+i*997);
+                  const r=autoAssign(
+                    year,month,
+                    ownerReqs||{},
+                    prevSch||{},
+                    empSettings||{},
+                    {order:supportOrder||[]},
+                    ruleConfig||{},
+                    ownerRepeat||{},
+                    ACTIVE_EMPLOYEES||[],
+                    empReqs||{},
+                    Date.now()+i*997
+                  );
                   const v=validateSch(r,ACTIVE_EMPLOYEES);
                   if(v.length===0){best=r;bestV=[];break;}
                   if(!best||v.length<bestV.length){best=r;bestV=v;}
