@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.16-w";
+const SCH_V = "v2026.03.16-x";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -223,7 +223,10 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
   const nextMonthStr = `${nextYear3b}-${String((month+2 > 12 ? 1 : month+2)).padStart(2,"0")}`;
   Object.entries(ownerReqs||{}).forEach(([key, status]) => {
     const [eid, ds] = key.split("__");
-    if (sch[eid] && (ds.startsWith(monthStr) || ds.startsWith(nextMonthStr))) sch[eid][ds] = status;
+    if (sch[eid] && (ds.startsWith(monthStr) || ds.startsWith(nextMonthStr))) {
+      sch[eid][ds] = status;
+      seededDates.add(ds); // 원장 고정 휴무 보호 — 이후 단계에서 덮어쓰지 않음
+    }
   });
   // 1-a-2) 일반직원 휴무(꼭) 우선 적용 — seededDates에 추가해 이후 단계에서 건드리지 않음
   Object.entries(empReqs||{}).forEach(([key, status]) => {
@@ -1168,9 +1171,9 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       const offEmps = employees.filter(e => !e.isMale && ["휴무","휴무(꼭)"].includes(sch[e.id][ds])); // 남자직원 별도
       if (offEmps.length <= rc.maxDailyOff) continue;
 
-      // 초과분만 근무 전환 — 휴무(꼭) 제외, 주간 weeklyOff 초과분 우선 취소
+      // 초과분만 근무 전환 — 휴무(꼭)/seededDates/원장 제외, 주간 weeklyOff 초과분 우선 취소
       const cancelCands = offEmps
-        .filter(e => sch[e.id][ds] === STATUS.OFF) // 휴무(꼭) 제외
+        .filter(e => sch[e.id][ds] === STATUS.OFF && !seededDates.has(ds) && !e.isOwner) // 휴무(꼭)/보호날짜/원장 제외
         .sort((a, b) => {
           // 이 주에 weeklyOff 초과로 쉬는 직원 우선 (여유 있음)
           const wkIdx = getWeekIdx(ds);
