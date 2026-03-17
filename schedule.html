@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.17-p";
+const SCH_V = "v2026.03.17-q";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -781,16 +781,12 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     });
   });
 
-  // [Phase D] 주간 쿼터 채우기 (원장 제외 - ownerReqs로만 배정)
+  // [Phase D] 주간 쿼터 채우기 — 순수 주 단위, 월간 총량 개념 없음 (원장 제외)
   shuffle(employees.filter(e => !isAltPattern(e) && !e.isOwner)).forEach(emp => {
     const branch = BRANCHES.find(b => b.id === emp.branch);
     const branchEmps = employees.filter(e => e.branch === emp.branch);
-    const monthlyTarget = getWeeklyOff(emp) * weekCount;
-    let monthlyRemaining = monthlyTarget
-      - Object.values(sch[emp.id]).filter(s => ["휴무","휴무(꼭)"].includes(s)).length;
 
     activeWeeks.forEach((week, wi) => {
-      if (monthlyRemaining <= 0) return;
       const thisWeekDays = week.filter(d => !d.isPrev);
       const realDays = thisWeekDays.filter(d => !d.isNext);
       if (realDays.length <= 1 && wi < activeWeeks.length - 1) return;
@@ -798,7 +794,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       const weekOffNow = thisWeekDays.filter(d =>
         (emp.isMale || !d.isNext) && ["휴무","휴무(꼭)"].includes(sch[emp.id]?.[d.ds])
       ).length;
-      const weekTarget = Math.min(getWeeklyOff(emp), monthlyRemaining + weekOffNow);
+      const weekTarget = getWeeklyOff(emp);
       let toAssign = Math.max(0, weekTarget - weekOffNow);
       if (toAssign <= 0) return;
 
@@ -838,7 +834,6 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
         }
         sch[emp.id][day.ds] = STATUS.OFF;
         toAssign--;
-        monthlyRemaining--;
       }
 
       // Phase D 보완: canAssignOff 통과 못해서 부족한 쿼터는 canAssignOffHard로 강제 채움
@@ -853,7 +848,6 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
           if (!canAssignOffHard(emp, day, branchEmps, branch)) continue;
           sch[emp.id][day.ds] = STATUS.OFF;
           toAssign--;
-          monthlyRemaining--;
         }
       }
     });
@@ -971,27 +965,36 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     if (!fixed) break;
   }
 
-  // 6) 월 총 휴무 미달 보정 패스: 주 수 × weeklyOff 대비 부족분을 남은 날짜에서 보충
-  //    weeks[] 기준 주 경계 사용, 배정마다 weekOffNow 재계산, 연속 2회 제한 적용
-  employees.filter(e => !isAltPattern(e) && !e.isOwner && !e.isMale).forEach(emp => { // 남자직원은 step2에서 완료
+  // 6) 주간 휴무 미달 보정 + 퐁당퐁당(휴무-근무-휴무-근무) 패턴 방지
+  employees.filter(e => !isAltPattern(e) && !e.isOwner && !e.isMale).forEach(emp => {
     const branch = BRANCHES.find(b => b.id === emp.branch);
     const branchEmps = employees.filter(e => e.branch === emp.branch);
-    const monthlyTarget = getWeeklyOff(emp) * weekCount;
-    const monthlyOffNow = () => Object.values(sch[emp.id]).filter(s => ["휴무","휴무(꼭)"].includes(s)).length;
+
+    // 퐁당퐁당 패턴 감지: 배정 후 휴무-근무-휴무-근무 패턴이 생기는지 체크
+    const wouldMakeAltPattern = (ds) => {
+      const isOff_ = (s) => ["휴무","휴무(꼭)"].includes(s);
+      const getS_ = (d) => sch[emp.id]?.[d] || "";
+      const p1 = addDays(ds, -1), p2 = addDays(ds, -2), p3 = addDays(ds, -3);
+      const n1 = addDays(ds, 1), n2 = addDays(ds, 2), n3 = addDays(ds, 3);
+      // 현재 ds에 휴무 배정 시 생기는 패턴 체크
+      // 휴무(ds)-근무(n1)-휴무(n2) → 앞으로 퐁당퐁당 유발
+      if (!isOff_(getS_(n1)) && isOff_(getS_(n2))) return true;
+      // 휴무(p2)-근무(p1)-휴무(ds) → 뒤로 퐁당퐁당
+      if (isOff_(getS_(p2)) && !isOff_(getS_(p1))) return true;
+      return false;
+    };
 
     activeWeeks.forEach(week => {
       const thisMonthDays = week.filter(d => !d.isPrev);
       if (thisMonthDays.length === 0) return;
 
-      // 이 주 휴무 수를 매번 재계산
       const weekOffNow = () => thisMonthDays.filter(d => ["휴무","휴무(꼭)"].includes(sch[emp.id][d.ds])).length;
-      // 월 총량 초과 금지, 주당 weeklyOff 초과 금지
-      const weekDeficit = () => Math.min(getWeeklyOff(emp) - weekOffNow(), monthlyTarget - monthlyOffNow());
-      if (weekDeficit() <= 0) return;
+      const deficit = () => getWeeklyOff(emp) - weekOffNow();
+      if (deficit() <= 0) return;
 
       const cands = thisMonthDays
-        .filter(d => sch[emp.id][d.ds] === STATUS.WORK
-          && !(emp.isMale && d.dow === 6)) // 남자직원 일요일 STEP A 보호
+        .filter(d => sch[emp.id][d.ds] === STATUS.WORK && !seededDates.has(d.ds)
+          && !(emp.isMale && d.dow === 6))
         .sort((a, b) => {
           if (!!a.isNext !== !!b.isNext) return (a.isNext ? 1 : 0) - (b.isNext ? 1 : 0);
           const aOff = branchEmps.filter(be=>be.id!==emp.id&&["휴무","휴무(꼭)"].includes(sch[be.id][a.ds])).length;
@@ -1000,35 +1003,44 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
         });
 
       for (const day of cands) {
-        if (weekDeficit() <= 0) break;
+        if (deficit() <= 0) break;
         if (!canAssignOff(emp, day, branchEmps, branch)) continue;
-
-        // 전체 최소 11명 보호
+        if (wouldMakeAltPattern(day.ds)) continue; // 퐁당퐁당 패턴 방지
         const totalWorking = employees.filter(e => {
           const s = sch[e.id][day.ds];
           return s===STATUS.WORK||isSupport(s)||s===STATUS.SHARE;
         }).length;
         if (totalWorking <= rc.minWork) continue;
-
-        // 지점 최소 근무 인원 보호
         const branchWorking = branchEmps.filter(be =>
           !["휴무","휴무(꼭)"].includes(sch[be.id][day.ds])
         ).length;
         if (branch && branchWorking - 1 < (rc.branchMinStaff[branch.id] ?? branch.minStaff)) continue;
-
         sch[emp.id][day.ds] = STATUS.OFF;
-        // weekOffNow / monthlyOffNow는 함수로 매번 재계산 → 중복 삽입 방지
       }
     });
   });
 
-  // 6.5) 2주 연속휴무 보장: 2주 단위로 연속 2일 이상 휴무가 없는 직원에게 추가 배정
+  // 6.5) 월간 2일 연속휴무 정확히 2회 보장
+  //       - 현재 연속휴무 횟수 세기 → 부족하면 ADD/MOVE로 추가, 초과하면 분리
   if (rc.biweeklyConsecOff) {
     const activeWeeks2 = activeWeeks.filter(w => w.some(d => !d.isPrev && !d.isNext));
     const twoWeekBlocks = [];
     for (let i = 0; i < activeWeeks2.length; i += 2) {
       twoWeekBlocks.push(activeWeeks2.slice(i, Math.min(i + 2, activeWeeks2.length)));
     }
+    // 월간 연속휴무 횟수 계산
+    const countConsecOff = (empId) => {
+      const allDs = activeWeeks2.flatMap(w => w.filter(d => !d.isPrev));
+      let cnt = 0;
+      for (let i = 1; i < allDs.length; i++) {
+        const isOff = (ds) => ["휴무","휴무(꼭)"].includes(sch[empId]?.[ds]);
+        if (addDays(allDs[i-1].ds, 1) === allDs[i].ds && isOff(allDs[i-1].ds) && isOff(allDs[i].ds)) {
+          // 연속 구간 시작점만 카운트 (3연속도 1회로 처리)
+          if (i < 2 || !isOff(allDs[i-2]?.ds)) cnt++;
+        }
+      }
+      return cnt;
+    };
 
     // 블록 내 날짜 배열에서 연속 2일 휴무 여부
     const hasConsecOff = (empId, days) =>
@@ -1050,11 +1062,15 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       const branch = BRANCHES.find(b => b.id === emp.branch);
       const branchEmps = employees.filter(e => e.branch === emp.branch);
       const wo = getWeeklyOff(emp); // 주당 휴무 기준
+      const TARGET_CONSEC = 2; // 월간 목표 연속휴무 횟수
 
       (twoWeekBlocks||[]).forEach(block => {
         const blockDays = block.flatMap(w => w.filter(d => !d.isPrev));
         if (blockDays.length < 2) return;
-        if (hasConsecOff(emp.id, blockDays)) return;
+        // 이미 이 블록에 연속휴무 있으면 스킵 — 단 월간 총 횟수가 2 미만이면 진행
+        const curTotal = countConsecOff(emp.id);
+        if (hasConsecOff(emp.id, blockDays) && curTotal >= TARGET_CONSEC) return;
+        if (curTotal >= TARGET_CONSEC) return; // 이미 2회 달성
 
         const offDays = blockDays.filter(d =>
           ["휴무","휴무(꼭)"].includes(sch[emp.id]?.[d.ds])
