@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.17-s";
+const SCH_V = "v2026.03.17-t";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -612,19 +612,31 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       let needed = Math.max(0, target - already);
       if (needed <= 0) return;
 
-      // 격주 직원 배정: prefDows 설정 시 해당 요일 우선, 없으면 전체 요일
+      // 격주 직원 배정: prefDows 설정 시 해당 요일 우선, 막히면 전체 요일 fallback
       const altCanPlace = (d) => !sch[emp.id][d.ds] && !seededDates.has(d.ds);
       const prefDows_ = empSettings[emp.id]?.prefDows || [];
-      const pref = prefDows_.length > 0
-        ? [...prefDows_.flatMap(dow => thisMonthDays.filter(d => d.dow === dow && altCanPlace(d)))]
-        : thisMonthDays.filter(d => altCanPlace(d));
       const branchEmps = employees.filter(e=>e.branch===emp.branch);
       const branch = BRANCHES.find(b=>b.id===emp.branch);
-      for (const d of pref) {
+
+      // 1차 시도: prefDows 요일만
+      const prefCands = prefDows_.length > 0
+        ? [...prefDows_.flatMap(dow => thisMonthDays.filter(d => d.dow === dow && altCanPlace(d)))]
+        : thisMonthDays.filter(d => altCanPlace(d));
+      for (const d of prefCands) {
         if (needed <= 0) break;
-        if (!canAssignOff(emp, d, branchEmps, branch, false, true)) continue; // 격주: 퐁당퐁당 체크 제외
+        if (!canAssignOff(emp, d, branchEmps, branch, false, true)) continue;
         sch[emp.id][d.ds] = STATUS.OFF;
         needed--;
+      }
+      // 2차 시도: prefDows로 부족하면 전체 요일 fallback
+      if (needed > 0 && prefDows_.length > 0) {
+        const fallbackCands = thisMonthDays.filter(d => !prefDows_.includes(d.dow) && altCanPlace(d));
+        for (const d of fallbackCands) {
+          if (needed <= 0) break;
+          if (!canAssignOff(emp, d, branchEmps, branch, false, true)) continue;
+          sch[emp.id][d.ds] = STATUS.OFF;
+          needed--;
+        }
       }
     });
   });
@@ -1444,6 +1456,8 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       const branch = BRANCHES.find(b => b.id === emp.branch);
       const branchEmps = employees.filter(e => e.branch === emp.branch);
       const wo = getWeeklyOff(emp);
+      const isAlt = isAltPattern(emp);
+      const prefDows9 = isAlt ? (empSettings[emp.id]?.prefDows || []) : [];
 
       activeWeeks.forEach(week => {
         const wkDays = week.filter(d => !d.isPrev);
@@ -1453,10 +1467,9 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
         const needed = wo - offNow;
         if (needed <= 0) return;
 
-        // 근무 중인 날 후보: isNext 후순위, 전체 off가 적은 날 우선, 남자직원 일요일 보호
-        const addCands = wkDays
+        const baseCands = wkDays
           .filter(d => sch[emp.id]?.[d.ds] === STATUS.WORK && !seededDates.has(d.ds)
-            && !(emp.isMale && d.dow === 6)) // 남자직원 일요일은 STEP A 배정 보호
+            && !(emp.isMale && d.dow === 6))
           .sort((a, b) => {
             if (!!a.isNext !== !!b.isNext) return (a.isNext ? 1 : -1);
             const aOff = employees.filter(e => !e.isMale && ["휴무","휴무(꼭)"].includes(sch[e.id]?.[a.ds])).length;
@@ -1464,10 +1477,17 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
             return aOff - bOff;
           });
 
+        // 격주 직원: prefDows 우선 정렬
+        const addCands = isAlt && prefDows9.length > 0
+          ? [...baseCands.filter(d => prefDows9.includes(d.dow)),
+             ...baseCands.filter(d => !prefDows9.includes(d.dow))]
+          : baseCands;
+
         let added = 0;
         for (const day of addCands) {
           if (added >= needed) break;
-          if (emp.isMale ? !canMaleOff(emp, day, branchEmps, branch) : !canAssignOff(emp, day, branchEmps, branch)) continue;
+          const skipAlt = isAlt;
+          if (emp.isMale ? !canMaleOff(emp, day, branchEmps, branch) : !canAssignOff(emp, day, branchEmps, branch, false, skipAlt)) continue;
           const totalWorking = employees.filter(e => {
             if (e.isMale) return false;
             const s = sch[e.id][day.ds];
