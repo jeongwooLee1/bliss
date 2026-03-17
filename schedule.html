@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.17-t";
+const SCH_V = "v2026.03.17-u";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -582,14 +582,33 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
 
       const hasPrev = week.some(d => d.isPrev);
 
-      // 브릿징 주: 배정 스킵, already(전체 7일 휴무 수)만 기록
+      // 브릿징 주: 배정 스킵, 전달 마지막 주(월~일) 전체 휴무 수 기록
+      // weeks의 isPrev는 firstDow일 수만큼만 포함 → 나머지 전달 날짜도 prevSchData에서 직접 읽음
       if (hasPrev) {
-        const bridgeOff = week.filter(d => {
+        const prevYear_ = month === 0 ? year-1 : year;
+        const prevMonth_ = month === 0 ? 11 : month-1;
+        const prevLastDay_ = new Date(year, month, 0).getDate();
+        // 브릿징 주의 월요일 찾기 (weeks 첫 날 = firstDow일 전부터)
+        const bridgeMon = week[0]; // isPrev 첫 날 (항상 월요일 or 그 이후)
+        // 브릿징 주 전체(월~weeks의 마지막 날)에서 휴무 수 계산
+        let bridgeOff = 0;
+        // 1) weeks에 포함된 날짜
+        week.forEach(d => {
           const s = d.isPrev
             ? (prevSchData?.[emp.id]?.[d.ds] || "")
             : (sch[emp.id]?.[d.ds] || "");
-          return ["휴무","휴무(꼭)"].includes(s);
-        }).length;
+          if (["휴무","휴무(꼭)"].includes(s)) bridgeOff++;
+        });
+        // 2) weeks에 없는 전달 날짜 (브릿징 주 월요일 이전 부분)
+        // bridgeMon.ds 이전으로 같은 주의 월요일까지 스캔
+        const bridgeMonDow = bridgeMon.dow; // 브릿징 주 첫 isPrev날의 요일
+        for (let back = 1; back <= bridgeMonDow; back++) {
+          const scanDate = new Date(bridgeMon.ds);
+          scanDate.setDate(scanDate.getDate() - back);
+          const scanDs = fmtDs(scanDate.getFullYear(), scanDate.getMonth(), scanDate.getDate());
+          const s = prevSchData?.[emp.id]?.[scanDs] || "";
+          if (["휴무","휴무(꼭)"].includes(s)) bridgeOff++;
+        }
         prevActualOff = bridgeOff;
         return; // 배정 없이 종료
       }
