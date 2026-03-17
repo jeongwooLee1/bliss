@@ -16,7 +16,8 @@ body { font-family:-apple-system,'Noto Sans KR',sans-serif; background:#f0f0f0; 
 .val { font-size:14px; color:#222; font-weight:500; flex:1; line-height:1.6; }
 .val a { color:#222; text-decoration:none; }
 .notice { font-size:12px; color:#444; line-height:1.8; padding:12px 16px; white-space:pre-line; border-top:1px solid #f5f5f5; }
-.map-btn { display:block; margin:12px 16px 16px; padding:11px; background:#f8f8ff; border:1px solid #e0dcff; border-radius:10px; text-align:center; font-size:13px; font-weight:600; color:#7c6af7; text-decoration:none; }
+.map-wrap { width:100%; height:200px; border-top:1px solid #f5f5f5; }
+#map { width:100%; height:100%; }
 .badge { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; }
 .badge-confirmed { background:#e8f5e9; color:#2e7d32; }
 .badge-pending   { background:#fff8e1; color:#e65100; }
@@ -38,6 +39,8 @@ body { font-family:-apple-system,'Noto Sans KR',sans-serif; background:#f0f0f0; 
   </div>
   <div id="app"><div class="section"><div class="loading">불러오는 중...</div></div></div>
 </div>
+
+<script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=5f0cc5697d54c89434269a04f5fe75e1&libraries=services"></script>
 <script>
 const SB = "https://dpftlrsuqxqqeouwbfjd.supabase.co";
 const KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwZnRscnN1cXhxcWVvdXdiZmpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5MDU4MjQsImV4cCI6MjA4NzQ4MTgyNH0.iydEkjtPjZ0jXpUUPJben4IWWneDqLomv-HDlcFayE4";
@@ -48,6 +51,19 @@ const statusMap = {
   pending:   ["대기중",  "badge-pending"],
   cancelled: ["취소됨",  "badge-cancelled"],
 };
+
+function showMap(addr) {
+  if (!addr || typeof kakao === 'undefined') return;
+  var geocoder = new kakao.maps.services.Geocoder();
+  geocoder.addressSearch(addr, function(result, status) {
+    if (status !== kakao.maps.services.Status.OK) return;
+    var coords = new kakao.maps.LatLng(result[0].y, result[0].x);
+    var mapDiv = document.getElementById('map');
+    if (!mapDiv) return;
+    var map = new kakao.maps.Map(mapDiv, { center: coords, level: 3 });
+    new kakao.maps.Marker({ map: map, position: coords });
+  });
+}
 
 async function load() {
   const id = new URLSearchParams(location.search).get("id");
@@ -77,8 +93,7 @@ async function load() {
     const fmtDate = d => d ? d.replace(/-/g, ".") : "-";
     const notice = branch.cfg?.branchNotice || "";
     const addr = branch.address || "";
-    const naverMapUrl = addr ? `https://map.naver.com/v5/search/${encodeURIComponent(addr)}` : "";
-    const kakaoMapUrl = addr ? `https://map.kakao.com/?q=${encodeURIComponent(addr)}` : "";
+    const hasMap = !!addr;
 
     document.getElementById("app").innerHTML = `
       <div class="section">
@@ -94,8 +109,10 @@ async function load() {
         ${addr ? `<div class="row"><span class="lbl">주소</span><span class="val" style="font-size:13px;color:#555">${addr}</span></div>` : ""}
         ${branch.phone ? `<div class="row"><span class="lbl">전화번호</span><span class="val"><a href="tel:${branch.phone.replace(/-/g,"")}">${branch.phone}</a></span></div>` : ""}
         ${notice ? `<div class="notice">${notice}</div>` : ""}
-        ${naverMapUrl ? `<a href="${naverMapUrl}" target="_blank" class="map-btn">🗺 네이버 지도에서 길찾기</a>` : ""}
+        ${hasMap ? `<div class="map-wrap"><div id="map"></div></div>` : ""}
       </div>`;
+
+    if (hasMap) showMap(addr);
   } catch(e) { err("오류", e.message); }
 }
 
