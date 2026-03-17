@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.17-l";
+const SCH_V = "v2026.03.17-m";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -557,46 +557,38 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     const weeklyOff = getWeeklyOff(emp);
     const lo = Math.max(1, weeklyOff - 1); // 적은 주 휴무
     const hi = weeklyOff;                   // 많은 주 휴무
-    // 이전 달 마지막 완전한 주 휴무수로 phaseShift 결정 (월간 패턴 연속성)
-    const phaseShift = (() => {
-      const weeklyOff2 = getWeeklyOff(emp);
-      const lo2 = Math.max(1, weeklyOff2 - 1);
-      // ① 이전달 배치 저장 시 기록한 __biweeklyNextPhase 우선 사용
-      // "hi"면 이번달 첫 주를 hi로 시작 → phaseShift=1(hi), "lo"면 phaseShift=0(lo)
-      const savedNextPhase = prevSchData?.__biweeklyNextPhase?.[emp.id];
-      if (savedNextPhase !== undefined) {
-        return savedNextPhase === "hi" ? 1 : 0;
-      }
-      // ② 폴백: 이전달 sch 날짜 스캔
-      const prevYear2 = month === 0 ? year - 1 : year;
-      const prevMonth2 = month === 0 ? 11 : month - 1;
-      const prevLastDay2 = new Date(year, month, 0).getDate();
-      // 마지막 월요일 찾기
-      let prevMon2 = prevLastDay2;
-      while (new Date(prevYear2, prevMonth2, prevMon2).getDay() !== 1) prevMon2--;
-      // 마지막 주가 3일 미만(불완전)이면 그 이전 주 사용
-      if (prevLastDay2 - prevMon2 < 2 && prevMon2 >= 8) prevMon2 -= 7;
-      const prevSun2 = prevMon2 + 6;
-      let cnt = 0;
-      for (let d2 = prevMon2; d2 <= prevSun2; d2++) {
-        let ds2;
-        if (d2 <= prevLastDay2) {
-          ds2 = fmtDs(prevYear2, prevMonth2, d2); // 전달 날짜
-        } else {
-          ds2 = fmtDs(year, month, d2 - prevLastDay2); // isNext(현재달 1,2,3일...)
-        }
-        const s2 = prevSchData?.[emp.id]?.[ds2];
-        if (s2 === STATUS.OFF || s2 === STATUS.MUST_OFF) cnt++;
-      }
-      if (cnt === 0) return firstDow > 0 ? 1 : 0;
-      return cnt <= lo2 ? 1 : 0;
-    })();
+
+    // phaseShift 불필요 — 각 주의 isPrev 날짜 실제 휴무값으로 직접 target 결정
+    // wi=0 주: isPrev(전달) 날짜 휴무 수를 세서 lo면 이번주 hi, hi면 이번주 lo
+    // wi>0 주: 이전 주 target의 반대
+    let prevTarget = null; // 이전 주 target 추적
+
     weeks.forEach((week, wi) => {
       const thisMonthDays = week.filter(d => !d.isPrev);
       if (thisMonthDays.length === 0) return;
       // 이번달 날짜가 1일뿐인 주는 스킵
       if (thisMonthDays.filter(d => !d.isNext).length <= 1) return;
-      const target = ((wi + phaseShift) % 2 === 0) ? lo : hi;
+
+      // 이 주의 target 결정
+      let target;
+      if (prevTarget === null) {
+        // 첫 주: isPrev 날짜 휴무 수로 판단
+        const prevOffCnt = week.filter(d => d.isPrev).filter(d => {
+          const s = prevSchData?.[emp.id]?.[d.ds] || sch[emp.id]?.[d.ds] || "";
+          return ["휴무","휴무(꼭)"].includes(s);
+        }).length;
+        // isPrev가 없으면(1일이 월요일) 기본 lo부터 시작
+        const hasPrev = week.some(d => d.isPrev);
+        if (!hasPrev) {
+          target = lo;
+        } else {
+          target = prevOffCnt <= lo ? hi : lo; // 전달이 lo였으면 이번주 hi, hi였으면 lo
+        }
+      } else {
+        target = prevTarget === hi ? lo : hi; // 교대
+      }
+      prevTarget = target;
+
       const already = alreadyOffCount(emp.id, week);
       let needed = Math.max(0, target - already);
       if (needed <= 0) return;
