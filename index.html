@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.243";
+const BLISS_V = "2.69.244";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -2272,9 +2272,9 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       const newCustId = "cust_" + uid();
       item.custId = newCustId;
       const newCust = {
-        id: newCustId, bid: item.bid, name: item.custName, phone: item.custPhone || "",
+        id: newCustId, bid: item.bid, name: item.custName, phone: (item.custPhone || "").replace(/[^0-9]/g, ""),
         gender: item.custGender || "", visits: 0, lastVisit: null, memo: "",
-        custNum: String(50000 + Math.floor(Math.random() * 10000))
+        custNum: ""
       };
       setData(prev => ({ ...prev, customers: [...prev.customers, newCust] }));
       sb.insert("customers", toDb("customers", newCust)).catch(console.error);
@@ -5916,11 +5916,12 @@ function CustomersPage({ data, setData, userBranches, isMaster }) {
   }).sort((a,b) => b.visits - a.visits);
 
   const handleSave = (item) => {
+    const normalized = {...item, phone: (item.phone || "").replace(/[^0-9]/g, "")};
     setData(prev => {
-      const ex = (prev?.customers||[]).find(c=>c.id===item.id);
-      if (ex) { sb.update("customers",item.id,toDb("customers",item)).catch(console.error); return {...prev,customers:(prev?.customers||[]).map(c=>c.id===item.id?item:c)}; }
-      sb.insert("customers",toDb("customers",item)).catch(console.error);
-      return {...prev,customers:[...prev.customers,item]};
+      const ex = (prev?.customers||[]).find(c=>c.id===normalized.id);
+      if (ex) { sb.update("customers",normalized.id,toDb("customers",normalized)).catch(console.error); return {...prev,customers:(prev?.customers||[]).map(c=>c.id===normalized.id?normalized:c)}; }
+      sb.insert("customers",toDb("customers",normalized)).catch(console.error);
+      return {...prev,customers:[...prev.customers,normalized]};
     });
     setShowModal(false); setEditItem(null);
   };
