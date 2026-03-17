@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.17-m";
+const SCH_V = "v2026.03.17-n";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -558,40 +558,48 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     const lo = Math.max(1, weeklyOff - 1); // 적은 주 휴무
     const hi = weeklyOff;                   // 많은 주 휴무
 
-    // phaseShift 불필요 — 각 주의 isPrev 날짜 실제 휴무값으로 직접 target 결정
-    // wi=0 주: isPrev(전달) 날짜 휴무 수를 세서 lo면 이번주 hi, hi면 이번주 lo
-    // wi>0 주: 이전 주 target의 반대
-    let prevTarget = null; // 이전 주 target 추적
+    // 전달 마지막 주(브릿징 주) = isPrev 날짜가 있는 첫 주
+    // 이 주는 전달 배치에서 이미 확정된 값 → 배정 스킵, already만 읽어서 다음 주 target 결정
+    // 이후 주는 브릿징 주의 already 기반으로 lo/hi 교대
+    let prevActualOff = null; // 브릿징 주 실제 휴무 수
 
     weeks.forEach((week, wi) => {
       const thisMonthDays = week.filter(d => !d.isPrev);
       if (thisMonthDays.length === 0) return;
-      // 이번달 날짜가 1일뿐인 주는 스킵
       if (thisMonthDays.filter(d => !d.isNext).length <= 1) return;
 
-      // 이 주의 target 결정
-      let target;
-      if (prevTarget === null) {
-        // 첫 주: isPrev 날짜 휴무 수로 판단
-        const prevOffCnt = week.filter(d => d.isPrev).filter(d => {
-          const s = prevSchData?.[emp.id]?.[d.ds] || sch[emp.id]?.[d.ds] || "";
+      const hasPrev = week.some(d => d.isPrev);
+
+      // 브릿징 주: 배정 스킵, already(전체 7일 휴무 수)만 기록
+      if (hasPrev) {
+        const bridgeOff = week.filter(d => {
+          const s = d.isPrev
+            ? (prevSchData?.[emp.id]?.[d.ds] || "")
+            : (sch[emp.id]?.[d.ds] || "");
           return ["휴무","휴무(꼭)"].includes(s);
         }).length;
-        // isPrev가 없으면(1일이 월요일) 기본 lo부터 시작
-        const hasPrev = week.some(d => d.isPrev);
-        if (!hasPrev) {
-          target = lo;
-        } else {
-          target = prevOffCnt <= lo ? hi : lo; // 전달이 lo였으면 이번주 hi, hi였으면 lo
-        }
-      } else {
-        target = prevTarget === hi ? lo : hi; // 교대
+        prevActualOff = bridgeOff;
+        return; // 배정 없이 종료
       }
-      prevTarget = target;
+
+      // 일반 주: 브릿징 주 기반으로 target 결정
+      let target;
+      if (prevActualOff === null) {
+        // 브릿징 주 없음(1일이 월요일): lo부터 시작
+        target = (wi % 2 === 0) ? lo : hi;
+      } else {
+        // 브릿징 주가 lo면 → 이번 주 hi, hi면 → 이번 주 lo / 이후는 교대
+        const bridgeWasLo = prevActualOff <= lo;
+        const stepsFromBridge = weeks.filter((w, i) => i < wi && !w.some(d => d.isPrev)).length;
+        target = (stepsFromBridge % 2 === 0)
+          ? (bridgeWasLo ? hi : lo)
+          : (bridgeWasLo ? lo : hi);
+      }
 
       const already = alreadyOffCount(emp.id, week);
       let needed = Math.max(0, target - already);
       if (needed <= 0) return;
+
       // 격주 직원 배정: prefDows 설정 시 해당 요일 우선, 없으면 전체 요일
       const altCanPlace = (d) => !sch[emp.id][d.ds] && !seededDates.has(d.ds);
       const prefDows_ = empSettings[emp.id]?.prefDows || [];
@@ -602,16 +610,9 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       const branch = BRANCHES.find(b=>b.id===emp.branch);
       for (const d of pref) {
         if (needed <= 0) break;
-        const canOff = canAssignOff(emp, d, branchEmps, branch, true);
-        if (!canOff) {
-          console.log(`[격주SKIP] ${emp.id} ${d.ds}(dow=${d.dow}) target=${target} already=${already} needed=${needed}`);
-          continue;
-        }
+        if (!canAssignOff(emp, d, branchEmps, branch)) continue;
         sch[emp.id][d.ds] = STATUS.OFF;
         needed--;
-      }
-      if (needed > 0) {
-        console.log(`[격주FAIL] ${emp.id} wi=${wi} target=${target} already=${already} pref=[${pref.map(d=>d.ds+"("+d.dow+")").join(",")}] needed=${needed}개 미배정`);
       }
     });
   });
