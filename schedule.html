@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.17-k";
+const SCH_V = "v2026.03.17-l";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -381,7 +381,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     if (ws) return 7 - ws.weeklyWork; // weeklyWork→weeklyOff 변환
     return emp.weeklyOff; // 기본값
   };
-  const isAltPattern = (emp) => empSettings[emp.id]?.altPattern ?? (emp.id === "현아"); // 현아 기본 ON
+  const isAltPattern = (emp) => empSettings[emp.id]?.altPattern ?? false;
 
   // 격주패턴 phaseShift: 이전 달 마지막 실제 주의 휴무 수로 결정
   // 이전 달 마지막 주가 lo(1일)로 끝났으면 이번 달 첫 주는 hi(2일)부터 시작 → phaseShift=1
@@ -600,13 +600,12 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       const already = alreadyOffCount(emp.id, week);
       let needed = Math.max(0, target - already);
       if (needed <= 0) return;
-      // 현아는 수(2)→목(3) 고정, 나머지는 일반 요일 순
+      // 격주 직원 배정: prefDows 설정 시 해당 요일 우선, 없으면 전체 요일
       const altCanPlace = (d) => !sch[emp.id][d.ds] && !seededDates.has(d.ds);
-      const pref = emp.id === "현아"
-        ? [...thisMonthDays.filter(d=>d.dow===2&&altCanPlace(d)),
-           ...thisMonthDays.filter(d=>d.dow===3&&altCanPlace(d)),
-           ...thisMonthDays.filter(d=>d.dow!==2&&d.dow!==3&&altCanPlace(d))]
-        : thisMonthDays.filter(d=>altCanPlace(d));
+      const prefDows_ = empSettings[emp.id]?.prefDows || [];
+      const pref = prefDows_.length > 0
+        ? [...prefDows_.flatMap(dow => thisMonthDays.filter(d => d.dow === dow && altCanPlace(d)))]
+        : thisMonthDays.filter(d => altCanPlace(d));
       const branchEmps = employees.filter(e=>e.branch===emp.branch);
       const branch = BRANCHES.find(b=>b.id===emp.branch);
       for (const d of pref) {
@@ -1578,7 +1577,7 @@ function App() {
   const [empSettings, setEmpSettings] = useState(() =>
     Object.fromEntries(EMPLOYEES.map(e => [e.id, {
       weeklyWork: 7 - e.weeklyOff,
-      altPattern: e.id === "현아",
+      altPattern: false,
     }]))
   );
   // 잠금 날짜 Set (전달저장 시 이월 주 날짜 잠금)
@@ -2616,8 +2615,31 @@ function App() {
                             </button>
                           </div>
                           {cfg.altPattern && (
-                            <div style={{fontSize:9,color:T.textMuted,marginTop:3}}>
-                              홀수주 {Math.max(1,7-cfg.weeklyWork-1)}일 / 짝수주 {7-cfg.weeklyWork}일
+                            <div style={{marginTop:4}}>
+                              <div style={{fontSize:9,color:T.textMuted,marginBottom:4}}>
+                                홀수주 {Math.max(1,7-cfg.weeklyWork-1)}일 / 짝수주 {7-cfg.weeklyWork}일
+                              </div>
+                              <div style={{fontSize:9,color:T.textSub,marginBottom:3}}>휴무 선호 요일</div>
+                              <div style={{display:"flex",gap:2}}>
+                                {["월","화","수","목","금","토","일"].map((dn,di)=>{
+                                  const dow = di; // 0=월~6=일
+                                  const prefDows_ = cfg.prefDows || [];
+                                  const on = prefDows_.includes(dow);
+                                  return (
+                                    <button key={di} onClick={()=>{
+                                      const cur = cfg.prefDows || [];
+                                      const next = on ? cur.filter(d=>d!==dow) : [...cur,dow];
+                                      setEmpSetting(emp.id,"prefDows",next);
+                                    }} style={{flex:1,padding:"3px 0",fontSize:9,fontWeight:700,borderRadius:4,
+                                      border:`1.5px solid ${on?branch.color:T.border}`,
+                                      background:on?branch.color+"22":"#fff",
+                                      color:on?branch.color:"#bbb",cursor:"pointer",fontFamily:"inherit"}}>
+                                      {dn}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                              {(cfg.prefDows||[]).length===0&&<div style={{fontSize:8,color:"#bbb",marginTop:2}}>미선택 시 자동 배정</div>}
                             </div>
                           )}
                         </div>
