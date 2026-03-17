@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.17-q";
+const SCH_V = "v2026.03.17-r";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -421,10 +421,17 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     if (p1o && p2o) return R("3일연속(p2+p1 휴무)");
     if (p1o && n1o) return R("3일연속(p1+n1 휴무)");
 
-    // 퐁당퐁당 방지 (휴무-근무-휴무)
+    // 퐁당퐁당 방지: 휴-근-휴 패턴 차단 (ds에 휴무 배정 시)
+    // case1: 앞이 ..휴-근-[ds=휴] → p2=휴, p1=근
     if (p2o && !p1o) return R(`퐁당퐁당(p2=${p2ds}휴무, p1근무)`);
+    // case2: 뒤가 [ds=휴]-근-휴.. → n1=근, n2=휴
     const n1Assigned = getStatus(emp.id, n1ds) !== "";
+    const n2Assigned = getStatus(emp.id, n2ds) !== "";
     if (n1Assigned && !n1o && n2o) return R(`퐁당퐁당(n1근무, n2휴무)`);
+    // case3: 휴-근-[ds=휴]-근-휴 완전 퐁당퐁당 (p2=휴, p1=근, n1=근, n2=휴)
+    // → 이미 case1/2에서 걸리므로 추가 체크 불필요
+    // case4: 앞쪽 확장: p3=휴, p2=근, p1=근, ds=휴 → 허용 (연속근무 사이 휴무)
+    // case5: 뒤쪽으로 p1=휴, ds=휴 → 이미 3일연속에서 차단됨
 
 
     // 전체 하루 최대 휴무 5명 제한 (남자직원 제외 - 별도 집계)
@@ -970,17 +977,20 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     const branch = BRANCHES.find(b => b.id === emp.branch);
     const branchEmps = employees.filter(e => e.branch === emp.branch);
 
-    // 퐁당퐁당 패턴 감지: 배정 후 휴무-근무-휴무-근무 패턴이 생기는지 체크
+    // 퐁당퐁당 감지: canAssignOff와 동일 로직 (p2=휴/p1=근 or n1=근/n2=휴)
     const wouldMakeAltPattern = (ds) => {
       const isOff_ = (s) => ["휴무","휴무(꼭)"].includes(s);
-      const getS_ = (d) => sch[emp.id]?.[d] || "";
-      const p1 = addDays(ds, -1), p2 = addDays(ds, -2), p3 = addDays(ds, -3);
-      const n1 = addDays(ds, 1), n2 = addDays(ds, 2), n3 = addDays(ds, 3);
-      // 현재 ds에 휴무 배정 시 생기는 패턴 체크
-      // 휴무(ds)-근무(n1)-휴무(n2) → 앞으로 퐁당퐁당 유발
-      if (!isOff_(getS_(n1)) && isOff_(getS_(n2))) return true;
-      // 휴무(p2)-근무(p1)-휴무(ds) → 뒤로 퐁당퐁당
-      if (isOff_(getS_(p2)) && !isOff_(getS_(p1))) return true;
+      const getS_ = (d) => sch[emp.id]?.[d] ?? prevSchData?.[emp.id]?.[d] ?? "";
+      const p1ds = addDays(ds, -1), p2ds_ = addDays(ds, -2);
+      const n1ds = addDays(ds, 1), n2ds = addDays(ds, 2);
+      const p1o = isOff_(getS_(p1ds));
+      const p2o = isOff_(getS_(p2ds_));
+      const n1o = isOff_(getS_(n1ds));
+      const n2o = isOff_(getS_(n2ds));
+      const n1Assigned = getS_(n1ds) !== "";
+      const n2Assigned = getS_(n2ds) !== "";
+      if (p2o && !p1o) return true; // 앞: 휴-근-[휴]
+      if (n1Assigned && !n1o && n2o) return true; // 뒤: [휴]-근-휴
       return false;
     };
 
