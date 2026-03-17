@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.17-n";
+const SCH_V = "v2026.03.17-o";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -524,7 +524,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     });
 
     const sundays_A = weeks.flatMap(w => w.filter(d => !d.isPrev && d.dow === 6))
-      .filter(d => !maleEmps.some(e => seededDates.has(d.ds) || sch[e.id][d.ds] === STATUS.MUST_OFF));
+      .filter(d => !maleEmps.some(e => sch[e.id][d.ds] === STATUS.MUST_OFF));
 
     const thisCnt_A = {};
     maleEmps.forEach(e => { thisCnt_A[e.id] = 0; });
