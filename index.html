@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.260";
+const BLISS_V = "2.69.262";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -4505,6 +4505,7 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
   const CATS = (data?.categories || []).slice().sort((a,b)=>(a.sort||0)-(b.sort||0));
   const branchStaff = (data.staff||[]).filter(s => s.bid === branchId);
   const [manager, setManager] = useState(reservation?.staffId || "");
+  const allStaff = (data.staff||[]).filter(s => s.bid); // 전체 직원
   const [selBranch, setSelBranch] = useState(branchId);
   const [gender, setGender] = useState(reservation?.custGender || "");
   const [openCats, setOpenCats] = useState({}); // catId → true/false (null=auto)
@@ -4591,7 +4592,14 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
   });
 
   // 고객 상태 (예약에서 넘어오면 자동 기입, 매출관리에서 열면 검색)
-  const [cust, setCust] = useState({
+  // 방문자(대리예약) 있으면 방문자로 매출 등록
+  const _hasVisitor = !!(reservation?.visitorName || reservation?.visitorPhone);
+  const [cust, setCust] = useState(_hasVisitor ? {
+    id: null,
+    name: reservation?.visitorName || "",
+    phone: reservation?.visitorPhone || "",
+    gender: reservation?.custGender || ""
+  } : {
     id: reservation?.custId || null,
     name: reservation?.custName || "",
     phone: reservation?.custPhone || "",
@@ -4783,7 +4791,7 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
       </div>}
       <div onClick={e => e.stopPropagation()} style={{
         background: T.bgCard, borderRadius: _m?0:12, border:_m?"none":"1px solid "+T.border, padding: 0,
-        width: _m?"100%":"92%", maxWidth: 1200, margin: "0 auto",
+        width: _m?"100%":"92%", maxWidth: 680, margin: "0 auto",
         animation: _m?"none":"slideUp .6s cubic-bezier(.22,1,.36,1)", boxShadow: _m?"none":"0 12px 40px rgba(0,0,0,.18)"
       }}>
         {/* Header */}
@@ -4851,7 +4859,10 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
             <span style={{ color:T.textSub, fontWeight: 700 }}>시술자 <span style={{color:T.danger}}>*</span></span>
             <select className="inp" style={{ flex:1, minWidth:60, maxWidth:110, padding: "3px 6px", fontSize: 11, borderColor: manager ? T.gray400 : T.danger, background: manager ? T.bgCard : T.dangerLt }} value={manager} onChange={e => setManager(e.target.value)}>
               <option value="">시술자 선택</option>
-              {branchStaff.map(s => <option key={s.id} value={s.id}>{s.dn}</option>)}
+              {(data.staff||[]).map(s => {
+                const br = (data.branches||[]).find(b=>b.id===s.bid);
+                return <option key={s.id} value={s.id}>{s.dn}{br&&br.id!==selBranch?` (${br.short||br.name||''})`:''}</option>;
+              })}
             </select>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12 }}>
