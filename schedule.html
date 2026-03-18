@@ -8,7 +8,9 @@
   * { box-sizing: border-box; }
   body { margin: 0; padding: 0; background: #f9fafb; font-family: 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; }
   #root { min-height: 100vh; }
+  .sticky-col { width: 170px; min-width: 170px; max-width: 170px; }
   @media (max-width: 600px) {
+    .sticky-col { width: 88px !important; min-width: 88px !important; max-width: 88px !important; padding: 4px 5px !important; }
     .emp-sub { display: none !important; }
     .emp-dot { display: none !important; }
     .emp-name { font-size: 11px !important; }
@@ -1572,8 +1574,8 @@ function App() {
   // iframe 내부에서는 window.innerWidth가 부모 기준이므로 URL 파라미터 우선
   const _urlMobile = new URLSearchParams(window.location.search).get("mobile");
   const isMobile = _urlMobile !== null ? _urlMobile === "1" : window.innerWidth <= 600;
-  const empColW = isMobile ? 90 : 170;
-  const stickyCol = { position:"sticky",left:0,zIndex:10,width:empColW,minWidth:empColW,maxWidth:empColW,padding:isMobile?"4px 5px":"5px 8px",verticalAlign:"middle",background:T.bgCard,boxShadow:"2px 0 4px rgba(0,0,0,.07)",overflow:"hidden" };
+  const empColW = 170; // CSS로 제어
+  const stickyCol = { position:"sticky",left:0,zIndex:10,verticalAlign:"middle",background:T.bgCard,boxShadow:"2px 0 4px rgba(0,0,0,.07)",overflow:"hidden" };
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
@@ -2335,10 +2337,10 @@ function App() {
 
       {/* 메인 테이블 */}
       <div style={{flex:1,overflow:"auto",minHeight:0,overscrollBehavior:"none",background:T.bg}}>
-        <table style={{borderCollapse:"separate",borderSpacing:0,minWidth: dim*38+empColW}}>
+        <table style={{borderCollapse:"separate",borderSpacing:0,minWidth: dim*38+170}}>
           <thead style={{position:"sticky",top:0,zIndex:20,background:T.bgCard}}>
             <tr>
-              <th style={{...stickyCol,background:T.gray100,fontSize:T.fs.xxs,fontWeight:T.fw.bolder,color:T.textSub,textAlign:"left",borderBottom:"2px solid "+T.border,zIndex:30,top:0,position:"sticky"}}>직원</th>
+              <th className="sticky-col" style={{...stickyCol,className:"sticky-col",background:T.gray100,fontSize:T.fs.xxs,fontWeight:T.fw.bolder,color:T.textSub,textAlign:"left",borderBottom:"2px solid "+T.border,zIndex:30,top:0,position:"sticky"}}>직원</th>
               {days.map(day=>{
                 const isToday=day.ds===fmtDs(today.getFullYear(),today.getMonth(),today.getDate());
                 const isSun=day.dow===6,isSat=day.dow===5;
@@ -2357,7 +2359,7 @@ function App() {
               const emps=ALL_EMPLOYEES.filter(e=>e.branch===branch.id);
               return emps.map((emp,ei)=>(
                 <tr key={emp.id}>
-                  <td style={{...stickyCol,borderLeft:`3px solid ${branch.color}`,borderBottom:"1px solid "+T.border,borderRight:"1px solid "+T.border,background:ei===0?branch.color+"18":T.bgCard,borderTop:ei===0?`2px solid ${branch.color}55`:"none"}}>
+                  <td className="sticky-col" style={{...stickyCol,className:"sticky-col",borderLeft:`3px solid ${branch.color}`,borderBottom:"1px solid "+T.border,borderRight:"1px solid "+T.border,background:ei===0?branch.color+"18":T.bgCard,borderTop:ei===0?`2px solid ${branch.color}55`:"none"}}>
                     <div style={{display:"flex",alignItems:"center",gap:4}}>
                       <div className="emp-dot" style={{width:7,height:7,borderRadius:"50%",background:branch.color,flexShrink:0}}/>
                       <div style={{overflow:"hidden",width:"100%"}}>
@@ -2453,7 +2455,7 @@ function App() {
               if (filterBranch !== "all" && filterBranch !== "male") return null;
               return maleEmps.map((emp, ei) => (
                 <tr key={emp.id}>
-                  <td style={{...stickyCol,borderLeft:`3px solid ${maleColor}`,borderBottom:"1px solid #d0e0f0",borderRight:"1px solid "+T.border,background:ei===0?maleColor+"18":T.gray100,borderTop:ei===0?`2px solid ${maleColor}55`:"none"}}>
+                  <td className="sticky-col" style={{...stickyCol,className:"sticky-col",borderLeft:`3px solid ${maleColor}`,borderBottom:"1px solid #d0e0f0",borderRight:"1px solid "+T.border,background:ei===0?maleColor+"18":T.gray100,borderTop:ei===0?`2px solid ${maleColor}55`:"none"}}>
                     <div style={{display:"flex",alignItems:"center",gap:6}}>
                       <div style={{width:7,height:7,borderRadius:"50%",background:maleColor,flexShrink:0}}/>
                       <div>
@@ -2519,7 +2521,7 @@ function App() {
 
             {/* 일별 총 인원 */}
             <tr>
-              <td style={{...stickyCol,fontSize:11,fontWeight:700,color:T.textSub,background:T.gray100,border:"1px solid "+T.border,borderRadius:"0 0 0 6px"}}>일 근무 인원</td>
+              <td className="sticky-col" style={{...stickyCol,className:"sticky-col",fontSize:11,fontWeight:700,color:T.textSub,background:T.gray100,border:"1px solid "+T.border,borderRadius:"0 0 0 6px"}}>일 근무 인원</td>
               {days.map(day=>{
                 const c=dailyCount(day.ds);
                 const ok=c>=10&&c<=15, wb=isWeekBoundary(day);
@@ -2537,7 +2539,7 @@ function App() {
               const emps=ALL_EMPLOYEES.filter(e=>e.branch===branch.id);
               return (
                 <tr key={branch.id+"-cnt"}>
-                  <td style={{...stickyCol,fontSize:10,color:branch.color,fontWeight:700,background:T.bgCard,borderLeft:`3px solid ${branch.color}`,borderRight:"1px solid "+T.border,borderBottom:"1px solid "+T.border}}>
+                  <td className="sticky-col" style={{...stickyCol,className:"sticky-col",fontSize:10,color:branch.color,fontWeight:700,background:T.bgCard,borderLeft:`3px solid ${branch.color}`,borderRight:"1px solid "+T.border,borderBottom:"1px solid "+T.border}}>
                     {branch.name}
                   </td>
                   {days.map(day=>{
