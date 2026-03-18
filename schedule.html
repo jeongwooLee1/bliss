@@ -2348,10 +2348,10 @@ function App() {
               return emps.map((emp,ei)=>(
                 <tr key={emp.id}>
                   <td style={{...stickyCol,padding:"5px 10px",borderLeft:`3px solid ${branch.color}`,borderBottom:"1px solid "+T.border,borderRight:"1px solid "+T.border,background:ei===0?branch.color+"18":T.bgCard,borderTop:ei===0?`2px solid ${branch.color}55`:"none"}}>
-                    <div style={{display:"flex",alignItems:"center",gap:6}}>
-                      <div style={{width:7,height:7,borderRadius:"50%",background:branch.color,flexShrink:0}}/>
-                      <div>
-                        <div style={{fontSize:12,fontWeight:emp.isOwner?700:500,lineHeight:1.2,display:"flex",alignItems:"center",gap:4,overflow:"hidden"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:isMobile?2:6}}>
+                      {!isMobile && <div style={{width:7,height:7,borderRadius:"50%",background:branch.color,flexShrink:0}}/>}
+                      <div style={{overflow:"hidden",width:"100%"}}>
+                        <div style={{fontSize:isMobile?11:12,fontWeight:emp.isOwner?700:500,lineHeight:1.2,display:"flex",alignItems:"center",gap:4,overflow:"hidden"}}>
                           {emp.name}
                           {(()=>{
                             // 지원 횟수 집계 (지점별)
@@ -2369,7 +2369,7 @@ function App() {
                             </span>;
                           })()}
                         </div>
-                        <div style={{fontSize:9,color:"#b8a898",display:"flex",gap:4,alignItems:"center"}}>
+                        {!isMobile && <div style={{fontSize:9,color:"#b8a898",display:"flex",gap:4,alignItems:"center"}}>
                           {branch.name}
                           {(()=>{
                             const curMs2 = `${year}-${String(month+1).padStart(2,"0")}`;
@@ -2396,7 +2396,7 @@ function App() {
                               })()}
                             </>;
                           })()}
-                        </div>
+                        </div>}
                       </div>
                     </div>
                   </td>
@@ -2463,7 +2463,7 @@ function App() {
                               근{workDays}·휴{offDays}
                             </span>;
                           })()}
-                        </div>
+                        </div>}
                       </div>
                     </div>
                   </td>
@@ -3075,8 +3075,9 @@ function App() {
   );
 }
 
-const empColW = window.innerWidth < 480 ? 120 : 170;
-const stickyCol = { position:"sticky",left:0,zIndex:10,width:empColW,minWidth:empColW,padding:"5px 8px",verticalAlign:"middle",background:T.bgCard,boxShadow:"2px 0 4px rgba(0,0,0,.07)" };
+const isMobile = window.innerWidth < 500;
+const empColW = isMobile ? 90 : 170;
+const stickyCol = { position:"sticky",left:0,zIndex:10,width:empColW,minWidth:empColW,maxWidth:empColW,padding:isMobile?"4px 6px":"5px 8px",verticalAlign:"middle",background:T.bgCard,boxShadow:"2px 0 4px rgba(0,0,0,.07)",overflow:"hidden" };
 const navBtn = { background:"none",border:"1px solid #e4ddd0",borderRadius:6,padding:"5px 10px",cursor:"pointer",fontSize:13,fontFamily:"inherit",color:T.textSub };
 
 function Btn({label,onClick,primary,outline,danger,style={}}){
