@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.277";
+const BLISS_V = "2.69.280";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7335,6 +7335,29 @@ function AdminWorkers({ data, setData }) {
 // ═══════════════════════════════════════════
 function AdminSaleItems({ data, setData }) {
   const [services,setServices]=useState([...(data?.services||[])].sort((a,b)=>a.sort-b.sort));
+  const dragIdxS=useRef(null),dragOverS=useRef(null);
+  const onDragStartS=i=>{dragIdxS.current=i;};
+  const onDragEnterS=i=>{dragOverS.current=i;};
+  const onDragEndS=()=>{
+    const di=dragIdxS.current,oi=dragOverS.current;
+    dragIdxS.current=null;dragOverS.current=null;
+    if(di===null||oi===null||di===oi)return;
+    const cur=filterCat==="all"?[...services]:services.filter(s=>s.cat===filterCat);
+    const [m]=cur.splice(di,1);cur.splice(oi,0,m);
+    const others=filterCat==="all"?[]:services.filter(s=>s.cat!==filterCat);
+    const updated=[...cur,...others].map((s,j)=>({...s,sort:j}));
+    setServices(updated);setData(p=>({...p,services:updated}));
+    updated.forEach((s,j)=>sb.update("services",s.id,{sort:j}).catch(console.error));
+  };
+  const moveSvc=(idx2,dir)=>{
+    const cur=filterCat==="all"?[...services]:services.filter(s=>s.cat===filterCat);
+    const ni=idx2+dir;if(ni<0||ni>=cur.length)return;
+    [cur[idx2],cur[ni]]=[cur[ni],cur[idx2]];
+    const others=filterCat==="all"?[]:services.filter(s=>s.cat!==filterCat);
+    const updated=[...cur,...others].map((s,j)=>({...s,sort:j}));
+    setServices(updated);setData(p=>({...p,services:updated}));
+    updated.forEach((s,j)=>sb.update("services",s.id,{sort:j}).catch(console.error));
+  };
   useEffect(()=>{setData(p=>({...p,services}));},[services]);
   const [cats,setCats]=useState(()=>[...(data?.categories||[])].sort((a,b)=>(a.sort||0)-(b.sort||0)));
   useEffect(()=>{setCats([...(data?.categories||[])].sort((a,b)=>(a.sort||0)-(b.sort||0)));},[data?.categories?.length]);
@@ -7403,7 +7426,7 @@ function AdminSaleItems({ data, setData }) {
     </div>
     {filtered.length===0?<AEmpty icon="scissors" message="등록된 시술이 없어요" onAdd={openNew} addLabel="시술 추가"/>
     :<div style={{display:"flex",flexDirection:"column",gap:8}}>
-      {filtered.map(s=><div key={s.id} className="card" style={{padding:"14px 16px"}}>
+      {filtered.map((s,sidx)=><div key={s.id} className="card" draggable onDragStart={()=>onDragStartS(sidx)} onDragEnter={()=>onDragEnterS(sidx)} onDragEnd={onDragEndS} onDragOver={e=>e.preventDefault()} style={{padding:"14px 16px",cursor:"grab"}}>
         <div style={{display:"flex",alignItems:"flex-start",gap:10}}>
           <div style={{flex:1,minWidth:0}}>
             <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:5,flexWrap:"wrap"}}>
@@ -7418,7 +7441,11 @@ function AdminSaleItems({ data, setData }) {
             </div>
             <ABadge color={T.gray500} bg={T.gray100}>{catName(s.cat)}</ABadge>
           </div>
-          <div style={{display:"flex",gap:6,flexShrink:0}}>
+          <div style={{display:"flex",gap:4,flexShrink:0,alignItems:"center"}}>
+            <div style={{display:"flex",flexDirection:"column",gap:2}}>
+            <button onClick={e=>{e.stopPropagation();moveSvc(sidx,-1);}} style={{width:22,height:20,border:"1px solid "+T.border,background:sidx===0?T.gray100:"#fff",borderRadius:4,cursor:sidx===0?"not-allowed":"pointer",fontSize:9,opacity:sidx===0?.4:1}}>▲</button>
+            <button onClick={e=>{e.stopPropagation();moveSvc(sidx,1);}} style={{width:22,height:20,border:"1px solid "+T.border,background:sidx===filtered.length-1?T.gray100:"#fff",borderRadius:4,cursor:sidx===filtered.length-1?"not-allowed":"pointer",fontSize:9,opacity:sidx===filtered.length-1?.4:1}}>▼</button>
+            </div>
             <button onClick={()=>openEdit(s)} style={{width:28,height:28,borderRadius:7,border:"1px solid "+T.border,background:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><I name="edit" size={13} style={{color:T.gray500}}/></button>
             <button onClick={()=>setDel(s.id)} style={{width:28,height:28,borderRadius:7,border:"1px solid #fecaca",background:"#fff5f5",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><I name="trash" size={13} style={{color:T.danger}}/></button>
           </div>
@@ -7963,7 +7990,9 @@ function AdminServiceTags({ data, setData }) {
     </div>}
     {tabTags.length===0?<AEmpty icon="tag" message="등록된 태그가 없어요" onAdd={openNew} addLabel="태그 추가"/>
     :<div className="card" style={{padding:0,overflow:"hidden"}}>
-      {tabTags.map((t,i)=><div key={t.id} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",borderBottom:i<tabTags.length-1?"1px solid "+T.gray100:"none"}}>
+      {tabTags.map((t,i)=><div key={t.id} draggable
+  onDragStart={()=>onDragStart(i)} onDragEnter={()=>onDragEnter(i)} onDragEnd={onDragEnd} onDragOver={e=>e.preventDefault()}
+  style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",borderBottom:i<tabTags.length-1?"1px solid "+T.gray100:"none",cursor:"grab"}}>
         <div style={{width:10,height:10,borderRadius:"50%",background:t.color||T.primary,flexShrink:0}}/>
         <div style={{flex:1,minWidth:0}}>
           <div style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder,color:t.useYn!==false?T.text:T.gray400}}>{t.name}</div>
