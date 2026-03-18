@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.18-o";
+const SCH_V = "v2026.03.18-p";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -292,6 +292,22 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       const totalOff = employees.filter(e => !e.isMale && ["휴무","휴무(꼭)"].includes(sch[e.id]?.[ds]||"")).length;
       if (totalOff >= rc.maxDailyOff) return false;
     }
+    // 대표 지점(branch) 소속 직원 최소 1명 상주 체크
+    if (!emp.isOwner && !emp.isMale) {
+      const repBranch = emp.branch;
+      const repBr = BRANCHES.find(b => b.id === repBranch);
+      if (repBr) {
+        const repEmps = employees.filter(e => e.branch === repBranch && e.id !== emp.id && !e.isMale);
+        const repWorking = repEmps.filter(be => {
+          const s = sch[be.id]?.[ds] || "";
+          if (["휴무","휴무(꼭)"].includes(s)) return false;
+          if (isSupport(s) && !s.includes(repBr.name)) return false;
+          return true;
+        }).length;
+        if (repWorking < 1) return false;
+      }
+    }
+
     // 지점 최소 인원 — 직원의 모든 소속 지점(branches) 각각 체크
     const empBranchesH = emp.branches || [emp.branch];
     for (const bId of empBranchesH) {
@@ -488,6 +504,25 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       ).length;
       const minS = rc.branchMinStaff[bId] ?? br_.minStaff ?? 1;
       if (ownWorking + supportIn < minS) return false;
+    }
+
+    // 대표 지점(branch) 소속 직원 최소 1명 상주 체크
+    // 경아/서현은 branch=gangnam → 이 중 최소 1명은 강남에 있어야 함
+    // 소연/수연은 branch=wangsimni → 이 중 최소 1명은 왕십리에 있어야 함
+    if (!emp.isOwner && !emp.isMale) {
+      const repBranch = emp.branch;
+      const repBr = BRANCHES.find(b => b.id === repBranch);
+      if (repBr) {
+        // 같은 대표 지점 소속 직원 중 본인 제외하고 근무 중인 인원
+        const repEmps = employees.filter(e => e.branch === repBranch && e.id !== emp.id && !e.isMale);
+        const repWorking = repEmps.filter(be => {
+          const s = sch[be.id]?.[ds] || "";
+          if (["휴무","휴무(꼭)"].includes(s)) return false;
+          if (isSupport(s) && !s.includes(repBr.name)) return false; // 타지점 지원 나간 경우 제외
+          return true;
+        }).length;
+        if (repWorking < 1) return false; // 본인 빠지면 대표 지점 0명 → 차단
+      }
     }
 
     // 지점별 동시 휴무 금지 — 직원의 모든 소속 지점 중 ON인 지점 체크
