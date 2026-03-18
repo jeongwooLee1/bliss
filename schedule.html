@@ -8,6 +8,11 @@
   * { box-sizing: border-box; }
   body { margin: 0; padding: 0; background: #f9fafb; font-family: 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; }
   #root { min-height: 100vh; }
+  @media (max-width: 600px) {
+    .emp-sub { display: none !important; }
+    .emp-dot { display: none !important; }
+    .emp-name { font-size: 11px !important; }
+  }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
@@ -1564,9 +1569,9 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
 }
 
 function App() {
-  const isMobile = window.innerWidth < 500;
+  const isMobile = window.innerWidth <= 600;
   const empColW = isMobile ? 90 : 170;
-  const stickyCol = { position:"sticky",left:0,zIndex:10,width:empColW,minWidth:empColW,maxWidth:empColW,padding:isMobile?"4px 6px":"5px 8px",verticalAlign:"middle",background:T.bgCard,boxShadow:"2px 0 4px rgba(0,0,0,.07)",overflow:"hidden" };
+  const stickyCol = { position:"sticky",left:0,zIndex:10,width:empColW,minWidth:empColW,maxWidth:empColW,padding:isMobile?"4px 5px":"5px 8px",verticalAlign:"middle",background:T.bgCard,boxShadow:"2px 0 4px rgba(0,0,0,.07)",overflow:"hidden" };
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
@@ -2351,10 +2356,10 @@ function App() {
               return emps.map((emp,ei)=>(
                 <tr key={emp.id}>
                   <td style={{...stickyCol,padding:"5px 10px",borderLeft:`3px solid ${branch.color}`,borderBottom:"1px solid "+T.border,borderRight:"1px solid "+T.border,background:ei===0?branch.color+"18":T.bgCard,borderTop:ei===0?`2px solid ${branch.color}55`:"none"}}>
-                    <div style={{display:"flex",alignItems:"center",gap:isMobile?2:6}}>
-                      {!isMobile && <div style={{width:7,height:7,borderRadius:"50%",background:branch.color,flexShrink:0}}/>}
+                    <div style={{display:"flex",alignItems:"center",gap:4}}>
+                      <div className="emp-dot" style={{width:7,height:7,borderRadius:"50%",background:branch.color,flexShrink:0}}/>
                       <div style={{overflow:"hidden",width:"100%"}}>
-                        <div style={{fontSize:isMobile?11:12,fontWeight:emp.isOwner?700:500,lineHeight:1.2,display:"flex",alignItems:"center",gap:4,overflow:"hidden"}}>
+                        <div className="emp-name" style={{fontSize:12,fontWeight:emp.isOwner?700:500,lineHeight:1.2,display:"flex",alignItems:"center",gap:4,overflow:"hidden"}}>
                           {emp.name}
                           {(()=>{
                             // 지원 횟수 집계 (지점별)
@@ -2372,7 +2377,7 @@ function App() {
                             </span>;
                           })()}
                         </div>
-                        {!isMobile && <div style={{fontSize:9,color:"#b8a898",display:"flex",gap:4,alignItems:"center"}}>
+                        <div className="emp-sub" style={{fontSize:9,color:"#b8a898",display:"flex",gap:4,alignItems:"center"}}>
                           {branch.name}
                           {(()=>{
                             const curMs2 = `${year}-${String(month+1).padStart(2,"0")}`;
@@ -2399,7 +2404,7 @@ function App() {
                               })()}
                             </>;
                           })()}
-                        </div>}
+                        </div>
                       </div>
                     </div>
                   </td>
@@ -2466,7 +2471,7 @@ function App() {
                               근{workDays}·휴{offDays}
                             </span>;
                           })()}
-                        </div>}
+                        </div>
                       </div>
                     </div>
                   </td>
