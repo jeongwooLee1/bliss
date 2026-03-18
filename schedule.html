@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.18-c";
+const SCH_V = "v2026.03.18-d";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -2626,20 +2626,50 @@ function App() {
             {/* 지점별 동시 휴무 금지 */}
             <div style={{marginBottom:18}}>
               <div style={{fontSize:12,fontWeight:700,color:"#4a2c14",marginBottom:6,borderBottom:"1px solid #f0ebe2",paddingBottom:6}}>🚫 지점별 일반직원 동시 휴무 금지</div>
-              <div style={{fontSize:11,color:T.textMuted,marginBottom:10}}>ON: 해당 지점 일반직원(원장·mustStay 제외) 전원이 같은 날 동시 휴무 금지</div>
+              <div style={{fontSize:11,color:T.textMuted,marginBottom:10}}>ON: 같은 지점 그룹 일반직원(원장·mustStay 제외) 전원이 같은 날 동시 휴무 금지</div>
               <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
-                {BRANCHES.map(b => {
-                  const normals = ALL_EMPLOYEES.filter(e => e.branch===b.id && !e.isOwner && !e.mustStay);
-                  const isOn = ruleConfig.noSimultaneousOff[b.id] ?? false;
-                  return (
-                    <div key={b.id} onClick={()=>setRule("noSimultaneousOff",{...ruleConfig.noSimultaneousOff,[b.id]:!isOn})}
-                      style={{display:"flex",alignItems:"center",gap:7,padding:"8px 12px",borderRadius:8,border:`1.5px solid ${isOn?b.color:T.border}`,background:isOn?b.color+"15":T.bgCard,cursor:normals.length===0?"default":"pointer",opacity:normals.length===0?0.4:1}}>
-                      <span style={{fontSize:11,fontWeight:700,color:isOn?b.color:T.textMuted}}>{b.name}</span>
-                      <span style={{fontSize:10,color:"#bbb"}}>({normals.map(e=>e.name).join("·") || "해당없음"})</span>
-                      <span style={{fontSize:10,background:isOn?b.color:T.border,color:"#fff",borderRadius:4,padding:"1px 6px",fontWeight:700,marginLeft:4}}>{isOn?"ON":"OFF"}</span>
-                    </div>
-                  );
-                })}
+                {(()=>{
+                  // 복수 소속 지점 그룹 단위로 묶어서 표시
+                  const seen = new Set();
+                  const groups = [];
+                  BRANCHES.forEach(b => {
+                    if (seen.has(b.id)) return;
+                    // 이 지점과 같은 branches 그룹을 공유하는 지점들 찾기
+                    const siblingIds = [...new Set(
+                      ALL_EMPLOYEES
+                        .filter(e => (e.branches||[e.branch]).includes(b.id))
+                        .flatMap(e => e.branches||[e.branch])
+                    )].filter(id => BRANCHES.find(br=>br.id===id));
+                    siblingIds.forEach(id => seen.add(id));
+                    groups.push(siblingIds);
+                  });
+                  return groups.map(groupIds => {
+                    const groupBranches = groupIds.map(id => BRANCHES.find(b=>b.id===id)).filter(Boolean);
+                    const normals = ALL_EMPLOYEES.filter(e =>
+                      (e.branches||[e.branch]).some(b=>groupIds.includes(b)) && !e.isOwner && !e.mustStay
+                    );
+                    const isOn = groupIds.some(id => ruleConfig.noSimultaneousOff[id] ?? false);
+                    const groupColor = groupBranches[0]?.color || T.border;
+                    const groupName = groupBranches.map(b=>b.name).join("&");
+                    const toggleGroup = () => {
+                      const next = {...ruleConfig.noSimultaneousOff};
+                      groupIds.forEach(id => { next[id] = !isOn; });
+                      setRule("noSimultaneousOff", next);
+                    };
+                    return (
+                      <div key={groupIds.join("-")} onClick={normals.length>0?toggleGroup:undefined}
+                        style={{display:"flex",alignItems:"center",gap:7,padding:"8px 12px",borderRadius:8,
+                          border:`1.5px solid ${isOn?groupColor:T.border}`,
+                          background:isOn?groupColor+"15":T.bgCard,
+                          cursor:normals.length===0?"default":"pointer",
+                          opacity:normals.length===0?0.4:1}}>
+                        <span style={{fontSize:11,fontWeight:700,color:isOn?groupColor:T.textMuted}}>{groupName}</span>
+                        <span style={{fontSize:10,color:"#bbb"}}>({normals.map(e=>e.name).join("·") || "해당없음"})</span>
+                        <span style={{fontSize:10,background:isOn?groupColor:T.border,color:"#fff",borderRadius:4,padding:"1px 6px",fontWeight:700,marginLeft:4}}>{isOn?"ON":"OFF"}</span>
+                      </div>
+                    );
+                  });
+                })()}
               </div>
             </div>
 
