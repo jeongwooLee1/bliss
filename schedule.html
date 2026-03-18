@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.18-r";
+const SCH_V = "v2026.03.18-s";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -415,6 +415,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     return emp.weeklyOff; // 기본값
   };
   const isAltPattern = (emp) => empSettings[emp.id]?.altPattern ?? false;
+  const isFreelancerEmp = (emp) => emp.isFreelancer || empSettings[emp.id]?.isFreelancer || false;
 
   // 격주패턴 phaseShift: 이전 달 마지막 실제 주의 휴무 수로 결정
   // 이전 달 마지막 주가 lo(1일)로 끝났으면 이번 달 첫 주는 hi(2일)부터 시작 → phaseShift=1
@@ -482,7 +483,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
 
     // 전체 하루 최대 휴무 5명 제한 (남자직원 제외 - 별도 집계)
     if (!emp.isMale) {
-      const totalOffToday = employees.filter(e => !e.isMale && !e.isFreelancer && ["휴무","휴무(꼭)"].includes(sch[e.id][ds])).length;
+      const totalOffToday = employees.filter(e => !e.isMale && !(e.isFreelancer || empSettings[e.id]?.isFreelancer) && ["휴무","휴무(꼭)"].includes(sch[e.id][ds])).length;
       if (totalOffToday >= rc.maxDailyOff) return R(`전체휴무${totalOffToday}명 초과`);
     }
 
@@ -774,7 +775,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
   const forcedOff = {}; // { empId: Set<ds> }
 
   // 직원 처리 순서를 랜덤화 → 같은 날 충돌 시 매번 다른 직원이 양보
-  const shuffledEmps = shuffle(employees.filter(e => !isAltPattern(e) && !e.isMale && !e.isOwner && !e.isFreelancer));
+  const shuffledEmps = shuffle(employees.filter(e => !isAltPattern(e) && !e.isMale && !e.isOwner && !(e.isFreelancer || empSettings[e.id]?.isFreelancer)));
   shuffledEmps.forEach(emp => {
     forcedOff[emp.id] = new Set();
     let streak = getCarry(emp.id, allDsOrdered[0]);
@@ -822,7 +823,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
   // [Phase B] 충돌 해소: 같은 날 너무 많은 강제 휴무 → 일부를 ±1~3일 이동
   // 각 날짜의 예정 강제 휴무 수 집계
   const dayForcedCount = {};
-  employees.filter(e => !isAltPattern(e) && !e.isMale && !e.isOwner && !e.isFreelancer).forEach(emp => {
+  employees.filter(e => !isAltPattern(e) && !e.isMale && !e.isOwner && !(e.isFreelancer || empSettings[e.id]?.isFreelancer)).forEach(emp => {
     (forcedOff[emp.id]||new Set()).forEach(ds => {
       dayForcedCount[ds] = (dayForcedCount[ds] || 0) + 1;
     });
@@ -873,7 +874,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
   });
 
   // [Phase C] 강제 휴무 실제 배정
-  (employees||[]).filter(e => !isAltPattern(e) && !e.isMale && !e.isOwner && !e.isFreelancer).forEach(emp => {
+  (employees||[]).filter(e => !isAltPattern(e) && !e.isMale && !e.isOwner && !(e.isFreelancer || empSettings[e.id]?.isFreelancer)).forEach(emp => {
     const branch = BRANCHES.find(b => b.id === emp.branch);
     const branchEmps = employees.filter(e => (e.branches||[e.branch]).some(b=>(emp.branches||[emp.branch]).includes(b)));
     (forcedOff[emp.id] || new Set()).forEach(ds => {
@@ -907,7 +908,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
   });
 
   // [Phase D] 주간 쿼터 채우기 — 순수 주 단위, 월간 총량 개념 없음 (원장 제외)
-  shuffle(employees.filter(e => !isAltPattern(e) && !e.isOwner && !e.isFreelancer)).forEach(emp => {
+  shuffle(employees.filter(e => !isAltPattern(e) && !e.isOwner && !(e.isFreelancer || empSettings[e.id]?.isFreelancer))).forEach(emp => {
     const branch = BRANCHES.find(b => b.id === emp.branch);
     const branchEmps = employees.filter(e => (e.branches||[e.branch]).some(b=>(emp.branches||[emp.branch]).includes(b)));
 
@@ -1120,7 +1121,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       const wkIdx = getWeekIdx(ds);
 
       // 이 날 일반휴무인 직원만 대상 (휴무(꼭) 제외, 남자직원 제외, 원장 제외, seeded 보호)
-      const candidates = employees.filter(e => !e.isOwner && !e.isMale && !e.isFreelancer && sch[e.id][ds] === STATUS.OFF && !seededDates.has(ds))
+      const candidates = employees.filter(e => !e.isOwner && !e.isMale && !(e.isFreelancer || empSettings[e.id]?.isFreelancer) && sch[e.id][ds] === STATUS.OFF && !seededDates.has(ds))
         .sort((a, b) => {
           // 같은 주에 더 많이 쉰 직원 우선 (여유분 있음)
           const count = (emp) => Object.entries(sch[emp.id])
@@ -1145,7 +1146,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
   }
 
   // 6) 주간 휴무 미달 보정 + 퐁당퐁당(휴무-근무-휴무-근무) 패턴 방지
-  employees.filter(e => !isAltPattern(e) && !e.isOwner && !e.isMale && !e.isFreelancer).forEach(emp => {
+  employees.filter(e => !isAltPattern(e) && !e.isOwner && !e.isMale && !(e.isFreelancer || empSettings[e.id]?.isFreelancer)).forEach(emp => {
     const branch = BRANCHES.find(b => b.id === emp.branch);
     const branchEmps = employees.filter(e => (e.branches||[e.branch]).some(b=>(emp.branches||[emp.branch]).includes(b)));
 
@@ -1397,7 +1398,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
   //    2회 패스: 1패스(초과 줄이기) → 2패스(부족 채우기)
   //    대상: altPattern·원장 제외 전 직원 (원장은 weeklyOff:1이므로 별도 처리 없음)
   {
-    const targetEmps = employees.filter(e => !isAltPattern(e) && !e.isOwner && !e.isFreelancer);
+    const targetEmps = employees.filter(e => !isAltPattern(e) && !e.isOwner && !(e.isFreelancer || empSettings[e.id]?.isFreelancer));
 
     // ── 패스 1: 초과 주 줄이기 (off > weeklyOff) ──
     // 휴무(꼭) 제외, 주간 초과분만 off→work (canAssignOff 무시, 단순 전환)
@@ -1696,7 +1697,7 @@ function App() {
     // 적용 대상: 원장·mustStay 제외 일반직원 전원 (인원 2명 이하 지점)
     noSimultaneousOff: Object.fromEntries(
       BRANCHES.map(b => {
-        const normals = ALL_EMPLOYEES.filter(e => (e.branches || [e.branch]).includes(b.id) && !e.isOwner && !e.mustStay && !e.isFreelancer);
+        const normals = ALL_EMPLOYEES.filter(e => (e.branches || [e.branch]).includes(b.id) && !e.isOwner && !e.mustStay && !(e.isFreelancer || empSettings[e.id]?.isFreelancer));
         return [b.id, normals.length <= 2]; // 일반직원 2명 이하 지점만 기본 ON
       })
     ),
@@ -1817,7 +1818,7 @@ function App() {
       if (c > 0 && c < ruleConfig.minWork) v.push(`${day.d}일 근무${c}명(최소${ruleConfig.minWork})`);
       if (c > ruleConfig.maxWork) v.push(`${day.d}일 근무${c}명(최대${ruleConfig.maxWork}초과)`);
       // 하루 최대 휴무
-      const offC = empList.filter(e => !e.isMale && !e.isFreelancer && ["휴무","휴무(꼭)"].includes(getV(e.id, day.ds))).length;
+      const offC = empList.filter(e => !e.isMale && !(e.isFreelancer || empSettings[e.id]?.isFreelancer) && ["휴무","휴무(꼭)"].includes(getV(e.id, day.ds))).length;
       if (offC > ruleConfig.maxDailyOff) v.push(`${day.d}일 휴무${offC}명(최대${ruleConfig.maxDailyOff}초과)`);
       // 남자직원 일요일 동시근무
       if (day.dow === 6) {
@@ -1826,7 +1827,7 @@ function App() {
       }
     });
     // 연속근무 초과 (원장 제외)
-    empList.filter(e => !e.isOwner && !e.isFreelancer).forEach(emp => {
+    empList.filter(e => !e.isOwner && !(e.isFreelancer || empSettings[e.id]?.isFreelancer)).forEach(emp => {
       let streak = 0, streakStart = null;
       days.forEach(day => {
         if (isWorkV(emp.id, day.ds)) {
@@ -2869,6 +2870,7 @@ function App() {
                 {[
                   {key:"isOwner",label:"원장"},
                   {key:"mustStay",label:"타지점이동불가"},
+                  {key:"isFreelancer",label:"프리랜서"},
                 ].map(({key,label})=>(
                   <button key={key} onClick={()=>setNewEmp(p=>({...p,[key]:!p[key]}))}
                     style={{padding:"5px 12px",borderRadius:7,fontSize:11,fontFamily:"inherit",cursor:"pointer",
@@ -2889,8 +2891,8 @@ function App() {
                   const emp = {...newEmp, id, name:id};
                   const next = [...customEmployees, emp];
                   setCustomEmployees(next); saveCustomEmps(next);
-                  setEmpSettings(prev=>({...prev, [id]:{weeklyWork:7-emp.weeklyOff, altPattern:false}}));
-                  setNewEmp({name:"",branch:"gangnam",isOwner:false,weeklyOff:2,isMale:false,mustStay:false});
+                  setEmpSettings(prev=>({...prev, [id]:{weeklyWork:7-emp.weeklyOff, altPattern:false, isFreelancer:emp.isFreelancer||false}}));
+                  setNewEmp({name:"",branch:"gangnam",isOwner:false,weeklyOff:2,isMale:false,mustStay:false,isFreelancer:false});
                   setShowAddEmp(false);
                 }}
                 style={{width:"100%",padding:"10px 0",borderRadius:8,fontSize:13,fontFamily:"inherit",cursor:"pointer",fontWeight:700,
