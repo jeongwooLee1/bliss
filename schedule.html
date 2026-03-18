@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.18-f";
+const SCH_V = "v2026.03.18-g";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -996,6 +996,31 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       for (const eid of candidates) {
         if (assigned >= needed) break;
         if (sch[eid][ds] !== STATUS.WORK) continue;
+        const sender = employees.find(e => e.id === eid);
+        if (!sender) continue;
+        // 지원자 본인 소속 지점들의 minStaff 보호
+        let senderBranchOk = true;
+        for (const senderBId of (sender.branches || [sender.branch])) {
+          if (senderBId === "male") continue;
+          const senderBr = BRANCHES.find(b => b.id === senderBId);
+          if (!senderBr) continue;
+          const senderMinS = rc.branchMinStaff[senderBId] ?? senderBr.minStaff ?? 1;
+          const senderBrEmps = employees.filter(e => (e.branches||[e.branch]).includes(senderBId));
+          const senderWorking = senderBrEmps.filter(e => {
+            if (e.id === eid) return false; // 본인 빠진 후 계산
+            const s = sch[e.id][ds];
+            return s === STATUS.WORK || isSupport(s) || s === STATUS.SHARE;
+          }).length;
+          const senderSupportIn = employees.filter(e =>
+            !(e.branches||[e.branch]).includes(senderBId) &&
+            sch[e.id][ds] === `지원(${senderBr.name})`
+          ).length;
+          if (senderWorking + senderSupportIn < senderMinS) {
+            senderBranchOk = false;
+            break;
+          }
+        }
+        if (!senderBranchOk) continue;
         sch[eid][ds] = supportLabel;
         assigned++;
       }
