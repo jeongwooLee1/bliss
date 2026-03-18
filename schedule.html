@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.19-d";
+const SCH_V = "v2026.03.19-e";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -1085,6 +1085,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
         let senderBranchOk = true;
         for (const senderBId of (sender.branches || [sender.branch])) {
           if (senderBId === "male") continue;
+          if (senderBId === targetBranch.id) continue; // 지원 가는 지점은 체크 불필요
           const senderBr = BRANCHES.find(b => b.id === senderBId);
           if (!senderBr) continue;
           const senderMinS = rc.branchMinStaff[senderBId] ?? senderBr.minStaff ?? 1;
