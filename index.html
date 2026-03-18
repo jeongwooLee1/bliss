@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.269";
+const BLISS_V = "2.69.270";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -3221,6 +3221,27 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                   }}
                 >
                   {/* Hover/touch highlight */}
+                  {/* 비활성 시간대 오버레이 */}
+                  {room.isStaffCol && (room.activeFrom||room.activeUntil) && (()=>{
+                    const startMin2 = startHour*60;
+                    const fromMin2 = room.activeFrom ? parseInt(room.activeFrom.split(":")[0])*60+parseInt(room.activeFrom.split(":")[1]) : startMin2;
+                    const untilMin2 = room.activeUntil ? parseInt(room.activeUntil.split(":")[0])*60+parseInt(room.activeUntil.split(":")[1]) : startMin2+totalRows*5;
+                    const beforeH2 = Math.max(0,(fromMin2-startMin2)/5*rowH);
+                    const afterTop2 = Math.min(totalRows*rowH,(untilMin2-startMin2)/5*rowH);
+                    const afterH2 = Math.max(0,totalRows*rowH-afterTop2);
+                    return <>
+                      {beforeH2>0&&<div style={{position:"absolute",top:0,left:0,right:0,height:beforeH2,background:"rgba(0,0,0,.06)",zIndex:2,pointerEvents:"none",borderBottom:"2px dashed rgba(0,0,0,.12)"}}/>}
+                      {afterH2>0&&<div style={{position:"absolute",top:afterTop2,left:0,right:0,height:afterH2,background:"rgba(0,0,0,.06)",zIndex:2,pointerEvents:"none",borderTop:"2px dashed rgba(0,0,0,.12)"}}/>}
+                      {room.activeFrom&&fromMin2>startMin2&&<div style={{position:"absolute",top:(fromMin2-startMin2)/5*rowH,left:0,right:0,zIndex:3,pointerEvents:"none",display:"flex",alignItems:"center"}}>
+                        <div style={{flex:1,height:2,background:T.primary,opacity:.5}}/>
+                        <span style={{fontSize:9,color:T.primary,fontWeight:700,background:T.bgCard,padding:"0 3px",borderRadius:3,whiteSpace:"nowrap",flexShrink:0}}>{room.activeFrom}~</span>
+                      </div>}
+                      {room.activeUntil&&<div style={{position:"absolute",top:(untilMin2-startMin2)/5*rowH-1,left:0,right:0,zIndex:3,pointerEvents:"none",display:"flex",alignItems:"center"}}>
+                        <div style={{flex:1,height:2,background:T.danger,opacity:.5}}/>
+                        <span style={{fontSize:9,color:T.danger,fontWeight:700,background:T.bgCard,padding:"0 3px",borderRadius:3,whiteSpace:"nowrap",flexShrink:0}}>~{room.activeUntil}</span>
+                      </div>}
+                    </>;
+                  })()}
                   {hoverCell?.roomId===room.id && hoverCell.rowIdx>=0 && <div style={{position:"absolute",top:hoverCell.rowIdx*rowH,left:0,right:0,height:rowH,background:"rgba(124,124,200,0.12)",borderTop:"1px solid rgba(124,124,200,0.3)",borderBottom:"1px solid rgba(124,124,200,0.3)",zIndex:1,pointerEvents:"none",transition:"top 0.05s ease"}}/>}
                   {/* Row crosshair highlight (other columns) */}
                   {hoverCell && hoverCell.roomId!==room.id && hoverCell.rowIdx>=0 && <div style={{position:"absolute",top:hoverCell.rowIdx*rowH,left:0,right:0,height:rowH,background:"rgba(124,124,200,0.04)",zIndex:1,pointerEvents:"none"}}/>}
