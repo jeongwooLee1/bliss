@@ -2066,9 +2066,9 @@ function App() {
         </div>
 
         {/* 오른쪽: 액션 */}
-        <div style={{display:"flex",alignItems:"center",gap:4,overflowX:"auto",flexShrink:1}}>
+        <div style={{display:"flex",alignItems:"center",gap:2,overflowX:"auto",flexShrink:1}}>
           {/* 버전 */}
-          <span style={{fontSize:T.fs.nano,color:T.textMuted,fontWeight:T.fw.bold,whiteSpace:"nowrap",marginRight:2}}>{SCH_V}</span>
+          <span style={{fontSize:T.fs.nano,color:T.textMuted,fontWeight:T.fw.bold,whiteSpace:"nowrap",marginRight:2,display:window.innerWidth<480?"none":"inline"}}>{SCH_V}</span>
           {/* ⚡ 자동배치 - 주 CTA */}
           <button onClick={()=>{
             if(isAssigning) return;
@@ -2199,7 +2199,7 @@ function App() {
             {name:"printer",  tip:"인쇄",  fn:()=>window.print()},
           ].map(({name,tip,fn,danger})=>(
             <button key={tip} onClick={fn} title={tip} style={{
-              width:32,height:32,borderRadius:T.radius.md,
+              width:28,height:28,borderRadius:T.radius.md,
               border:"1px solid "+(danger?T.danger+"55":T.border),
               background:danger?T.dangerLt:"transparent",
               cursor:"pointer",display:"flex",alignItems:"center",
@@ -2214,7 +2214,7 @@ function App() {
           {/* 설정 드롭다운 */}
           <div style={{position:"relative",flexShrink:0}}>
             <button onClick={()=>setShowSettings(s=>!s)} title="설정" style={{
-              width:32,height:32,borderRadius:T.radius.md,
+              width:28,height:28,borderRadius:T.radius.md,
               border:"1px solid "+(showSettings?T.primary:T.border),
               background:showSettings?T.primaryLt:"transparent",
               cursor:"pointer",display:"flex",alignItems:"center",
@@ -3077,7 +3077,8 @@ function App() {
   );
 }
 
-const stickyCol = { position:"sticky",left:0,zIndex:10,width:170,minWidth:170,padding:"6px 10px",verticalAlign:"middle",background:T.bgCard,boxShadow:"2px 0 4px rgba(0,0,0,.07)" };
+const empColW = window.innerWidth < 480 ? 120 : 170;
+const stickyCol = { position:"sticky",left:0,zIndex:10,width:empColW,minWidth:empColW,padding:"5px 8px",verticalAlign:"middle",background:T.bgCard,boxShadow:"2px 0 4px rgba(0,0,0,.07)" };
 const navBtn = { background:"none",border:"1px solid #e4ddd0",borderRadius:6,padding:"5px 10px",cursor:"pointer",fontSize:13,fontFamily:"inherit",color:T.textSub };
 
 function Btn({label,onClick,primary,outline,danger,style={}}){
