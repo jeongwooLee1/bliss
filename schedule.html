@@ -1707,7 +1707,7 @@ function App() {
   const saveDeletedIds = async (ids) => {
     try { await window.storage.set(DELETED_EMP_KEY, JSON.stringify([...ids])); } catch(e) {}
   };
-  const [newEmp, setNewEmp] = useState({name:"",branch:"nonhyeon",isOwner:false,weeklyOff:2,isMale:false,mustStay:false});
+  const [newEmp, setNewEmp] = useState({name:"",branches:["nonhyeon"],isOwner:false,weeklyOff:2,isMale:false,mustStay:false});
   // 커스텀 직원 로드
   React.useEffect(() => {
     (async () => {
@@ -2866,16 +2866,23 @@ function App() {
               <div style={{marginBottom:14}}>
                 <div style={{fontSize:11,color:T.textSub,marginBottom:5,fontWeight:600}}>지점</div>
                 <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-                  {[...BRANCHES,{id:"male",name:"남직원",color:T.primary}].map(b=>(
-                    <button key={b.id} onClick={()=>setNewEmp(p=>({...p,branch:b.id,isMale:b.id==="male"}))}
+                  {[...BRANCHES,{id:"male",name:"남직원",color:T.primary}].map(b=>{
+                    const sel = (newEmp.branches||[]).includes(b.id);
+                    return (
+                    <button key={b.id} onClick={()=>setNewEmp(p=>{
+                      const cur = p.branches||[];
+                      const next = sel ? cur.filter(x=>x!==b.id) : [...cur, b.id];
+                      return {...p, branches: next.length?next:[b.id], isMale: next.includes("male")};
+                    })}
                       style={{padding:"5px 12px",borderRadius:7,fontSize:12,fontFamily:"inherit",cursor:"pointer",
-                        border:`1.5px solid ${newEmp.branch===b.id?b.color:T.border}`,
-                        background:newEmp.branch===b.id?b.color+"22":T.bgCard,
-                        color:newEmp.branch===b.id?b.color:T.textMuted,
-                        fontWeight:newEmp.branch===b.id?700:400}}>
-                      {b.name}
+                        border:`1.5px solid ${sel?b.color:T.border}`,
+                        background:sel?b.color+"22":T.bgCard,
+                        color:sel?b.color:T.textMuted,
+                        fontWeight:sel?700:400}}>
+                      {sel?"✓ ":""}{b.name}
                     </button>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
               {/* 주 휴무 */}
@@ -2916,11 +2923,11 @@ function App() {
                   const id = newEmp.name.trim();
                   if (!id) return;
                   if (ALL_EMPLOYEES.some(e=>e.id===id)) { alert("이미 같은 이름의 직원이 있습니다."); return; }
-                  const emp = {...newEmp, id, name:id};
+                  const emp = {...newEmp, id, name:id, branch:(newEmp.branches||["nonhyeon"])[0], branches:newEmp.branches||["nonhyeon"]};
                   const next = [...customEmployees, emp];
                   setCustomEmployees(next); saveCustomEmps(next);
                   setEmpSettings(prev=>({...prev, [id]:{weeklyWork:7-emp.weeklyOff, altPattern:false}}));
-                  setNewEmp({name:"",branch:"nonhyeon",isOwner:false,weeklyOff:2,isMale:false,mustStay:false});
+                  setNewEmp({name:"",branches:["nonhyeon"],isOwner:false,weeklyOff:2,isMale:false,mustStay:false});
                   setShowAddEmp(false);
                 }}
                 style={{width:"100%",padding:"10px 0",borderRadius:8,fontSize:13,fontFamily:"inherit",cursor:"pointer",fontWeight:700,
