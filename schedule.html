@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.18-t";
+const SCH_V = "v2026.03.18-u";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -2915,7 +2915,7 @@ function App() {
             <div onMouseUp={()=>{ ownerDragRef.current.active=false; }} onMouseLeave={()=>{ ownerDragRef.current.active=false; }}
               style={{position:"fixed",top:"50%",left:"50%",transform:"translate(-50%,-50%)",background:"#fff",borderRadius:14,padding:24,zIndex:201,width:"min(96vw,900px)",maxHeight:"85vh",overflowY:"auto",boxShadow:"0 10px 40px rgba(0,0,0,.25)"}}>
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
-                <div style={{fontWeight:700,fontSize:14,color:"#4a2c14"}}>👑 원장 지정 휴무 설정</div>
+                <div style={{fontWeight:700,fontSize:14,color:"#4a2c14"}}>👑 원장 / 프리랜서 지정 휴무 설정</div>
                 <div style={{display:"flex",gap:6,alignItems:"center"}}>
                   {ownerSaveStatus==="saved" && <span style={{fontSize:11,color:"#6b9e6b"}}>✓ 저장됨</span>}
                   {ownerSaveStatus==="saving" && <span style={{fontSize:11,color:T.textMuted}}>저장중...</span>}
@@ -2936,9 +2936,30 @@ function App() {
               </div>
           <div style={{fontSize:12,color:T.textMuted,marginBottom:16}}>자동배치 전 원장님 고정 휴무일을 먼저 설정하세요. 요일 버튼으로 매주 반복 지정 또는 날짜 드래그로 개별 선택. 자동배치 시 최우선 적용됩니다.</div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))",gap:14}}>
-            {ALL_EMPLOYEES.filter(e=>e.isOwner).map(emp=>{
-              const bc=BRANCHES.find(b=>b.id===emp.branch)?.color||T.textSub;
-              const myReqs=Object.entries(ownerReqs).filter(([k])=>k.startsWith(emp.id+"__"));
+            {ALL_EMPLOYEES.filter(e=>e.isOwner||e.isFreelancer||(empSettings[e.id]?.isFreelancer)).map(emp=>{
+              const isFL = emp.isFreelancer || empSettings[emp.id]?.isFreelancer;
+              // 프리랜서는 empReqs 사용, 원장은 ownerReqs 사용
+              const getReqs = () => isFL
+                ? Object.fromEntries(Object.entries(empReqs).filter(([k])=>k.startsWith(emp.id+"__")))
+                : Object.fromEntries(Object.entries(ownerReqs).filter(([k])=>k.startsWith(emp.id+"__")));
+              const setReq = (key, val) => {
+                if (isFL) {
+                  setEmpReqs(prev => {
+                    const next = {...prev};
+                    if (val) next[key] = val; else delete next[key];
+                    saveEmpReqs(next);
+                    return next;
+                  });
+                } else {
+                  setOwnerReqs(prev => {
+                    const next = {...prev};
+                    if (val) next[key] = val; else delete next[key];
+                    return next;
+                  });
+                }
+              };
+              const bc=isFL?"#7a7a7a":(BRANCHES.find(b=>b.id===emp.branch)?.color||T.textSub);
+              const myReqs=Object.entries(isFL?empReqs:ownerReqs).filter(([k])=>k.startsWith(emp.id+"__"));
               // 현재 이 원장의 활성 요일 구하기 (이번달+이월 날짜 기준)
               const activeDows = new Set(
                 myReqs
@@ -2947,19 +2968,16 @@ function App() {
               );
               // 요일이 완전히 채워져 있는지 체크
               const isDowFull = (dow) => {
+                const reqs_ = isFL?empReqs:ownerReqs;
                 const matchDays = days.filter(day=>!day.isNext && day.dow===dow);
-                return matchDays.length>0 && matchDays.every(day=>!!ownerReqs[emp.id+"__"+day.ds]);
+                return matchDays.length>0 && matchDays.every(day=>!!reqs_[emp.id+"__"+day.ds]);
               };
               // 요일 토글: 해당 요일의 이번달 날짜 전체를 on/off
               const toggleDow = (dow) => {
                 const full = isDowFull(dow);
-                setOwnerReqs(p=>{
-                  const next={...p};
-                  days.filter(day=>!day.isNext && day.dow===dow).forEach(day=>{
-                    const key=emp.id+"__"+day.ds;
-                    if(full){ delete next[key]; } else { next[key]=STATUS.MUST_OFF; }
-                  });
-                  return next;
+                days.filter(day=>!day.isNext && day.dow===dow).forEach(day=>{
+                  const key=emp.id+"__"+day.ds;
+                  setReq(key, full ? null : STATUS.MUST_OFF);
                 });
               };
               return (
@@ -3025,27 +3043,27 @@ function App() {
                         {cells.map((day,ci)=>{
                           if(!day) return <div key={"e"+ci} style={{height:30}}/>;
                           const key=emp.id+"__"+day.ds;
-                          // ownerReqs 직접 지정 OR ownerRepeat 반복 요일에 해당하면 on
+                          const reqs__ = isFL?empReqs:ownerReqs;
+                          // 직접 지정 OR ownerRepeat 반복 요일에 해당하면 on
                           const _rep = ownerRepeat[emp.id] || {enabled:false, dows:[]};
-                          const on=!!ownerReqs[key] || (_rep.enabled && _rep.dows.includes(day.dow));
+                          const on=!!reqs__[key] || (!isFL && _rep.enabled && _rep.dows.includes(day.dow));
                           const isSun=day.dow===6; const isSat=day.dow===5;
                           return (
                             <div key={day.ds}
                               onMouseDown={e=>{
                                 e.preventDefault();
                                 const dr=ownerDragRef.current;
+                                const reqs_d = isFL?empReqs:ownerReqs;
                                 dr.active=true; dr.empId=emp.id;
-                                dr.mode=ownerReqs[key]?'off':'on';
-                                setOwnerReqs(p=>{ if(p[key]){const n={...p};delete n[key];return n;}return{...p,[key]:STATUS.MUST_OFF};});
+                                dr.mode=reqs_d[key]?'off':'on';
+                                setReq(key, reqs_d[key]?null:STATUS.MUST_OFF);
                               }}
                               onMouseEnter={()=>{
                                 const dr=ownerDragRef.current;
                                 if(!dr.active||dr.empId!==emp.id) return;
-                                setOwnerReqs(p=>{
-                                  if(dr.mode==='on') return p[key]?p:{...p,[key]:STATUS.MUST_OFF};
-                                  if(dr.mode==='off'){ if(!p[key]) return p; const n={...p};delete n[key];return n; }
-                                  return p;
-                                });
+                                const reqs_d = isFL?empReqs:ownerReqs;
+                                if(dr.mode==='on' && !reqs_d[key]) setReq(key, STATUS.MUST_OFF);
+                                if(dr.mode==='off' && reqs_d[key]) setReq(key, null);
                               }}
                               style={{height:30,borderRadius:5,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",cursor:"pointer",fontSize:11,fontWeight:700,background:on?bc:day.isNext?"#ede8f5":"#f5f0ea",color:on?"#fff":day.isNext?T.purple:isSun?T.danger:isSat?T.primary:T.textSub,border:`1.5px solid ${on?bc:day.isNext?"#c4b3e0":T.border}`,transition:"all .12s",userSelect:"none",opacity:day.isNext?0.85:1}}>
                               <div style={{fontSize:11,lineHeight:1}}>{day.d}</div>
@@ -3056,7 +3074,7 @@ function App() {
                       </div>
                     );
                   })()}
-                  <div style={{marginTop:8,fontSize:11,color:"#b0a090"}}>지정: {myReqs.filter(([k])=>k.includes("__"+curMonthStr)||k.includes("__"+nextMonthStr)).length}일</div>
+                  <div style={{marginTop:8,fontSize:11,color:"#b0a090"}}>{isFL?"📌 프리랜서":"👑 원장"} 지정: {myReqs.filter(([k])=>k.includes("__"+curMonthStr)||k.includes("__"+nextMonthStr)).length}일</div>
                 </div>
               );
             })}
