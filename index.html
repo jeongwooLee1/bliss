@@ -52,7 +52,7 @@ const DBMAP = {
   service_tags:{business_id:"businessId",schedule_yn:"scheduleYn",use_yn:"useYn"},
   services:{business_id:"businessId",price_f:"priceF",price_m:"priceM",is_package:"isPackage",pkg_count:"pkgCount",pkg_price_f:"pkgPriceF",pkg_price_m:"pkgPriceM"},
   app_users:{business_id:"businessId",login_id:"loginId",branch_ids:"branches",password:"pw",view_branch_ids:"viewBranches"},
-  branches:{business_id:"businessId",use_yn:"useYn",naver_email:"naverEmail",naver_biz_id:"naverBizId",naver_col_count:"naverColCount",noti_config:"notiConfig"},
+  branches:{business_id:"businessId",use_yn:"useYn",naver_email:"naverEmail",naver_biz_id:"naverBizId",naver_col_count:"naverColCount",noti_config:"notiConfig",staff_col_count:"staffColCount"},
   reservation_sources:{business_id:"businessId",use_yn:"useYn"},
 };
 
@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.273";
+const BLISS_V = "2.69.274";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -2242,17 +2242,12 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   const [pendingChange, setPendingChange] = useState(null);
   const [hoverCell, setHoverCell] = useState(null); // {roomId, rowIdx}
   const [empMovePopup, setEmpMovePopup] = useState(null); // {empId, date, x, y}
-  // 지점별 고정 컬럼 수 {branchId: number} - 0이면 자동(직원 수만큼)
-  const [branchColCount, setBranchColCount] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("bliss_branchColCount")||"{}"); } catch { return {}; }
-  });
-  const setBranchCols = (bid, n) => {
-    setBranchColCount(p => {
-      const next = {...p, [bid]: n};
-      try { localStorage.setItem("bliss_branchColCount", JSON.stringify(next)); } catch {}
-      return next;
-    });
-  };
+  // 지점별 고정 컬럼 수 - branches.staffColCount에서 읽음
+  const branchColCount = React.useMemo(() => {
+    const map = {};
+    (data?.branches||[]).forEach(br => { if(br.staffColCount) map[br.id] = br.staffColCount; });
+    return map;
+  }, [data?.branches]);
   const cellLongPress = useRef(null);
 
   const allRooms = branchesToShow.flatMap(br => {
@@ -2279,7 +2274,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       staffRooms = (data.rooms||[]).filter(r=>r.branch_id===br.id).map(r=>({...r, branchName:br.short||br.name||""}));
     }
     // 고정 컬럼 수 적용 - 부족하면 빈 컬럼 추가
-    const fixedCols = branchColCount[br.id] || 0;
+    const fixedCols = br.staffColCount || branchColCount[br.id] || 0;
     if (fixedCols > staffRooms.length) {
       const empCols = staffRooms.filter(r => r.isStaffCol).length;
       const blanks = fixedCols - staffRooms.length;
@@ -3649,23 +3644,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                   color:timeUnit===u?T.bgCard:T.gray600,fontWeight:timeUnit===u?700:400,cursor:"pointer"}}>{u}분</button>)}
             </div>
           </div>
-          {/* 지점별 컬럼 수 설정 */}
-          <div style={{marginTop:8}}>
-            <span style={{fontSize:T.fs.sm,color:T.gray700,fontWeight:T.fw.bold,display:"block",marginBottom:6}}>지점별 컬럼 수 <span style={{fontSize:T.fs.xxs,color:T.textMuted,fontWeight:400}}>(0=자동)</span></span>
-            <div style={{display:"flex",flexDirection:"column",gap:6}}>
-              {branchesToShow.map(br => {
-                const cur = branchColCount[br.id] || 0;
-                return <div key={br.id} style={{background:T.gray100,borderRadius:T.radius.lg,padding:"8px 12px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                  <span style={{fontSize:T.fs.sm,color:T.gray700,fontWeight:T.fw.bold}}>{br.short||br.name}</span>
-                  <div style={{display:"flex",alignItems:"center",gap:6}}>
-                    <button onClick={()=>setBranchCols(br.id,Math.max(0,cur-1))} style={{width:30,height:30,border:"1px solid #ddd",borderRadius:T.radius.md,background:T.bgCard,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}><I name="minus" size={14} color={T.gray700}/></button>
-                    <span style={{fontSize:T.fs.sm,color:cur>0?T.primary:T.gray400,fontWeight:T.fw.bolder,width:28,textAlign:"center"}}>{cur===0?"자동":cur}</span>
-                    <button onClick={()=>setBranchCols(br.id,cur+1)} style={{width:30,height:30,border:"1px solid #ddd",borderRadius:T.radius.md,background:T.bgCard,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}><I name="plus" size={14} color={T.gray700}/></button>
-                  </div>
-                </div>;
-              })}
-            </div>
-          </div>
+
           <div style={{marginTop:8}}>
             <span style={{fontSize:T.fs.sm,color:T.gray700,fontWeight:T.fw.bold,display:"block",marginBottom:6}}>예약상태 색상</span>
             <GridLayout cols={2} gap={6}>
@@ -7195,16 +7174,16 @@ function AdminPlaces({ data, setData, bizId }) {
   const [del,setDel]=useState(null);
   const set=(k,v)=>setForm(p=>({...p,[k]:v}));
 
-  const openNew=()=>{setEdit(null);setForm({name:"",short:"",phone:"",address:"",color:"",useYn:true});setSheet(true);};
-  const openEdit=b=>{setEdit(b);setForm({name:b.name||"",short:b.short||"",phone:b.phone||"",address:b.address||"",color:b.color||"",useYn:b.useYn!==false});setSheet(true);};
+  const openNew=()=>{setEdit(null);setForm({name:"",short:"",phone:"",address:"",color:"",useYn:true,staffColCount:0});setSheet(true);};
+  const openEdit=b=>{setEdit(b);setForm({name:b.name||"",short:b.short||"",phone:b.phone||"",address:b.address||"",color:b.color||"",useYn:b.useYn!==false,staffColCount:b.staffColCount||0});setSheet(true);};
 
   const save=async()=>{
     if(!form.name.trim())return;
     setSaving(true);
     try{
       if(edit){
-        await sb.update("branches",edit.id,{name:form.name,short:form.short||form.name.slice(0,5),phone:form.phone,address:form.address,color:form.color,use_yn:form.useYn});
-        setData(p=>({...p,branches:(p.branches||[]).map(b=>b.id===edit.id?{...b,...form}:b),branchSettings:(p.branchSettings||[]).map(b=>b.id===edit.id?{...b,...form}:b)}));
+        await sb.update("branches",edit.id,{name:form.name,short:form.short||form.name.slice(0,5),phone:form.phone,address:form.address,color:form.color,use_yn:form.useYn,staff_col_count:form.staffColCount||0});
+        setData(p=>({...p,branches:(p.branches||[]).map(b=>b.id===edit.id?{...b,...form,staffColCount:form.staffColCount||0}:b),branchSettings:(p.branchSettings||[]).map(b=>b.id===edit.id?{...b,...form}:b)}));
       }else{
         const id="br_"+uid();
         await sb.insert("branches",{id,business_id:bizId,name:form.name,short:form.short||form.name.slice(0,5),phone:form.phone,address:form.address,color:form.color,use_yn:form.useYn,sort:branches.length});
@@ -7241,6 +7220,13 @@ function AdminPlaces({ data, setData, bizId }) {
       <AField label="전화번호"><input style={AInp} value={form.phone} onChange={e=>set("phone",e.target.value)} placeholder="02-0000-0000" onFocus={e=>e.target.style.borderColor=T.primary} onBlur={e=>e.target.style.borderColor="#e8e8f0"}/></AField>
       <AField label="주소"><input style={AInp} value={form.address} onChange={e=>set("address",e.target.value)} placeholder="서울특별시 강남구…" onFocus={e=>e.target.style.borderColor=T.primary} onBlur={e=>e.target.style.borderColor="#e8e8f0"}/></AField>
       <AField label="색상"><APalette value={form.color} onChange={v=>set("color",v)}/></AField>
+      <AField label="타임라인 컬럼 수" hint="0=자동(출근 직원 수), 숫자 설정 시 빈 컬럼 포함">
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <button onClick={()=>set("staffColCount",Math.max(0,(form.staffColCount||0)-1))} style={{width:34,height:34,border:"1px solid #ddd",borderRadius:T.radius.md,background:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><I name="minus" size={14} color={T.gray700}/></button>
+          <span style={{fontSize:T.fs.lg,fontWeight:T.fw.bolder,color:(form.staffColCount||0)>0?T.primary:T.gray400,width:40,textAlign:"center"}}>{(form.staffColCount||0)===0?"자동":form.staffColCount}</span>
+          <button onClick={()=>set("staffColCount",(form.staffColCount||0)+1)} style={{width:34,height:34,border:"1px solid #ddd",borderRadius:T.radius.md,background:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><I name="plus" size={14} color={T.gray700}/></button>
+        </div>
+      </AField>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 0",borderTop:"1px solid "+T.gray100,marginBottom:16,marginTop:4}}>
         <span style={{fontSize:T.fs.sm,color:T.text,fontWeight:500}}>운영 중</span>
         <AToggle on={form.useYn} onChange={v=>set("useYn",v)}/>
