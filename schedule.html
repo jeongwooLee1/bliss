@@ -8,13 +8,6 @@
   * { box-sizing: border-box; }
   body { margin: 0; padding: 0; background: #f9fafb; font-family: 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif; }
   #root { min-height: 100vh; }
-  .sticky-col { width: 170px; min-width: 170px; max-width: 170px; }
-  @media (max-width: 600px) {
-    .sticky-col { width: 88px !important; min-width: 88px !important; max-width: 88px !important; padding: 4px 5px !important; }
-    .emp-sub { display: none !important; }
-    .emp-dot { display: none !important; }
-    .emp-name { font-size: 11px !important; }
-  }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
@@ -73,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.17-v";
+const SCH_V = "v2026.03.17-w";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -117,40 +110,13 @@ const I = ({name,size=16,color="currentColor",style={},...p}) => {
 };
 
 
-// schedule 내부 ID → Supabase branch ID 매핑 (그룹별)
-const SCH_BRANCH_SB_MAP = {
-  "nonhyeon": ["br_4bcauqvrb","br_wkqsxj6k1"], // 강남+왕십리
-  "hongdae":  ["br_l6yzs2pkq","br_k57zpkbx1"], // 홍대+마곡
-  "yongsan":  ["br_ybo3rmulv"],
-  "jamsil":   ["br_lfv2wgdf1","br_g768xdu4w"], // 잠실+위례
-  "cheonho":  ["br_xu60omgdf"],
-};
-const SCH_BRANCH_DEFAULT = [
+const BRANCHES = [
   { id: "nonhyeon", name: "논현&왕십리", color: "#c8793a", minStaff: 4 },
   { id: "hongdae",  name: "홍대&마곡",   color: "#3a9e8e", minStaff: 2 },
   { id: "yongsan",  name: "용산",         color: "#8b6fa3", minStaff: 1 },
   { id: "jamsil",   name: "잠실&위례",   color: "#3a7aaf", minStaff: 2 },
   { id: "cheonho",  name: "천호",         color: "#a07040", minStaff: 1 },
 ];
-// Supabase에서 지점 로드 → 이름/색상 동적 반영
-let BRANCHES = [...SCH_BRANCH_DEFAULT];
-(async () => {
-  try {
-    const res = await fetch(`${_SB_URL}/rest/v1/branches?business_id=eq.biz_khvurgshb&select=id,name,color&order=sort_order.asc`, { headers: _SB_H });
-    const sbBranches = await res.json();
-    if (!Array.isArray(sbBranches) || !sbBranches.length) return;
-    BRANCHES = SCH_BRANCH_DEFAULT.map(b => {
-      const sbIds = SCH_BRANCH_SB_MAP[b.id] || [];
-      const matched = sbBranches.filter(sb => sbIds.includes(sb.id));
-      if (!matched.length) return b;
-      // 그룹명: 매핑된 지점 이름 합치기
-      const names = matched.map(sb => sb.name.replace("하우스왁싱 ","").replace("점",""));
-      const name = names.join("&");
-      const color = matched[0].color || b.color;
-      return { ...b, name, color };
-    });
-  } catch(e) { console.warn("BRANCHES 로드 실패:", e); }
-})();
 
 const EMPLOYEES = [
   { id:"소연", name:"소연", branch:"nonhyeon", isOwner:false, weeklyOff:2 },
@@ -420,7 +386,6 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
   // 격주패턴 phaseShift: 이전 달 마지막 실제 주의 휴무 수로 결정
   // 이전 달 마지막 주가 lo(1일)로 끝났으면 이번 달 첫 주는 hi(2일)부터 시작 → phaseShift=1
   // 이전 달 마지막 주가 hi(2일)로 끝났으면 이번 달 첫 주는 lo(1일)부터 시작 → phaseShift=0
-  const hyeonaPhaseShift = firstDow > 0 ? 1 : 0; // autoAssign 내부에서 prevSchData로 보정
 
   // 이번달에 걸친 주 수 (이번달 날짜가 1일 이상 있는 주만)
   const activeWeeks = weeks.filter(w => w.some(d => !d.isPrev));
@@ -1571,17 +1536,6 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
 }
 
 function App() {
-  const [isMobile, setIsMobile] = React.useState(()=>{
-    const p = new URLSearchParams(window.location.search).get("mobile");
-    return p !== null ? p === "1" : window.innerWidth <= 600;
-  });
-  React.useEffect(()=>{
-    const handler = (e) => { if(e.data?.type==="SET_MOBILE") setIsMobile(e.data.mobile); };
-    window.addEventListener("message", handler);
-    return ()=>window.removeEventListener("message", handler);
-  },[]);
-  const empColW = isMobile ? 88 : 170;
-  const stickyCol = { position:"sticky",left:0,zIndex:10,width:empColW,minWidth:empColW,maxWidth:empColW,padding:isMobile?"4px 5px":"5px 8px",verticalAlign:"middle",background:T.bgCard,boxShadow:"2px 0 4px rgba(0,0,0,.07)",overflow:"hidden" };
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
@@ -1707,7 +1661,7 @@ function App() {
   const saveDeletedIds = async (ids) => {
     try { await window.storage.set(DELETED_EMP_KEY, JSON.stringify([...ids])); } catch(e) {}
   };
-  const [newEmp, setNewEmp] = useState({name:"",branches:["nonhyeon"],isOwner:false,weeklyOff:2,isMale:false,mustStay:false});
+  const [newEmp, setNewEmp] = useState({name:"",branch:"nonhyeon",isOwner:false,weeklyOff:2,isMale:false,mustStay:false});
   // 커스텀 직원 로드
   React.useEffect(() => {
     (async () => {
@@ -2084,8 +2038,9 @@ function App() {
         </div>
 
         {/* 오른쪽: 액션 */}
-        <div style={{display:"flex",alignItems:"center",gap:2,flexWrap:"wrap",flexShrink:1}}>
-
+        <div style={{display:"flex",alignItems:"center",gap:4}}>
+          {/* 버전 */}
+          <span style={{fontSize:T.fs.nano,color:T.textMuted,fontWeight:T.fw.bold,whiteSpace:"nowrap",marginRight:2}}>{SCH_V}</span>
           {/* ⚡ 자동배치 - 주 CTA */}
           <button onClick={()=>{
             if(isAssigning) return;
@@ -2193,10 +2148,10 @@ function App() {
               }
             }, 50);
           }} style={{
-            display:"inline-flex",alignItems:"center",gap:4,
+            display:"inline-flex",alignItems:"center",gap:6,
             background:isAssigning?T.gray400:T.primary,color:"#fff",border:"none",
-            borderRadius:T.radius.md,padding:"6px 10px",
-            fontSize:T.fs.xs,fontWeight:T.fw.bolder,cursor:"pointer",
+            borderRadius:T.radius.md,padding:"7px 14px",
+            fontSize:T.fs.sm,fontWeight:T.fw.bolder,cursor:"pointer",
             fontFamily:"inherit",boxShadow:"0 1px 4px rgba(124,124,200,.35)",
             transition:"all .15s"
           }}
@@ -2205,7 +2160,8 @@ function App() {
             {isAssigning ? <><I name="loader" size={14} color="#fff" style={{animation:"spin .8s linear infinite"}}/> 배치중</> : <><I name="zap" size={14} color="#fff"/> 배치</>}
           </button>
 
-
+          {/* 구분선 */}
+          <div style={{width:1,height:24,background:T.border,margin:"0 2px"}}/>
 
           {/* 아이콘 버튼들 */}
           {[
@@ -2215,7 +2171,7 @@ function App() {
             {name:"printer",  tip:"인쇄",  fn:()=>window.print()},
           ].map(({name,tip,fn,danger})=>(
             <button key={tip} onClick={fn} title={tip} style={{
-              width:28,height:28,borderRadius:T.radius.md,
+              width:32,height:32,borderRadius:T.radius.md,
               border:"1px solid "+(danger?T.danger+"55":T.border),
               background:danger?T.dangerLt:"transparent",
               cursor:"pointer",display:"flex",alignItems:"center",
@@ -2228,9 +2184,9 @@ function App() {
           ))}
 
           {/* 설정 드롭다운 */}
-          <div style={{position:"relative",flexShrink:0}}>
+          <div style={{position:"relative"}}>
             <button onClick={()=>setShowSettings(s=>!s)} title="설정" style={{
-              width:28,height:28,borderRadius:T.radius.md,
+              width:32,height:32,borderRadius:T.radius.md,
               border:"1px solid "+(showSettings?T.primary:T.border),
               background:showSettings?T.primaryLt:"transparent",
               cursor:"pointer",display:"flex",alignItems:"center",
@@ -2343,10 +2299,10 @@ function App() {
 
       {/* 메인 테이블 */}
       <div style={{flex:1,overflow:"auto",minHeight:0,overscrollBehavior:"none",background:T.bg}}>
-        <table style={{borderCollapse:"separate",borderSpacing:0,minWidth: dim*38+empColW}}>
+        <table style={{borderCollapse:"separate",borderSpacing:0,minWidth: dim*38+160}}>
           <thead style={{position:"sticky",top:0,zIndex:20,background:T.bgCard}}>
             <tr>
-              <th className="sticky-col" style={{...stickyCol,className:"sticky-col",background:T.gray100,fontSize:T.fs.xxs,fontWeight:T.fw.bolder,color:T.textSub,textAlign:"left",borderBottom:"2px solid "+T.border,zIndex:30,top:0,position:"sticky"}}>직원</th>
+              <th style={{...stickyCol,background:T.gray100,fontSize:T.fs.xxs,fontWeight:T.fw.bolder,color:T.textSub,textAlign:"left",borderBottom:"2px solid "+T.border,zIndex:30,top:0,position:"sticky"}}>직원</th>
               {days.map(day=>{
                 const isToday=day.ds===fmtDs(today.getFullYear(),today.getMonth(),today.getDate());
                 const isSun=day.dow===6,isSat=day.dow===5;
@@ -2365,11 +2321,11 @@ function App() {
               const emps=ALL_EMPLOYEES.filter(e=>e.branch===branch.id);
               return emps.map((emp,ei)=>(
                 <tr key={emp.id}>
-                  <td className="sticky-col" style={{...stickyCol,className:"sticky-col",borderLeft:`3px solid ${branch.color}`,borderBottom:"1px solid "+T.border,borderRight:"1px solid "+T.border,background:ei===0?branch.color+"18":T.bgCard,borderTop:ei===0?`2px solid ${branch.color}55`:"none"}}>
-                    <div style={{display:"flex",alignItems:"center",gap:4}}>
-                      <div className="emp-dot" style={{width:7,height:7,borderRadius:"50%",background:branch.color,flexShrink:0}}/>
-                      <div style={{overflow:"hidden",width:"100%"}}>
-                        <div className="emp-name" style={{fontSize:12,fontWeight:emp.isOwner?700:500,lineHeight:1.2,display:"flex",alignItems:"center",gap:4,overflow:"hidden"}}>
+                  <td style={{...stickyCol,padding:"5px 10px",borderLeft:`3px solid ${branch.color}`,borderBottom:"1px solid "+T.border,borderRight:"1px solid "+T.border,background:ei===0?branch.color+"18":T.bgCard,borderTop:ei===0?`2px solid ${branch.color}55`:"none"}}>
+                    <div style={{display:"flex",alignItems:"center",gap:6}}>
+                      <div style={{width:7,height:7,borderRadius:"50%",background:branch.color,flexShrink:0}}/>
+                      <div>
+                        <div style={{fontSize:12,fontWeight:emp.isOwner?700:500,lineHeight:1.2,display:"flex",alignItems:"center",gap:4,overflow:"hidden"}}>
                           {emp.name}
                           {(()=>{
                             // 지원 횟수 집계 (지점별)
@@ -2387,7 +2343,7 @@ function App() {
                             </span>;
                           })()}
                         </div>
-                        <div className="emp-sub" style={{fontSize:9,color:"#b8a898",display:"flex",gap:4,alignItems:"center"}}>
+                        <div style={{fontSize:9,color:"#b8a898",display:"flex",gap:4,alignItems:"center"}}>
                           {branch.name}
                           {(()=>{
                             const curMs2 = `${year}-${String(month+1).padStart(2,"0")}`;
@@ -2461,7 +2417,7 @@ function App() {
               if (filterBranch !== "all" && filterBranch !== "male") return null;
               return maleEmps.map((emp, ei) => (
                 <tr key={emp.id}>
-                  <td className="sticky-col" style={{...stickyCol,className:"sticky-col",borderLeft:`3px solid ${maleColor}`,borderBottom:"1px solid #d0e0f0",borderRight:"1px solid "+T.border,background:ei===0?maleColor+"18":T.gray100,borderTop:ei===0?`2px solid ${maleColor}55`:"none"}}>
+                  <td style={{...stickyCol,padding:"5px 10px",borderLeft:`3px solid ${maleColor}`,borderBottom:"1px solid #d0e0f0",borderRight:"1px solid "+T.border,background:ei===0?maleColor+"18":T.gray100,borderTop:ei===0?`2px solid ${maleColor}55`:"none"}}>
                     <div style={{display:"flex",alignItems:"center",gap:6}}>
                       <div style={{width:7,height:7,borderRadius:"50%",background:maleColor,flexShrink:0}}/>
                       <div>
@@ -2527,7 +2483,7 @@ function App() {
 
             {/* 일별 총 인원 */}
             <tr>
-              <td className="sticky-col" style={{...stickyCol,className:"sticky-col",fontSize:11,fontWeight:700,color:T.textSub,background:T.gray100,border:"1px solid "+T.border,borderRadius:"0 0 0 6px"}}>일 근무 인원</td>
+              <td style={{...stickyCol,padding:"6px 10px",fontSize:11,fontWeight:700,color:T.textSub,background:T.gray100,border:"1px solid "+T.border,borderRadius:"0 0 0 6px"}}>일 근무 인원</td>
               {days.map(day=>{
                 const c=dailyCount(day.ds);
                 const ok=c>=10&&c<=15, wb=isWeekBoundary(day);
@@ -2545,7 +2501,7 @@ function App() {
               const emps=ALL_EMPLOYEES.filter(e=>e.branch===branch.id);
               return (
                 <tr key={branch.id+"-cnt"}>
-                  <td className="sticky-col" style={{...stickyCol,className:"sticky-col",fontSize:10,color:branch.color,fontWeight:700,background:T.bgCard,borderLeft:`3px solid ${branch.color}`,borderRight:"1px solid "+T.border,borderBottom:"1px solid "+T.border}}>
+                  <td style={{...stickyCol,padding:"4px 10px",fontSize:10,color:branch.color,fontWeight:700,background:T.bgCard,borderLeft:`3px solid ${branch.color}`,borderRight:"1px solid "+T.border,borderBottom:"1px solid "+T.border}}>
                     {branch.name}
                   </td>
                   {days.map(day=>{
@@ -2866,23 +2822,16 @@ function App() {
               <div style={{marginBottom:14}}>
                 <div style={{fontSize:11,color:T.textSub,marginBottom:5,fontWeight:600}}>지점</div>
                 <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-                  {[...BRANCHES,{id:"male",name:"남직원",color:T.primary}].map(b=>{
-                    const sel = (newEmp.branches||[]).includes(b.id);
-                    return (
-                    <button key={b.id} onClick={()=>setNewEmp(p=>{
-                      const cur = p.branches||[];
-                      const next = sel ? cur.filter(x=>x!==b.id) : [...cur, b.id];
-                      return {...p, branches: next.length?next:[b.id], isMale: next.includes("male")};
-                    })}
+                  {[...BRANCHES,{id:"male",name:"남직원",color:T.primary}].map(b=>(
+                    <button key={b.id} onClick={()=>setNewEmp(p=>({...p,branch:b.id,isMale:b.id==="male"}))}
                       style={{padding:"5px 12px",borderRadius:7,fontSize:12,fontFamily:"inherit",cursor:"pointer",
-                        border:`1.5px solid ${sel?b.color:T.border}`,
-                        background:sel?b.color+"22":T.bgCard,
-                        color:sel?b.color:T.textMuted,
-                        fontWeight:sel?700:400}}>
-                      {sel?"✓ ":""}{b.name}
+                        border:`1.5px solid ${newEmp.branch===b.id?b.color:T.border}`,
+                        background:newEmp.branch===b.id?b.color+"22":T.bgCard,
+                        color:newEmp.branch===b.id?b.color:T.textMuted,
+                        fontWeight:newEmp.branch===b.id?700:400}}>
+                      {b.name}
                     </button>
-                    );
-                  })}
+                  ))}
                 </div>
               </div>
               {/* 주 휴무 */}
@@ -2923,11 +2872,11 @@ function App() {
                   const id = newEmp.name.trim();
                   if (!id) return;
                   if (ALL_EMPLOYEES.some(e=>e.id===id)) { alert("이미 같은 이름의 직원이 있습니다."); return; }
-                  const emp = {...newEmp, id, name:id, branch:(newEmp.branches||["nonhyeon"])[0], branches:newEmp.branches||["nonhyeon"]};
+                  const emp = {...newEmp, id, name:id};
                   const next = [...customEmployees, emp];
                   setCustomEmployees(next); saveCustomEmps(next);
                   setEmpSettings(prev=>({...prev, [id]:{weeklyWork:7-emp.weeklyOff, altPattern:false}}));
-                  setNewEmp({name:"",branches:["nonhyeon"],isOwner:false,weeklyOff:2,isMale:false,mustStay:false});
+                  setNewEmp({name:"",branch:"nonhyeon",isOwner:false,weeklyOff:2,isMale:false,mustStay:false});
                   setShowAddEmp(false);
                 }}
                 style={{width:"100%",padding:"10px 0",borderRadius:8,fontSize:13,fontFamily:"inherit",cursor:"pointer",fontWeight:700,
@@ -3100,6 +3049,7 @@ function App() {
   );
 }
 
+const stickyCol = { position:"sticky",left:0,zIndex:10,width:170,minWidth:170,padding:"6px 10px",verticalAlign:"middle",background:T.bgCard,boxShadow:"2px 0 4px rgba(0,0,0,.07)" };
 const navBtn = { background:"none",border:"1px solid #e4ddd0",borderRadius:6,padding:"5px 10px",cursor:"pointer",fontSize:13,fontFamily:"inherit",color:T.textSub };
 
 function Btn({label,onClick,primary,outline,danger,style={}}){
