@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.18-h";
+const SCH_V = "v2026.03.18-i";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -1716,15 +1716,12 @@ function App() {
   const RULES_KEY = "customRules_v1";
   const defaultRules = [
     ["🌍 전체",["주 시작: 월요일","일 근무인원: 최소 11명 ~ 최대 15명","하루 전체 휴무 최대 5명 (남자직원 제외)","휴무 텀: 최대 6일(7일 초과 금지)","연속 2일 휴무: 월 2회 허용","3일 연속 휴무: 절대 금지"]],
-    ["📍 강남",["소속 최소 1명 근무 유지"]],
-    ["📍 왕십리",["소속 최소 1명 근무 유지"]],
-    ["📍 홍대",["현아 타지점 이동 불가"]],
-    ["📍 마곡",["지은 원장: 지정 휴무일 고정"]],
-    ["📍 용산",["보령(원장) 타지점 이동 불가","최소 1명 근무 유지","보령: 지정 휴무일 고정"]],
-    ["📍 잠실",["소이 소속"]],
-    ["📍 위례",["유라 원장·다해 소속"]],
-    ["📍 천호",["미진(원장) 타지점 이동 불가","최소 1명 근무 유지","수민·미진 동시 휴무 금지"]],
-    ["🔄 전체쉐어 순위",["잠실↔천호: ①수민 ②다해/소이 ③용산여유","홍대↔용산: ①민아 ②혜경 ③희서/민정"]],
+    ["📍 강남&왕십리",["경아·서현·소연·수연 로테이션","그룹 내 지원 우선, 부족 시 외부 지원"]],
+    ["📍 홍대&마곡",["현아·혜경·지은·민아 로테이션","현아 타지점 이동 불가(mustStay)","지은 원장: 지정 휴무일 고정"]],
+    ["📍 용산",["보령(원장) 타지점 이동 불가","희서·민정 지원 가능","보령: 지정 휴무일 고정"]],
+    ["📍 잠실&위례",["소이·유라·다해 로테이션","그룹 내 지원 우선, 부족 시 외부 지원"]],
+    ["📍 천호",["미진(원장) 타지점 이동 불가","수민 지원 가능","수민·미진 동시 휴무 금지"]],
+    ["🔄 지원 우선순위",["각 지점 minStaff 미달 시 그룹 내 → supportOrder → 나머지 순"]],
   ];
   const [customRules, setCustomRules] = React.useState(() => {
     return defaultRules; // 초기값, useEffect에서 서버에서 로드
@@ -2901,8 +2898,8 @@ function App() {
                 <div style={{fontWeight:700,fontSize:14,color:"#4a2c14"}}>🏢 지점지원설정</div>
                 <button onClick={()=>setShowSupportSettings(false)} style={{fontSize:16,lineHeight:1,padding:"2px 8px",borderRadius:6,border:"1px solid #ddd",background:"#f5f0ea",color:T.textSub,cursor:"pointer",fontFamily:"inherit"}}>✕</button>
               </div>
-              <div style={{fontSize:12,color:T.textMuted,marginBottom:18}}>논현&왕십리 인원 부족 시 지원 나가는 지점 우선순위를 설정하세요.</div>
-              <div style={{fontSize:12,fontWeight:700,color:"#4a2c14",marginBottom:10}}>📌 논현&왕십리 지원 우선순위</div>
+              <div style={{fontSize:12,color:T.textMuted,marginBottom:18}}>각 지점 minStaff 미달 시 외부 지원 나가는 지점 우선순위를 설정하세요. 그룹 내 로테이션은 항상 우선 적용됩니다.</div>
+              <div style={{fontSize:12,fontWeight:700,color:"#4a2c14",marginBottom:10}}>📌 외부 지원 우선순위</div>
               <div style={{display:"flex",flexDirection:"column",gap:8}}>
                 {BRANCHES.filter(b => b.id !== "male").map((b) => {
                   const idx = supportOrder.indexOf(b.id);
