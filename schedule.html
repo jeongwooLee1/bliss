@@ -2066,7 +2066,7 @@ function App() {
         </div>
 
         {/* 오른쪽: 액션 */}
-        <div style={{display:"flex",alignItems:"center",gap:4}}>
+        <div style={{display:"flex",alignItems:"center",gap:4,overflowX:"auto",flexShrink:1}}>
           {/* 버전 */}
           <span style={{fontSize:T.fs.nano,color:T.textMuted,fontWeight:T.fw.bold,whiteSpace:"nowrap",marginRight:2}}>{SCH_V}</span>
           {/* ⚡ 자동배치 - 주 CTA */}
@@ -2212,7 +2212,7 @@ function App() {
           ))}
 
           {/* 설정 드롭다운 */}
-          <div style={{position:"relative"}}>
+          <div style={{position:"relative",flexShrink:0}}>
             <button onClick={()=>setShowSettings(s=>!s)} title="설정" style={{
               width:32,height:32,borderRadius:T.radius.md,
               border:"1px solid "+(showSettings?T.primary:T.border),
