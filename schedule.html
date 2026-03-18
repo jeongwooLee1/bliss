@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.18-e";
+const SCH_V = "v2026.03.18-f";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -924,63 +924,81 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     });
   });
 
-  // 4) 지원 배정: minStaff 미달 지점에 지원 우선순위 지점 순으로 배정
+  // 4) 지원 배정: 모든 지점 순회하여 minStaff 미달 시 지원 배정
+  // 우선순위: ① 같은 branches 그룹 내 다른 지점 직원 (내부 로테이션)
+  //           ② supportOrder 지정 외부 지점 직원
+  //           ③ 나머지 지점 직원
   const supportOrder = supportConfig.order || [];
-  const nonhyeonBranch = BRANCHES.find(b => b.id === "gangnam") || BRANCHES[0];
-  const nonhyeonMinStaff = rc.branchMinStaff[nonhyeonBranch?.id] ?? nonhyeonBranch?.minStaff ?? 1;
-  const nonhyeonLabel = nonhyeonBranch?.name ?? "강남";
 
   for (const _day4 of allDates) {
     const ds = _day4.ds;
-    // 지원 배정: supportConfig.order에 있는 지점들 순서대로 minStaff 미달 체크
-    // 현재는 첫번째 지원대상 지점(gangnam)만 처리 - 추후 다중 지점 확장 가능
-    const targetBranch = nonhyeonBranch;
-    if (!targetBranch) continue;
-    const supportLabel = `지원(${nonhyeonLabel})`;
-    const targetEmps_ = employees.filter(e => e.branch === targetBranch.id);
-    const nonhyeonBase = targetEmps_.filter(e => {
-      const s = sch[e.id][ds];
-      return s === STATUS.WORK || isSupport(s) || s === STATUS.SHARE;
-    }).length;
-    const nonhyeonSupporters = employees.filter(e =>
-      e.branch !== targetBranch.id && sch[e.id][ds] === supportLabel
-    ).length;
-    const nonhyeonWorking = nonhyeonBase + nonhyeonSupporters;
-    if (nonhyeonWorking >= nonhyeonMinStaff) continue;
-
-    const needed = nonhyeonMinStaff - nonhyeonWorking;
-
-    // 우선순위 지점 순서대로 후보 구성
-    // 같은 지점 내에서는 누적 지원 횟수가 적은 순 → 횟수 같으면 날짜 홀짝으로 균등
-    const candidates = [];
     const dayIdx = allDates.indexOf(_day4);
-    for (const bId of supportOrder) {
-      const branchEmps = employees.filter(e =>
-        e.branch === bId && !e.mustStay && sch[e.id][ds] === STATUS.WORK
-      );
-      // 지원 횟수 적은 순 정렬 (균등 배분)
-      branchEmps.sort((a, b) => {
-        const ca = Object.values(sch[a.id]).filter(s=>s===supportLabel).length;
-        const cb = Object.values(sch[b.id]).filter(s=>s===supportLabel).length;
-        if (ca !== cb) return ca - cb;
-        return dayIdx % 2 === 0 ? 0 : -1; // 동점이면 날짜 홀짝으로 순서 반전
-      });
-      candidates.push(...branchEmps.map(e => e.id));
-    }
-    // 우선순위 외 나머지 지점 (mustStay 아닌 근무중인 직원)
-    const prioritySet = new Set(supportOrder);
-    const otherCands = employees.filter(e =>
-      e.branch !== targetBranch.id && !prioritySet.has(e.branch) &&
-      !e.mustStay && sch[e.id][ds] === STATUS.WORK
-    ).map(e => e.id);
-    candidates.push(...otherCands);
 
-    let assigned = 0;
-    for (const eid of candidates) {
-      if (assigned >= needed) break;
-      if (sch[eid][ds] !== STATUS.WORK) continue;
-      sch[eid][ds] = supportLabel;
-      assigned++;
+    for (const targetBranch of BRANCHES) {
+      if (targetBranch.id === "male") continue;
+      const supportLabel = `지원(${targetBranch.name})`;
+      const minS = rc.branchMinStaff[targetBranch.id] ?? targetBranch.minStaff ?? 1;
+
+      // 현재 이 지점 근무 인원 (소속 + 이미 지원 온 인원)
+      const targetEmps_ = employees.filter(e => (e.branches||[e.branch]).includes(targetBranch.id));
+      const baseWorking = targetEmps_.filter(e => {
+        const s = sch[e.id][ds];
+        return s === STATUS.WORK || isSupport(s) || s === STATUS.SHARE;
+      }).length;
+      const supportersIn = employees.filter(e =>
+        !(e.branches||[e.branch]).includes(targetBranch.id) && sch[e.id][ds] === supportLabel
+      ).length;
+      const totalWorking = baseWorking + supportersIn;
+      if (totalWorking >= minS) continue;
+
+      const needed = minS - totalWorking;
+      const candidates = [];
+
+      // ① 같은 branches 그룹 내 다른 지점 소속 직원 (내부 로테이션 우선)
+      const internalCands = employees.filter(e =>
+        !e.mustStay &&
+        (e.branches||[e.branch]).includes(targetBranch.id) &&
+        e.branch !== targetBranch.id && // 대표 지점이 다른 직원
+        sch[e.id][ds] === STATUS.WORK
+      );
+      internalCands.sort((a, b) => {
+        const ca = Object.values(sch[a.id]).filter(s => s === supportLabel).length;
+        const cb = Object.values(sch[b.id]).filter(s => s === supportLabel).length;
+        return ca !== cb ? ca - cb : (dayIdx % 2 === 0 ? 0 : -1);
+      });
+      candidates.push(...internalCands.map(e => e.id));
+
+      // ② supportOrder 지정 외부 지점 직원
+      for (const bId of supportOrder) {
+        const extCands = employees.filter(e =>
+          e.branch === bId && !e.mustStay &&
+          !(e.branches||[e.branch]).includes(targetBranch.id) &&
+          sch[e.id][ds] === STATUS.WORK
+        );
+        extCands.sort((a, b) => {
+          const ca = Object.values(sch[a.id]).filter(s => s === supportLabel).length;
+          const cb = Object.values(sch[b.id]).filter(s => s === supportLabel).length;
+          return ca !== cb ? ca - cb : (dayIdx % 2 === 0 ? 0 : -1);
+        });
+        candidates.push(...extCands.map(e => e.id));
+      }
+
+      // ③ 나머지 지점 직원
+      const prioritySet = new Set(supportOrder);
+      const otherCands = employees.filter(e =>
+        !(e.branches||[e.branch]).includes(targetBranch.id) &&
+        !prioritySet.has(e.branch) && !e.mustStay &&
+        sch[e.id][ds] === STATUS.WORK
+      ).map(e => e.id);
+      candidates.push(...otherCands);
+
+      let assigned = 0;
+      for (const eid of candidates) {
+        if (assigned >= needed) break;
+        if (sch[eid][ds] !== STATUS.WORK) continue;
+        sch[eid][ds] = supportLabel;
+        assigned++;
+      }
     }
   }
 
