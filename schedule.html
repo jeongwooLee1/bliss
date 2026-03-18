@@ -1564,6 +1564,9 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
 }
 
 function App() {
+  const isMobile = window.innerWidth < 500;
+  const empColW = isMobile ? 90 : 170;
+  const stickyCol = { position:"sticky",left:0,zIndex:10,width:empColW,minWidth:empColW,maxWidth:empColW,padding:isMobile?"4px 6px":"5px 8px",verticalAlign:"middle",background:T.bgCard,boxShadow:"2px 0 4px rgba(0,0,0,.07)",overflow:"hidden" };
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
@@ -3075,9 +3078,6 @@ function App() {
   );
 }
 
-const isMobile = window.innerWidth < 500;
-const empColW = isMobile ? 90 : 170;
-const stickyCol = { position:"sticky",left:0,zIndex:10,width:empColW,minWidth:empColW,maxWidth:empColW,padding:isMobile?"4px 6px":"5px 8px",verticalAlign:"middle",background:T.bgCard,boxShadow:"2px 0 4px rgba(0,0,0,.07)",overflow:"hidden" };
 const navBtn = { background:"none",border:"1px solid #e4ddd0",borderRadius:6,padding:"5px 10px",cursor:"pointer",fontSize:13,fontFamily:"inherit",color:T.textSub };
 
 function Btn({label,onClick,primary,outline,danger,style={}}){
