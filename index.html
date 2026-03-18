@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.275";
+const BLISS_V = "2.69.276";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -2635,10 +2635,14 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
             const isNaverBlock = !!r.reservationId;
             const toNaverCol = snap.roomId?.startsWith("nv_");
             const toRegularCol = snap.roomId && !snap.roomId.startsWith("nv_");
+            const targetRoom = allRooms.find(rm => rm.id === snap.roomId);
             const staffUpdate = isNaverBlock
-              ? (toNaverCol ? { staffId: "", roomId: "" }         // 네이버 칼럼으로 → 배정 해제
-                : toRegularCol ? { staffId: snap.roomId }         // 일반 칼럼으로 → staffId = roomId
-                : {})
+              ? (toNaverCol ? { staffId: "", roomId: "" }
+                : toRegularCol
+                  ? (targetRoom?.isStaffCol
+                      ? { staffId: targetRoom.staffId, roomId: snap.roomId }  // 직원컬럼 → staffId=직원명, roomId=컬럼ID
+                      : { staffId: snap.roomId, roomId: snap.roomId })        // 일반룸 → 기존 방식
+                  : {})
               : {};
             return {...r, time: snap.time, endTime, roomId: snap.roomId||r.roomId, bid: snap.bid||r.bid, ...staffUpdate};
           })}));
