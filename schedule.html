@@ -1571,11 +1571,17 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
 }
 
 function App() {
-  // iframe 내부에서는 window.innerWidth가 부모 기준이므로 URL 파라미터 우선
-  const _urlMobile = new URLSearchParams(window.location.search).get("mobile");
-  const isMobile = _urlMobile !== null ? _urlMobile === "1" : window.innerWidth <= 600;
-  const empColW = 170; // CSS로 제어
-  const stickyCol = { position:"sticky",left:0,zIndex:10,verticalAlign:"middle",background:T.bgCard,boxShadow:"2px 0 4px rgba(0,0,0,.07)",overflow:"hidden" };
+  const [isMobile, setIsMobile] = React.useState(()=>{
+    const p = new URLSearchParams(window.location.search).get("mobile");
+    return p !== null ? p === "1" : window.innerWidth <= 600;
+  });
+  React.useEffect(()=>{
+    const handler = (e) => { if(e.data?.type==="SET_MOBILE") setIsMobile(e.data.mobile); };
+    window.addEventListener("message", handler);
+    return ()=>window.removeEventListener("message", handler);
+  },[]);
+  const empColW = isMobile ? 88 : 170;
+  const stickyCol = { position:"sticky",left:0,zIndex:10,width:empColW,minWidth:empColW,maxWidth:empColW,padding:isMobile?"4px 5px":"5px 8px",verticalAlign:"middle",background:T.bgCard,boxShadow:"2px 0 4px rgba(0,0,0,.07)",overflow:"hidden" };
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
@@ -2337,7 +2343,7 @@ function App() {
 
       {/* 메인 테이블 */}
       <div style={{flex:1,overflow:"auto",minHeight:0,overscrollBehavior:"none",background:T.bg}}>
-        <table style={{borderCollapse:"separate",borderSpacing:0,minWidth: dim*38+170}}>
+        <table style={{borderCollapse:"separate",borderSpacing:0,minWidth: dim*38+empColW}}>
           <thead style={{position:"sticky",top:0,zIndex:20,background:T.bgCard}}>
             <tr>
               <th className="sticky-col" style={{...stickyCol,className:"sticky-col",background:T.gray100,fontSize:T.fs.xxs,fontWeight:T.fw.bolder,color:T.textSub,textAlign:"left",borderBottom:"2px solid "+T.border,zIndex:30,top:0,position:"sticky"}}>직원</th>
