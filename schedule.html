@@ -1569,7 +1569,9 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
 }
 
 function App() {
-  const isMobile = window.innerWidth <= 600;
+  // iframe 내부에서는 window.innerWidth가 부모 기준이므로 URL 파라미터 우선
+  const _urlMobile = new URLSearchParams(window.location.search).get("mobile");
+  const isMobile = _urlMobile !== null ? _urlMobile === "1" : window.innerWidth <= 600;
   const empColW = isMobile ? 90 : 170;
   const stickyCol = { position:"sticky",left:0,zIndex:10,width:empColW,minWidth:empColW,maxWidth:empColW,padding:isMobile?"4px 5px":"5px 8px",verticalAlign:"middle",background:T.bgCard,boxShadow:"2px 0 4px rgba(0,0,0,.07)",overflow:"hidden" };
   const today = new Date();
