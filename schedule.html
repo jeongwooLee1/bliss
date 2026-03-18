@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.17-w";
+const SCH_V = "v2026.03.17-x";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -394,7 +394,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
   const weekCount = Math.max(4, activeWeeks.filter(w => w.filter(d => !d.isPrev && !d.isNext).length >= 2).length);
 
   // 공통 헬퍼: 날짜 ds에 휴무 배정 시 제약 통과 여부
-  const canAssignOff = (emp, day, branchEmps, branch, debug=false, skipAltCheck=false) => {
+  const canAssignOff = (emp, day, branchEmps, branch, debug=false, skipAltCheck=false, skipSimultaneous=false) => {
     const ds = day.ds;
     const d = new Date(ds); // 실제 날짜 기반 계산 (isNext 포함 정확히 처리)
     const prev1 = new Date(d); prev1.setDate(d.getDate()-1);
@@ -464,7 +464,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     }
 
     // 지점별 동시 휴무 금지 (noSimultaneousOff ON인 지점: 일반직원 2명 이하, 남자직원 제외)
-    if (rc.noSimultaneousOff[emp.branch]) {
+    if (!skipSimultaneous && rc.noSimultaneousOff[emp.branch]) {
       const normals = branchEmps.filter(be => !be.isOwner && !be.mustStay && be.id !== emp.id);
       if (normals.some(be => ["휴무","휴무(꼭)"].includes(sch[be.id]?.[ds]))) return false;
     }
@@ -1119,7 +1119,8 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
         );
 
         // ── 전략 1: ADD ──
-        // 기존 휴무 옆 날짜에 off 추가 (해당 주 weeklyOff 미달인 경우만)
+        // 기존 휴무 옆 날짜에 off 추가
+        // weeklyOff 초과 시 연속 안 된 기존 휴무 하나를 근무로 전환해 수 맞춤
         let done = false;
         for (const offDay of offDays) {
           if (done) break;
@@ -1127,14 +1128,12 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
             const candDs = addDays(offDay.ds, delta);
             const cand = blockDays.find(d => d.ds === candDs);
             if (!cand) continue;
-            if (emp.isMale && cand.dow === 6) continue; // 남자직원 일요일 STEP A 보호
+            if (emp.isMale && cand.dow === 6) continue;
             if (sch[emp.id][candDs] !== STATUS.WORK) continue;
             if (seededDates.has(candDs)) continue;
 
-            // ★ 핵심: 해당 주 weeklyOff 초과 금지
-            if (weekOffCount(emp.id, candDs) >= wo) continue;
-
-            if (!canAssignOff(emp, cand, branchEmps, branch)) continue;
+            // noSimultaneousOff 예외 적용 (연속휴무 보장 우선)
+            if (!canAssignOff(emp, cand, branchEmps, branch, false, false, true)) continue;
 
             const totalWorking = employees.filter(e => {
               if (e.isMale) return false;
@@ -1143,7 +1142,31 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
             }).length;
             if (totalWorking <= rc.minWork) continue;
 
+            // ADD 배정
             sch[emp.id][candDs] = STATUS.OFF;
+
+            // weeklyOff 초과 시 같은 주에서 연속 안 된 기존 휴무 하나를 근무로 전환
+            const candWkIdx = getWeekIdx(candDs);
+            const wkOffAfter = blockDays.filter(d =>
+              getWeekIdx(d.ds) === candWkIdx && ["휴무","휴무(꼭)"].includes(sch[emp.id]?.[d.ds])
+            ).length;
+            if (wkOffAfter > wo) {
+              // 연속 구간에 속하지 않는 일반 휴무 중 하나를 근무로 전환
+              const isConsecWithNew = (ds2) => {
+                const prev = addDays(ds2, -1), next = addDays(ds2, 1);
+                return ds2 === candDs || ds2 === offDay.ds ||
+                  (["휴무","휴무(꼭)"].includes(sch[emp.id]?.[prev]) ||
+                   ["휴무","휴무(꼭)"].includes(sch[emp.id]?.[next]));
+              };
+              const revertCand = blockDays.find(d =>
+                getWeekIdx(d.ds) === candWkIdx &&
+                sch[emp.id][d.ds] === STATUS.OFF &&
+                !seededDates.has(d.ds) &&
+                !isConsecWithNew(d.ds)
+              );
+              if (revertCand) sch[emp.id][revertCand.ds] = STATUS.WORK;
+            }
+
             done = true;
             break;
           }
@@ -1188,7 +1211,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
               sch[emp.id][adjDs]        = STATUS.OFF;
 
               // adjDs에 OFF가 가능한지 검증 + 전체 minWork 보호
-              const adjOk = canAssignOff(emp, adjDay, branchEmps, branch);
+              const adjOk = canAssignOff(emp, adjDay, branchEmps, branch, false, false, true); // 연속휴무 보장: noSimultaneous 예외
               const totalWorking2 = employees.filter(e => {
                 if (e.isMale) return false;
                 const s = sch[e.id][adjDs];
