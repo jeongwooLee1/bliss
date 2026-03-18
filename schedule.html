@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.18-x";
+const SCH_V = "v2026.03.18-y";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -2615,7 +2615,7 @@ function App() {
                   </div>
                   {/* 직원 선택 버튼 */}
                   <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
-                    {ALL_EMPLOYEES.filter(e=>!e.isMale&&!e.isOwner&&!(e.isFreelancer||empSettings[e.id]?.isFreelancer)).map(emp=>{
+                    {ALL_EMPLOYEES.filter(e=>!e.isMale&&!(e.isFreelancer||empSettings[e.id]?.isFreelancer)).map(emp=>{
                       const inGroup = group.ids.includes(emp.id);
                       const bc = BRANCHES.find(b=>b.id===emp.branch)?.color||T.border;
                       return (
