@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.18-l";
+const SCH_V = "v2026.03.18-m";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -888,22 +888,48 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       const empOffset = emp.id.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0);
       const rotBase = (wi * 3 + empOffset) % 7;
 
-      // streak 기반 정렬: 이 날까지 연속근무 많은 날 먼저
+      // Phase D 정렬 기준 (우선순위 순):
+      // 1) 원장 휴무일과 같은 날 우선 (조화로운 분산)
+      // 2) 동료 휴무 적은 날 우선 (동시휴무 분산)
+      // 3) rotBase 요일 로테이션 (직원별 다양성)
+      // 4) streak가 maxConsecWork-1 이상인 날 우선 (연속근무 한계 근접 시만)
+      // 5) 랜덤
+      const ownerOffDows = thisWeekDays
+        .filter(d => {
+          const ownerEmps = employees.filter(e => e.isOwner && (e.branches||[e.branch]).some(b=>(emp.branches||[emp.branch]).includes(b)));
+          return ownerEmps.some(o => ["휴무","휴무(꼭)"].includes(sch[o.id]?.[d.ds]));
+        })
+        .map(d => d.dow);
+
       const quotaCands = thisWeekDays
         .filter(d => !ignoredDates.has(d.ds) && !seededDates.has(d.ds)
           && sch[emp.id][d.ds] === STATUS.WORK
           && !(emp.isMale && d.dow === 6))
         .sort((a, b) => {
-          const aRun = getCarry(emp.id, a.ds);
-          const bRun = getCarry(emp.id, b.ds);
-          if (Math.abs(bRun - aRun) > 1) return bRun - aRun; // streak 차이 클 때만 우선
+          // 1) 원장 휴무일과 같은 날 우선
+          const aOwner = ownerOffDows.includes(a.dow) ? 0 : 1;
+          const bOwner = ownerOffDows.includes(b.dow) ? 0 : 1;
+          if (aOwner !== bOwner) return aOwner - bOwner;
+
+          // 2) 동료 휴무 적은 날 우선
           const aOff = branchEmps.filter(be => be.id !== emp.id && ["휴무","휴무(꼭)"].includes(sch[be.id]?.[a.ds]||"")).length;
           const bOff = branchEmps.filter(be => be.id !== emp.id && ["휴무","휴무(꼭)"].includes(sch[be.id]?.[b.ds]||"")).length;
           if (aOff !== bOff) return aOff - bOff;
+
+          // 3) rotBase 요일 로테이션
           const dowA = ((a.dow - rotBase + 7) % 7);
           const dowB = ((b.dow - rotBase + 7) % 7);
           if (dowA !== dowB) return dowA - dowB;
-          return rng() - 0.5; // 동점 시 랜덤으로 다양성 확보
+
+          // 4) streak가 maxConsecWork-1 이상인 날만 우선
+          const aRun = getCarry(emp.id, a.ds);
+          const bRun = getCarry(emp.id, b.ds);
+          const aUrgent = aRun >= rc.maxConsecWork - 1 ? 0 : 1;
+          const bUrgent = bRun >= rc.maxConsecWork - 1 ? 0 : 1;
+          if (aUrgent !== bUrgent) return aUrgent - bUrgent;
+
+          // 5) 랜덤
+          return rng() - 0.5;
         });
 
       const prevPatterns = activeWeeks.slice(0, wi).map(pw =>
