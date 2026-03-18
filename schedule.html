@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.19-c";
+const SCH_V = "v2026.03.19-d";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -1089,14 +1089,22 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
           if (!senderBr) continue;
           const senderMinS = rc.branchMinStaff[senderBId] ?? senderBr.minStaff ?? 1;
           const senderBrEmps = employees.filter(e => (e.branches||[e.branch]).includes(senderBId));
+          const senderBrName = senderBr.name;
           const senderWorking = senderBrEmps.filter(e => {
             if (e.id === eid) return false; // 본인 빠진 후 계산
             const s = sch[e.id][ds];
-            return s === STATUS.WORK || isSupport(s) || s === STATUS.SHARE;
+            if (["휴무","휴무(꼭)"].includes(s)) return false;
+            // 대표지점이 senderBId인 직원만 기본 근무로 카운트
+            if (e.branch === senderBId) {
+              if (isSupport(s) && !s.includes(senderBrName)) return false;
+              return s === STATUS.WORK || s === `지원(${senderBrName})` || s === STATUS.SHARE;
+            }
+            // 내부 그룹 직원은 지원(senderBrName) 상태일 때만
+            return s === `지원(${senderBrName})`;
           }).length;
           const senderSupportIn = employees.filter(e =>
             !(e.branches||[e.branch]).includes(senderBId) &&
-            sch[e.id][ds] === `지원(${senderBr.name})`
+            sch[e.id][ds] === `지원(${senderBrName})`
           ).length;
           if (senderWorking + senderSupportIn < senderMinS) {
             senderBranchOk = false;
