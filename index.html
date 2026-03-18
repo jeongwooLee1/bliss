@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.249";
+const BLISS_V = "2.69.250";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -2971,7 +2971,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                 {/* Room Header - sticky */}
                 <div style={{height:headerH,borderBottom:"1px solid #eee",position:"sticky",top:topbarH,zIndex:10,background:room.isNaver?T.successLt:(branchColor||T.bgCard),display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",lineHeight:1.2}}>
                   <span className="tl-room-name" style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder,color:room.isNaver?T.successDk:T.text}}>{room.branchName}</span>
-                  <span className="tl-room-sub" style={{fontSize:T.fs.nano,color:room.isNaver?T.successDk:T.gray500}}>{room.isNaver?<I name="naver" size={11}/>:""}{room.name}</span>
+                  <span className="tl-room-sub" style={{fontSize:room.isStaffCol?14:T.fs.nano,fontWeight:room.isStaffCol?800:400,color:room.isNaver?T.successDk:room.isStaffCol?T.text:T.gray500}}>{room.isNaver?<I name="naver" size={11}/>:""}{room.name}</span>
                 </div>
                 {/* Grid Area */}
                 <div style={{position:"relative",height:totalRows*rowH,cursor:room.isNaver?"default":(canEdit(room.branch_id)?"pointer":"default"),...gridBg}}
