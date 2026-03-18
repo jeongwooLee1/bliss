@@ -2355,7 +2355,7 @@ function App() {
               const emps=ALL_EMPLOYEES.filter(e=>e.branch===branch.id);
               return emps.map((emp,ei)=>(
                 <tr key={emp.id}>
-                  <td style={{...stickyCol,padding:"5px 10px",borderLeft:`3px solid ${branch.color}`,borderBottom:"1px solid "+T.border,borderRight:"1px solid "+T.border,background:ei===0?branch.color+"18":T.bgCard,borderTop:ei===0?`2px solid ${branch.color}55`:"none"}}>
+                  <td style={{...stickyCol,borderLeft:`3px solid ${branch.color}`,borderBottom:"1px solid "+T.border,borderRight:"1px solid "+T.border,background:ei===0?branch.color+"18":T.bgCard,borderTop:ei===0?`2px solid ${branch.color}55`:"none"}}>
                     <div style={{display:"flex",alignItems:"center",gap:4}}>
                       <div className="emp-dot" style={{width:7,height:7,borderRadius:"50%",background:branch.color,flexShrink:0}}/>
                       <div style={{overflow:"hidden",width:"100%"}}>
@@ -2451,7 +2451,7 @@ function App() {
               if (filterBranch !== "all" && filterBranch !== "male") return null;
               return maleEmps.map((emp, ei) => (
                 <tr key={emp.id}>
-                  <td style={{...stickyCol,padding:"5px 10px",borderLeft:`3px solid ${maleColor}`,borderBottom:"1px solid #d0e0f0",borderRight:"1px solid "+T.border,background:ei===0?maleColor+"18":T.gray100,borderTop:ei===0?`2px solid ${maleColor}55`:"none"}}>
+                  <td style={{...stickyCol,borderLeft:`3px solid ${maleColor}`,borderBottom:"1px solid #d0e0f0",borderRight:"1px solid "+T.border,background:ei===0?maleColor+"18":T.gray100,borderTop:ei===0?`2px solid ${maleColor}55`:"none"}}>
                     <div style={{display:"flex",alignItems:"center",gap:6}}>
                       <div style={{width:7,height:7,borderRadius:"50%",background:maleColor,flexShrink:0}}/>
                       <div>
@@ -2517,7 +2517,7 @@ function App() {
 
             {/* 일별 총 인원 */}
             <tr>
-              <td style={{...stickyCol,padding:"6px 10px",fontSize:11,fontWeight:700,color:T.textSub,background:T.gray100,border:"1px solid "+T.border,borderRadius:"0 0 0 6px"}}>일 근무 인원</td>
+              <td style={{...stickyCol,fontSize:11,fontWeight:700,color:T.textSub,background:T.gray100,border:"1px solid "+T.border,borderRadius:"0 0 0 6px"}}>일 근무 인원</td>
               {days.map(day=>{
                 const c=dailyCount(day.ds);
                 const ok=c>=10&&c<=15, wb=isWeekBoundary(day);
@@ -2535,7 +2535,7 @@ function App() {
               const emps=ALL_EMPLOYEES.filter(e=>e.branch===branch.id);
               return (
                 <tr key={branch.id+"-cnt"}>
-                  <td style={{...stickyCol,padding:"4px 10px",fontSize:10,color:branch.color,fontWeight:700,background:T.bgCard,borderLeft:`3px solid ${branch.color}`,borderRight:"1px solid "+T.border,borderBottom:"1px solid "+T.border}}>
+                  <td style={{...stickyCol,fontSize:10,color:branch.color,fontWeight:700,background:T.bgCard,borderLeft:`3px solid ${branch.color}`,borderRight:"1px solid "+T.border,borderBottom:"1px solid "+T.border}}>
                     {branch.name}
                   </td>
                   {days.map(day=>{
