@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.255";
+const BLISS_V = "2.69.257";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -1878,9 +1878,11 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   const SVC_LIST = (data?.services || []).slice().sort((a,b)=>(a.sort||0)-(b.sort||0));
   const PROD_LIST = (data?.products || []);
   const [selDate, setSelDate] = useState(todayStr());
-  const [schHistory, setSchHistory] = useState(null); // {empName: {date: "근무"|"휴무"}}
+  const [schHistory, setSchHistory] = useState(null);
+  // 직원 당일 지점 오버라이드: {empId_date: branchId}
+  const [empBranchOverride, setEmpBranchOverride] = useState({});
 
-  // 직원-지점 매핑 (schedule.html BASE_EMPLOYEES 기반)
+  // 직원-지점 매핑
   const SCH_BRANCH_MAP = {"nonhyeon":"br_4bcauqvrb","gang":"br_4bcauqvrb","hongdae":"br_l6yzs2pkq","yongsan":"br_ybo3rmulv","jamsil":"br_lfv2wgdf1","cheonho":"br_xu60omgdf","wirye":"br_g768xdu4w","wangsimni":"br_wkqsxj6k1","magok":"br_k57zpkbx1"};
   const BASE_EMP_LIST = [
     {id:"소연",branch:"nonhyeon"},{id:"경아",branch:"nonhyeon"},{id:"수연",branch:"nonhyeon"},{id:"서현",branch:"nonhyeon"},
@@ -1891,38 +1893,63 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
     {id:"재윤",branch:"male"},{id:"주용",branch:"male"},
   ];
 
-  // schHistory_v1 로드
+  // schHistory 파싱 함수
+  const parseSchHistory = (val) => {
+    const merged = {};
+    Object.values(val).forEach(monthData => {
+      if (typeof monthData !== "object") return;
+      Object.entries(monthData).forEach(([emp, days]) => {
+        if (emp.startsWith("__")) return;
+        if (!merged[emp]) merged[emp] = {};
+        Object.assign(merged[emp], days);
+      });
+    });
+    return merged;
+  };
+
+  // schHistory_v1 초기 로드 + Realtime 구독
   useEffect(() => {
     const SB_URL = "https://dpftlrsuqxqqeouwbfjd.supabase.co";
     const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwZnRscnN1cXhxcWVvdXdiZmpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5MDU4MjQsImV4cCI6MjA4NzQ4MTgyNH0.iydEkjtPjZ0jXpUUPJben4IWWneDqLomv-HDlcFayE4";
-    fetch(`${SB_URL}/rest/v1/schedule_data?key=eq.schHistory_v1&select=value`, {
-      headers: { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY }
-    }).then(r=>r.json()).then(rows=>{
-      if (!rows?.length) return;
-      const val = rows[0].value;
-      const merged = {};
-      Object.values(val).forEach(monthData => {
-        if (typeof monthData !== "object") return;
-        Object.entries(monthData).forEach(([emp, days]) => {
-          if (emp.startsWith("__")) return;
-          if (!merged[emp]) merged[emp] = {};
-          Object.assign(merged[emp], days);
-        });
-      });
-      setSchHistory(merged);
-    }).catch(()=>{});
+    const H = { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY };
+
+    // 초기 로드
+    const loadSch = () => {
+      fetch(`${SB_URL}/rest/v1/schedule_data?key=eq.schHistory_v1&select=value`, { headers: H })
+        .then(r=>r.json()).then(rows=>{
+          if (!rows?.length) return;
+          setSchHistory(parseSchHistory(rows[0].value));
+        }).catch(()=>{});
+    };
+    loadSch();
+
+    // Realtime 구독 (schedule_data 변경 감지)
+    const channel = window._sbClient?.channel("schedule_data_rt")
+      ?.on("postgres_changes", { event:"UPDATE", schema:"public", table:"schedule_data", filter:"key=eq.schHistory_v1" },
+        (payload) => {
+          if (payload?.new?.value) setSchHistory(parseSchHistory(payload.new.value));
+        }
+      )?.subscribe();
+
+    return () => { try { channel?.unsubscribe(); } catch(e) {} };
   }, []);
 
   // 선택 날짜의 지점별 출근자 계산
   const getWorkingStaff = (branchId, date) => {
     if (!schHistory) return null;
-    const branchEmps = BASE_EMP_LIST.filter(e => SCH_BRANCH_MAP[e.branch] === branchId);
-    if (branchEmps.length === 0) return null; // 해당 지점 직원 없으면 rooms 폴백
+    const branchEmps = BASE_EMP_LIST.filter(e => {
+      // 오버라이드 적용: 해당 날짜 직원이 이 지점에 있으면 포함
+      const overrideKey = e.id + "_" + date;
+      const overrideBranch = empBranchOverride[overrideKey];
+      if (overrideBranch) return overrideBranch === branchId;
+      return SCH_BRANCH_MAP[e.branch] === branchId;
+    });
+    if (branchEmps.length === 0) return null;
     const working = branchEmps.filter(e => {
       const dayStatus = schHistory[e.id]?.[date];
       return dayStatus !== "휴무" && dayStatus !== "휴무(꼭)";
     });
-    return working.length > 0 ? working : null; // 출근자 0명이면 폴백
+    return working.length > 0 ? working : null;
   };
   const [showModal, setShowModal] = useState(false);
   const [modalData, setModalData] = useState(null);
@@ -2132,6 +2159,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   const resizeDurRef = useRef(0);
   const [pendingChange, setPendingChange] = useState(null);
   const [hoverCell, setHoverCell] = useState(null); // {roomId, rowIdx}
+  const [empMovePopup, setEmpMovePopup] = useState(null); // {empId, date, x, y}
   const cellLongPress = useRef(null);
 
   const allRooms = branchesToShow.flatMap(br => {
@@ -2441,6 +2469,8 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
 
   // ── Drag handlers ──
   const timeLabelsW = window.innerWidth <= 768 ? 52 : 88;
+  // 타임라인 클릭 시 이동팝업 닫기
+  const handleTlClick = () => { if(empMovePopup) setEmpMovePopup(null); };
   const handleDragStart = (block, e) => {
     e.stopPropagation();
     const isTouch = e.type === "touchstart";
@@ -2637,6 +2667,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   };
 
   // ── 이동/리사이즈 확인/취소 ──
+  // empMovePopup 닫기 핸들러는 전체 클릭으로 처리
   const confirmChange = (sendAlimtalkFlag) => {
     if (!pendingChange) return;
     const { type, block, data: d } = pendingChange;
@@ -2926,7 +2957,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
 
 
         {/* Timeline Grid */}
-        <div style={{display:"flex",minWidth:"fit-content",position:"relative"}}>
+        <div style={{display:"flex",minWidth:"fit-content",position:"relative"}} onClick={handleTlClick}>
           {/* Time Labels */}
           <div className="tl-time-col" style={{width:timeLabelsW,flexShrink:0,position:"sticky",left:0,zIndex:20,background:T.bgCard,borderRight:"1px solid #eee"}}>
             <div style={{height:headerH,borderBottom:"1px solid #eee",position:"sticky",top:topbarH,zIndex:25,background:T.bgCard}}/>
@@ -2971,7 +3002,30 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                 {/* Room Header - sticky */}
                 <div style={{height:headerH,borderBottom:"1px solid #eee",position:"sticky",top:topbarH,zIndex:10,background:room.isNaver?T.successLt:(branchColor||T.bgCard),display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",lineHeight:1.2}}>
                   <span className="tl-room-name" style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder,color:room.isNaver?T.successDk:T.text}}>{room.branchName}</span>
-                  <span className="tl-room-sub" style={{fontSize:room.isStaffCol?14:T.fs.nano,fontWeight:room.isStaffCol?800:400,color:room.isNaver?T.successDk:room.isStaffCol?T.text:T.gray500}}>{room.isNaver?<I name="naver" size={11}/>:""}{room.name}</span>
+                  {room.isStaffCol ? (
+                    <div style={{position:"relative"}}>
+                      <span className="tl-room-sub" style={{fontSize:14,fontWeight:800,color:T.text,cursor:"pointer",borderBottom:"1px dashed "+T.gray400}}
+                        onClick={e=>{e.stopPropagation();setEmpMovePopup(p=>p?.empId===room.staffId?null:{empId:room.staffId,date:selDate,x:e.clientX,y:e.clientY});}}>
+                        {room.name}
+                      </span>
+                      {empMovePopup?.empId===room.staffId && empMovePopup?.date===selDate && (
+                        <div onClick={e=>e.stopPropagation()} style={{position:"fixed",left:Math.min(empMovePopup.x,window.innerWidth-160),top:empMovePopup.y+8,background:T.bgCard,borderRadius:10,boxShadow:"0 4px 20px rgba(0,0,0,.2)",zIndex:9999,padding:"8px 0",minWidth:150}}>
+                          <div style={{fontSize:10,color:T.textMuted,padding:"4px 12px 6px",fontWeight:700}}>오늘 근무 지점</div>
+                          {(data.branches||[]).filter(b=>branchesToShow.some(bs=>bs.id===b.id)||(()=>{const e=BASE_EMP_LIST.find(e=>e.id===room.staffId);return e&&SCH_BRANCH_MAP[e.branch]===b.id;})()).map(b=>{
+                            const overrideKey = room.staffId+"_"+selDate;
+                            const cur = empBranchOverride[overrideKey] || SCH_BRANCH_MAP[BASE_EMP_LIST.find(e=>e.id===room.staffId)?.branch];
+                            const isCur = cur===b.id;
+                            return <div key={b.id} onClick={()=>{setEmpBranchOverride(p=>({...p,[overrideKey]:b.id}));setEmpMovePopup(null);}}
+                              style={{padding:"7px 12px",cursor:"pointer",fontSize:12,fontWeight:isCur?700:400,color:isCur?T.primary:T.text,background:isCur?T.primaryHover:"transparent",display:"flex",alignItems:"center",gap:6}}>
+                              {isCur&&<I name="check" size={12} color={T.primary}/>}{b.name}
+                            </div>;
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="tl-room-sub" style={{fontSize:T.fs.nano,color:room.isNaver?T.successDk:T.gray500}}>{room.isNaver?<I name="naver" size={11}/>:""}{room.name}</span>
+                  )}
                 </div>
                 {/* Grid Area */}
                 <div style={{position:"relative",height:totalRows*rowH,cursor:room.isNaver?"default":(canEdit(room.branch_id)?"pointer":"default"),...gridBg}}
