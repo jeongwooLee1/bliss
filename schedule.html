@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.19-e";
+const SCH_V = "v2026.03.19-f";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -311,21 +311,25 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       }
     }
 
-    // 지점 최소 인원 — 직원의 모든 소속 지점(branches) 각각 체크
+    // 지점 최소 인원 — 대표지점 기준 (canAssignOff와 동일)
     const empBranchesH = emp.branches || [emp.branch];
     for (const bId of empBranchesH) {
       const br_ = BRANCHES.find(b => b.id === bId);
       if (!br_) continue;
       const brEmps_ = employees.filter(e => (e.branches||[e.branch]).includes(bId) && !e.isMale);
+      const brName_ = br_.name;
       const working = brEmps_.filter(be => {
         if (be.id === emp.id) return false;
         const s = sch[be.id]?.[ds] || "";
         if (["휴무","휴무(꼭)"].includes(s)) return false;
-        if (isSupport(s) && !s.includes(br_.name)) return false;
-        return true;
+        if (be.branch === bId) {
+          if (isSupport(s) && !s.includes(brName_)) return false;
+          return s === STATUS.WORK || s === `지원(${brName_})` || s === STATUS.SHARE;
+        }
+        return s === `지원(${brName_})`;
       }).length;
       const supportIn = employees.filter(e =>
-        !(e.branches||[e.branch]).includes(bId) && sch[e.id]?.[ds] === `지원(${br_.name})`
+        !(e.branches||[e.branch]).includes(bId) && sch[e.id]?.[ds] === `지원(${brName_})`
       ).length;
       const minRequired = rc.branchMinStaff[bId] ?? br_.minStaff ?? 1;
       if (working + supportIn < minRequired) return false;
@@ -488,23 +492,29 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       if (totalOffToday >= rc.maxDailyOff) return R(`전체휴무${totalOffToday}명 초과`);
     }
 
-    // 지점 최소 근무인원 보호: 직원의 모든 소속 지점(branches) 각각 체크
+    // 지점 최소 근무인원 보호: step4 baseWorking과 동일 기준
+    // 대표지점(branch)이 bId인 직원만 기본 근무로 카운트
+    // 내부 그룹 직원(대표지점 다른)은 지원(지점명) 상태일 때만 카운트
     const empBranches_ = emp.branches || [emp.branch];
     for (const bId of empBranches_) {
       const br_ = BRANCHES.find(b => b.id === bId);
       if (!br_) continue;
       const brEmps_ = employees.filter(e => (e.branches || [e.branch]).includes(bId) && !e.isMale);
-      // 실제로 이 지점에 있는 인원: 근무 또는 지원(이 지점으로 온 경우)
-      // 타지점 지원 나간 직원(지원(타지점명))은 이 지점 근무 인원에서 제외
+      const brName_ = br_.name;
       const ownWorking = brEmps_.filter(be => {
-        if (be.id === emp.id) return false; // 본인 제외
+        if (be.id === emp.id) return false;
         const s = sch[be.id]?.[ds] || "";
-        if (["휴무","휴무(꼭)"].includes(s)) return false; // 휴무 제외
-        if (isSupport(s) && !s.includes(br_.name)) return false; // 타지점 지원 나간 경우 제외
-        return true;
+        if (["휴무","휴무(꼭)"].includes(s)) return false;
+        if (be.branch === bId) {
+          // 대표지점 직원: 타지점 지원 나간 경우 제외
+          if (isSupport(s) && !s.includes(brName_)) return false;
+          return s === STATUS.WORK || s === `지원(${brName_})` || s === STATUS.SHARE;
+        }
+        // 내부 그룹 직원: 지원(지점명) 상태일 때만 카운트
+        return s === `지원(${brName_})`;
       }).length;
       const supportIn = employees.filter(e =>
-        !(e.branches || [e.branch]).includes(bId) && sch[e.id]?.[ds] === `지원(${br_.name})`
+        !(e.branches || [e.branch]).includes(bId) && sch[e.id]?.[ds] === `지원(${brName_})`
       ).length;
       const minS = rc.branchMinStaff[bId] ?? br_.minStaff ?? 1;
       if (ownWorking + supportIn < minS) return false;
