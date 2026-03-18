@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.17-u";
+const SCH_V = "v2026.03.17-v";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -290,7 +290,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     }
     // 지점 최소 인원 (강제 배정도 최소 1명은 지켜야)
     if (branch) {
-      const minRequired = emp.branch === "nonhyeon" ? 1 : (rc.branchMinStaff[branch.id] ?? branch.minStaff ?? 1);
+      const minRequired = emp.branch === "nonhyeon" ? 2 : (rc.branchMinStaff[branch.id] ?? branch.minStaff ?? 1);
       const working = branchEmps.filter(be =>
         be.id !== emp.id && !["휴무","휴무(꼭)"].includes(sch[be.id]?.[ds]||"")
       ).length;
@@ -446,11 +446,11 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     if (branch) {
       if (emp.branch === "nonhyeon") {
         // 논현: minStaff=4는 지원 포함 기준이므로 휴무 배정 시점(step2)엔
-        // 아직 지원 미배정 → 소속 최소 1명 유지만 체크, minStaff 충족은 step4에서
+        // 아직 지원 미배정 → 소속 최소 2명 유지 체크, minStaff 충족은 step4에서
         const ownWorking = branchEmps.filter(be =>
           be.id !== emp.id && !["휴무","휴무(꼭)"].includes(sch[be.id][ds])
         ).length;
-        if (ownWorking < 1) return false;
+        if (ownWorking < 2) return false;
       } else {
         // 그 외 지점: 소속 + 지원 합산 후 minStaff 체크
         const ownWorking = branchEmps.filter(be =>
@@ -1621,7 +1621,7 @@ function App() {
   const RULES_KEY = "customRules_v1";
   const defaultRules = [
     ["🌍 전체",["주 시작: 월요일","일 근무인원: 최소 11명 ~ 최대 15명","하루 전체 휴무 최대 5명 (남자직원 제외)","휴무 텀: 최대 6일(7일 초과 금지)","연속 2일 휴무: 월 2회 허용","3일 연속 휴무: 절대 금지"]],
-    ["📍 논현&왕십리",["최소 4명 근무 유지 (지원 인원 포함)","논현 소속 최소 1명 항시 논현 근무","인원 부족 시 희서↔민정(용산) 동등 지원"]],
+    ["📍 논현&왕십리",["최소 4명 근무 유지 (지원 인원 포함)","논현 소속 최소 2명 항시 논현 근무","인원 부족 시 희서↔민정(용산) 동등 지원"]],
     ["📍 홍대&마곡",["지은(원장)·현아 타지점 이동 불가","지은 원장: 지정 휴무일 고정","혜경·민아 동시 휴무 금지"]],
     ["📍 용산",["보령(원장) 타지점 이동 불가","최소 1명 근무 유지","보령: 지정 휴무일 고정"]],
     ["📍 잠실&위례",["최소 2명 근무 유지"]],
