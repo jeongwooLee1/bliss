@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.245";
+const BLISS_V = "2.69.246";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -4732,16 +4732,22 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
             </div>
           </div>
 
-          {/* Col 3+4: Products */}
-          <div>
-            <div style={{ fontSize: 10, fontWeight: 700, color: T.infoLt2, padding: "4px 0 3px", borderBottom: "2px solid #6bab9e30", marginBottom: 1 }}>제품 ({PROD_LIST.length})</div>
-            {PROD_LIST.slice(0, halfProd).map(p => { const it=items[p.id]||{}; return <SaleProdRow key={p.id} id={p.id} name={p.name} price={p.price||0} checked={!!it.checked} amount={it.amount||0} toggle={toggle} setAmt={setAmt} />; })}
-          </div>
-
-          {/* Col 4: Products (second half) + extra */}
-          <div>
-            <div style={{ fontSize: 10, fontWeight: 700, color: T.infoLt2, padding: "4px 0 3px", borderBottom: "2px solid #6bab9e30", marginBottom: 1 }}>&nbsp;</div>
-            {PROD_LIST.slice(halfProd).map(p => { const it=items[p.id]||{}; return <SaleProdRow key={p.id} id={p.id} name={p.name} price={p.price||0} checked={!!it.checked} amount={it.amount||0} toggle={toggle} setAmt={setAmt} />; })}
+          {/* Col 3+4: Products - 아코디언 */}
+          <div style={{gridColumn:"span 2"}}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: T.infoLt2, padding: "4px 0 3px", borderBottom: "2px solid #6bab9e30", marginBottom: 6 }}>제품 ({PROD_LIST.length})</div>
+            <div style={{border:"1px solid "+T.border,borderRadius:8,overflow:"hidden",marginBottom:6}}>
+              <div onClick={()=>setOpenCats(p=>({...p,__prod:!isCatOpen("__prod",{...p,__prod:p.__prod},"prod")}))} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"6px 10px",cursor:"pointer",background:PROD_LIST.some(p=>items[p.id]?.checked)?T.successLt:T.gray100}}>
+                <span style={{fontSize:T.fs.nano,fontWeight:T.fw.bolder,color:PROD_LIST.some(p=>items[p.id]?.checked)?T.successDk:T.gray600}}>
+                  제품 전체{PROD_LIST.some(p=>items[p.id]?.checked)&&<span style={{marginLeft:6,fontSize:T.fs.nano,color:T.successDk}}>✓ {PROD_LIST.filter(p=>items[p.id]?.checked).length}개 선택</span>}
+                </span>
+                <I name={openCats.__prod===true||(openCats.__prod===undefined&&PROD_LIST.some(p=>items[p.id]?.checked))?"chevU":"chevD"} size={12} style={{color:T.gray400}}/>
+              </div>
+              {(openCats.__prod===true||(openCats.__prod===undefined&&PROD_LIST.some(p=>items[p.id]?.checked)))&&
+                <div style={{padding:"4px 0",display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 4px"}}>
+                  {PROD_LIST.map(p => { const it=items[p.id]||{}; return <SaleProdRow key={p.id} id={p.id} name={p.name} price={p.price||0} checked={!!it.checked} amount={it.amount||0} toggle={toggle} setAmt={setAmt} />; })}
+                </div>
+              }
+            </div>
             <SaleExtraRow id="extra_prod" color={T.infoLt2} placeholder="추가 제품명 입력" checked={!!(items.extra_prod||{}).checked} amount={(items.extra_prod||{}).amount||0} label={(items.extra_prod||{}).label||""} toggle={toggle} setAmt={setAmt} setLabel={setLabel} />
           </div>
         </GridLayout>
