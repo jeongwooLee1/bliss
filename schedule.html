@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.18-p";
+const SCH_V = "v2026.03.18-q";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -304,7 +304,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
           if (isSupport(s) && !s.includes(repBr.name)) return false;
           return true;
         }).length;
-        if (repWorking < 1) return false;
+        if (repEmps.length >= 1 && repWorking < 1) return false;
       }
     }
 
@@ -521,7 +521,8 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
           if (isSupport(s) && !s.includes(repBr.name)) return false; // 타지점 지원 나간 경우 제외
           return true;
         }).length;
-        if (repWorking < 1) return false; // 본인 빠지면 대표 지점 0명 → 차단
+        // 대표 지점 직원이 본인뿐이면 체크 의미 없음 → 스킵
+        if (repEmps.length >= 1 && repWorking < 1) return false;
       }
     }
 
