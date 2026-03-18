@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.272";
+const BLISS_V = "2.69.273";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -2242,6 +2242,17 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   const [pendingChange, setPendingChange] = useState(null);
   const [hoverCell, setHoverCell] = useState(null); // {roomId, rowIdx}
   const [empMovePopup, setEmpMovePopup] = useState(null); // {empId, date, x, y}
+  // 지점별 고정 컬럼 수 {branchId: number} - 0이면 자동(직원 수만큼)
+  const [branchColCount, setBranchColCount] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("bliss_branchColCount")||"{}"); } catch { return {}; }
+  });
+  const setBranchCols = (bid, n) => {
+    setBranchColCount(p => {
+      const next = {...p, [bid]: n};
+      try { localStorage.setItem("bliss_branchColCount", JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
   const cellLongPress = useRef(null);
 
   const allRooms = branchesToShow.flatMap(br => {
@@ -2266,6 +2277,19 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       });
     } else {
       staffRooms = (data.rooms||[]).filter(r=>r.branch_id===br.id).map(r=>({...r, branchName:br.short||br.name||""}));
+    }
+    // 고정 컬럼 수 적용 - 부족하면 빈 컬럼 추가
+    const fixedCols = branchColCount[br.id] || 0;
+    if (fixedCols > staffRooms.length) {
+      const empCols = staffRooms.filter(r => r.isStaffCol).length;
+      const blanks = fixedCols - staffRooms.length;
+      for (let i = 0; i < blanks; i++) {
+        staffRooms.push({
+          id: `blank_${br.id}_${i}`, name: "미배정",
+          branch_id: br.id, branchName: br.short||br.name||"",
+          isBlank: true
+        });
+      }
     }
     return [...naverRooms, ...staffRooms];
   });
@@ -3087,9 +3111,11 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
             return (
               <div key={room.id} className="tl-room-col" data-branch-id={room.branch_id} style={{width:colW,flexShrink:0,borderLeft:room.isNaver?"2px solid #A5D6A7":(isNewBranch&&ci>0?"none":"1px solid #f0f0f0"),background:room.isNaver?T.successLt:(branchColor||T.bgCard),marginLeft:isNewBranch&&ci>0?4:0,boxShadow:isNewBranch&&ci>0?"-4px 0 8px rgba(0,0,0,.06)":room.isNaver?"inset 2px 0 4px rgba(76,175,80,.08)":"none"}}>
                 {/* Room Header - sticky */}
-                <div style={{height:headerH,borderBottom:"1px solid #eee",position:"sticky",top:topbarH,zIndex:10,background:room.isNaver?T.successLt:(branchColor||T.bgCard),display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",lineHeight:1.2}}>
+                <div style={{height:headerH,borderBottom:"1px solid #eee",position:"sticky",top:topbarH,zIndex:10,background:room.isBlank?T.gray100:room.isNaver?T.successLt:(branchColor||T.bgCard),display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",lineHeight:1.2}}>
                   <span className="tl-room-name" style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder,color:room.isNaver?T.successDk:T.text}}>{room.branchName}</span>
-                  {room.isStaffCol ? (
+                  {room.isBlank ? (
+                    <span className="tl-room-sub" style={{fontSize:T.fs.xs,color:T.gray400,fontStyle:"italic"}}>미배정</span>
+                  ) : room.isStaffCol ? (
                     <div style={{position:"relative"}}>
                       <span className="tl-room-sub" style={{fontSize:14,fontWeight:800,color:T.text,cursor:"pointer",borderBottom:"1px dashed "+T.gray400}}
                         onClick={e=>{e.stopPropagation();setEmpMovePopup(p=>p?.empId===room.staffId?null:{empId:room.staffId,date:selDate,x:e.clientX,y:e.clientY});}}>
@@ -3186,7 +3212,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                   )}
                 </div>
                 {/* Grid Area */}
-                <div style={{position:"relative",height:totalRows*rowH,cursor:room.isNaver?"default":(canEdit(room.branch_id)?"pointer":"default"),...gridBg}}
+                <div style={{position:"relative",height:totalRows*rowH,cursor:room.isBlank?"default":room.isNaver?"default":(canEdit(room.branch_id)?"pointer":"default"),...(room.isBlank?{background:"repeating-linear-gradient(45deg,#f5f5f5,#f5f5f5 6px,#fafafa 6px,#fafafa 12px)"}:gridBg)}}
                   onClick={e=>{
                     // 비활성 시간대 클릭 방지
                     if(room.isStaffCol && (room.activeFrom||room.activeUntil)) {
@@ -3621,6 +3647,23 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
               {[5,10,15,30,60].map(u=><button key={u} onClick={()=>setTimeUnit(u)}
                 style={{padding:"6px 12px",fontSize:T.fs.sm,border:"1px solid #ddd",borderRadius:T.radius.md,background:timeUnit===u?T.primary:T.bgCard,
                   color:timeUnit===u?T.bgCard:T.gray600,fontWeight:timeUnit===u?700:400,cursor:"pointer"}}>{u}분</button>)}
+            </div>
+          </div>
+          {/* 지점별 컬럼 수 설정 */}
+          <div style={{marginTop:8}}>
+            <span style={{fontSize:T.fs.sm,color:T.gray700,fontWeight:T.fw.bold,display:"block",marginBottom:6}}>지점별 컬럼 수 <span style={{fontSize:T.fs.xxs,color:T.textMuted,fontWeight:400}}>(0=자동)</span></span>
+            <div style={{display:"flex",flexDirection:"column",gap:6}}>
+              {branchesToShow.map(br => {
+                const cur = branchColCount[br.id] || 0;
+                return <div key={br.id} style={{background:T.gray100,borderRadius:T.radius.lg,padding:"8px 12px",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                  <span style={{fontSize:T.fs.sm,color:T.gray700,fontWeight:T.fw.bold}}>{br.short||br.name}</span>
+                  <div style={{display:"flex",alignItems:"center",gap:6}}>
+                    <button onClick={()=>setBranchCols(br.id,Math.max(0,cur-1))} style={{width:30,height:30,border:"1px solid #ddd",borderRadius:T.radius.md,background:T.bgCard,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}><I name="minus" size={14} color={T.gray700}/></button>
+                    <span style={{fontSize:T.fs.sm,color:cur>0?T.primary:T.gray400,fontWeight:T.fw.bolder,width:28,textAlign:"center"}}>{cur===0?"자동":cur}</span>
+                    <button onClick={()=>setBranchCols(br.id,cur+1)} style={{width:30,height:30,border:"1px solid #ddd",borderRadius:T.radius.md,background:T.bgCard,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0}}><I name="plus" size={14} color={T.gray700}/></button>
+                  </div>
+                </div>;
+              })}
             </div>
           </div>
           <div style={{marginTop:8}}>
