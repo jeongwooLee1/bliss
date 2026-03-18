@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.254";
+const BLISS_V = "2.69.255";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -6515,13 +6515,10 @@ function AdminMyPage({ currentUser, onLogout }) {
 // ADMIN — 직원 근무표
 // ═══════════════════════════════════════════
 function AdminSchedule() {
-  return <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"calc(100vh - 90px)",gap:16}}>
-    <div style={{fontSize:T.fs.sm,color:T.textMuted}}>직원 근무표는 별도 페이지에서 열립니다.</div>
-    <button onClick={()=>window.open("https://jeongwoolee1.github.io/bliss/schedule.html","_blank")}
-      style={{display:"flex",alignItems:"center",gap:8,padding:"12px 24px",background:T.primary,color:"#fff",border:"none",borderRadius:T.radius.md,fontSize:T.fs.sm,fontWeight:T.fw.bolder,cursor:"pointer",fontFamily:"inherit",boxShadow:"0 2px 8px rgba(124,124,200,.3)"}}>
-      <I name="calendar" size={16} color="#fff"/> 직원 근무표 열기
-    </button>
-  </div>;
+  React.useEffect(()=>{
+    window.open("https://jeongwoolee1.github.io/bliss/schedule.html","_blank");
+  },[]);
+  return null;
 }
 
 function AdminPage({ data, setData, bizId, serverV, onLogout, currentUser }) {
