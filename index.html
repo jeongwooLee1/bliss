@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.262";
+const BLISS_V = "2.69.263";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -4417,7 +4417,7 @@ const SaleSvcRow = React.memo(function SaleSvcRow({ id, name, dur, checked, amou
   useEffect(() => { setLocalAmt(amount || ""); }, [checked]);
   return (
     <div onClick={() => !disabled && !checked && toggle(id, defPrice)}
-      style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 8px", borderRadius: 6, marginBottom: 2,
+      style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 6px", borderRadius: 5, marginBottom: 1,
         background: checked ? "#7c7cc810" : "transparent", cursor: disabled ? "not-allowed" : "pointer",
         opacity: disabled ? 0.45 : 1, transition: "background .15s" }}>
       <span onClick={e => { e.stopPropagation(); if(!disabled) toggle(id, defPrice); }}
@@ -4440,7 +4440,7 @@ const SaleProdRow = React.memo(function SaleProdRow({ id, name, price, checked, 
   useEffect(() => { setLocalAmt(amount || ""); }, [checked]);
   return (
     <div onClick={() => !checked && toggle(id, price)}
-      style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 8px", borderRadius: 6, marginBottom: 2,
+      style={{ display: "flex", alignItems: "center", gap: 4, padding: "4px 6px", borderRadius: 5, marginBottom: 1,
         background: checked ? "#6bab9e10" : "transparent", cursor: "pointer", transition: "background .15s" }}>
       <span onClick={e => { e.stopPropagation(); toggle(id, price); }}
         style={{ flex: 1, fontSize: 11, color: checked ? T.text : T.gray700, fontWeight: checked ? 700 : 400 }}>
@@ -4795,9 +4795,9 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
         animation: _m?"none":"slideUp .6s cubic-bezier(.22,1,.36,1)", boxShadow: _m?"none":"0 12px 40px rgba(0,0,0,.18)"
       }}>
         {/* Header */}
-        <div style={{ padding: "10px 20px", borderBottom: "1px solid #e0e0e0", display: "flex", alignItems: "center", justifyContent: "space-between", background: T.gray100, gap: 10, borderRadius: "12px 12px 0 0" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap", flex: 1 }}>
-            <h3 style={{ fontSize: 16, fontWeight: 800, color: T.danger, flexShrink: 0 }}><I name="diamond" size={14}/> 매출 입력</h3>
+        <div style={{ padding: "7px 14px", borderBottom: "1px solid #e0e0e0", display: "flex", alignItems: "center", justifyContent: "space-between", background: T.gray100, gap: 8, borderRadius: "12px 12px 0 0" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", flex: 1 }}>
+            <h3 style={{ fontSize: 13, fontWeight: 800, color: T.danger, flexShrink: 0 }}><I name="diamond" size={12}/> 매출 입력</h3>
             {cust.name ? (
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span className="badge" style={{ background: cust.gender === "M" ? T.infoLt : cust.gender === "F" ? T.femaleLt : T.gray200, color: cust.gender === "M" ? T.primary : cust.gender === "F" ? T.female : T.gray500, fontSize: 10 }}>{cust.gender === "M" ? "남" : cust.gender === "F" ? "여" : "-"}</span>
@@ -4854,8 +4854,8 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
         </div>
 
         {/* Controls: Manager, Branch, Gender, Live Totals */}
-        <div style={{ padding: "8px 16px", borderBottom: "1px solid #e0e0e0", display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", background: T.dangerLt }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12 }}>
+        <div style={{ padding: "5px 12px", borderBottom: "1px solid #e0e0e0", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", background: T.dangerLt }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11 }}>
             <span style={{ color:T.textSub, fontWeight: 700 }}>시술자 <span style={{color:T.danger}}>*</span></span>
             <select className="inp" style={{ flex:1, minWidth:60, maxWidth:110, padding: "3px 6px", fontSize: 11, borderColor: manager ? T.gray400 : T.danger, background: manager ? T.bgCard : T.dangerLt }} value={manager} onChange={e => setManager(e.target.value)}>
               <option value="">시술자 선택</option>
@@ -4890,17 +4890,17 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
         </div>
 
         {/* Main Body - 4 columns: svc left, svc right, prod left, prod right */}
-        <GridLayout className="sale-grid" cols={2} gap={14} style={{flex:1,overflow:"auto",padding:"10px 14px",alignContent:"start"}}>
+        <GridLayout className="sale-grid" cols={2} gap={10} style={{flex:1,overflow:"auto",padding:"8px 12px",alignContent:"start"}}>
 
           {/* Col 1+2: Services by category (span 2 columns) */}
           <div style={{gridColumn:"span 2"}}>
-            <div style={{ fontSize: 10, fontWeight: 700, color:T.primary, padding: "4px 0 3px", borderBottom: "2px solid #7c7cc830", marginBottom: 6 }}>시술 ({SVC_LIST.length})</div>
+            <div style={{ fontSize: T.fs.nano, fontWeight: 700, color:T.primary, padding: "3px 0 2px", borderBottom: "2px solid #7c7cc830", marginBottom: 4 }}>시술 ({SVC_LIST.length})</div>
             {catGroups.map(({cat, svcs}) => {
               const isOpen = isCatOpen(cat.id);
               const hasChecked = svcs.some(s=>items[s.id]?.checked);
               return (
               <div key={cat.id} style={{marginBottom:6,border:"1px solid "+T.border,borderRadius:8,overflow:"hidden"}}>
-                <div onClick={()=>toggleCat(cat.id)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"6px 10px",cursor:"pointer",background:hasChecked?T.primaryHover:T.gray100}}>
+                <div onClick={()=>toggleCat(cat.id)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"4px 8px",cursor:"pointer",background:hasChecked?T.primaryHover:T.gray100}}>
                   <span style={{fontSize:T.fs.nano,fontWeight:T.fw.bolder,color:hasChecked?T.primary:T.gray600}}>{cat.name}{hasChecked&&<span style={{marginLeft:6,fontSize:T.fs.nano,color:T.primary}}>✓ {svcs.filter(s=>items[s.id]?.checked).length}개 선택</span>}</span>
                   <I name={isOpen?"chevU":"chevD"} size={12} style={{color:T.gray400}}/>
                 </div>
@@ -4920,7 +4920,7 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
 
           {/* Col 3+4: Products - 아코디언 */}
           <div style={{gridColumn:"span 2"}}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: T.infoLt2, padding: "4px 0 3px", borderBottom: "2px solid #6bab9e30", marginBottom: 6 }}>제품 ({PROD_LIST.length})</div>
+            <div style={{ fontSize: T.fs.nano, fontWeight: 700, color: T.infoLt2, padding: "3px 0 2px", borderBottom: "2px solid #6bab9e30", marginBottom: 4 }}>제품 ({PROD_LIST.length})</div>
             <div style={{border:"1px solid "+T.border,borderRadius:8,overflow:"hidden",marginBottom:6}}>
               <div onClick={()=>setOpenCats(p=>({...p,__prod:!isCatOpen("__prod",{...p,__prod:p.__prod},"prod")}))} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"6px 10px",cursor:"pointer",background:PROD_LIST.some(p=>items[p.id]?.checked)?T.successLt:T.gray100}}>
                 <span style={{fontSize:T.fs.nano,fontWeight:T.fw.bolder,color:PROD_LIST.some(p=>items[p.id]?.checked)?T.successDk:T.gray600}}>
@@ -4939,9 +4939,9 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
         </GridLayout>
 
         {/* 결제 정리 */}
-        <div style={{padding:"14px 16px",borderTop:"2px solid #e0e0e0",background:T.bg}}>
+        <div style={{padding:"10px 12px",borderTop:"1px solid #e0e0e0",background:T.bg}}>
           {/* 금액 브레이크다운 */}
-          <div style={{marginBottom:12,padding:"10px 14px",background:T.bgCard,borderRadius:T.radius.md,border:"1px solid #e8e8e8"}}>
+          <div style={{marginBottom:8,padding:"7px 10px",background:T.bgCard,borderRadius:T.radius.md,border:"1px solid #e8e8e8"}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"4px 0"}}>
               <span style={{fontSize:T.fs.sm,color:T.gray700}}><I name="scissors" size={12}/> 시술 합계</span>
               <span style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder,color:T.primary}}>{fmt(svcTotal)}원</span>
