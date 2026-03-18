@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.265";
+const BLISS_V = "2.69.266";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -4424,7 +4424,7 @@ const SaleSvcRow = React.memo(function SaleSvcRow({ id, name, dur, checked, amou
         className="sale-svc-name" style={{ flex: 1, color: checked ? T.text : T.gray700, fontWeight: checked ? 700 : 400 }}>
         {checked && <span style={{color:T.primary,marginRight:4}}>✓</span>}{name}
       </span>
-      <span className="sale-dur" style={{ flexShrink: 0, width: 30, textAlign: "center" }}>{dur}분</span>
+      <span className="sale-dur" style={{ flexShrink: 0, width: 34, textAlign: "center", whiteSpace:"nowrap" }}>{dur}분</span>
       <input className="inp" type="number" value={checked ? localAmt : ""} placeholder={disabled ? "—" : (defPrice||0).toLocaleString()}
         onClick={e => e.stopPropagation()}
         onChange={e => setLocalAmt(e.target.value)} onBlur={e => setAmt(id, e.target.value)} disabled={!checked}
@@ -4463,7 +4463,7 @@ const SaleExtraRow = React.memo(function SaleExtraRow({ id, color, placeholder, 
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 8px", borderTop: "1px solid #e0e0e0", marginTop: 4 }}>
       <span onClick={() => toggle(id, 0)}
-        style={{ fontSize: 10, color: checked ? T.danger : T.gray500, fontWeight: 700, flexShrink: 0, cursor: "pointer" }}>
+        style={{ fontSize: 13, color: checked ? T.danger : T.gray500, fontWeight: 700, flexShrink: 0, cursor: "pointer" }}>
         {checked ? "✓ 추가" : "+ 추가"}
       </span>
       <input className="inp" value={localLabel} onChange={e => setLocalLabel(e.target.value)}
@@ -5020,7 +5020,7 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
         {/* 매출 메모 */}
         <div style={{padding:"8px 16px",borderTop:"1px solid #eee"}}>
           <textarea className="inp" rows={2} value={saleMemo} onChange={e=>setSaleMemo(e.target.value)}
-            placeholder="매출 관련 메모를 입력하세요" style={{resize:"vertical",width:"100%",fontSize:T.fs.xxs}}/>
+            placeholder="매출 관련 메모를 입력하세요" style={{resize:"vertical",width:"100%",fontSize:T.fs.sm}}/>
         </div>
 
         {/* Footer */}
@@ -7282,12 +7282,32 @@ function AdminSaleItems({ data, setData }) {
 // ADMIN — 제품 관리
 // ═══════════════════════════════════════════
 function AdminProductItems({ data, setData }) {
-  const items=data?.productItems||[];
+const [items,setItems]=useState(()=>[...(data?.productItems||[])].sort((a,b)=>(a.sort||0)-(b.sort||0)));
+useEffect(()=>{setItems([...(data?.productItems||[])].sort((a,b)=>(a.sort||0)-(b.sort||0)));},[data?.productItems?.length]);
   const [sheet,setSheet]=useState(false);
   const [edit,setEdit]=useState(null);
   const [form,setForm]=useState({name:"",price:0,stock:0,note:""});
   const [saving,setSaving]=useState(false);
   const [del,setDel]=useState(null);
+const dragIdx=useRef(null),dragOver=useRef(null);
+const onDragStart_p=i=>{dragIdx.current=i;};
+const onDragEnter_p=i=>{dragOver.current=i;};
+const onDragEnd_p=()=>{
+  const di=dragIdx.current,oi=dragOver.current;
+  dragIdx.current=null;dragOver.current=null;
+  if(di===null||oi===null||di===oi)return;
+  const r=[...items];const [m]=r.splice(di,1);r.splice(oi,0,m);
+  const updated=r.map((it,idx2)=>({...it,sort:idx2}));
+  setItems(updated);setData(p=>({...p,productItems:updated}));
+  updated.forEach((it,idx2)=>sb.update("product_items",it.id,{sort:idx2}).catch(console.error));
+};
+const moveItem_p=(i,dir)=>{
+  const ni=i+dir;if(ni<0||ni>=items.length)return;
+  const r=[...items];[r[i],r[ni]]=[r[ni],r[i]];
+  const updated=r.map((it,idx2)=>({...it,sort:idx2}));
+  setItems(updated);setData(p=>({...p,productItems:updated}));
+  updated.forEach((it,idx2)=>sb.update("product_items",it.id,{sort:idx2}).catch(console.error));
+};
   const set=(k,v)=>setForm(p=>({...p,[k]:v}));
 
   const openNew=()=>{setEdit(null);setForm({name:"",price:0,stock:0,note:""});setSheet(true);};
@@ -7321,12 +7341,16 @@ function AdminProductItems({ data, setData }) {
     <APageHeader title="제품 관리" count={items.length} onAdd={openNew}/>
     {items.length===0?<AEmpty icon="clipboard" message="등록된 제품이 없어요" onAdd={openNew} addLabel="제품 추가"/>
     :<div className="card" style={{padding:0,overflow:"hidden"}}>
-      {items.map((it,i)=><AListItem key={it.id}
+      {items.map((it,i)=><AListItem key={it.id} draggable onDragStart={()=>onDragStart_p(i)} onDragEnter={()=>onDragEnter_p(i)} onDragEnd={onDragEnd_p} onDragOver={e=>e.preventDefault()}
         left={<div style={{width:34,height:34,borderRadius:9,background:T.gray100,display:"flex",alignItems:"center",justifyContent:"center"}}><I name="clipboard" size={15} style={{color:T.gray400}}/></div>}
         title={it.name}
         sub={[it.price&&(Number(it.price).toLocaleString()+"원"),it.stock!=null&&("재고 "+it.stock+"개")].filter(Boolean).join(" · ")}
         borderBottom={i<items.length-1}
-        right={<div style={{display:"flex",gap:6}}>
+        right={<div style={{display:"flex",gap:4,alignItems:"center"}}>
+<div style={{display:"flex",flexDirection:"column",gap:2}}>
+<button onClick={e=>{e.stopPropagation();moveItem_p(i,-1);}} style={{width:22,height:20,border:"1px solid "+T.border,background:i===0?T.gray100:"#fff",borderRadius:4,cursor:i===0?"not-allowed":"pointer",fontSize:9,opacity:i===0?.4:1}}>▲</button>
+<button onClick={e=>{e.stopPropagation();moveItem_p(i,1);}} style={{width:22,height:20,border:"1px solid "+T.border,background:i===items.length-1?T.gray100:"#fff",borderRadius:4,cursor:i===items.length-1?"not-allowed":"pointer",fontSize:9,opacity:i===items.length-1?.4:1}}>▼</button>
+</div>
           <button onClick={e=>{e.stopPropagation();openEdit(it);}} style={{width:28,height:28,borderRadius:7,border:"1px solid "+T.border,background:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><I name="edit" size={13} style={{color:T.gray500}}/></button>
           <button onClick={e=>{e.stopPropagation();setDel(it.id);}} style={{width:28,height:28,borderRadius:7,border:"1px solid #fecaca",background:"#fff5f5",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><I name="trash" size={13} style={{color:T.danger}}/></button>
         </div>}/>)}
@@ -7755,13 +7779,17 @@ function AdminServiceTags({ data, setData }) {
     </div>}
     {tabTags.length===0?<AEmpty icon="tag" message="등록된 태그가 없어요" onAdd={openNew} addLabel="태그 추가"/>
     :<div className="card" style={{padding:0,overflow:"hidden"}}>
-      {tabTags.map((t,i)=><div key={t.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 16px",borderBottom:i<tabTags.length-1?"1px solid "+T.gray100:"none"}}>
+      {tabTags.map((t,i)=><div key={t.id} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",borderBottom:i<tabTags.length-1?"1px solid "+T.gray100:"none"}}>
         <div style={{width:10,height:10,borderRadius:"50%",background:t.color||T.primary,flexShrink:0}}/>
         <div style={{flex:1,minWidth:0}}>
           <div style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder,color:t.useYn!==false?T.text:T.gray400}}>{t.name}</div>
           {t.dur>0&&<div style={{fontSize:T.fs.xxs,color:T.textMuted}}>{t.dur}분</div>}
         </div>
-        {SYSTEM_TAG_IDS.includes(t.id)&&<ABadge color="#f39c12" bg="#fff3e0">시스템</ABadge>}
+        <div style={{display:"flex",flexDirection:"column",gap:2}}>
+  <button onClick={e=>{e.stopPropagation();if(i===0)return;const r=[...tabTags];const [m]=r.splice(i,1);r.splice(i-1,0,m);const other=(tags||[]).filter(t2=>isSchedule?t2.scheduleYn!=="Y":t2.scheduleYn==="Y");const all=[...r,...other].map((t2,j)=>({...t2,sort:j}));syncTags(all);r.forEach((t2,j)=>sb.update("service_tags",t2.id,{sort:j}).catch(console.error));}} style={{width:22,height:22,border:"1px solid "+T.border,background:i===0?T.gray100:"#fff",borderRadius:4,cursor:i===0?"not-allowed":"pointer",fontSize:10,display:"flex",alignItems:"center",justifyContent:"center",opacity:i===0?.4:1}}>▲</button>
+  <button onClick={e=>{e.stopPropagation();if(i===tabTags.length-1)return;const r=[...tabTags];const [m]=r.splice(i,1);r.splice(i+1,0,m);const other=(tags||[]).filter(t2=>isSchedule?t2.scheduleYn!=="Y":t2.scheduleYn==="Y");const all=[...r,...other].map((t2,j)=>({...t2,sort:j}));syncTags(all);r.forEach((t2,j)=>sb.update("service_tags",t2.id,{sort:j}).catch(console.error));}} style={{width:22,height:22,border:"1px solid "+T.border,background:i===tabTags.length-1?T.gray100:"#fff",borderRadius:4,cursor:i===tabTags.length-1?"not-allowed":"pointer",fontSize:10,display:"flex",alignItems:"center",justifyContent:"center",opacity:i===tabTags.length-1?.4:1}}>▼</button>
+</div>
+{SYSTEM_TAG_IDS.includes(t.id)&&<ABadge color="#f39c12" bg="#fff3e0">시스템</ABadge>}
         <AToggle size="sm" on={t.useYn!==false} onChange={()=>toggleUse(t.id)}/>
         <button onClick={()=>openEdit(t)} style={{width:28,height:28,borderRadius:7,border:"1px solid "+T.border,background:"#fff",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><I name="edit" size={13} style={{color:T.gray500}}/></button>
         {!SYSTEM_TAG_IDS.includes(t.id)&&<button onClick={()=>setDel(t.id)} style={{width:28,height:28,borderRadius:7,border:"1px solid #fecaca",background:"#fff5f5",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><I name="trash" size={13} style={{color:T.danger}}/></button>}
