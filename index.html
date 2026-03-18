@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.270";
+const BLISS_V = "2.69.271";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -3126,7 +3126,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                                 return a.from.localeCompare(b.from);
                               }).map((s,i,arr)=>({...s, until: arr[i+1]?.from||null}));
                               setEmpBranchOverride(p=>({...p,[overrideKey2]:{segments:merged}}));
-                              setEmpMovePopup(p=>({...p,addBranch:"",addFrom:""}));
+                              setEmpMovePopup(null);
                             };
 
                             const removeSeg = (branchId) => {
