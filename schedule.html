@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.18-y";
+const SCH_V = "v2026.03.18-z";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -300,7 +300,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       const repBranch = emp.branch;
       const repBr = BRANCHES.find(b => b.id === repBranch);
       if (repBr) {
-        const repEmps = employees.filter(e => e.branch === repBranch && e.id !== emp.id && !e.isMale);
+        const repEmps = employees.filter(e => e.branch === repBranch && e.id !== emp.id && !e.isMale && !e.isOwner);
         const repWorking = repEmps.filter(be => {
           const s = sch[be.id]?.[ds] || "";
           if (["휴무","휴무(꼭)"].includes(s)) return false;
@@ -518,7 +518,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       const repBr = BRANCHES.find(b => b.id === repBranch);
       if (repBr) {
         // 같은 대표 지점 소속 직원 중 본인 제외하고 근무 중인 인원
-        const repEmps = employees.filter(e => e.branch === repBranch && e.id !== emp.id && !e.isMale);
+        const repEmps = employees.filter(e => e.branch === repBranch && e.id !== emp.id && !e.isMale && !e.isOwner);
         const repWorking = repEmps.filter(be => {
           const s = sch[be.id]?.[ds] || "";
           if (["휴무","휴무(꼭)"].includes(s)) return false;
