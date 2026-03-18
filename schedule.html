@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.17-x";
+const SCH_V = "v2026.03.17-y";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -420,19 +420,31 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     if (p1o && p2o) return R("3일연속(p2+p1 휴무)");
     if (p1o && n1o) return R("3일연속(p1+n1 휴무)");
 
-    // 퐁당퐁당 방지: 휴-근-휴 패턴 차단 (ds에 휴무 배정 시) — 격주 직원 예외
+    // 퐁당퐁당 방지 — 격주 직원 예외
     if (!skipAltCheck) {
-      // case1: 앞이 ..휴-근-[ds=휴] → p2=휴, p1=근
-      if (p2o && !p1o) return R(`퐁당퐁당(p2=${p2ds}휴무, p1근무)`);
-      // case2: 뒤가 [ds=휴]-근-휴.. → n1=근, n2=휴
       const n1Assigned = getStatus(emp.id, n1ds) !== "";
       const n2Assigned = getStatus(emp.id, n2ds) !== "";
-      if (n1Assigned && !n1o && n2o) return R(`퐁당퐁당(n1근무, n2휴무)`);
+      const n3ds = fmtDs(...(() => { const d=new Date(ds); d.setDate(d.getDate()+3); return [d.getFullYear(),d.getMonth(),d.getDate()]; })());
+      const p3ds = fmtDs(...(() => { const d=new Date(ds); d.setDate(d.getDate()-3); return [d.getFullYear(),d.getMonth(),d.getDate()]; })());
+      const p3o = ["휴무","휴무(꼭)"].includes(getStatus(emp.id, p3ds));
+      const n3o = ["휴무","휴무(꼭)"].includes(getStatus(emp.id, n3ds));
+
+      // 휴-근-휴 차단: p2=휴,p1=근 or n1=근,n2=휴
+      if (p2o && !p1o) return R(`퐁당퐁당(p2휴,p1근,[ds=휴])`);
+      if (n1Assigned && !n1o && n2o) return R(`퐁당퐁당([ds=휴],n1근,n2휴)`);
+
+      // 근-휴-근-휴 차단: p1=근,ds=휴,n1=근,n2=휴 → [ds=휴] 배정 시 뒤가 근-휴
+      if (!p1o && n1Assigned && !n1o && n2Assigned && n2o) return R(`근휴근휴([ds=휴],n1근,n2휴)`);
+      // p2=근,p1=휴,ds=근... 앞에서 오는 패턴: 이미 휴-근-휴로 막힘
+
+      // 근-휴-근-휴-근 차단: p2=근,p1=휴,ds=근 → ds는 근무이므로 해당 없음
+      // 하지만 [ds=휴] 배정 시 → p2=휴,p1=근,[ds=휴],n1=근,n2=휴 패턴
+      // → 이미 위 case1(p2=휴,p1=근)에서 차단됨
+
+      // 근-휴-근-휴: [ds=휴] 앞이 근이고 뒤가 근-휴인 경우 추가 확인
+      // p3=휴,p2=근,p1=근,ds=휴,n1=근,n2=휴 → 근휴근휴 연속 패턴
+      if (!p1o && !p2o && n1Assigned && !n1o && n2Assigned && n2o) return R(`근근휴근휴패턴`);
     }
-    // case3: 휴-근-[ds=휴]-근-휴 완전 퐁당퐁당 (p2=휴, p1=근, n1=근, n2=휴)
-    // → 이미 case1/2에서 걸리므로 추가 체크 불필요
-    // case4: 앞쪽 확장: p3=휴, p2=근, p1=근, ds=휴 → 허용 (연속근무 사이 휴무)
-    // case5: 뒤쪽으로 p1=휴, ds=휴 → 이미 3일연속에서 차단됨
 
 
     // 전체 하루 최대 휴무 5명 제한 (남자직원 제외 - 별도 집계)
@@ -1021,8 +1033,10 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       const n2o = isOff_(getS_(n2ds));
       const n1Assigned = getS_(n1ds) !== "";
       const n2Assigned = getS_(n2ds) !== "";
-      if (p2o && !p1o) return true; // 앞: 휴-근-[휴]
-      if (n1Assigned && !n1o && n2o) return true; // 뒤: [휴]-근-휴
+      if (p2o && !p1o) return true;                                          // 휴-근-[휴]
+      if (n1Assigned && !n1o && n2o) return true;                            // [휴]-근-휴
+      if (!p1o && n1Assigned && !n1o && n2Assigned && n2o) return true;      // 근-[휴]-근-휴
+      if (!p1o && !p2o && n1Assigned && !n1o && n2Assigned && n2o) return true; // 근근-[휴]-근-휴
       return false;
     };
 
