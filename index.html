@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.250";
+const BLISS_V = "2.69.251";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -6524,7 +6524,7 @@ function AdminSchedule() {
     </div>}
     <iframe
       ref={iframeRef}
-      src="https://jeongwoolee1.github.io/bliss/schedule.html"
+      src={`https://jeongwoolee1.github.io/bliss/schedule.html?mobile=${window.innerWidth<=600?"1":"0"}`}
       style={{
         width:"100%",
         flex:1,
