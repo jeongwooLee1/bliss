@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.274";
+const BLISS_V = "2.69.275";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -2309,7 +2309,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       const brNaverBlocks = brBlocks.filter(b => isNaverRes(b));
       if (brNaverBlocks.length === 0) return;
       const naverRooms = allRooms.filter(r => r.isNaver && r.branch_id === br.id);
-      const regularRooms = allRooms.filter(r => !r.isNaver && r.branch_id === br.id);
+      const regularRooms = allRooms.filter(r => !r.isNaver && !r.isBlank && r.branch_id === br.id);
       const targetRooms = naverRooms.length > 0 ? naverRooms : regularRooms;
       if (targetRooms.length === 0) return;
       // Track occupied times per room
@@ -3096,7 +3096,10 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                 // 직원 컬럼: staffId 일치 또는 roomId가 해당 staff col id
                 if (b.bid !== room.branch_id) return false;
                 if (b.staffId && b.staffId === room.staffId) return true;
-                return b.roomId === room.id;
+                if (b.roomId === room.id) return true;
+                // room_id 없는 네이버 예약도 naverAssignments로 배치
+                if (isNaverRes(b) && !b.roomId && naverAssignments[b.id] === room.id) return true;
+                return false;
               }
               // 일반 룸 칼럼: roomId 기준
               return b.roomId === room.id;
