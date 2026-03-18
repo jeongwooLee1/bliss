@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.257";
+const BLISS_V = "2.69.258";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -1907,31 +1907,80 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
     return merged;
   };
 
+  // 내일 날짜 스냅샷 (10시 이후 lock용)
+  const [frozenTomorrow, setFrozenTomorrow] = useState(null); // {empId:{date:status}} - 내일 데이터 고정본
+
+  // 10시 이후 내일 날짜가 lock되는지 체크
+  const isTomorrowLocked = () => new Date().getHours() >= 22;
+  const getTomorrowStr = () => {
+    const d = new Date(); d.setDate(d.getDate()+1);
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  };
+
+  // schHistory에서 내일 데이터만 추출
+  const extractTomorrowData = (sch) => {
+    const tom = getTomorrowStr();
+    const snap = {};
+    Object.entries(sch).forEach(([emp, days]) => {
+      if (days[tom] !== undefined) { if (!snap[emp]) snap[emp] = {}; snap[emp][tom] = days[tom]; }
+    });
+    return snap;
+  };
+
+  // Realtime 업데이트 시 lock 날짜 보존하며 merge
+  const mergeWithLock = (newSch) => {
+    if (!isTomorrowLocked() || !frozenTomorrow) return newSch;
+    const tom = getTomorrowStr();
+    const merged = { ...newSch };
+    // 내일 날짜는 frozenTomorrow 값으로 복원
+    Object.entries(frozenTomorrow).forEach(([emp, days]) => {
+      if (!merged[emp]) merged[emp] = {};
+      if (days[tom] !== undefined) merged[emp][tom] = days[tom];
+    });
+    return merged;
+  };
+
   // schHistory_v1 초기 로드 + Realtime 구독
+  const SB_URL_SCH = "https://dpftlrsuqxqqeouwbfjd.supabase.co";
+  const SB_KEY_SCH = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwZnRscnN1cXhxcWVvdXdiZmpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5MDU4MjQsImV4cCI6MjA4NzQ4MTgyNH0.iydEkjtPjZ0jXpUUPJben4IWWneDqLomv-HDlcFayE4";
+
   useEffect(() => {
-    const SB_URL = "https://dpftlrsuqxqqeouwbfjd.supabase.co";
-    const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwZnRscnN1cXhxcWVvdXdiZmpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5MDU4MjQsImV4cCI6MjA4NzQ4MTgyNH0.iydEkjtPjZ0jXpUUPJben4IWWneDqLomv-HDlcFayE4";
-    const H = { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY };
+    const H = { apikey: SB_KEY_SCH, Authorization: "Bearer " + SB_KEY_SCH };
 
-    // 초기 로드
-    const loadSch = () => {
-      fetch(`${SB_URL}/rest/v1/schedule_data?key=eq.schHistory_v1&select=value`, { headers: H })
-        .then(r=>r.json()).then(rows=>{
-          if (!rows?.length) return;
-          setSchHistory(parseSchHistory(rows[0].value));
-        }).catch(()=>{});
-    };
-    loadSch();
+    fetch(`${SB_URL_SCH}/rest/v1/schedule_data?key=eq.schHistory_v1&select=value`, { headers: H })
+      .then(r=>r.json()).then(rows=>{
+        if (!rows?.length) return;
+        const parsed = parseSchHistory(rows[0].value);
+        setSchHistory(parsed);
+        // 10시 이후 로드 시 내일 데이터 바로 고정
+        if (isTomorrowLocked()) setFrozenTomorrow(extractTomorrowData(parsed));
+      }).catch(()=>{});
 
-    // Realtime 구독 (schedule_data 변경 감지)
+    // 매 시간 체크 - 10시 되는 순간 frozenTomorrow 설정
+    const timer = setInterval(() => {
+      if (isTomorrowLocked()) {
+        setSchHistory(prev => {
+          if (prev && !frozenTomorrow) setFrozenTomorrow(extractTomorrowData(prev));
+          return prev;
+        });
+      }
+    }, 60000); // 1분마다 체크
+
+    // Realtime 구독
     const channel = window._sbClient?.channel("schedule_data_rt")
       ?.on("postgres_changes", { event:"UPDATE", schema:"public", table:"schedule_data", filter:"key=eq.schHistory_v1" },
         (payload) => {
-          if (payload?.new?.value) setSchHistory(parseSchHistory(payload.new.value));
+          if (payload?.new?.value) {
+            const newSch = parseSchHistory(payload.new.value);
+            setSchHistory(mergeWithLock(newSch));
+          }
         }
       )?.subscribe();
 
-    return () => { try { channel?.unsubscribe(); } catch(e) {} };
+    return () => {
+      clearInterval(timer);
+      try { channel?.unsubscribe(); } catch(e) {}
+    };
   }, []);
 
   // 선택 날짜의 지점별 출근자 계산
