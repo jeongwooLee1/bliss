@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.18-k";
+const SCH_V = "v2026.03.18-l";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -292,13 +292,24 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       const totalOff = employees.filter(e => !e.isMale && ["휴무","휴무(꼭)"].includes(sch[e.id]?.[ds]||"")).length;
       if (totalOff >= rc.maxDailyOff) return false;
     }
-    // 지점 최소 인원 (강제 배정도 최소 1명은 지켜야)
-    if (branch) {
-      const minRequired = rc.branchMinStaff[branch.id] ?? branch.minStaff ?? 1;
-      const working = branchEmps.filter(be =>
-        be.id !== emp.id && !["휴무","휴무(꼭)"].includes(sch[be.id]?.[ds]||"")
+    // 지점 최소 인원 — 직원의 모든 소속 지점(branches) 각각 체크
+    const empBranchesH = emp.branches || [emp.branch];
+    for (const bId of empBranchesH) {
+      const br_ = BRANCHES.find(b => b.id === bId);
+      if (!br_) continue;
+      const brEmps_ = employees.filter(e => (e.branches||[e.branch]).includes(bId) && !e.isMale);
+      const working = brEmps_.filter(be => {
+        if (be.id === emp.id) return false;
+        const s = sch[be.id]?.[ds] || "";
+        if (["휴무","휴무(꼭)"].includes(s)) return false;
+        if (isSupport(s) && !s.includes(br_.name)) return false;
+        return true;
+      }).length;
+      const supportIn = employees.filter(e =>
+        !(e.branches||[e.branch]).includes(bId) && sch[e.id]?.[ds] === `지원(${br_.name})`
       ).length;
-      if (working < minRequired) return false;
+      const minRequired = rc.branchMinStaff[bId] ?? br_.minStaff ?? 1;
+      if (working + supportIn < minRequired) return false;
     }
     return true;
   };
@@ -523,12 +534,24 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     // 남자직원 전원 휴무 금지
     const otherMales = employees.filter(e => e.isMale && e.id !== emp.id);
     if (otherMales.length > 0 && otherMales.every(e => isOff(e.id, ds))) return false;
-    // 지점 최소 인원 보호
-    if (branch) {
-      const ownWorking = branchEmps.filter(be => !["휴무","휴무(꼭)"].includes(sch[be.id]?.[ds]||"")).length;
-      const supportIn = employees.filter(e => e.branch !== branch.id && sch[e.id]?.[ds] === `지원(${branch.name})`).length;
-      const minS = rc.branchMinStaff[branch.id] ?? branch.minStaff;
-      if (ownWorking + supportIn - 1 < minS) return false;
+    // 지점 최소 인원 보호 — branches 기반
+    const empBranchesM = emp.branches || [emp.branch];
+    for (const bId of empBranchesM) {
+      const br_ = BRANCHES.find(b => b.id === bId);
+      if (!br_) continue;
+      const brEmps_ = employees.filter(e => (e.branches||[e.branch]).includes(bId) && !e.isMale);
+      const working = brEmps_.filter(be => {
+        if (be.id === emp.id) return false;
+        const s = sch[be.id]?.[ds] || "";
+        if (["휴무","휴무(꼭)"].includes(s)) return false;
+        if (isSupport(s) && !s.includes(br_.name)) return false;
+        return true;
+      }).length;
+      const supportIn = employees.filter(e =>
+        !(e.branches||[e.branch]).includes(bId) && sch[e.id]?.[ds] === `지원(${br_.name})`
+      ).length;
+      const minS = rc.branchMinStaff[bId] ?? br_.minStaff ?? 1;
+      if (working + supportIn < minS) return false;
     }
     return true;
   };
@@ -1125,10 +1148,21 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
           return s===STATUS.WORK||isSupport(s)||s===STATUS.SHARE;
         }).length;
         if (totalWorking <= rc.minWork) continue;
-        const branchWorking = branchEmps.filter(be =>
-          !["휴무","휴무(꼭)"].includes(sch[be.id][day.ds])
-        ).length;
-        if (branch && branchWorking - 1 < (rc.branchMinStaff[branch.id] ?? branch.minStaff)) continue;
+        // branches 기반 지점 최소인원 체크
+        let branchOk = true;
+        for (const bId of (emp.branches||[emp.branch])) {
+          const br_ = BRANCHES.find(b=>b.id===bId); if (!br_) continue;
+          const brW = employees.filter(e=>(e.branches||[e.branch]).includes(bId)&&!e.isMale).filter(be=>{
+            if (be.id===emp.id) return false;
+            const s=sch[be.id]?.[day.ds]||"";
+            if(["휴무","휴무(꼭)"].includes(s)) return false;
+            if(isSupport(s)&&!s.includes(br_.name)) return false;
+            return true;
+          }).length;
+          const supIn=employees.filter(e=>!(e.branches||[e.branch]).includes(bId)&&sch[e.id]?.[day.ds]===`지원(${br_.name})`).length;
+          if(brW+supIn < (rc.branchMinStaff[bId]??br_.minStaff??1)){branchOk=false;break;}
+        }
+        if (!branchOk) continue;
         sch[emp.id][day.ds] = STATUS.OFF;
       }
     });
