@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.244";
+const BLISS_V = "2.69.245";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -4332,6 +4332,14 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
   const [manager, setManager] = useState(reservation?.staffId || "");
   const [selBranch, setSelBranch] = useState(branchId);
   const [gender, setGender] = useState(reservation?.custGender || "");
+  const [openCats, setOpenCats] = useState({}); // catId → true/false (null=auto)
+  const toggleCat = (catId) => setOpenCats(p => ({...p, [catId]: !isCatOpen(catId, p)}));
+  const isCatOpen = (catId, cats=openCats) => {
+    if(cats[catId] !== undefined) return cats[catId];
+    // 선택된 시술이 있는 카테고리는 자동 열림
+    const svcs = (data?.services||[]).filter(s=>s.cat===catId);
+    return svcs.some(s=>items[s.id]?.checked);
+  };
   const [saleMemo, setSaleMemo] = useState(reservation?.saleMemo || "");
 
   // 결제수단 분배
@@ -4701,12 +4709,19 @@ function DetailedSaleForm({ reservation, branchId, onSubmit, onClose, data, setD
           {/* Col 1+2: Services by category (span 2 columns) */}
           <div style={{gridColumn:"span 2"}}>
             <div style={{ fontSize: 10, fontWeight: 700, color:T.primary, padding: "4px 0 3px", borderBottom: "2px solid #7c7cc830", marginBottom: 6 }}>시술 ({SVC_LIST.length})</div>
-            {catGroups.map(({cat, svcs}) => (
-              <div key={cat.id} style={{marginBottom:8}}>
-                <div style={{fontSize:T.fs.nano,fontWeight:T.fw.bolder,color:T.primary,background:T.primaryHover,borderRadius:T.radius.sm,padding:"2px 6px",marginBottom:2,display:"inline-block"}}>{cat.name}</div>
-                {svcs.map(svc => { const it=items[svc.id]||{}; const dp=gender?(gender==="M"?svc.priceM:svc.priceF):(svc.priceF===svc.priceM?svc.priceF:0); return <SaleSvcRow key={svc.id} id={svc.id} name={svc.name} dur={svc.dur} checked={!!it.checked} amount={it.amount||0} defPrice={dp} toggle={toggle} setAmt={setAmt} />; })}
+            {catGroups.map(({cat, svcs}) => {
+              const isOpen = isCatOpen(cat.id);
+              const hasChecked = svcs.some(s=>items[s.id]?.checked);
+              return (
+              <div key={cat.id} style={{marginBottom:6,border:"1px solid "+T.border,borderRadius:8,overflow:"hidden"}}>
+                <div onClick={()=>toggleCat(cat.id)} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"6px 10px",cursor:"pointer",background:hasChecked?T.primaryHover:T.gray100}}>
+                  <span style={{fontSize:T.fs.nano,fontWeight:T.fw.bolder,color:hasChecked?T.primary:T.gray600}}>{cat.name}{hasChecked&&<span style={{marginLeft:6,fontSize:T.fs.nano,color:T.primary}}>✓ {svcs.filter(s=>items[s.id]?.checked).length}개 선택</span>}</span>
+                  <I name={isOpen?"chevU":"chevD"} size={12} style={{color:T.gray400}}/>
+                </div>
+                {isOpen && <div style={{padding:"4px 0"}}>{svcs.map(svc => { const it=items[svc.id]||{}; const dp=gender?(gender==="M"?svc.priceM:svc.priceF):(svc.priceF===svc.priceM?svc.priceF:0); return <SaleSvcRow key={svc.id} id={svc.id} name={svc.name} dur={svc.dur} checked={!!it.checked} amount={it.amount||0} defPrice={dp} toggle={toggle} setAmt={setAmt} />; })}</div>}
               </div>
-            ))}
+              );
+            })}
             {uncatSvcs.length>0 && <div style={{marginBottom:8}}>
               <div style={{fontSize:T.fs.nano,fontWeight:T.fw.bolder,color:T.textMuted,background:T.bg,borderRadius:T.radius.sm,padding:"2px 6px",marginBottom:2,display:"inline-block"}}>기타</div>
               {uncatSvcs.map(svc => { const it=items[svc.id]||{}; const dp=gender?(gender==="M"?svc.priceM:svc.priceF):(svc.priceF===svc.priceM?svc.priceF:0); return <SaleSvcRow key={svc.id} id={svc.id} name={svc.name} dur={svc.dur} checked={!!it.checked} amount={it.amount||0} defPrice={dp} toggle={toggle} setAmt={setAmt} />; })}
