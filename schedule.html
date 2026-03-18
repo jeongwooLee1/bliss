@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.18-a";
+const SCH_V = "v2026.03.18-b";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -122,25 +122,26 @@ const BRANCHES = [
 ];
 
 const EMPLOYEES = [
-  { id:"경아", name:"경아", branch:"gangnam",   isOwner:false, weeklyOff:2 },
-  { id:"서현", name:"서현", branch:"gangnam",   isOwner:false, weeklyOff:2 },
-  { id:"소연", name:"소연", branch:"wangsimni", isOwner:false, weeklyOff:2 },
-  { id:"수연", name:"수연", branch:"wangsimni", isOwner:false, weeklyOff:2 },
-  { id:"현아", name:"현아",       branch:"hongdae",  isOwner:false, weeklyOff:2, mustStay:true },
-  { id:"혜경", name:"혜경",       branch:"hongdae",  isOwner:false, weeklyOff:2 },
-  { id:"지은", name:"지은(원장)", branch:"magok",    isOwner:true,  weeklyOff:1, mustStay:true },
-  { id:"민아", name:"민아",       branch:"magok",    isOwner:false, weeklyOff:2 },
-  { id:"보령", name:"보령(원장)", branch:"yongsan",  isOwner:true,  weeklyOff:1, mustStay:true },
-  { id:"희서", name:"희서",       branch:"yongsan",  isOwner:false, weeklyOff:2 },
-  { id:"민정", name:"민정",       branch:"yongsan",  isOwner:false, weeklyOff:2 },
-  { id:"소이", name:"소이",       branch:"jamsil",   isOwner:false, weeklyOff:2 },
-  { id:"유라", name:"유라(원장)", branch:"wirye",    isOwner:true,  weeklyOff:1, mustStay:true },
-  { id:"다해", name:"다해",       branch:"wirye",    isOwner:false, weeklyOff:2 },
-  { id:"미진", name:"미진(원장)", branch:"cheonho",  isOwner:true,  weeklyOff:1, mustStay:true },
-  { id:"수민", name:"수민",       branch:"cheonho",  isOwner:false, weeklyOff:2 },
+  // branches: 소속 지점 목록 (복수 지점 소속 가능), branch: 대표 지점(UI 표시용)
+  { id:"경아", name:"경아", branch:"gangnam",   branches:["gangnam","wangsimni"], isOwner:false, weeklyOff:2 },
+  { id:"서현", name:"서현", branch:"gangnam",   branches:["gangnam","wangsimni"], isOwner:false, weeklyOff:2 },
+  { id:"소연", name:"소연", branch:"wangsimni", branches:["gangnam","wangsimni"], isOwner:false, weeklyOff:2 },
+  { id:"수연", name:"수연", branch:"wangsimni", branches:["gangnam","wangsimni"], isOwner:false, weeklyOff:2 },
+  { id:"현아", name:"현아",       branch:"hongdae", branches:["hongdae","magok"], isOwner:false, weeklyOff:2, mustStay:true },
+  { id:"혜경", name:"혜경",       branch:"hongdae", branches:["hongdae","magok"], isOwner:false, weeklyOff:2 },
+  { id:"지은", name:"지은(원장)", branch:"magok",   branches:["hongdae","magok"], isOwner:true,  weeklyOff:1, mustStay:true },
+  { id:"민아", name:"민아",       branch:"magok",   branches:["hongdae","magok"], isOwner:false, weeklyOff:2 },
+  { id:"보령", name:"보령(원장)", branch:"yongsan", branches:["yongsan"],         isOwner:true,  weeklyOff:1, mustStay:true },
+  { id:"희서", name:"희서",       branch:"yongsan", branches:["yongsan"],         isOwner:false, weeklyOff:2 },
+  { id:"민정", name:"민정",       branch:"yongsan", branches:["yongsan"],         isOwner:false, weeklyOff:2 },
+  { id:"소이", name:"소이",       branch:"jamsil",  branches:["jamsil","wirye"],  isOwner:false, weeklyOff:2 },
+  { id:"유라", name:"유라(원장)", branch:"wirye",   branches:["jamsil","wirye"],  isOwner:true,  weeklyOff:1, mustStay:true },
+  { id:"다해", name:"다해",       branch:"wirye",   branches:["jamsil","wirye"],  isOwner:false, weeklyOff:2 },
+  { id:"미진", name:"미진(원장)", branch:"cheonho", branches:["cheonho"],         isOwner:true,  weeklyOff:1, mustStay:true },
+  { id:"수민", name:"수민",       branch:"cheonho", branches:["cheonho"],         isOwner:false, weeklyOff:2 },
   // 남자 직원 (일 근무 인원 미포함, 일요일 중 1명만 출근, 휴무 중복 불가)
-  { id:"재윤", name:"재윤", branch:"male", isOwner:false, weeklyOff:2, isMale:true },
-  { id:"주용", name:"주용", branch:"male", isOwner:false, weeklyOff:2, isMale:true },
+  { id:"재윤", name:"재윤", branch:"male", branches:["male"], isOwner:false, weeklyOff:2, isMale:true },
+  { id:"주용", name:"주용", branch:"male", branches:["male"], isOwner:false, weeklyOff:2, isMale:true },
 ];
 
 const STATUS = { WORK:"근무", OFF:"휴무", MUST_OFF:"휴무(꼭)", SUPPORT:"지원", SHARE:"전체쉐어" };
@@ -456,27 +457,31 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       if (totalOffToday >= rc.maxDailyOff) return R(`전체휴무${totalOffToday}명 초과`);
     }
 
-    // 지점 최소 근무인원 보호 (소속 + 지원 인원 합산)
-    if (branch) {
-      if (false) {
-        // (구 논현 특별처리 - 지점 분리로 제거)
-      } else {
-        // 그 외 지점: 소속 + 지원 합산 후 minStaff 체크
-        const ownWorking = branchEmps.filter(be =>
-          !["휴무","휴무(꼭)"].includes(sch[be.id][ds])
-        ).length;
-        const supportIn = employees.filter(e =>
-          e.branch !== branch.id && sch[e.id][ds] === `지원(${branch.name})`
-        ).length;
-        const minS = rc.branchMinStaff[branch.id] ?? branch.minStaff;
-        if (ownWorking + supportIn - 1 < minS) return false;
-      }
+    // 지점 최소 근무인원 보호: 직원의 모든 소속 지점(branches) 각각 체크
+    const empBranches_ = emp.branches || [emp.branch];
+    for (const bId of empBranches_) {
+      const br_ = BRANCHES.find(b => b.id === bId);
+      if (!br_) continue;
+      const brEmps_ = employees.filter(e => (e.branches || [e.branch]).includes(bId));
+      const ownWorking = brEmps_.filter(be =>
+        !["휴무","휴무(꼭)"].includes(sch[be.id][ds])
+      ).length;
+      const supportIn = employees.filter(e =>
+        !(e.branches || [e.branch]).includes(bId) && sch[e.id][ds] === `지원(${br_.name})`
+      ).length;
+      const minS = rc.branchMinStaff[bId] ?? br_.minStaff ?? 1;
+      if (ownWorking + supportIn - 1 < minS) return false;
     }
 
-    // 지점별 동시 휴무 금지 (noSimultaneousOff ON인 지점: 일반직원 2명 이하, 남자직원 제외)
-    if (!skipSimultaneous && rc.noSimultaneousOff[emp.branch]) {
-      const normals = branchEmps.filter(be => !be.isOwner && !be.mustStay && be.id !== emp.id);
-      if (normals.some(be => ["휴무","휴무(꼭)"].includes(sch[be.id]?.[ds]))) return false;
+    // 지점별 동시 휴무 금지 — 직원의 모든 소속 지점 중 ON인 지점 체크
+    if (!skipSimultaneous) {
+      const empBranchesSimul = emp.branches || [emp.branch];
+      for (const bId of empBranchesSimul) {
+        if (!rc.noSimultaneousOff[bId]) continue;
+        const brEmpsSimul = employees.filter(e => (e.branches || [e.branch]).includes(bId));
+        const normals = brEmpsSimul.filter(be => !be.isOwner && !be.mustStay && be.id !== emp.id);
+        if (normals.some(be => ["휴무","휴무(꼭)"].includes(sch[be.id]?.[ds]))) return false;
+      }
     }
 
     // 남자직원 전원 휴무 금지 (1명은 반드시 근무)
@@ -643,7 +648,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       // 격주 직원 배정: prefDows 설정 시 해당 요일 우선, 막히면 전체 요일 fallback
       const altCanPlace = (d) => !sch[emp.id][d.ds] && !seededDates.has(d.ds);
       const prefDows_ = empSettings[emp.id]?.prefDows || [];
-      const branchEmps = employees.filter(e=>e.branch===emp.branch);
+      const branchEmps = employees.filter(e=>(e.branches||[e.branch]).some(b=>(emp.branches||[emp.branch]).includes(b)));
       const branch = BRANCHES.find(b=>b.id===emp.branch);
 
       // 1차 시도: prefDows 요일만
@@ -799,7 +804,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
   // [Phase C] 강제 휴무 실제 배정
   (employees||[]).filter(e => !isAltPattern(e) && !e.isMale && !e.isOwner).forEach(emp => {
     const branch = BRANCHES.find(b => b.id === emp.branch);
-    const branchEmps = employees.filter(e => e.branch === emp.branch);
+    const branchEmps = employees.filter(e => (e.branches||[e.branch]).some(b=>(emp.branches||[emp.branch]).includes(b)));
     (forcedOff[emp.id] || new Set()).forEach(ds => {
       if (seededDates.has(ds)) return;
       const day = allDates.find(d => d.ds === ds);
@@ -833,7 +838,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
   // [Phase D] 주간 쿼터 채우기 — 순수 주 단위, 월간 총량 개념 없음 (원장 제외)
   shuffle(employees.filter(e => !isAltPattern(e) && !e.isOwner)).forEach(emp => {
     const branch = BRANCHES.find(b => b.id === emp.branch);
-    const branchEmps = employees.filter(e => e.branch === emp.branch);
+    const branchEmps = employees.filter(e => (e.branches||[e.branch]).some(b=>(emp.branches||[emp.branch]).includes(b)));
 
     activeWeeks.forEach((week, wi) => {
       const thisWeekDays = week.filter(d => !d.isPrev);
@@ -1025,7 +1030,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
   // 6) 주간 휴무 미달 보정 + 퐁당퐁당(휴무-근무-휴무-근무) 패턴 방지
   employees.filter(e => !isAltPattern(e) && !e.isOwner && !e.isMale).forEach(emp => {
     const branch = BRANCHES.find(b => b.id === emp.branch);
-    const branchEmps = employees.filter(e => e.branch === emp.branch);
+    const branchEmps = employees.filter(e => (e.branches||[e.branch]).some(b=>(emp.branches||[emp.branch]).includes(b)));
 
     // 퐁당퐁당 감지: canAssignOff와 동일 로직 (p2=휴/p1=근 or n1=근/n2=휴)
     const wouldMakeAltPattern = (ds) => {
@@ -1122,7 +1127,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
 
     employees.filter(e => !e.isMale && !isAltPattern(e)).forEach(emp => {
       const branch = BRANCHES.find(b => b.id === emp.branch);
-      const branchEmps = employees.filter(e => e.branch === emp.branch);
+      const branchEmps = employees.filter(e => (e.branches||[e.branch]).some(b=>(emp.branches||[emp.branch]).includes(b)));
       const wo = getWeeklyOff(emp); // 주당 휴무 기준
       const TARGET_CONSEC = 2; // 월간 목표 연속휴무 횟수
 
@@ -1258,7 +1263,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
   //      altPattern·원장 제외, 주 단위로 weeklyOff 미달인 경우 off 추가 시도
   employees.filter(e => !isAltPattern(e) && !e.isOwner && !e.isMale).forEach(emp => {
     const branch = BRANCHES.find(b => b.id === emp.branch);
-    const branchEmps = employees.filter(e => e.branch === emp.branch);
+    const branchEmps = employees.filter(e => (e.branches||[e.branch]).some(b=>(emp.branches||[emp.branch]).includes(b)));
     const wo = getWeeklyOff(emp);
     activeWeeks.forEach(week => {
       const thisMonthDays = week.filter(d => !d.isPrev && !d.isNext);
@@ -1515,7 +1520,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     // canAssignOff + minWork 검증 통과하는 날에만 off 추가
     targetEmps.forEach(emp => {
       const branch = BRANCHES.find(b => b.id === emp.branch);
-      const branchEmps = employees.filter(e => e.branch === emp.branch);
+      const branchEmps = employees.filter(e => (e.branches||[e.branch]).some(b=>(emp.branches||[emp.branch]).includes(b)));
       const wo = getWeeklyOff(emp);
       const isAlt = isAltPattern(emp);
       const prefDows9 = isAlt ? (empSettings[emp.id]?.prefDows || []) : [];
@@ -1568,7 +1573,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     const dd = window.__debugDate;
     console.log(`=== 디버그: ${dd} canAssignOff 차단 원인 ===`);
     employees.forEach(emp => {
-      const be2 = employees.filter(e=>e.branch===emp.branch);
+      const be2 = employees.filter(e=>(e.branches||[e.branch]).some(b=>(emp.branches||[emp.branch]).includes(b)));
       const br2 = BRANCHES.find(b=>b.id===emp.branch);
       const fday = {ds:dd, dow:0, d:0};
       const ok = canAssignOff(emp, fday, be2, br2, true);
@@ -1760,7 +1765,7 @@ function App() {
     // 적용 대상: 원장·mustStay 제외 일반직원 전원 (인원 2명 이하 지점)
     noSimultaneousOff: Object.fromEntries(
       BRANCHES.map(b => {
-        const normals = ALL_EMPLOYEES.filter(e => e.branch === b.id && !e.isOwner && !e.mustStay);
+        const normals = ALL_EMPLOYEES.filter(e => (e.branches || [e.branch]).includes(b.id) && !e.isOwner && !e.mustStay);
         return [b.id, normals.length <= 2]; // 일반직원 2명 이하 지점만 기본 ON
       })
     ),
