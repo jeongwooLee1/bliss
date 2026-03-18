@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.18-z";
+const SCH_V = "v2026.03.19-a";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -1383,7 +1383,33 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
                 return true;
               });
 
-              if (empOk && colOk && empFix && colSafe && empBrOk && colBrOk && simulOk &&
+              // 격주 직원(altPattern) 주간 weeklyOff 초과 체크
+              const altWeekOk = (() => {
+                // emp가 offDay에 WORK로 바뀌어도 그 주 off가 min 이상인지는 step2에서 보장됨
+                // col이 offDay에 OFF → 그 주 off 수 초과 여부만 체크
+                if (isAltPattern(col)) {
+                  const colWk = weeks.find(w => w.some(d => d.ds === offDay.ds));
+                  if (colWk) {
+                    const colWkOff = colWk.filter(d => !d.isPrev &&
+                      ["휴무","휴무(꼭)"].includes(sch[col.id]?.[d.ds])
+                    ).length;
+                    if (colWkOff > getWeeklyOff(col)) return false;
+                  }
+                }
+                // emp가 ds에 OFF → 격주 직원이면 주간 초과 체크
+                if (isAltPattern(emp)) {
+                  const empWk = weeks.find(w => w.some(d => d.ds === ds));
+                  if (empWk) {
+                    const empWkOff = empWk.filter(d => !d.isPrev &&
+                      ["휴무","휴무(꼭)"].includes(sch[emp.id]?.[d.ds])
+                    ).length;
+                    if (empWkOff > getWeeklyOff(emp)) return false;
+                  }
+                }
+                return true;
+              })();
+
+              if (empOk && colOk && empFix && colSafe && empBrOk && colBrOk && simulOk && altWeekOk &&
                   maleSundayOk(ds) && maleSundayOk(offDay.ds)) {
                 swapped = true;
                 didSwap = true;
