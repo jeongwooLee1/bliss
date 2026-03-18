@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.271";
+const BLISS_V = "2.69.272";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -3118,13 +3118,19 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                               if(!addBranch) return;
                               const overrideKey2 = room.staffId+"_"+selDate;
                               const newSeg = {branchId:addBranch, from:addFrom||null, until:null};
-                              // 기존 segs에서 같은 지점 제거 후 추가, from 기준 정렬
+                              // 기존 segs에서 같은 지점 제거 후 추가
                               const prev = segs.filter(s=>s.branchId!==addBranch);
-                              // until 계산: 다음 이동의 from이 이전 구간의 until
-                              const merged = [...prev, newSeg].sort((a,b)=>{
+                              let merged = [...prev, newSeg].sort((a,b)=>{
                                 if(!a.from) return -1; if(!b.from) return 1;
                                 return a.from.localeCompare(b.from);
                               }).map((s,i,arr)=>({...s, until: arr[i+1]?.from||null}));
+                              // 원래 지점이 없으면 자동 추가 (첫 이동 전까지)
+                              const empBase = BASE_EMP_LIST.find(e=>e.id===room.staffId);
+                              const baseBranchId = empBase ? SCH_BRANCH_MAP[empBase.branch] : null;
+                              if(baseBranchId && !merged.find(s=>s.branchId===baseBranchId)) {
+                                const firstFrom = merged[0]?.from || null;
+                                merged = [{branchId:baseBranchId, from:null, until:firstFrom}, ...merged];
+                              }
                               setEmpBranchOverride(p=>({...p,[overrideKey2]:{segments:merged}}));
                               setEmpMovePopup(null);
                             };
