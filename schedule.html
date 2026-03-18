@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.19-b";
+const SCH_V = "v2026.03.19-c";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -1012,14 +1012,21 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       const supportLabel = `지원(${targetBranch.name})`;
       const minS = rc.branchMinStaff[targetBranch.id] ?? targetBranch.minStaff ?? 1;
 
-      // 현재 이 지점 근무 인원 (소속 + 이미 지원 온 인원)
-      // 타지점 지원 나간 직원은 이 지점 인원에서 제외
+      // 현재 이 지점 근무 인원 계산
+      // 대표지점(branch)이 targetBranch인 직원: 근무/전체쉐어면 포함 (타지점 지원 나간 경우 제외)
+      // 대표지점이 다른 내부 그룹 직원: 지원(targetBranch.name) 상태일 때만 포함
+      // 외부 지점 직원: 지원(targetBranch.name) 상태일 때만 포함
       const targetEmps_ = employees.filter(e => (e.branches||[e.branch]).includes(targetBranch.id));
       const baseWorking = targetEmps_.filter(e => {
         const s = sch[e.id][ds];
         if (["휴무","휴무(꼭)"].includes(s)) return false;
-        if (isSupport(s) && !s.includes(targetBranch.name)) return false; // 타지점 지원 나간 경우 제외
-        return s === STATUS.WORK || s === supportLabel || s === STATUS.SHARE;
+        // 대표지점이 targetBranch인 직원만 근무로 카운트
+        if (e.branch === targetBranch.id) {
+          if (isSupport(s) && !s.includes(targetBranch.name)) return false; // 타지점 지원 나간 경우 제외
+          return s === STATUS.WORK || s === supportLabel || s === STATUS.SHARE;
+        }
+        // 대표지점이 다른 내부 그룹 직원은 지원 상태일 때만 카운트
+        return s === supportLabel;
       }).length;
       const supportersIn = employees.filter(e =>
         !(e.branches||[e.branch]).includes(targetBranch.id) && sch[e.id][ds] === supportLabel
