@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.280";
+const BLISS_V = "2.69.282";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -520,6 +520,77 @@ const getStatusClr = () => { try { const v = localStorage.getItem("tl_sc"); retu
 const BLOCK_COLORS = { reservation:T.primary, memo:T.danger, clockin:T.gray400, cleaning:T.info, break:T.purple };
 
 // Lucide-style SVG icons
+// ── 터치+마우스 통합 드래그정렬 훅 ─────────────────────────────────────────
+function useTouchDragSort(items, onReorder) {
+  const dragIdx = React.useRef(null);
+  const dragOverIdx = React.useRef(null);
+  const [overIdx, setOverIdx] = React.useState(null);
+  const ghostRef = React.useRef(null);
+
+  const doReorder = (from, to) => {
+    if (from === null || to === null || from === to) return;
+    const arr = [...items];
+    const [moved] = arr.splice(from, 1);
+    arr.splice(to, 0, moved);
+    onReorder(arr);
+  };
+
+  // PC 마우스 핸들러
+  const mouseHandlers = (idx) => ({
+    draggable: true,
+    onDragStart: () => { dragIdx.current = idx; },
+    onDragEnter: () => { dragOverIdx.current = idx; setOverIdx(idx); },
+    onDragEnd: () => {
+      doReorder(dragIdx.current, dragOverIdx.current);
+      dragIdx.current = null; dragOverIdx.current = null; setOverIdx(null);
+    },
+    onDragOver: e => e.preventDefault(),
+  });
+
+  // 모바일 터치 핸들러
+  const touchHandlers = (idx, getItems) => ({
+    onTouchStart: (e) => {
+      dragIdx.current = idx;
+      const touch = e.touches[0];
+      // 고스트 엘리먼트 생성
+      const el = e.currentTarget;
+      const rect = el.getBoundingClientRect();
+      const ghost = el.cloneNode(true);
+      ghost.style.cssText = `position:fixed;top:${rect.top}px;left:${rect.left}px;width:${rect.width}px;opacity:0.8;z-index:9999;pointer-events:none;background:white;box-shadow:0 8px 24px rgba(0,0,0,.2);border-radius:12px;transform:scale(1.02)`;
+      document.body.appendChild(ghost);
+      ghostRef.current = ghost;
+      e.currentTarget._touchOffsetY = touch.clientY - rect.top;
+    },
+    onTouchMove: (e) => {
+      e.preventDefault();
+      if (dragIdx.current === null) return;
+      const touch = e.touches[0];
+      if (ghostRef.current) {
+        ghostRef.current.style.top = (touch.clientY - (e.currentTarget._touchOffsetY || 30)) + 'px';
+      }
+      // 현재 손가락 아래 아이템 찾기
+      ghostRef.current && (ghostRef.current.style.display = 'none');
+      const el = document.elementFromPoint(touch.clientX, touch.clientY);
+      ghostRef.current && (ghostRef.current.style.display = '');
+      const itemEl = el?.closest('[data-drag-idx]');
+      if (itemEl) {
+        const newIdx = parseInt(itemEl.dataset.dragIdx);
+        if (!isNaN(newIdx) && newIdx !== dragOverIdx.current) {
+          dragOverIdx.current = newIdx;
+          setOverIdx(newIdx);
+        }
+      }
+    },
+    onTouchEnd: () => {
+      if (ghostRef.current) { ghostRef.current.remove(); ghostRef.current = null; }
+      doReorder(dragIdx.current, dragOverIdx.current);
+      dragIdx.current = null; dragOverIdx.current = null; setOverIdx(null);
+    },
+  });
+
+  return { mouseHandlers, touchHandlers, overIdx };
+}
+
 const I = ({name,size=16,color="currentColor",style={},...p}) => {
   const s = {width:size,height:size,display:"inline-block",verticalAlign:"middle",flexShrink:0,...style};
   const a = {xmlns:"http://www.w3.org/2000/svg",width:size,height:size,viewBox:"0 0 24 24",fill:"none",stroke:color,strokeWidth:2,strokeLinecap:"round",strokeLinejoin:"round",style:s,...p};
@@ -7335,20 +7406,12 @@ function AdminWorkers({ data, setData }) {
 // ═══════════════════════════════════════════
 function AdminSaleItems({ data, setData }) {
   const [services,setServices]=useState([...(data?.services||[])].sort((a,b)=>a.sort-b.sort));
-  const dragIdxS=useRef(null),dragOverS=useRef(null);
-  const onDragStartS=i=>{dragIdxS.current=i;};
-  const onDragEnterS=i=>{dragOverS.current=i;};
-  const onDragEndS=()=>{
-    const di=dragIdxS.current,oi=dragOverS.current;
-    dragIdxS.current=null;dragOverS.current=null;
-    if(di===null||oi===null||di===oi)return;
-    const cur=filterCat==="all"?[...services]:services.filter(s=>s.cat===filterCat);
-    const [m]=cur.splice(di,1);cur.splice(oi,0,m);
-    const others=filterCat==="all"?[]:services.filter(s=>s.cat!==filterCat);
-    const updated=[...cur,...others].map((s,j)=>({...s,sort:j}));
-    setServices(updated);setData(p=>({...p,services:updated}));
+  const {mouseHandlers:svcMH, touchHandlers:svcTH, overIdx:svcOver} = useTouchDragSort(filtered, (reordered) => {
+    const others = filterCat==="all" ? [] : services.filter(s=>s.cat!==filterCat);
+    const updated = [...reordered, ...others].map((s,j)=>({...s,sort:j}));
+    setServices(updated); setData(p=>({...p,services:updated}));
     updated.forEach((s,j)=>sb.update("services",s.id,{sort:j}).catch(console.error));
-  };
+  });
   const moveSvc=(idx2,dir)=>{
     const cur=filterCat==="all"?[...services]:services.filter(s=>s.cat===filterCat);
     const ni=idx2+dir;if(ni<0||ni>=cur.length)return;
@@ -7362,6 +7425,12 @@ function AdminSaleItems({ data, setData }) {
   const [cats,setCats]=useState(()=>[...(data?.categories||[])].sort((a,b)=>(a.sort||0)-(b.sort||0)));
   useEffect(()=>{setCats([...(data?.categories||[])].sort((a,b)=>(a.sort||0)-(b.sort||0)));},[data?.categories?.length]);
   const syncCats=u=>{setCats(u);if(setData)setData(p=>p?{...p,categories:u}:p);};
+
+  const {mouseHandlers:catMH, touchHandlers:catTH, overIdx:catOver} = useTouchDragSort(cats, (reordered) => {
+    const updated = reordered.map((c,i)=>({...c,sort:i}));
+    syncCats(updated);
+    updated.forEach((c,i)=>sb.update("service_categories",c.id,{sort:i}).catch(console.error));
+  });
 
   const [filterCat,setFilterCat]=useState("all");
   const [sheet,setSheet]=useState(false);
@@ -7417,16 +7486,27 @@ function AdminSaleItems({ data, setData }) {
   return <div>
     <APageHeader title="시술 상품 관리" count={services.length} onAdd={openNew}/>
     <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:16,alignItems:"center"}}>
-      {[{id:"all",name:"전체"},...cats].map(c=><button key={c.id} onClick={()=>setFilterCat(c.id)}
-        style={{padding:"5px 13px",borderRadius:20,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:T.fs.xs,fontWeight:filterCat===c.id?700:500,
-          background:filterCat===c.id?T.primary:T.gray100,color:filterCat===c.id?"#fff":T.gray600}}>{c.name}</button>)}
+      {/* 전체 버튼 (드래그 불가) */}
+<button onClick={()=>setFilterCat("all")}
+  style={{padding:"5px 13px",borderRadius:20,border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:T.fs.xs,fontWeight:filterCat==="all"?700:500,
+  background:filterCat==="all"?T.primary:T.gray100,color:filterCat==="all"?"#fff":T.gray600}}>전체</button>
+{/* 카테고리 버튼들 (드래그 가능) */}
+{cats.map((c,ci)=><button key={c.id}
+  data-drag-idx={ci}
+  onClick={()=>setFilterCat(c.id)}
+  {...catMH(ci)}
+  {...catTH(ci)}
+  style={{padding:"5px 13px",borderRadius:20,border:"none",cursor:"grab",fontFamily:"inherit",fontSize:T.fs.xs,fontWeight:filterCat===c.id?700:500,
+  background:catOver===ci?"#c5c5f0":filterCat===c.id?T.primary:T.gray100,
+  color:catOver===ci?"#fff":filterCat===c.id?"#fff":T.gray600,
+  transform:catOver===ci?"scale(1.05)":"none",transition:"all .15s"}}>{c.name}</button>)}
       <button onClick={()=>setCatSheet(true)} style={{padding:"5px 11px",borderRadius:20,border:"1px dashed #ccc",background:"none",color:T.textMuted,fontSize:T.fs.xs,cursor:"pointer",fontFamily:"inherit",display:"flex",alignItems:"center",gap:4}}>
         <I name="plus" size={11}/> 카테고리
       </button>
     </div>
     {filtered.length===0?<AEmpty icon="scissors" message="등록된 시술이 없어요" onAdd={openNew} addLabel="시술 추가"/>
     :<div style={{display:"flex",flexDirection:"column",gap:8}}>
-      {filtered.map((s,sidx)=><div key={s.id} className="card" draggable onDragStart={()=>onDragStartS(sidx)} onDragEnter={()=>onDragEnterS(sidx)} onDragEnd={onDragEndS} onDragOver={e=>e.preventDefault()} style={{padding:"14px 16px",cursor:"grab"}}>
+      {filtered.map((s,sidx)=><div key={s.id} className="card" data-drag-idx={sidx} onDragStart={()=>onDragStartS(sidx)} onDragEnter={()=>onDragEnterS(sidx)} onDragEnd={onDragEndS} onDragOver={e=>e.preventDefault()} style={{padding:"14px 16px",cursor:"grab"}}>
         <div style={{display:"flex",alignItems:"flex-start",gap:10}}>
           <div style={{flex:1,minWidth:0}}>
             <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:5,flexWrap:"wrap"}}>
@@ -7955,22 +8035,12 @@ function AdminServiceTags({ data, setData }) {
     sb.update("service_tags",id,{use_yn:newUse}).catch(console.error);
   };
 
-  const dragIdx=useRef(null), dragOver=useRef(null);
-  const [dragOverState,setDragOverState]=useState(null);
-  const onDragStart=i=>{dragIdx.current=i;};
-  const onDragEnter=i=>{dragOver.current=i;setDragOverState(i);};
-  const onDragEnd=()=>{
-    setDragOverState(null);
-    const di=dragIdx.current,oi=dragOver.current;
-    dragIdx.current=null;dragOver.current=null;
-    if(di===null||oi===null||di===oi)return;
-    const reordered=[...tabTags];
-    const [m]=reordered.splice(di,1);reordered.splice(oi,0,m);
+  const {mouseHandlers:tagMH, touchHandlers:tagTH, overIdx:tagOver} = useTouchDragSort(tabTags, (reordered) => {
     const other=(tags||[]).filter(t=>isSchedule?t.scheduleYn!=="Y":t.scheduleYn==="Y");
-    const all=[...reordered,...other].map((t,i)=>({...t,sort:i}));
+    const all=[...reordered,...other].map((t,j)=>({...t,sort:j}));
     syncTags(all);
-    reordered.forEach((t,i)=>sb.update("service_tags",t.id,{sort:i}).catch(console.error));
-  };
+    reordered.forEach((t,j)=>sb.update("service_tags",t.id,{sort:j}).catch(console.error));
+  });
 
   return <div>
     <APageHeader title="태그 관리" count={tabTags.length} onAdd={openNew}/>
@@ -7983,16 +8053,17 @@ function AdminServiceTags({ data, setData }) {
     {tabTags.filter(t=>t.useYn!==false).length>0&&<div style={{marginBottom:16,padding:"12px 14px",background:T.gray100,borderRadius:12}}>
       <div style={{fontSize:T.fs.xxs,color:T.textMuted,marginBottom:8,fontWeight:T.fw.bold}}>미리보기 (드래그로 순서 변경)</div>
       <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-        {tabTags.filter(t=>t.useYn!==false).map((t,i)=><div key={t.id} draggable
-          onDragStart={()=>onDragStart(i)} onDragEnter={()=>onDragEnter(i)} onDragEnd={onDragEnd} onDragOver={e=>e.preventDefault()}
-          style={{padding:"4px 12px",borderRadius:20,background:t.color||T.primary,color:getContrast(t.color||T.primary),fontSize:T.fs.xs,fontWeight:700,cursor:"grab",opacity:dragOverState===i?0.5:1}}>{t.name}</div>)}
+        {tabTags.filter(t=>t.useYn!==false).map((t,i)=><div key={t.id}
+          data-drag-idx={i} {...tagMH(i)} {...tagTH(i)}
+          style={{padding:"4px 12px",borderRadius:20,background:tagOver===i?(t.color||T.primary)+"cc":(t.color||T.primary),color:getContrast(t.color||T.primary),fontSize:T.fs.xs,fontWeight:700,cursor:"grab",opacity:dragOverState===i?0.5:1}}>{t.name}</div>)}
       </div>
     </div>}
     {tabTags.length===0?<AEmpty icon="tag" message="등록된 태그가 없어요" onAdd={openNew} addLabel="태그 추가"/>
     :<div className="card" style={{padding:0,overflow:"hidden"}}>
       {tabTags.map((t,i)=><div key={t.id} draggable
-  onDragStart={()=>onDragStart(i)} onDragEnter={()=>onDragEnter(i)} onDragEnd={onDragEnd} onDragOver={e=>e.preventDefault()}
-  style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",borderBottom:i<tabTags.length-1?"1px solid "+T.gray100:"none",cursor:"grab"}}>
+  data-drag-idx={i} {...tagMH(i)} {...tagTH(i)}
+  style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",borderBottom:i<tabTags.length-1?"1px solid "+T.gray100:"none",cursor:"grab",
+  background:tagOver===i?T.primaryHover:"transparent",transition:"background .1s"}}>
         <div style={{width:10,height:10,borderRadius:"50%",background:t.color||T.primary,flexShrink:0}}/>
         <div style={{flex:1,minWidth:0}}>
           <div style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder,color:t.useYn!==false?T.text:T.gray400}}>{t.name}</div>
