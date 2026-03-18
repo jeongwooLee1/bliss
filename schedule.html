@@ -110,13 +110,40 @@ const I = ({name,size=16,color="currentColor",style={},...p}) => {
 };
 
 
-const BRANCHES = [
+// schedule 내부 ID → Supabase branch ID 매핑 (그룹별)
+const SCH_BRANCH_SB_MAP = {
+  "nonhyeon": ["br_4bcauqvrb","br_wkqsxj6k1"], // 강남+왕십리
+  "hongdae":  ["br_l6yzs2pkq","br_k57zpkbx1"], // 홍대+마곡
+  "yongsan":  ["br_ybo3rmulv"],
+  "jamsil":   ["br_lfv2wgdf1","br_g768xdu4w"], // 잠실+위례
+  "cheonho":  ["br_xu60omgdf"],
+};
+const SCH_BRANCH_DEFAULT = [
   { id: "nonhyeon", name: "논현&왕십리", color: "#c8793a", minStaff: 4 },
   { id: "hongdae",  name: "홍대&마곡",   color: "#3a9e8e", minStaff: 2 },
   { id: "yongsan",  name: "용산",         color: "#8b6fa3", minStaff: 1 },
   { id: "jamsil",   name: "잠실&위례",   color: "#3a7aaf", minStaff: 2 },
   { id: "cheonho",  name: "천호",         color: "#a07040", minStaff: 1 },
 ];
+// Supabase에서 지점 로드 → 이름/색상 동적 반영
+let BRANCHES = [...SCH_BRANCH_DEFAULT];
+(async () => {
+  try {
+    const res = await fetch(`${_SB_URL}/rest/v1/branches?business_id=eq.biz_khvurgshb&select=id,name,color&order=sort_order.asc`, { headers: _SB_H });
+    const sbBranches = await res.json();
+    if (!Array.isArray(sbBranches) || !sbBranches.length) return;
+    BRANCHES = SCH_BRANCH_DEFAULT.map(b => {
+      const sbIds = SCH_BRANCH_SB_MAP[b.id] || [];
+      const matched = sbBranches.filter(sb => sbIds.includes(sb.id));
+      if (!matched.length) return b;
+      // 그룹명: 매핑된 지점 이름 합치기
+      const names = matched.map(sb => sb.name.replace("하우스왁싱 ","").replace("점",""));
+      const name = names.join("&");
+      const color = matched[0].color || b.color;
+      return { ...b, name, color };
+    });
+  } catch(e) { console.warn("BRANCHES 로드 실패:", e); }
+})();
 
 const EMPLOYEES = [
   { id:"소연", name:"소연", branch:"nonhyeon", isOwner:false, weeklyOff:2 },
