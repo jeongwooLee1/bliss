@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.18-s";
+const SCH_V = "v2026.03.18-t";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -1980,14 +1980,18 @@ function App() {
               <div style={{fontSize:12,color:T.textMuted,marginTop:2}}>{editCell.day.d}일 {DNAMES[editCell.day.dow]}요일</div>
             </div>
             <div style={{display:"flex",flexDirection:"column",gap:7}}>
-              {["근무","휴무","휴무(꼭)","전체쉐어"].map(s=>{
-                const sc=getSColor(s); const active=editCell.cur===s;
-                return (
-                  <button key={s} onClick={()=>{setS(editCell.emp.id,editCell.day.ds,s);setEditCell(null);}} style={{padding:"9px 14px",borderRadius:8,border:`2px solid ${active?sc.border:"#e4ddd6"}`,background:active?sc.bg:T.bgCard,color:active?sc.text:"#666",fontFamily:"inherit",fontSize:13,fontWeight:active?700:400,cursor:"pointer",textAlign:"left",transition:"all .12s"}}>
-                    {s} {active?"✓":""}
-                  </button>
-                );
-              })}
+              {(()=>{
+                const isFL = editCell.emp.isFreelancer || empSettings[editCell.emp.id]?.isFreelancer;
+                const statusOptions = isFL ? ["근무","휴무","휴무(꼭)"] : ["근무","휴무","휴무(꼭)","전체쉐어"];
+                return statusOptions.map(s=>{
+                  const sc=getSColor(s); const active=editCell.cur===s;
+                  return (
+                    <button key={s} onClick={()=>{setS(editCell.emp.id,editCell.day.ds,s);setEditCell(null);}} style={{padding:"9px 14px",borderRadius:8,border:`2px solid ${active?sc.border:"#e4ddd6"}`,background:active?sc.bg:T.bgCard,color:active?sc.text:"#666",fontFamily:"inherit",fontSize:13,fontWeight:active?700:400,cursor:"pointer",textAlign:"left",transition:"all .12s"}}>
+                      {s} {active?"✓":""}
+                    </button>
+                  );
+                });
+              })()}
               {BRANCHES.map(b=>{
                 const sv=`지원(${b.name})`; const sc=getSColor(sv); const active=editCell.cur===sv;
                 return (
