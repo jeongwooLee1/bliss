@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.268";
+const BLISS_V = "2.69.269";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -1984,13 +1984,29 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   }, []);
 
   // 선택 날짜의 지점별 출근자 계산
+  // 직원 override 헬퍼: 해당 날짜에 어느 지점에 있는지
+  const getEmpBranches = (empId, date) => {
+    const overrideKey = empId + "_" + date;
+    const ov = empBranchOverride[overrideKey];
+    if (!ov) return null; // 오버라이드 없음
+    if (typeof ov === "string") return [{branchId: ov, from: null, until: null}]; // 하위호환
+    return ov.segments || null; // [{branchId, from, until}]
+  };
+
+  // 직원이 특정 지점에 있는지 (오버라이드 기준)
+  const empInBranch = (empId, date, branchId) => {
+    const segs = getEmpBranches(empId, date);
+    if (!segs) {
+      // 오버라이드 없으면 원래 지점
+      const emp = BASE_EMP_LIST.find(e => e.id === empId);
+      return emp && SCH_BRANCH_MAP[emp.branch] === branchId;
+    }
+    return segs.some(s => s.branchId === branchId);
+  };
+
   const getWorkingStaff = (branchId, date) => {
-    const branchEmps = BASE_EMP_LIST.filter(e => {
-      const overrideKey = e.id + "_" + date;
-      const overrideBranch = empBranchOverride[overrideKey];
-      if (overrideBranch) return overrideBranch === branchId;
-      return SCH_BRANCH_MAP[e.branch] === branchId;
-    });
+    // 해당 지점 소속 or 이동된 직원
+    const branchEmps = BASE_EMP_LIST.filter(e => empInBranch(e.id, date, branchId));
     if (branchEmps.length === 0) return null;
 
     // Tier 1: 근무표 확정된 날짜 → 근무 직원만
@@ -2005,8 +2021,17 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       }
     }
 
-    // Tier 2: 근무표 미확정 날짜 → 지점 전체 직원 표시
+    // Tier 2: 근무표 미확정 → 전체 직원
     return branchEmps;
+  };
+
+  // 직원이 특정 지점에서 활성인 시간 범위 반환 (null=종일)
+  const getEmpActiveRange = (empId, date, branchId) => {
+    const segs = getEmpBranches(empId, date);
+    if (!segs) return {from: null, until: null};
+    const seg = segs.find(s => s.branchId === branchId);
+    if (!seg) return null; // 이 지점에 없음
+    return {from: seg.from, until: seg.until};
   };
   const [showModal, setShowModal] = useState(false);
   const [modalData, setModalData] = useState(null);
@@ -2229,11 +2254,16 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
     const workingStaff = getWorkingStaff(br.id, selDate);
     let staffRooms;
     if (workingStaff && workingStaff.length > 0) {
-      staffRooms = workingStaff.map(e => ({
-        id: `st_${br.id}_${e.id}`, name: e.id,
-        branch_id: br.id, branchName: br.short||br.name||"",
-        staffId: e.id, isStaffCol: true
-      }));
+      staffRooms = workingStaff.map(e => {
+        const range = getEmpActiveRange(e.id, selDate, br.id);
+        return {
+          id: `st_${br.id}_${e.id}`, name: e.id,
+          branch_id: br.id, branchName: br.short||br.name||"",
+          staffId: e.id, isStaffCol: true,
+          activeFrom: range?.from || null,   // null=종일
+          activeUntil: range?.until || null, // null=종일
+        };
+      });
     } else {
       staffRooms = (data.rooms||[]).filter(r=>r.branch_id===br.id).map(r=>({...r, branchName:br.short||br.name||""}));
     }
@@ -3066,17 +3096,82 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                         {room.name}
                       </span>
                       {empMovePopup?.empId===room.staffId && empMovePopup?.date===selDate && (
-                        <div onClick={e=>e.stopPropagation()} style={{position:"fixed",left:Math.min(empMovePopup.x,window.innerWidth-160),top:empMovePopup.y+8,background:T.bgCard,borderRadius:10,boxShadow:"0 4px 20px rgba(0,0,0,.2)",zIndex:9999,padding:"8px 0",minWidth:150}}>
-                          <div style={{fontSize:10,color:T.textMuted,padding:"4px 12px 6px",fontWeight:700}}>오늘 근무 지점</div>
-                          {(data.branches||[]).filter(b=>branchesToShow.some(bs=>bs.id===b.id)||(()=>{const e=BASE_EMP_LIST.find(e=>e.id===room.staffId);return e&&SCH_BRANCH_MAP[e.branch]===b.id;})()).map(b=>{
+                        <div onClick={e=>e.stopPropagation()} style={{position:"fixed",left:Math.min(empMovePopup.x,window.innerWidth-200),top:empMovePopup.y+8,background:T.bgCard,borderRadius:12,boxShadow:"0 4px 24px rgba(0,0,0,.22)",zIndex:9999,padding:"10px 0 6px",minWidth:200}}>
+                          <div style={{fontSize:11,color:T.textMuted,padding:"0 12px 8px",fontWeight:700,borderBottom:"1px solid "+T.border}}>
+                            {room.name} 이동 설정
+                          </div>
+                          {/* 현재 segments */}
+                          {(()=>{
                             const overrideKey = room.staffId+"_"+selDate;
-                            const cur = empBranchOverride[overrideKey] || SCH_BRANCH_MAP[BASE_EMP_LIST.find(e=>e.id===room.staffId)?.branch];
-                            const isCur = cur===b.id;
-                            return <div key={b.id} onClick={()=>{setEmpBranchOverride(p=>({...p,[overrideKey]:b.id}));setEmpMovePopup(null);}}
-                              style={{padding:"7px 12px",cursor:"pointer",fontSize:12,fontWeight:isCur?700:400,color:isCur?T.primary:T.text,background:isCur?T.primaryHover:"transparent",display:"flex",alignItems:"center",gap:6}}>
-                              {isCur&&<I name="check" size={12} color={T.primary}/>}{b.name}
-                            </div>;
-                          })}
+                            const ov = empBranchOverride[overrideKey];
+                            const segs = ov ? (typeof ov==="string" ? [{branchId:ov,from:null,until:null}] : (ov.segments||[])) : [];
+                            const empBase = BASE_EMP_LIST.find(e=>e.id===room.staffId);
+                            const baseBranch = empBase ? SCH_BRANCH_MAP[empBase.branch] : null;
+                            const allBranches = (data.branches||[]).filter(b=>
+                              branchesToShow.some(bs=>bs.id===b.id) || b.id===baseBranch
+                            );
+                            // 추가할 지점 + 시간 상태
+                            const [addBranch,setAddBranch] = [empMovePopup.addBranch||"", v=>setEmpMovePopup(p=>({...p,addBranch:v}))];
+                            const [addFrom,setAddFrom] = [empMovePopup.addFrom||"", v=>setEmpMovePopup(p=>({...p,addFrom:v}))];
+
+                            const saveSeg = () => {
+                              if(!addBranch) return;
+                              const overrideKey2 = room.staffId+"_"+selDate;
+                              const newSeg = {branchId:addBranch, from:addFrom||null, until:null};
+                              // 기존 segs에서 같은 지점 제거 후 추가, from 기준 정렬
+                              const prev = segs.filter(s=>s.branchId!==addBranch);
+                              // until 계산: 다음 이동의 from이 이전 구간의 until
+                              const merged = [...prev, newSeg].sort((a,b)=>{
+                                if(!a.from) return -1; if(!b.from) return 1;
+                                return a.from.localeCompare(b.from);
+                              }).map((s,i,arr)=>({...s, until: arr[i+1]?.from||null}));
+                              setEmpBranchOverride(p=>({...p,[overrideKey2]:{segments:merged}}));
+                              setEmpMovePopup(p=>({...p,addBranch:"",addFrom:""}));
+                            };
+
+                            const removeSeg = (branchId) => {
+                              const overrideKey2 = room.staffId+"_"+selDate;
+                              const newSegs = segs.filter(s=>s.branchId!==branchId);
+                              if(newSegs.length===0) {
+                                setEmpBranchOverride(p=>{const n={...p};delete n[overrideKey2];return n;});
+                              } else {
+                                const reindexed = newSegs.sort((a,b)=>(!a.from?-1:!b.from?1:a.from.localeCompare(b.from))).map((s,i,arr)=>({...s,until:arr[i+1]?.from||null}));
+                                setEmpBranchOverride(p=>({...p,[overrideKey2]:{segments:reindexed}}));
+                              }
+                            };
+
+                            return <>
+                              {/* 현재 구간 목록 */}
+                              {segs.length>0 && <div style={{padding:"6px 12px"}}>
+                                {segs.map(s=>{
+                                  const br = allBranches.find(b=>b.id===s.branchId);
+                                  return <div key={s.branchId} style={{display:"flex",alignItems:"center",gap:6,marginBottom:4,fontSize:12}}>
+                                    <span style={{width:6,height:6,borderRadius:"50%",background:br?.color||T.primary,flexShrink:0}}/>
+                                    <span style={{flex:1,fontWeight:600}}>{br?.short||br?.name}</span>
+                                    <span style={{color:T.textMuted,fontSize:11}}>{s.from||"시작"}~{s.until||"종일"}</span>
+                                    <button onClick={()=>removeSeg(s.branchId)} style={{width:18,height:18,border:"none",background:"none",cursor:"pointer",color:T.danger,fontSize:14,padding:0,lineHeight:1}}>×</button>
+                                  </div>;
+                                })}
+                              </div>}
+                              {/* 이동 추가 */}
+                              <div style={{padding:"6px 12px",borderTop:"1px solid "+T.border}}>
+                                <div style={{fontSize:10,color:T.textMuted,marginBottom:5,fontWeight:700}}>이동 추가</div>
+                                <div style={{display:"flex",gap:4,marginBottom:5}}>
+                                  <select value={addBranch} onChange={e=>setAddBranch(e.target.value)}
+                                    style={{flex:1,fontSize:11,padding:"4px 5px",borderRadius:6,border:"1px solid "+T.border,fontFamily:"inherit"}}>
+                                    <option value="">지점 선택</option>
+                                    {allBranches.map(b=><option key={b.id} value={b.id}>{b.short||b.name}</option>)}
+                                  </select>
+                                  <input type="time" value={addFrom} onChange={e=>setAddFrom(e.target.value)}
+                                    style={{width:82,fontSize:11,padding:"4px 5px",borderRadius:6,border:"1px solid "+T.border,fontFamily:"inherit"}}/>
+                                </div>
+                                <button onClick={saveSeg} disabled={!addBranch}
+                                  style={{width:"100%",padding:"5px 0",borderRadius:7,border:"none",background:addBranch?T.primary:T.gray300,color:"#fff",fontSize:12,fontWeight:700,cursor:addBranch?"pointer":"not-allowed",fontFamily:"inherit"}}>
+                                  적용
+                                </button>
+                              </div>
+                            </>;
+                          })()}
                         </div>
                       )}
                     </div>
@@ -3086,7 +3181,17 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                 </div>
                 {/* Grid Area */}
                 <div style={{position:"relative",height:totalRows*rowH,cursor:room.isNaver?"default":(canEdit(room.branch_id)?"pointer":"default"),...gridBg}}
-                  onClick={e=>{const rect=e.currentTarget.getBoundingClientRect();handleCellClick(room,e.clientY-rect.top)}}
+                  onClick={e=>{
+                    // 비활성 시간대 클릭 방지
+                    if(room.isStaffCol && (room.activeFrom||room.activeUntil)) {
+                      const rect=e.currentTarget.getBoundingClientRect();
+                      const clickMin = startHour*60 + Math.floor((e.clientY-rect.top)/rowH)*5;
+                      const fromMin = room.activeFrom ? parseInt(room.activeFrom.split(":")[0])*60+parseInt(room.activeFrom.split(":")[1]) : 0;
+                      const untilMin = room.activeUntil ? parseInt(room.activeUntil.split(":")[0])*60+parseInt(room.activeUntil.split(":")[1]) : 24*60;
+                      if(clickMin < fromMin || clickMin >= untilMin) return;
+                    }
+                    const rect=e.currentTarget.getBoundingClientRect();handleCellClick(room,e.clientY-rect.top);
+                  }}
                   onMouseMove={e=>{if(room.isNaver)return;const rect=e.currentTarget.getBoundingClientRect();const y=e.clientY-rect.top;const ri=Math.floor(y/rowH);setHoverCell({roomId:room.id,rowIdx:ri})}}
                   onMouseLeave={()=>setHoverCell(null)}
                   onTouchStart={e=>{
