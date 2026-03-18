@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.246";
+const BLISS_V = "2.69.248";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -1878,6 +1878,43 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   const SVC_LIST = (data?.services || []).slice().sort((a,b)=>(a.sort||0)-(b.sort||0));
   const PROD_LIST = (data?.products || []);
   const [selDate, setSelDate] = useState(todayStr());
+  const [schHistory, setSchHistory] = useState(null); // {empName: {date: "근무"|"휴무"}}
+
+  // schHistory_v1 로드
+  useEffect(() => {
+    const SB_URL = "https://dpftlrsuqxqqeouwbfjd.supabase.co";
+    const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwZnRscnN1cXhxcWVvdXdiZmpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5MDU4MjQsImV4cCI6MjA4NzQ4MTgyNH0.iydEkjtPjZ0jXpUUPJben4IWWneDqLomv-HDlcFayE4";
+    fetch(`${SB_URL}/rest/v1/schedule_data?key=eq.schHistory_v1&select=value`, {
+      headers: { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY }
+    }).then(r=>r.json()).then(rows=>{
+      if (!rows?.length) return;
+      const val = rows[0].value;
+      // 모든 월 데이터 합치기: { empName: { date: status } }
+      const merged = {};
+      Object.values(val).forEach(monthData => {
+        if (typeof monthData !== "object") return;
+        Object.entries(monthData).forEach(([emp, days]) => {
+          if (emp.startsWith("__")) return;
+          if (!merged[emp]) merged[emp] = {};
+          Object.assign(merged[emp], days);
+        });
+      });
+      setSchHistory(merged);
+    }).catch(()=>{});
+  }, []);
+
+  // 선택 날짜의 지점별 출근자 계산
+  const getWorkingStaff = (branchId, date) => {
+    if (!schHistory) return null; // null이면 로딩 중 (rooms 폴백)
+    const staffUsers = (data.users||[]).filter(u => u.role==="staff" && (u.branches||[]).includes(branchId));
+    const working = staffUsers.filter(u => {
+      const dn = u.dn || u.name || "";
+      const dayStatus = schHistory[dn]?.[date];
+      // 출근표에 없으면(undefined) 기본 근무로 취급, "휴무"만 제외
+      return dayStatus !== "휴무";
+    });
+    return working;
+  };
   const [showModal, setShowModal] = useState(false);
   const [modalData, setModalData] = useState(null);
 
@@ -2089,13 +2126,26 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   const cellLongPress = useRef(null);
 
   const allRooms = branchesToShow.flatMap(br => {
-    const regularRooms = (data.rooms||[]).filter(r=>r.branch_id===br.id).map(r=>({...r, branchName:br.short||br.name||""}));
     const naverCount = br.naverEmail ? (br.naverColCount || 1) : 0;
     const naverRooms = Array.from({length: naverCount}, (_, i) => ({
       id: `nv_${br.id}_${i}`, name: naverCount > 1 ? `네이버${i+1}` : "네이버",
       branch_id: br.id, branchName: br.short||br.name||"", isNaver: true
     }));
-    return [...naverRooms, ...regularRooms];
+    // 출근표 기반 직원 컬럼
+    const workingStaff = getWorkingStaff(br.id, selDate);
+    let staffRooms;
+    if (workingStaff && workingStaff.length > 0) {
+      // 출근자를 컬럼으로
+      staffRooms = workingStaff.map(u => ({
+        id: `st_${br.id}_${u.id}`, name: u.dn || u.name || "",
+        branch_id: br.id, branchName: br.short||br.name||"",
+        staffId: u.id, isStaffCol: true
+      }));
+    } else {
+      // 출근표 없거나 출근자 없으면 rooms 테이블 폴백
+      staffRooms = (data.rooms||[]).filter(r=>r.branch_id===br.id).map(r=>({...r, branchName:br.short||br.name||""}));
+    }
+    return [...naverRooms, ...staffRooms];
   });
   const isNaverRes = (r) => !!r.reservationId;
   
@@ -2127,7 +2177,9 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       // Pre-fill regular rooms with existing non-naver, non-schedule blocks (기타일정 무시)
       if (naverRooms.length === 0) {
         brBlocks.filter(b => !isNaverRes(b) && !b.isSchedule).forEach(b => {
-          if (roomOcc.has(b.roomId)) roomOcc.get(b.roomId).push({ s: toMin(b.time), e: toMin(b.time) + (b.dur||30) });
+          const effectiveRoomId = b.roomId || (b.staffId ? allRooms.find(r=>r.isStaffCol && r.staffId===b.staffId)?.id : null);
+          if (effectiveRoomId && roomOcc.has(effectiveRoomId)) roomOcc.get(effectiveRoomId).push({ s: toMin(b.time), e: toMin(b.time) + (b.dur||30) });
+          else if (roomOcc.has(b.roomId)) roomOcc.get(b.roomId).push({ s: toMin(b.time), e: toMin(b.time) + (b.dur||30) });
         });
       }
       // Sort naver blocks by time, assign to leftmost available room
@@ -2239,7 +2291,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
     // 모바일: 터치 직후 click 무시 (롱프레스로만 등록)
     if (Date.now() - lastTouchCell.current < 500) return;
     const time = yToTime(y);
-    setModalData({ roomId: room.id, bid: room.branch_id, time, date: selDate });
+    setModalData({ roomId: room.isStaffCol ? "" : room.id, bid: room.branch_id, time, date: selDate, staffId: room.isStaffCol ? room.staffId : undefined });
     setShowModal(true);
   };
 
@@ -2896,7 +2948,13 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
                 if (b.roomId && !b.roomId.startsWith("nv_")) return false; // 일반 룸에 이미 배정됨
                 return naverAssignments[b.id] === room.id;
               }
-              // 일반 칼럼: roomId 기준 (배정된 네이버 예약 포함)
+              if (room.isStaffCol) {
+                // 직원 컬럼: staffId 일치 또는 roomId가 해당 staff col id
+                if (b.bid !== room.branch_id) return false;
+                if (b.staffId && b.staffId === room.staffId) return true;
+                return b.roomId === room.id;
+              }
+              // 일반 룸 칼럼: roomId 기준
               return b.roomId === room.id;
             });
             const isNewBranch = ci === 0 || room.branch_id !== allRooms[ci-1]?.branch_id;
