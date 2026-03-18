@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.18-w";
+const SCH_V = "v2026.03.18-x";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -1359,17 +1359,31 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
               sch[col.id][ds]        = STATUS.WORK;
               sch[col.id][offDay.ds] = STATUS.OFF;
 
-              // 검증: 연속근무 해소 + 3일연속휴무 없음 + 지점최소인원 + mustStay + 일요일남자
+              // 검증: 연속근무 해소 + 3일연속휴무 없음 + 지점최소인원 + mustStay + 일요일남자 + noSimultaneousOff
               const empOk   = canSwapOff(emp.id, ds);
               const colOk   = canSwapOff(col.id, offDay.ds);
               const empFix  = streakLen(emp.id, ds) <= rc.maxConsecWork;
               const colSafe = streakLen(col.id, ds) <= rc.maxConsecWork;
-              // emp 지점: ds에 emp가 off가 되므로 minStaff 유지 검증
               const empBrOk = branchMinOk(emp.id, ds, STATUS.OFF);
-              // col 지점: offDay에 col이 off가 되므로 minStaff 유지 검증
               const colBrOk = branchMinOk(col.id, offDay.ds, STATUS.OFF);
+              // noSimultaneousOff: 스왑 후 상태에서 그룹 위반 여부 체크
+              const simulOk = rc.noSimultaneousOff.every(group => {
+                // emp가 ds에 OFF 되는 경우
+                if (group.ids.includes(emp.id)) {
+                  const othersOff = group.ids.filter(id => id !== emp.id)
+                    .filter(id => ["휴무","휴무(꼭)"].includes(sch[id]?.[ds])).length;
+                  if (othersOff >= group.max) return false;
+                }
+                // col이 offDay에 OFF 되는 경우
+                if (group.ids.includes(col.id)) {
+                  const othersOff = group.ids.filter(id => id !== col.id)
+                    .filter(id => ["휴무","휴무(꼭)"].includes(sch[id]?.[offDay.ds])).length;
+                  if (othersOff >= group.max) return false;
+                }
+                return true;
+              });
 
-              if (empOk && colOk && empFix && colSafe && empBrOk && colBrOk &&
+              if (empOk && colOk && empFix && colSafe && empBrOk && colBrOk && simulOk &&
                   maleSundayOk(ds) && maleSundayOk(offDay.ds)) {
                 swapped = true;
                 didSwap = true;
