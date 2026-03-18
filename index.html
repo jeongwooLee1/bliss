@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.282";
+const BLISS_V = "2.69.284";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -6918,6 +6918,7 @@ function AdminPage({ data, setData, bizId, serverV, onLogout, currentUser }) {
     ]}] : []),
     ...(isMaster ? [{section:"알림 & AI",items:[
       {key:"notiSettings",icon:"bell",     label:"알림톡 설정",    desc:"카카오 알림톡 자동 발송 설정"},
+      {key:"messages",    icon:"chat",    label:"받은메시지함",   desc:"네이버톡톡 고객 메시지 관리"},
       {key:"aisettings",  icon:"sparkles", label:"AI 설정",        desc:"AI 분석 키 및 규칙 관리"},
     ]}] : []),
     {section:"내 계정",items:[
@@ -6961,6 +6962,7 @@ function AdminPage({ data, setData, bizId, serverV, onLogout, currentUser }) {
     {tab==="prodmgmt"     && isMaster &&<AdminProductItems data={data} setData={setData}/>}
     {tab==="svctags"      && isMaster &&<AdminServiceTags  data={data} setData={setData}/>}
     {tab==="ressrc"       && isMaster &&<AdminResSources   data={data} setData={setData}/>}
+    {tab==="messages"     && isMaster &&<AdminInbox  sb={sb} branches={data?.branches}/>}
     {tab==="notiSettings" && isMaster &&<AdminNoti         data={data} setData={setData} sb={sb} bizId={bizId} branches={data?.branches||[]}/>}
     {tab==="aisettings"   && isMaster &&<AdminAISettings   data={data} sb={sb} bizId={bizId}/>}
     {tab==="brandmembers" && isMaster &&<AdminBrandMembers data={data} setData={setData} bizId={bizId} currentUser={currentUser}/>}
@@ -7853,6 +7855,176 @@ function AdminNoti({ data, sb, bizId, branches }) {
 // ═══════════════════════════════════════════
 // ADMIN — AI 설정
 // ═══════════════════════════════════════════
+function AdminInbox({ sb, branches }) {
+  const SB_URL = "https://dpftlrsuqxqqeouwbfjd.supabase.co";
+  const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwZnRscnN1cXhxcWVvdXdiZmpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5MDU4MjQsImV4cCI6MjA4NzQ4MTgyNH0.iydEkjtPjZ0jXpUUPJben4IWWneDqLomv-HDlcFayE4";
+  const hdrs = { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY, "Content-Type": "application/json" };
+
+  const [msgs, setMsgs] = React.useState([]);
+  const [selected, setSelected] = React.useState(null);
+  const [replyText, setReplyText] = React.useState("");
+  const [sending, setSending] = React.useState(false);
+  const [loading, setLoading] = React.useState(true);
+
+  const loadMsgs = React.useCallback(async () => {
+    setLoading(true);
+    try {
+      const r = await fetch(SB_URL + "/rest/v1/naver_messages?order=created_at.desc&limit=200&select=*",
+        { headers: hdrs });
+      const data = await r.json();
+      setMsgs(Array.isArray(data) ? data : []);
+    } catch(e) { console.error(e); }
+    finally { setLoading(false); }
+  }, []);
+
+  React.useEffect(() => { loadMsgs(); }, [loadMsgs]);
+
+  const threads = React.useMemo(() => {
+    const map = {};
+    msgs.forEach(m => {
+      if (!map[m.user_id] || new Date(m.created_at) > new Date(map[m.user_id].created_at))
+        map[m.user_id] = m;
+    });
+    return Object.values(map).sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+  }, [msgs]);
+
+  const convo = React.useMemo(() =>
+    selected ? msgs.filter(m => m.user_id === selected).sort((a,b) => new Date(a.created_at) - new Date(b.created_at)) : []
+  , [msgs, selected]);
+
+  const unread = (uid) => msgs.filter(m => m.user_id === uid && !m.is_read && m.direction === "in").length;
+  const totalUnread = msgs.filter(m => !m.is_read && m.direction === "in").length;
+
+  const markRead = async (uid) => {
+    await fetch(SB_URL + "/rest/v1/naver_messages?user_id=eq." + uid + "&is_read=eq.false",
+      { method: "PATCH", headers: Object.assign({}, hdrs, { Prefer: "return=minimal" }), body: JSON.stringify({ is_read: true }) });
+    setMsgs(prev => prev.map(m => m.user_id === uid ? Object.assign({}, m, { is_read: true }) : m));
+  };
+
+  const sendReply = async () => {
+    if (!replyText.trim() || !selected) return;
+    setSending(true);
+    try {
+      const accId = (msgs.find(m => m.user_id === selected) || {}).account_id || "101171979";
+      const payload = { event: "send", user: selected, textContent: { text: replyText.trim() } };
+      const resp = await fetch("https://gw.talk.naver.com/chatbot/v1/event", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "oF9f3IwiT8KUVdQYuB0Y" },
+        body: JSON.stringify(payload)
+      });
+      if (resp.ok) {
+        await fetch(SB_URL + "/rest/v1/naver_messages", {
+          method: "POST",
+          headers: Object.assign({}, hdrs, { Prefer: "return=minimal" }),
+          body: JSON.stringify({ account_id: accId, user_id: selected, event_type: "send",
+            message_type: "text", message_text: replyText.trim(), direction: "out", is_read: true })
+        });
+        setReplyText("");
+        await loadMsgs();
+      } else {
+        alert("전송 실패: " + (await resp.text()));
+      }
+    } catch(e) { alert("오류: " + e.message); }
+    finally { setSending(false); }
+  };
+
+  const fmt = (iso) => {
+    if (!iso) return "";
+    const d = new Date(iso), now = new Date(), diff = now - d;
+    if (diff < 60000) return "방금";
+    if (diff < 3600000) return Math.floor(diff/60000) + "분전";
+    if (diff < 86400000) return d.getHours() + ":" + String(d.getMinutes()).padStart(2,"0");
+    return (d.getMonth()+1) + "/" + d.getDate();
+  };
+
+  return (
+    <div style={{display:"flex",height:"calc(100vh - 140px)",gap:10,minHeight:400}}>
+      <div style={{width:210,flexShrink:0,display:"flex",flexDirection:"column",gap:6}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",paddingBottom:6,borderBottom:"1px solid "+T.border}}>
+          <span style={{fontWeight:T.fw.black,fontSize:T.fs.md,color:T.text}}>
+            {"받은메시지함"}
+            {totalUnread > 0 && <span style={{marginLeft:6,background:T.danger,color:"#fff",borderRadius:10,fontSize:11,padding:"1px 6px"}}>{totalUnread}</span>}
+          </span>
+          <button onClick={loadMsgs} style={{background:"none",border:"none",cursor:"pointer",color:T.primary,fontSize:12}}>↻</button>
+        </div>
+        <div style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:3}}>
+          {loading && <div style={{color:T.textMuted,textAlign:"center",padding:20,fontSize:T.fs.sm}}>로딩중...</div>}
+          {!loading && threads.length === 0 && <div style={{color:T.textMuted,textAlign:"center",padding:20,fontSize:T.fs.sm}}>메시지 없음</div>}
+          {threads.map(function(m) {
+            var uc = unread(m.user_id);
+            var isActive = selected === m.user_id;
+            return (
+              <div key={m.user_id} onClick={function(){ setSelected(m.user_id); markRead(m.user_id); }}
+                style={{padding:"7px 9px",borderRadius:8,cursor:"pointer",
+                  background:isActive ? T.primary+"18" : "#fff",
+                  border:"1px solid "+(isActive ? T.primary : T.border),
+                  borderLeft:uc>0 ? "3px solid "+T.primary : "1px solid "+(isActive?T.primary:T.border)}}>
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:2}}>
+                  <span style={{fontSize:T.fs.sm,fontWeight:uc>0?T.fw.bolder:T.fw.normal,color:T.text,
+                    maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                    {(m.user_id||"").slice(0,14)}
+                  </span>
+                  <span style={{fontSize:10,color:T.textMuted}}>{fmt(m.created_at)}</span>
+                </div>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                  <span style={{fontSize:11,color:T.textMuted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:140}}>
+                    {m.direction==="out"?"↑ ":""}{(m.message_text||"").slice(0,28)}
+                  </span>
+                  {uc>0 && <span style={{background:T.danger,color:"#fff",borderRadius:10,fontSize:10,padding:"1px 5px",flexShrink:0}}>{uc}</span>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <div style={{flex:1,display:"flex",flexDirection:"column",background:"#fff",borderRadius:10,border:"1px solid "+T.border,overflow:"hidden"}}>
+        {!selected ? (
+          <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:8,color:T.textMuted}}>
+            <div style={{fontSize:36}}>{"💬"}</div>
+            <div style={{fontSize:T.fs.sm}}>대화를 선택하세요</div>
+          </div>
+        ) : (
+          <React.Fragment>
+            <div style={{padding:"9px 14px",borderBottom:"1px solid "+T.border,display:"flex",alignItems:"center",gap:8}}>
+              <div style={{fontWeight:T.fw.bolder,fontSize:T.fs.sm,color:T.text,flex:1}}>{(selected||"").slice(0,18)}</div>
+              <button onClick={function(){ setSelected(null); }} style={{background:"none",border:"none",cursor:"pointer",color:T.textMuted,fontSize:16}}>{"✕"}</button>
+            </div>
+            <div style={{flex:1,overflowY:"auto",padding:"10px 14px",display:"flex",flexDirection:"column",gap:7}}>
+              {convo.map(function(m, idx) {
+                var isOut = m.direction === "out";
+                return (
+                  <div key={m.id||idx} style={{display:"flex",justifyContent:isOut?"flex-end":"flex-start"}}>
+                    <div style={{maxWidth:"72%",padding:"7px 11px",
+                      borderRadius:isOut?"12px 12px 2px 12px":"12px 12px 12px 2px",
+                      background:isOut?T.primary:T.bg,color:isOut?"#fff":T.text,fontSize:T.fs.sm}}>
+                      <div>{m.message_text}</div>
+                      <div style={{fontSize:10,opacity:.6,marginTop:2,textAlign:isOut?"right":"left"}}>{fmt(m.created_at)}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{padding:"8px 10px",borderTop:"1px solid "+T.border,display:"flex",gap:7,alignItems:"flex-end"}}>
+              <textarea value={replyText} onChange={function(e){ setReplyText(e.target.value); }}
+                onKeyDown={function(e){ if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); sendReply(); } }}
+                placeholder={"메시지 입력... (Enter 전송)"}
+                style={{flex:1,resize:"none",border:"1px solid "+T.border,borderRadius:8,padding:"7px 9px",
+                  fontSize:T.fs.sm,fontFamily:"inherit",minHeight:38,maxHeight:90,outline:"none"}}
+                rows={2}/>
+              <button onClick={sendReply} disabled={sending||!replyText.trim()}
+                style={{padding:"7px 14px",background:T.primary,color:"#fff",border:"none",borderRadius:8,
+                  cursor:sending||!replyText.trim()?"not-allowed":"pointer",
+                  opacity:sending||!replyText.trim()?.5:1,fontSize:T.fs.sm,fontWeight:T.fw.bolder,whiteSpace:"nowrap"}}>
+                {sending?"전송중":"전송"}
+              </button>
+            </div>
+          </React.Fragment>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function AdminAISettings({ data, sb, bizId }) {
   const [apiKey,setApiKey]=useState(()=>window.__geminiKey||localStorage.getItem("bliss_gemini_key")||"");
   const [saved,setSaved]=useState(false);
