@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.17-y";
+const SCH_V = "v2026.03.18-a";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -111,30 +111,33 @@ const I = ({name,size=16,color="currentColor",style={},...p}) => {
 
 
 const BRANCHES = [
-  { id: "nonhyeon", name: "논현&왕십리", color: "#c8793a", minStaff: 4 },
-  { id: "hongdae",  name: "홍대&마곡",   color: "#3a9e8e", minStaff: 2 },
-  { id: "yongsan",  name: "용산",         color: "#8b6fa3", minStaff: 1 },
-  { id: "jamsil",   name: "잠실&위례",   color: "#3a7aaf", minStaff: 2 },
-  { id: "cheonho",  name: "천호",         color: "#a07040", minStaff: 1 },
+  { id: "gangnam",  name: "강남",   color: "#c8793a", minStaff: 1 },
+  { id: "wangsimni",name: "왕십리", color: "#d4923a", minStaff: 1 },
+  { id: "hongdae",  name: "홍대",   color: "#3a9e8e", minStaff: 1 },
+  { id: "magok",    name: "마곡",   color: "#2e8a7a", minStaff: 1 },
+  { id: "yongsan",  name: "용산",   color: "#8b6fa3", minStaff: 1 },
+  { id: "jamsil",   name: "잠실",   color: "#3a7aaf", minStaff: 1 },
+  { id: "wirye",    name: "위례",   color: "#5a9abf", minStaff: 1 },
+  { id: "cheonho",  name: "천호",   color: "#a07040", minStaff: 1 },
 ];
 
 const EMPLOYEES = [
-  { id:"소연", name:"소연", branch:"nonhyeon", isOwner:false, weeklyOff:2 },
-  { id:"경아", name:"경아", branch:"nonhyeon", isOwner:false, weeklyOff:2 },
-  { id:"수연", name:"수연", branch:"nonhyeon", isOwner:false, weeklyOff:2 },
-  { id:"서현", name:"서현", branch:"nonhyeon", isOwner:false, weeklyOff:2 },
-  { id:"지은", name:"지은(원장)", branch:"hongdae", isOwner:true,  weeklyOff:1, mustStay:true },
-  { id:"현아", name:"현아",       branch:"hongdae", isOwner:false, weeklyOff:2, mustStay:true },
-  { id:"혜경", name:"혜경",       branch:"hongdae", isOwner:false, weeklyOff:2 },
-  { id:"민아", name:"민아",       branch:"hongdae", isOwner:false, weeklyOff:2 },
-  { id:"보령", name:"보령(원장)", branch:"yongsan", isOwner:true,  weeklyOff:1, mustStay:true },
-  { id:"희서", name:"희서",       branch:"yongsan", isOwner:false, weeklyOff:2 },
-  { id:"민정", name:"민정",       branch:"yongsan", isOwner:false, weeklyOff:2 },
-  { id:"유라", name:"유라(원장)", branch:"jamsil",  isOwner:true,  weeklyOff:1, mustStay:true },
-  { id:"소이", name:"소이",       branch:"jamsil",  isOwner:false, weeklyOff:2 },
-  { id:"다해", name:"다해",       branch:"jamsil",  isOwner:false, weeklyOff:2 },
-  { id:"미진", name:"미진(원장)", branch:"cheonho", isOwner:true,  weeklyOff:1, mustStay:true },
-  { id:"수민", name:"수민",       branch:"cheonho", isOwner:false, weeklyOff:2 },
+  { id:"경아", name:"경아", branch:"gangnam",   isOwner:false, weeklyOff:2 },
+  { id:"서현", name:"서현", branch:"gangnam",   isOwner:false, weeklyOff:2 },
+  { id:"소연", name:"소연", branch:"wangsimni", isOwner:false, weeklyOff:2 },
+  { id:"수연", name:"수연", branch:"wangsimni", isOwner:false, weeklyOff:2 },
+  { id:"현아", name:"현아",       branch:"hongdae",  isOwner:false, weeklyOff:2, mustStay:true },
+  { id:"혜경", name:"혜경",       branch:"hongdae",  isOwner:false, weeklyOff:2 },
+  { id:"지은", name:"지은(원장)", branch:"magok",    isOwner:true,  weeklyOff:1, mustStay:true },
+  { id:"민아", name:"민아",       branch:"magok",    isOwner:false, weeklyOff:2 },
+  { id:"보령", name:"보령(원장)", branch:"yongsan",  isOwner:true,  weeklyOff:1, mustStay:true },
+  { id:"희서", name:"희서",       branch:"yongsan",  isOwner:false, weeklyOff:2 },
+  { id:"민정", name:"민정",       branch:"yongsan",  isOwner:false, weeklyOff:2 },
+  { id:"소이", name:"소이",       branch:"jamsil",   isOwner:false, weeklyOff:2 },
+  { id:"유라", name:"유라(원장)", branch:"wirye",    isOwner:true,  weeklyOff:1, mustStay:true },
+  { id:"다해", name:"다해",       branch:"wirye",    isOwner:false, weeklyOff:2 },
+  { id:"미진", name:"미진(원장)", branch:"cheonho",  isOwner:true,  weeklyOff:1, mustStay:true },
+  { id:"수민", name:"수민",       branch:"cheonho",  isOwner:false, weeklyOff:2 },
   // 남자 직원 (일 근무 인원 미포함, 일요일 중 1명만 출근, 휴무 중복 불가)
   { id:"재윤", name:"재윤", branch:"male", isOwner:false, weeklyOff:2, isMale:true },
   { id:"주용", name:"주용", branch:"male", isOwner:false, weeklyOff:2, isMale:true },
@@ -290,7 +293,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     }
     // 지점 최소 인원 (강제 배정도 최소 1명은 지켜야)
     if (branch) {
-      const minRequired = emp.branch === "nonhyeon" ? 2 : (rc.branchMinStaff[branch.id] ?? branch.minStaff ?? 1);
+      const minRequired = rc.branchMinStaff[branch.id] ?? branch.minStaff ?? 1;
       const working = branchEmps.filter(be =>
         be.id !== emp.id && !["휴무","휴무(꼭)"].includes(sch[be.id]?.[ds]||"")
       ).length;
@@ -455,13 +458,8 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
 
     // 지점 최소 근무인원 보호 (소속 + 지원 인원 합산)
     if (branch) {
-      if (emp.branch === "nonhyeon") {
-        // 논현: minStaff=4는 지원 포함 기준이므로 휴무 배정 시점(step2)엔
-        // 아직 지원 미배정 → 소속 최소 2명 유지 체크, minStaff 충족은 step4에서
-        const ownWorking = branchEmps.filter(be =>
-          be.id !== emp.id && !["휴무","휴무(꼭)"].includes(sch[be.id][ds])
-        ).length;
-        if (ownWorking < 2) return false;
+      if (false) {
+        // (구 논현 특별처리 - 지점 분리로 제거)
       } else {
         // 그 외 지점: 소속 + 지원 합산 후 minStaff 체크
         const ownWorking = branchEmps.filter(be =>
@@ -511,7 +509,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     const otherMales = employees.filter(e => e.isMale && e.id !== emp.id);
     if (otherMales.length > 0 && otherMales.every(e => isOff(e.id, ds))) return false;
     // 지점 최소 인원 보호
-    if (branch && branch.id !== "nonhyeon") {
+    if (branch) {
       const ownWorking = branchEmps.filter(be => !["휴무","휴무(꼭)"].includes(sch[be.id]?.[ds]||"")).length;
       const supportIn = employees.filter(e => e.branch !== branch.id && sch[e.id]?.[ds] === `지원(${branch.name})`).length;
       const minS = rc.branchMinStaff[branch.id] ?? branch.minStaff;
@@ -917,24 +915,32 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     });
   });
 
-  // 4) 논현 지원 배정: 논현 근무 인원이 minStaff 미달인 날 지원 우선순위 지점 순으로 배정
-  const nonhyeonBranch = BRANCHES.find(b => b.id === "nonhyeon");
-  const nonhyeonMinStaff = rc.branchMinStaff["nonhyeon"] ?? nonhyeonBranch?.minStaff ?? 4;
-  const nonhyeonLabel = nonhyeonBranch?.name ?? "논현&왕십리";
+  // 4) 지원 배정: minStaff 미달 지점에 지원 우선순위 지점 순으로 배정
+  // supportConfig.order에 지원 받을 지점 순서가 없으면 모든 지점 순회
+  const supportTargetBranches = supportOrder.length > 0
+    ? BRANCHES.filter(b => supportOrder.includes(b.id) || true) // 모든 지점 대상
+    : BRANCHES;
+  const nonhyeonBranch = BRANCHES.find(b => b.id === "gangnam") || BRANCHES[0];
+  const nonhyeonMinStaff = rc.branchMinStaff[nonhyeonBranch?.id] ?? nonhyeonBranch?.minStaff ?? 1;
+  const nonhyeonLabel = nonhyeonBranch?.name ?? "강남";
   // 지원 우선순위: supportConfig.order = [branchId, ...] (우선순위 순)
   // mustStay 직원은 자기 지점 이탈 불가 → 지원 불가
   const supportOrder = supportConfig.order || [];
 
   for (const _day4 of allDates) {
     const ds = _day4.ds;
-    const nonhyeonEmps = employees.filter(e => e.branch === "nonhyeon");
+    // 지원 배정: supportConfig.order에 있는 지점들 순서대로 minStaff 미달 체크
+    // 현재는 첫번째 지원대상 지점(gangnam)만 처리 - 추후 다중 지점 확장 가능
+    const targetBranch = nonhyeonBranch;
+    if (!targetBranch) continue;
     const supportLabel = `지원(${nonhyeonLabel})`;
-    const nonhyeonBase = nonhyeonEmps.filter(e => {
+    const targetEmps_ = employees.filter(e => e.branch === targetBranch.id);
+    const nonhyeonBase = targetEmps_.filter(e => {
       const s = sch[e.id][ds];
       return s === STATUS.WORK || isSupport(s) || s === STATUS.SHARE;
     }).length;
     const nonhyeonSupporters = employees.filter(e =>
-      e.branch !== "nonhyeon" && sch[e.id][ds] === supportLabel
+      e.branch !== targetBranch.id && sch[e.id][ds] === supportLabel
     ).length;
     const nonhyeonWorking = nonhyeonBase + nonhyeonSupporters;
     if (nonhyeonWorking >= nonhyeonMinStaff) continue;
@@ -961,7 +967,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     // 우선순위 외 나머지 지점 (mustStay 아닌 근무중인 직원)
     const prioritySet = new Set(supportOrder);
     const otherCands = employees.filter(e =>
-      e.branch !== "nonhyeon" && !prioritySet.has(e.branch) &&
+      e.branch !== targetBranch.id && !prioritySet.has(e.branch) &&
       !e.mustStay && sch[e.id][ds] === STATUS.WORK
     ).map(e => e.id);
     candidates.push(...otherCands);
@@ -1657,10 +1663,13 @@ function App() {
   const RULES_KEY = "customRules_v1";
   const defaultRules = [
     ["🌍 전체",["주 시작: 월요일","일 근무인원: 최소 11명 ~ 최대 15명","하루 전체 휴무 최대 5명 (남자직원 제외)","휴무 텀: 최대 6일(7일 초과 금지)","연속 2일 휴무: 월 2회 허용","3일 연속 휴무: 절대 금지"]],
-    ["📍 논현&왕십리",["최소 4명 근무 유지 (지원 인원 포함)","논현 소속 최소 2명 항시 논현 근무","인원 부족 시 희서↔민정(용산) 동등 지원"]],
-    ["📍 홍대&마곡",["지은(원장)·현아 타지점 이동 불가","지은 원장: 지정 휴무일 고정","혜경·민아 동시 휴무 금지"]],
+    ["📍 강남",["소속 최소 1명 근무 유지"]],
+    ["📍 왕십리",["소속 최소 1명 근무 유지"]],
+    ["📍 홍대",["현아 타지점 이동 불가"]],
+    ["📍 마곡",["지은 원장: 지정 휴무일 고정"]],
     ["📍 용산",["보령(원장) 타지점 이동 불가","최소 1명 근무 유지","보령: 지정 휴무일 고정"]],
-    ["📍 잠실&위례",["최소 2명 근무 유지"]],
+    ["📍 잠실",["소이 소속"]],
+    ["📍 위례",["유라 원장·다해 소속"]],
     ["📍 천호",["미진(원장) 타지점 이동 불가","최소 1명 근무 유지","수민·미진 동시 휴무 금지"]],
     ["🔄 전체쉐어 순위",["잠실↔천호: ①수민 ②다해/소이 ③용산여유","홍대↔용산: ①민아 ②혜경 ③희서/민정"]],
   ];
@@ -1698,7 +1707,7 @@ function App() {
   const saveDeletedIds = async (ids) => {
     try { await window.storage.set(DELETED_EMP_KEY, JSON.stringify([...ids])); } catch(e) {}
   };
-  const [newEmp, setNewEmp] = useState({name:"",branch:"nonhyeon",isOwner:false,weeklyOff:2,isMale:false,mustStay:false});
+  const [newEmp, setNewEmp] = useState({name:"",branch:"gangnam",isOwner:false,weeklyOff:2,isMale:false,mustStay:false});
   // 커스텀 직원 로드
   React.useEffect(() => {
     (async () => {
@@ -2543,7 +2552,7 @@ function App() {
                   </td>
                   {days.map(day=>{
                     // 논현&왕십리: 타지점 지원 인원도 합산
-                    const supportersIn = branch.id==="nonhyeon" ? ALL_EMPLOYEES.filter(e=>e.branch!=="nonhyeon"&&getS(e.id,day.ds)==="지원(논현)").length : 0;
+                    const supportersIn = ALL_EMPLOYEES.filter(e=>e.branch!==branch.id&&isSupport(getS(e.id,day.ds))&&getS(e.id,day.ds).includes(branch.name)).length;
                     const c=emps.filter(e=>{const s=getS(e.id,day.ds);return !s||s===STATUS.WORK||isSupport(s)||s===STATUS.SHARE;}).length + supportersIn;
                     const wb=isWeekBoundary(day);
                     const under=c<branch.minStaff&&Object.keys(sch).length>0;
@@ -2812,7 +2821,7 @@ function App() {
               <div style={{fontSize:12,color:T.textMuted,marginBottom:18}}>논현&왕십리 인원 부족 시 지원 나가는 지점 우선순위를 설정하세요.</div>
               <div style={{fontSize:12,fontWeight:700,color:"#4a2c14",marginBottom:10}}>📌 논현&왕십리 지원 우선순위</div>
               <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                {BRANCHES.filter(b => b.id !== "nonhyeon").map((b) => {
+                {BRANCHES.filter(b => b.id !== "male").map((b) => {
                   const idx = supportOrder.indexOf(b.id);
                   const isOn = idx !== -1;
                   return (
@@ -2913,7 +2922,7 @@ function App() {
                   const next = [...customEmployees, emp];
                   setCustomEmployees(next); saveCustomEmps(next);
                   setEmpSettings(prev=>({...prev, [id]:{weeklyWork:7-emp.weeklyOff, altPattern:false}}));
-                  setNewEmp({name:"",branch:"nonhyeon",isOwner:false,weeklyOff:2,isMale:false,mustStay:false});
+                  setNewEmp({name:"",branch:"gangnam",isOwner:false,weeklyOff:2,isMale:false,mustStay:false});
                   setShowAddEmp(false);
                 }}
                 style={{width:"100%",padding:"10px 0",borderRadius:8,fontSize:13,fontFamily:"inherit",cursor:"pointer",fontWeight:700,
