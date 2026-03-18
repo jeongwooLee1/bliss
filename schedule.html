@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.18-n";
+const SCH_V = "v2026.03.18-o";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -232,7 +232,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     const [eid, ds] = key.split("__");
     if (sch[eid] && (ds.startsWith(monthStr) || ds.startsWith(nextMonthStr))) {
       sch[eid][ds] = status;
-      seededDates.add(ds); // 원장 고정 휴무 보호 — 이후 단계에서 덮어쓰지 않음
+      // seededDates에 추가하지 않음 — 원장 휴무 날짜에 다른 직원 휴무 배정 허용
     }
   });
   // 1-a-2) 일반직원 휴무(꼭) 우선 적용 — seededDates에 추가해 이후 단계에서 건드리지 않음
