@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.252";
+const BLISS_V = "2.69.253";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -6535,8 +6535,7 @@ function AdminSchedule() {
       onLoad={()=>{
         setLoaded(true);
         try {
-          const iw = iframeRef.current?.getBoundingClientRect()?.width || window.innerWidth;
-          iframeRef.current?.contentWindow?.postMessage({type:"SET_MOBILE", mobile: iw <= 600}, "*");
+          iframeRef.current?.contentWindow?.postMessage({type:"SET_MOBILE", mobile: window.screen.width <= 600}, "*");
         } catch(e){}
       }}
       title="직원 근무표"
