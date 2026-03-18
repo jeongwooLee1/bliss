@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.18-b";
+const SCH_V = "v2026.03.18-c";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -921,16 +921,10 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
   });
 
   // 4) 지원 배정: minStaff 미달 지점에 지원 우선순위 지점 순으로 배정
-  // supportConfig.order에 지원 받을 지점 순서가 없으면 모든 지점 순회
-  const supportTargetBranches = supportOrder.length > 0
-    ? BRANCHES.filter(b => supportOrder.includes(b.id) || true) // 모든 지점 대상
-    : BRANCHES;
+  const supportOrder = supportConfig.order || [];
   const nonhyeonBranch = BRANCHES.find(b => b.id === "gangnam") || BRANCHES[0];
   const nonhyeonMinStaff = rc.branchMinStaff[nonhyeonBranch?.id] ?? nonhyeonBranch?.minStaff ?? 1;
   const nonhyeonLabel = nonhyeonBranch?.name ?? "강남";
-  // 지원 우선순위: supportConfig.order = [branchId, ...] (우선순위 순)
-  // mustStay 직원은 자기 지점 이탈 불가 → 지원 불가
-  const supportOrder = supportConfig.order || [];
 
   for (const _day4 of allDates) {
     const ds = _day4.ds;
