@@ -2092,8 +2092,11 @@ function App() {
         display:"flex", alignItems:"center", justifyContent:"space-between",
         position:"sticky", top:0, zIndex:50, gap:8
       }}>
-        {/* 왼쪽: 월이동 + 연월 */}
+        {/* 왼쪽: 닫기(모바일) + 월이동 + 연월 */}
         <div style={{display:"flex",alignItems:"center",gap:4}}>
+          {isMobile && <button onClick={()=>{try{window.close();}catch(e){}history.back();}} style={{display:"flex",alignItems:"center",gap:3,padding:"4px 8px",borderRadius:6,border:"1px solid #e0e0e0",background:"#fff",color:"#666",fontSize:12,fontWeight:700,cursor:"pointer",fontFamily:"inherit",flexShrink:0}}>
+            ← 닫기
+          </button>}
           <button onClick={()=>{if(month===0){setMonth(11);setYear(y=>y-1);}else setMonth(m=>m-1);}} style={{width:30,height:30,borderRadius:T.radius.md,border:"1px solid "+T.border,background:"transparent",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",transition:"background .12s"}} onMouseEnter={e=>e.currentTarget.style.background=T.gray100} onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
             <I name="chevL" size={14} color={T.textSub}/>
           </button>
