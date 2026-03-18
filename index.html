@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.248";
+const BLISS_V = "2.69.249";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -1880,6 +1880,17 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   const [selDate, setSelDate] = useState(todayStr());
   const [schHistory, setSchHistory] = useState(null); // {empName: {date: "근무"|"휴무"}}
 
+  // 직원-지점 매핑 (schedule.html BASE_EMPLOYEES 기반)
+  const SCH_BRANCH_MAP = {"nonhyeon":"br_4bcauqvrb","gang":"br_4bcauqvrb","hongdae":"br_l6yzs2pkq","yongsan":"br_ybo3rmulv","jamsil":"br_lfv2wgdf1","cheonho":"br_xu60omgdf","wirye":"br_g768xdu4w","wangsimni":"br_wkqsxj6k1","magok":"br_k57zpkbx1"};
+  const BASE_EMP_LIST = [
+    {id:"소연",branch:"nonhyeon"},{id:"경아",branch:"nonhyeon"},{id:"수연",branch:"nonhyeon"},{id:"서현",branch:"nonhyeon"},
+    {id:"지은",branch:"hongdae"},{id:"현아",branch:"hongdae"},{id:"혜경",branch:"hongdae"},{id:"민아",branch:"hongdae"},
+    {id:"보령",branch:"yongsan"},{id:"희서",branch:"yongsan"},{id:"민정",branch:"yongsan"},
+    {id:"유라",branch:"jamsil"},{id:"소이",branch:"jamsil"},{id:"다해",branch:"jamsil"},
+    {id:"미진",branch:"cheonho"},{id:"수민",branch:"cheonho"},
+    {id:"재윤",branch:"male"},{id:"주용",branch:"male"},
+  ];
+
   // schHistory_v1 로드
   useEffect(() => {
     const SB_URL = "https://dpftlrsuqxqqeouwbfjd.supabase.co";
@@ -1889,7 +1900,6 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
     }).then(r=>r.json()).then(rows=>{
       if (!rows?.length) return;
       const val = rows[0].value;
-      // 모든 월 데이터 합치기: { empName: { date: status } }
       const merged = {};
       Object.values(val).forEach(monthData => {
         if (typeof monthData !== "object") return;
@@ -1905,15 +1915,14 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
 
   // 선택 날짜의 지점별 출근자 계산
   const getWorkingStaff = (branchId, date) => {
-    if (!schHistory) return null; // null이면 로딩 중 (rooms 폴백)
-    const staffUsers = (data.users||[]).filter(u => u.role==="staff" && (u.branches||[]).includes(branchId));
-    const working = staffUsers.filter(u => {
-      const dn = u.dn || u.name || "";
-      const dayStatus = schHistory[dn]?.[date];
-      // 출근표에 없으면(undefined) 기본 근무로 취급, "휴무"만 제외
-      return dayStatus !== "휴무";
+    if (!schHistory) return null;
+    const branchEmps = BASE_EMP_LIST.filter(e => SCH_BRANCH_MAP[e.branch] === branchId);
+    if (branchEmps.length === 0) return null; // 해당 지점 직원 없으면 rooms 폴백
+    const working = branchEmps.filter(e => {
+      const dayStatus = schHistory[e.id]?.[date];
+      return dayStatus !== "휴무" && dayStatus !== "휴무(꼭)";
     });
-    return working;
+    return working.length > 0 ? working : null; // 출근자 0명이면 폴백
   };
   const [showModal, setShowModal] = useState(false);
   const [modalData, setModalData] = useState(null);
@@ -2135,14 +2144,12 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
     const workingStaff = getWorkingStaff(br.id, selDate);
     let staffRooms;
     if (workingStaff && workingStaff.length > 0) {
-      // 출근자를 컬럼으로
-      staffRooms = workingStaff.map(u => ({
-        id: `st_${br.id}_${u.id}`, name: u.dn || u.name || "",
+      staffRooms = workingStaff.map(e => ({
+        id: `st_${br.id}_${e.id}`, name: e.id,
         branch_id: br.id, branchName: br.short||br.name||"",
-        staffId: u.id, isStaffCol: true
+        staffId: e.id, isStaffCol: true
       }));
     } else {
-      // 출근표 없거나 출근자 없으면 rooms 테이블 폴백
       staffRooms = (data.rooms||[]).filter(r=>r.branch_id===br.id).map(r=>({...r, branchName:br.short||br.name||""}));
     }
     return [...naverRooms, ...staffRooms];
