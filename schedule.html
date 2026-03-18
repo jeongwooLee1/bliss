@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.18-u";
+const SCH_V = "v2026.03.18-v";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -177,7 +177,8 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
     maxDailyOff:     Number(ruleConfig.maxDailyOff)     || 5,
     maxConsecWork:   Number(ruleConfig.maxConsecWork)   || 6,
     branchMinStaff:  (ruleConfig.branchMinStaff && typeof ruleConfig.branchMinStaff === "object") ? ruleConfig.branchMinStaff : {},
-    noSimultaneousOff: (ruleConfig.noSimultaneousOff && typeof ruleConfig.noSimultaneousOff === "object") ? ruleConfig.noSimultaneousOff : {},
+    // noSimultaneousOff: [{ids:[...], max:N}, ...] 배열 구조
+    noSimultaneousOff: Array.isArray(ruleConfig.noSimultaneousOff) ? ruleConfig.noSimultaneousOff : [],
     biweeklyConsecOff: ruleConfig.biweeklyConsecOff ?? true,
   };
   const sch = {};
@@ -529,18 +530,14 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       }
     }
 
-    // 지점별 동시 휴무 금지 — 직원의 모든 소속 지점 중 ON인 지점 체크
-    // 일반직원 3명 이상 지점: 2명까지 동시 휴무 허용 (3번째부터 차단)
-    // 일반직원 2명 이하 지점: 1명만 허용 (2번째부터 차단)
+    // 동시 휴무 금지 그룹 체크 — noSimultaneousOff: [{ids:[...], max:N}, ...]
     if (!skipSimultaneous) {
-      const empBranchesSimul = emp.branches || [emp.branch];
-      for (const bId of empBranchesSimul) {
-        if (!rc.noSimultaneousOff[bId]) continue;
-        const brEmpsSimul = employees.filter(e => (e.branches || [e.branch]).includes(bId));
-        const normals = brEmpsSimul.filter(be => !be.isOwner && !be.mustStay && !be.isFreelancer && be.id !== emp.id);
-        const maxSimulOff = normals.length >= 2 ? 2 : 1; // 3명 이상(normals≥2)이면 2명까지 허용
-        const currentOff = normals.filter(be => ["휴무","휴무(꼭)"].includes(sch[be.id]?.[ds])).length;
-        if (currentOff >= maxSimulOff) return false;
+      for (const group of rc.noSimultaneousOff) {
+        if (!group.ids.includes(emp.id)) continue;
+        const others = group.ids.filter(id => id !== emp.id);
+        const currentOff = others.filter(id => ["휴무","휴무(꼭)"].includes(sch[id]?.[ds])).length;
+        const maxAllowed = (group.max ?? 1) - 1; // max명까지 허용 → max-1명 이상 쉬면 차단
+        if (currentOff >= maxAllowed) return false;
       }
     }
 
@@ -1562,8 +1559,8 @@ function App() {
             ...saved,
             // branchMinStaff: 저장값 + 초기값 병합 (새 지점은 초기값 유지)
             branchMinStaff: {...prev.branchMinStaff, ...(saved.branchMinStaff||{})},
-            // noSimultaneousOff: 저장값 + 초기값 병합
-            noSimultaneousOff: {...prev.noSimultaneousOff, ...(saved.noSimultaneousOff||{})},
+            // noSimultaneousOff: 저장값이 배열이면 사용, 아니면 초기값 유지
+            noSimultaneousOff: Array.isArray(saved.noSimultaneousOff) ? saved.noSimultaneousOff : prev.noSimultaneousOff,
           }));
         }
       } catch(e) {}
@@ -1695,12 +1692,25 @@ function App() {
     branchMinStaff: Object.fromEntries(BRANCHES.map(b => [b.id, b.minStaff])),
     // 지점별 동시 휴무 금지: branchId → 동시 휴무 금지 적용 여부
     // 적용 대상: 원장·mustStay 제외 일반직원 전원 (인원 2명 이하 지점)
-    noSimultaneousOff: Object.fromEntries(
-      BRANCHES.map(b => {
-        const normals = ALL_EMPLOYEES.filter(e => (e.branches || [e.branch]).includes(b.id) && !e.isOwner && !e.mustStay && !(e.isFreelancer || empSettings[e.id]?.isFreelancer));
-        return [b.id, normals.length <= 2]; // 일반직원 2명 이하 지점만 기본 ON
-      })
-    ),
+    // noSimultaneousOff: [{ids:[직원ID목록], max:동시허용최대수}, ...]
+    // 기본값: branches 공유 그룹 단위로 자동 생성
+    noSimultaneousOff: (()=>{
+      const seen = new Set();
+      const groups = [];
+      BRANCHES.forEach(b => {
+        if (seen.has(b.id)) return;
+        const members = ALL_EMPLOYEES.filter(e =>
+          (e.branches||[e.branch]).includes(b.id) && !e.isOwner && !e.mustStay &&
+          !(e.isFreelancer || empSettings[e.id]?.isFreelancer)
+        );
+        const siblingIds = [...new Set(members.flatMap(e => e.branches||[e.branch]))];
+        siblingIds.forEach(id => seen.add(id));
+        if (members.length < 1) return;
+        const max = members.length >= 3 ? 2 : 1;
+        groups.push({ ids: members.map(e=>e.id), max });
+      });
+      return groups;
+    })(),
   });
   const setRule = (key, val) => setRuleConfig(p => {
     const next = {...p, [key]: val};
@@ -2567,54 +2577,59 @@ function App() {
               </div>
             </div>
 
-            {/* 지점별 동시 휴무 금지 */}
+            {/* 동시 휴무 금지 그룹 설정 */}
             <div style={{marginBottom:18}}>
-              <div style={{fontSize:12,fontWeight:700,color:"#4a2c14",marginBottom:6,borderBottom:"1px solid #f0ebe2",paddingBottom:6}}>🚫 지점별 일반직원 동시 휴무 금지</div>
-              <div style={{fontSize:11,color:T.textMuted,marginBottom:10}}>ON: 같은 지점 그룹 일반직원(원장·mustStay 제외) 전원이 같은 날 동시 휴무 금지</div>
-              <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
-                {(()=>{
-                  // 복수 소속 지점 그룹 단위로 묶어서 표시
-                  const seen = new Set();
-                  const groups = [];
-                  BRANCHES.forEach(b => {
-                    if (seen.has(b.id)) return;
-                    // 이 지점과 같은 branches 그룹을 공유하는 지점들 찾기
-                    const siblingIds = [...new Set(
-                      ALL_EMPLOYEES
-                        .filter(e => (e.branches||[e.branch]).includes(b.id))
-                        .flatMap(e => e.branches||[e.branch])
-                    )].filter(id => BRANCHES.find(br=>br.id===id));
-                    siblingIds.forEach(id => seen.add(id));
-                    groups.push(siblingIds);
-                  });
-                  return groups.map(groupIds => {
-                    const groupBranches = groupIds.map(id => BRANCHES.find(b=>b.id===id)).filter(Boolean);
-                    const normals = ALL_EMPLOYEES.filter(e =>
-                      (e.branches||[e.branch]).some(b=>groupIds.includes(b)) && !e.isOwner && !e.mustStay
-                    );
-                    const isOn = groupIds.some(id => ruleConfig.noSimultaneousOff[id] ?? false);
-                    const groupColor = groupBranches[0]?.color || T.border;
-                    const groupName = groupBranches.map(b=>b.name).join("&");
-                    const toggleGroup = () => {
-                      const next = {...ruleConfig.noSimultaneousOff};
-                      groupIds.forEach(id => { next[id] = !isOn; });
-                      setRule("noSimultaneousOff", next);
-                    };
-                    return (
-                      <div key={groupIds.join("-")} onClick={normals.length>0?toggleGroup:undefined}
-                        style={{display:"flex",alignItems:"center",gap:7,padding:"8px 12px",borderRadius:8,
-                          border:`1.5px solid ${isOn?groupColor:T.border}`,
-                          background:isOn?groupColor+"15":T.bgCard,
-                          cursor:normals.length===0?"default":"pointer",
-                          opacity:normals.length===0?0.4:1}}>
-                        <span style={{fontSize:11,fontWeight:700,color:isOn?groupColor:T.textMuted}}>{groupName}</span>
-                        <span style={{fontSize:10,color:"#bbb"}}>({normals.map(e=>e.name).join("·") || "해당없음"})</span>
-                        <span style={{fontSize:10,background:isOn?groupColor:T.border,color:"#fff",borderRadius:4,padding:"1px 6px",fontWeight:700,marginLeft:4}}>{isOn?"ON":"OFF"}</span>
-                      </div>
-                    );
-                  });
-                })()}
-              </div>
+              <div style={{fontSize:12,fontWeight:700,color:"#4a2c14",marginBottom:6,borderBottom:"1px solid #f0ebe2",paddingBottom:6}}>🚫 동시 휴무 금지 그룹</div>
+              <div style={{fontSize:11,color:T.textMuted,marginBottom:12}}>직원을 선택해 그룹을 만들면 해당 그룹 내에서 동시 허용 인원 수를 초과할 수 없습니다.</div>
+
+              {/* 기존 그룹 목록 */}
+              {(ruleConfig.noSimultaneousOff||[]).map((group, gi) => (
+                <div key={gi} style={{marginBottom:10,padding:"10px 12px",borderRadius:10,border:"1.5px solid "+T.border,background:T.bgCard}}>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+                    <span style={{fontSize:11,fontWeight:700,color:T.text}}>그룹 {gi+1}</span>
+                    <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                      <span style={{fontSize:11,color:T.textMuted}}>동시 허용</span>
+                      <button onClick={()=>{const g=[...ruleConfig.noSimultaneousOff];g[gi]={...g[gi],max:Math.max(1,g[gi].max-1)};setRule("noSimultaneousOff",g);}}
+                        style={{width:22,height:22,borderRadius:4,border:"1px solid "+T.border,background:T.bgCard,cursor:"pointer",fontFamily:"inherit",fontSize:12}}>−</button>
+                      <span style={{fontSize:13,fontWeight:700,color:"#7a4a18",minWidth:16,textAlign:"center"}}>{group.max}</span>
+                      <span style={{fontSize:11,color:T.textMuted}}>명까지</span>
+                      <button onClick={()=>{const g=[...ruleConfig.noSimultaneousOff];g[gi]={...g[gi],max:Math.min(group.ids.length,g[gi].max+1)};setRule("noSimultaneousOff",g);}}
+                        style={{width:22,height:22,borderRadius:4,border:"1px solid "+T.border,background:T.bgCard,cursor:"pointer",fontFamily:"inherit",fontSize:12}}>+</button>
+                      <button onClick={()=>{const g=ruleConfig.noSimultaneousOff.filter((_,i)=>i!==gi);setRule("noSimultaneousOff",g);}}
+                        style={{marginLeft:4,padding:"2px 8px",borderRadius:5,border:"1px solid #f0c0c0",background:"#fff5f5",color:"#c06060",fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>삭제</button>
+                    </div>
+                  </div>
+                  {/* 직원 선택 버튼 */}
+                  <div style={{display:"flex",flexWrap:"wrap",gap:5}}>
+                    {ALL_EMPLOYEES.filter(e=>!e.isMale&&!e.isOwner&&!(e.isFreelancer||empSettings[e.id]?.isFreelancer)).map(emp=>{
+                      const inGroup = group.ids.includes(emp.id);
+                      const bc = BRANCHES.find(b=>b.id===emp.branch)?.color||T.border;
+                      return (
+                        <button key={emp.id}
+                          onClick={()=>{
+                            const g=[...ruleConfig.noSimultaneousOff];
+                            const ids=inGroup?group.ids.filter(id=>id!==emp.id):[...group.ids,emp.id];
+                            g[gi]={...g[gi],ids};
+                            setRule("noSimultaneousOff",g);
+                          }}
+                          style={{padding:"4px 10px",borderRadius:6,fontSize:11,fontFamily:"inherit",cursor:"pointer",
+                            border:`1.5px solid ${inGroup?bc:T.border}`,
+                            background:inGroup?bc+"22":T.bgCard,
+                            color:inGroup?bc:T.textMuted,
+                            fontWeight:inGroup?700:400}}>
+                          {emp.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+
+              {/* 그룹 추가 버튼 */}
+              <button onClick={()=>setRule("noSimultaneousOff",[...(ruleConfig.noSimultaneousOff||[]),{ids:[],max:1}])}
+                style={{width:"100%",padding:"8px 0",borderRadius:8,border:"1.5px dashed "+T.border,background:"transparent",color:T.textMuted,fontSize:12,cursor:"pointer",fontFamily:"inherit",marginTop:4}}>
+                + 그룹 추가
+              </button>
             </div>
 
             {/* 2주 연속휴무 보장 */}
