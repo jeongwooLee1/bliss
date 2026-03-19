@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.19-f";
+const SCH_V = "v2026.03.19-g";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -1577,6 +1577,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
 }
 
 function App() {
+  const isMobile = /iPhone|iPad|Android/i.test(navigator.userAgent);
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
