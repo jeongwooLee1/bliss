@@ -2105,14 +2105,25 @@ function App() {
           {/* 버전 */}
           <span style={{fontSize:T.fs.nano,color:T.textMuted,fontWeight:T.fw.bold,whiteSpace:"nowrap",marginRight:2}}>{SCH_V}</span>
           {/* ⚡ 자동배치 - 주 CTA */}
-          <button onClick={()=>{
+          <button onClick={async ()=>{
             if(isAssigning || isConfirmed) return;
             setIsAssigning(true);
+            // 배치 전 최신 empReqs/ownerReqs Supabase에서 갱신 (직원 신청 반영)
+            let freshEmpReqs = empReqs;
+            let freshOwnerReqs = ownerReqs;
+            try {
+              const [latestEmp, latestOwner] = await Promise.all([
+                window.storage.get("empReqs_v1"),
+                window.storage.get("ownerReqs_v1"),
+              ]);
+              if (latestEmp?.value) { freshEmpReqs = JSON.parse(latestEmp.value); setEmpReqs(freshEmpReqs); }
+              if (latestOwner?.value) { freshOwnerReqs = JSON.parse(latestOwner.value); setOwnerReqs(freshOwnerReqs); }
+            } catch(e) {}
             setTimeout(()=>{
               try {
                 // 디버그: 각 단계에서 에러 위치 찾기
-                if(!ownerReqs) throw new Error("ownerReqs undefined");
-                if(!empReqs) throw new Error("empReqs undefined");
+                if(!freshOwnerReqs) throw new Error("ownerReqs undefined");
+                if(!freshEmpReqs) throw new Error("empReqs undefined");
                 if(!ACTIVE_EMPLOYEES?.length) throw new Error("ACTIVE_EMPLOYEES empty/undefined");
                 if(!ruleConfig) throw new Error("ruleConfig undefined");
                 // supportOrder는 객체({branchId: [...]} 형식) 또는 배열 허용
@@ -2120,14 +2131,14 @@ function App() {
                 for(let i=0;i<MAX_RETRY;i++){
                   const r=autoAssign(
                     year,month,
-                    ownerReqs||{},
+                    freshOwnerReqs||{},
                     prevSch||{},
                     empSettings||{},
-                    {order:supportOrder||[]},
+                    {order:supportOrder||{}},
                     ruleConfig||{},
                     ownerRepeat||{},
                     ACTIVE_EMPLOYEES||[],
-                    empReqs||{},
+                    freshEmpReqs||{},
                     Date.now()+i*997
                   );
                   const v=validateSch(r,ACTIVE_EMPLOYEES||[]);
