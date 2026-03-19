@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.299";
+const BLISS_V = "2.69.300";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -1073,7 +1073,7 @@ function App() {
     { id:"stats", label:"매출통계", icon:<I name="chart" size={16}/> },
     { id:"customers", label:"고객관리", icon:<I name="users" size={16}/> },
     ...(isMaster?[{ id:"users", label:"사용자관리", icon:<I name="user" size={16}/> }]:[]),
-    ...(isMaster?[{ id:"messages", label:"받은메시지함", icon:<I name="msgSq" size={16}/>, badge:unreadMsgCount }]:[]),
+    { id:"messages", label:"받은메시지함", icon:<I name="msgSq" size={16}/>, badge:unreadMsgCount },
     { id:"admin", label:"관리설정", icon:<I name="settings" size={16}/> },
   ];
 
@@ -1124,7 +1124,7 @@ function App() {
             {page==="stats" && <StatsPage data={data} userBranches={userBranches} isMaster={isMaster} role={role}/>}
             {page==="customers" && <CustomersPage data={data} setData={setData} userBranches={userBranches} isMaster={isMaster}/>}
             {page==="users" && <UsersPage data={data} setData={setData} bizId={currentBizId}/>}
-            {page==="messages" && isMaster && <AdminInbox sb={sb} branches={data?.branches} data={data} onRead={()=>setUnreadMsgCount(0)}/>}
+            {page==="messages" && <AdminInbox sb={sb} branches={data?.branches} data={data} onRead={()=>setUnreadMsgCount(0)}/>}
             {page==="admin" && <AdminPage data={data} setData={setData} bizId={currentBizId} serverV={serverV} onLogout={handleLogout} currentUser={currentUser}/>}
           </div>
         </div>
@@ -2064,8 +2064,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   // 미읽음 메시지 카운트
   useEffect(() => {
     if (!currentUser) return;
-    const r2 = currentUser.role;
-    if (r2 !== "owner" && r2 !== "super") return;
+    if (!currentUser) return;
     const SB2 = "https://dpftlrsuqxqqeouwbfjd.supabase.co";
     const KEY2 = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwZnRscnN1cXhxcWVvdXdiZmpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5MDU4MjQsImV4cCI6MjA4NzQ4MTgyNH0.iydEkjtPjZ0jXpUUPJben4IWWneDqLomv-HDlcFayE4";
     const H2 = { apikey:KEY2, Authorization:"Bearer "+KEY2, Prefer:"count=exact" };
