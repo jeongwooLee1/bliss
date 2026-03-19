@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.291";
+const BLISS_V = "2.69.292";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -1073,7 +1073,7 @@ function App() {
     { id:"stats", label:"매출통계", icon:<I name="chart" size={16}/> },
     { id:"customers", label:"고객관리", icon:<I name="users" size={16}/> },
     ...(isMaster?[{ id:"users", label:"사용자관리", icon:<I name="user" size={16}/> }]:[]),
-    ...(isMaster?[{ id:"messages", label:"받은메시지함", icon:<I name="messageSquare" size={16}/>, badge:unreadMsgCount }]:[]),
+    ...(isMaster?[{ id:"messages", label:"받은메시지함", icon:<I name="msgSq" size={16}/>, badge:unreadMsgCount }]:[]),
     { id:"admin", label:"관리설정", icon:<I name="settings" size={16}/> },
   ];
 
@@ -1817,7 +1817,7 @@ function MobileBottomNav({ nav, page, setPage }) {
   const items = [
     ...(nav.find(n=>n.id==="timeline")    ? [{id:"timeline",   label:"타임라인", icon:"calendar"}]  : []),
     ...(nav.find(n=>n.id==="reservations")? [{id:"reservations",label:"예약목록",  icon:"clipboard"}] : []),
-    ...(nav.find(n=>n.id==="messages")    ? [{id:"messages",   label:"메시지함",  icon:"messageSquare", badge: nav.find(n=>n.id==="messages")?.badge}] : []),
+    ...(nav.find(n=>n.id==="messages")    ? [{id:"messages",   label:"메시지함",  icon:"msgSq", badge: nav.find(n=>n.id==="messages")?.badge}] : []),
     ...(nav.find(n=>n.id==="customers")   ? [{id:"customers",  label:"고객관리",  icon:"users"}]     : []),
     ...(nav.find(n=>n.id==="admin")       ? [{id:"admin",      label:"메뉴",       icon:"settings"}]  : []),
   ];
@@ -8220,10 +8220,10 @@ ${lastMsgs}
   };
 
   return (
-    <div style={{display:"flex",height:"calc(100vh - 120px)",gap:0,background:T.bg,borderRadius:12,overflow:"hidden",border:"1px solid "+T.border}}>
+    <div style={{display:"flex",flexDirection:window.innerWidth<768&&selected?"column":"row",height:"calc(100vh - 120px)",gap:0,background:T.bg,borderRadius:12,overflow:"hidden",border:"1px solid "+T.border}}>
 
       {/* 좌측: 대화 목록 */}
-      <div style={{width:280,borderRight:"1px solid "+T.border,display:"flex",flexDirection:"column",background:T.bgCard,flexShrink:0}}>
+      <div style={{width:window.innerWidth<768?(selected?"0":"100%"):280,borderRight:"1px solid "+T.border,display:"flex",flexDirection:"column",background:T.bgCard,flexShrink:0,overflow:"hidden",transition:"width .2s"}}>
         <div style={{padding:"14px 16px",borderBottom:"1px solid "+T.border,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
           <span style={{fontWeight:T.fw.bolder,fontSize:T.fs.md,color:T.text}}>메시지함</span>
           {totalUnread > 0 && <span style={{background:T.danger,color:"#fff",borderRadius:10,fontSize:11,fontWeight:700,padding:"2px 7px"}}>{totalUnread}</span>}
@@ -8264,12 +8264,13 @@ ${lastMsgs}
       <div style={{flex:1,display:"flex",flexDirection:"column",background:"#f8f9fb"}}>
         {!selected ? (
           <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",color:T.textMuted}}>
-            <I name="messageSquare" size={40}/><div style={{marginTop:12,fontSize:T.fs.sm}}>대화를 선택하세요</div>
+            <I name="msgSq" size={40}/><div style={{marginTop:12,fontSize:T.fs.sm}}>대화를 선택하세요</div>
           </div>
         ) : (
           <>
             {/* 헤더 */}
             <div style={{padding:"12px 16px",borderBottom:"1px solid "+T.border,background:T.bgCard,display:"flex",alignItems:"center",gap:10}}>
+              {window.innerWidth<768&&<button onClick={()=>setSelected(null)} style={{background:"none",border:"none",cursor:"pointer",padding:"4px 8px 4px 0",color:T.primary}}><I name="arrowL" size={20}/></button>}
               <span style={{fontSize:20}}>{CH_ICON[selected.channel]}</span>
               <div style={{flex:1}}>
                 <div style={{fontWeight:T.fw.bolder,fontSize:T.fs.sm,color:T.text}}>{CH_NAME[selected.channel] || selected.channel}</div>
