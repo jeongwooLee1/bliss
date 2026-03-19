@@ -602,21 +602,37 @@ async function submitRequest() {
   btn.innerHTML = '⏳ 저장 중...';
 
   try {
-    // 기존 empReqs 가져오기
-    const existing = await sbGet('empReqs_v1');
+    // 기존 empReqs + 타임스탬프 가져오기
+    const [existing, existingTs] = await Promise.all([
+      sbGet('empReqs_v1'),
+      sbGet('empReqs_ts_v1'),
+    ]);
 
-    // 이번달(다음달) 해당 직원 기존 신청 삭제 후 새로 덮어쓰기
     const monthStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}`;
+
+    // 해당 직원 기존 신청 삭제
     const cleaned = Object.fromEntries(
       Object.entries(existing).filter(([k]) =>
         !(k.startsWith(currentEmp.name + '__') && k.includes('__' + monthStr))
       )
     );
+    const cleanedTs = Object.fromEntries(
+      Object.entries(existingTs).filter(([k]) =>
+        !(k.startsWith(currentEmp.name + '__') && k.includes('__' + monthStr))
+      )
+    );
 
-    // 새 신청 추가
-    sorted.forEach(ds => { cleaned[`${currentEmp.name}__${ds}`] = '휴무(꼭)'; });
+    // 새 신청 추가 (현재 타임스탬프)
+    const now = Date.now();
+    sorted.forEach((ds, i) => {
+      cleaned[`${currentEmp.name}__${ds}`] = '휴무(꼭)';
+      cleanedTs[`${currentEmp.name}__${ds}`] = now + i; // 같은 제출이라도 순서 보장
+    });
 
-    await sbSet('empReqs_v1', cleaned);
+    await Promise.all([
+      sbSet('empReqs_v1', cleaned),
+      sbSet('empReqs_ts_v1', cleanedTs),
+    ]);
 
     // 완료 화면
     document.getElementById('mainScreen').classList.add('hidden');
