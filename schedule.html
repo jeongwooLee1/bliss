@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.19-h";
+const SCH_V = "v2026.03.19-i";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -915,7 +915,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
   });
 
   // [Phase D] 주간 쿼터 채우기 — 순수 주 단위, 월간 총량 개념 없음 (원장 제외)
-  shuffle(employees.filter(e => !isAltPattern(e) && !e.isOwner && !e.isMale && !(e.isFreelancer || empSettings[e.id]?.isFreelancer))).forEach(emp => {
+  shuffle(employees.filter(e => !isAltPattern(e) && !e.isOwner && !(e.isFreelancer || empSettings[e.id]?.isFreelancer))).forEach(emp => {
     const branch = BRANCHES.find(b => b.id === emp.branch);
     const branchEmps = employees.filter(e => (e.branches||[e.branch]).some(b=>(emp.branches||[emp.branch]).includes(b)));
 
