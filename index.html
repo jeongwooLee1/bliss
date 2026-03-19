@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.306";
+const BLISS_V = "2.69.307";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -8252,28 +8252,25 @@ ${lastMsgs}
     if (!selected) return;
     const ch = selected.channel;
     if (ch === "naver") {
-      const NAVER_ACCOUNTS = {
-        "101171979": "TZdZQdfDT3uOTHdgYdpf", "102071377": "87H7GIgaSiOv5mOMjOq5",
-        "101988152": "CPbcU6kSTgaJMNv/7fuW", "101521969": "VuRINHWwThSMXcHMBffT",
-        "101517367": "RjBzV0BQTEG2wR/1uSbL", "101476019": "ljqsQyeMTgeHGM6Th6xg",
-        "102507795": "KMeMdxQfQJ+TGkot8cwc", "101522539": "OqBLqN1ZSoilzeh9rtdm"
-      };
-      const accId = (convo[0] || {}).account_id || "";
-      const auth = NAVER_ACCOUNTS[accId] || "";
-      if (!auth) {
-        // 발송 실패 메시지를 채팅창에 표시
+      // account_id unknown이면 allowedAccountIds 첫번째 or 강남본점
+      let accId = (convo[0] || {}).account_id || "";
+      if (!accId || accId === "unknown") {
+        accId = (allowedAccountIds||[])[0] || "101171979";
+      }
+      // 서버 경유 발송 (CORS 우회)
+      const serverResp = await fetch("https://158.179.174.30.nip.io/send-message", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ account_id: accId, user_id: selected.user_id, text })
+      });
+      if (!serverResp.ok) {
+        const errData = await serverResp.json().catch(() => ({}));
         setMsgs(prev => [...prev, {
           user_id: selected.user_id, channel: ch, direction: "system",
-          message_text: "⚠️ 발송 실패: 해당 지점 네이버톡톡 설정 미완료",
+          message_text: "⚠️ 발송 실패: " + (errData.error || serverResp.status),
           is_read: true, created_at: new Date().toISOString()
         }]);
         return;
       }
-      const resp = await fetch("https://gw.talk.naver.com/chatbot/v1/event", {
-        method: "POST", headers: { "Content-Type": "application/json", Authorization: auth },
-        body: JSON.stringify({ event: "send", user: selected.user_id, textContent: { text } })
-      });
-      if (!resp.ok) { alert("발송 실패: " + resp.status); return; }
     }
     // DB 저장
     await fetch(SB2 + "/rest/v1/naver_messages", {
@@ -9406,4 +9403,3 @@ const _obs=new MutationObserver(()=>{
 });
 _obs.observe(document.body,{childList:true,subtree:true});
 </script></body></html>
-
