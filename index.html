@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.315";
+const BLISS_V = "2.69.316";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -2074,7 +2074,15 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       .catch(()=>{});
     load();
     const t = setInterval(load, 30000);
-    return ()=>clearInterval(t);
+    // Realtime: 새 메시지 INSERT 시 즉시 +1
+    const rt = window._sbClient?.channel("badge_rt")
+      ?.on("postgres_changes",{event:"INSERT",schema:"public",table:"naver_messages"},
+        p=>{ if(p?.new?.direction==="in" && !p?.new?.is_read) setUnreadMsgCount(prev=>prev+1); }
+      )
+      ?.on("postgres_changes",{event:"UPDATE",schema:"public",table:"naver_messages"},
+        p=>{ if(p?.new?.is_read===true && p?.old?.is_read===false) setUnreadMsgCount(prev=>Math.max(0,prev-1)); }
+      )?.subscribe();
+    return ()=>{ clearInterval(t); try{rt?.unsubscribe();}catch(e){} };
   }, [currentUser]);
 
   // 선택 날짜의 지점별 출근자 계산
