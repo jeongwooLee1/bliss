@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.292";
+const BLISS_V = "2.69.293";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7909,6 +7909,15 @@ function AdminInbox({ sb, branches, data, onRead }) {
   const GEMINI_KEY = "AIzaSyAldNhYHtTYYIYJTw22zxIv1ozMI7teiSk";
 
   const CH_ICON = { naver: "🟢", kakao: "🟡", instagram: "🟣", whatsapp: "💚", telegram: "🔵" };
+  const ACCOUNT_BRANCH = {
+    "101171979": "강남본점", "102071377": "왕십리점", "101988152": "천호점",
+    "101521969": "마곡점",   "101517367": "위례점",   "101476019": "용산점",
+    "102507795": "홍대점",   "101522539": "잠실점"
+  };
+  const getBranchName = (msgs) => {
+    const accId = (msgs[0]||{}).account_id || "";
+    return ACCOUNT_BRANCH[accId] || accId || "알 수 없음";
+  };
   const CH_NAME = { naver: "네이버톡톡", kakao: "카카오", instagram: "인스타", whatsapp: "왓츠앱", telegram: "텔레그램" };
 
   const [msgs, setMsgs] = React.useState([]);
@@ -8244,7 +8253,7 @@ ${lastMsgs}
                   transition:"all .1s"}}>
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
                   <span style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder,color:T.text}}>
-                    {CH_ICON[ch]} {m.user_id?.substring(0,8)}...
+                    {CH_ICON[ch]} {ACCOUNT_BRANCH[m.account_id]||"알 수 없음"}
                   </span>
                   <span style={{fontSize:10,color:T.textMuted}}>{fmtTime(m.created_at)}</span>
                 </div>
@@ -8273,8 +8282,8 @@ ${lastMsgs}
               {window.innerWidth<768&&<button onClick={()=>setSelected(null)} style={{background:"none",border:"none",cursor:"pointer",padding:"4px 8px 4px 0",color:T.primary}}><I name="arrowL" size={20}/></button>}
               <span style={{fontSize:20}}>{CH_ICON[selected.channel]}</span>
               <div style={{flex:1}}>
-                <div style={{fontWeight:T.fw.bolder,fontSize:T.fs.sm,color:T.text}}>{CH_NAME[selected.channel] || selected.channel}</div>
-                <div style={{fontSize:T.fs.xs,color:T.textMuted}}>{selected.user_id}</div>
+                <div style={{fontWeight:T.fw.bolder,fontSize:T.fs.sm,color:T.text}}>{getBranchName(convo)} · {CH_NAME[selected.channel]||selected.channel}</div>
+                <div style={{fontSize:T.fs.xs,color:T.textMuted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{selected.user_id}</div>
               </div>
               <button onClick={generateAiDraft} disabled={aiLoading}
                 style={{padding:"5px 12px",background:aiLoading?"#e5e7eb":T.primary,color:"#fff",border:"none",borderRadius:6,fontSize:T.fs.xs,fontWeight:T.fw.bolder,cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>
