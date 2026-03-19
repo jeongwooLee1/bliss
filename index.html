@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.310";
+const BLISS_V = "2.69.311";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -8000,17 +8000,32 @@ function AdminInbox({ sb, branches, data, onRead, userBranches=[], isMaster=fals
   // 이름 가져오기
   const getDisplayName = (m) => {
     if(!m) return "고객";
-    if(names[m.user_id]) return names[m.user_id];
-    if(m.user_name) return m.user_name;
-    // 대화에서 이름 패턴 추출
     const uid = m.user_id;
+    // 1순위: names 캐시
+    if(names[uid]) return names[uid];
+    // 2순위: user_name 필드
+    const withName = msgs.find(x=>x.user_id===uid&&x.user_name);
+    if(withName) return withName.user_name;
+    // 3순위: 메시지에서 이름+번호 패턴 추출
     const convMsgs = msgs.filter(x=>x.user_id===uid&&x.direction==="in");
     for(const cm of convMsgs){
-      const match=(cm.message_text||"").match(/([가-힣]{2,4})\s*0\d{1,2}[-\s]\d{3,4}[-\s]\d{4}/);
-      if(match) return match[1];
+      // "이정우 010-1234-5678" 또는 "이정우입니다" 패턴
+      const m1=(cm.message_text||"").match(/([가-힣]{2,4})\s*(0\d{1,2}[-\s]\d{3,4}[-\s]\d{4})/);
+      if(m1) {
+        const n=m1[1];
+        setNames(prev=>({...prev,[uid]:n}));
+        return n;
+      }
+      const m2=(cm.message_text||"").match(/^([가-힣]{2,4})(입니다|이에요|예요|이요|임다|이야|야)/);
+      if(m2) {
+        const n=m2[1];
+        setNames(prev=>({...prev,[uid]:n}));
+        return n;
+      }
     }
+    // 4순위: 고객N
     const uids=[...new Set(threads.map(t=>t.user_id))];
-    const idx=uids.indexOf(m.user_id);
+    const idx=uids.indexOf(uid);
     return "고객"+(idx>=0?idx+1:"");
   };
 
@@ -8157,7 +8172,7 @@ function AdminInbox({ sb, branches, data, onRead, userBranches=[], isMaster=fals
       </div>
       {/* 채팅창 */}
       <div style={{flex:1,display:sel?"flex":"none",flexDirection:"column",background:"#f8f9fb",
-        ...(isMobile&&sel?{position:"fixed",top:0,left:0,right:0,bottom:"56px",zIndex:500}:{})}}>
+        ...(isMobile&&sel?{position:"fixed",top:"env(safe-area-inset-top, 0px)",left:0,right:0,bottom:"56px",zIndex:500}:{})}}>
         {sel&&<>
           <div style={{padding:"12px 16px",borderBottom:"1px solid "+T.border,background:T.bgCard,display:"flex",alignItems:"center",gap:10}}>
             {isMobile&&<button onClick={()=>setSel(null)} style={{background:"none",border:"none",cursor:"pointer",color:T.primary,padding:"4px 8px 4px 0"}}><I name="arrowL" size={20}/></button>}
