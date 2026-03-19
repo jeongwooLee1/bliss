@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.312";
+const BLISS_V = "2.69.313";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -8177,16 +8177,18 @@ function AdminInbox({ sb, branches, data, onRead, userBranches=[], isMaster=fals
               </div>
               <div style={{fontSize:T.fs.xs,color:T.textMuted}}>{CH_NAME[sel.channel]||sel.channel}</div>
             </div>
-            <button onClick={genAI} disabled={aiLoading}
-              style={{padding:"5px 12px",background:aiLoading?"#e5e7eb":T.primary,color:"#fff",border:"none",borderRadius:6,fontSize:T.fs.xs,fontWeight:T.fw.bolder,cursor:"pointer"}}>
-              {aiLoading?"생성 중...":"✨ AI 초안"}
-            </button>
+            <div style={{display:"flex",gap:6,alignItems:"center"}}>
+              <button onClick={genAI} disabled={aiLoading}
+                style={{padding:"5px 10px",background:aiLoading?"#e5e7eb":T.primary,color:"#fff",border:"none",borderRadius:6,fontSize:T.fs.xs,fontWeight:T.fw.bolder,cursor:"pointer"}}>
+                {aiLoading?"..." :"✨ AI"}
+              </button>
+            </div>
           </div>
           <div style={{flex:1,overflowY:"auto",padding:"16px 20px",display:"flex",flexDirection:"column",gap:10}}>
             {convo.map((m,i)=>{
               const isOut=m.direction==="out";
               const isSys=m.direction==="system";
-              if(isSys) return <div key={i} style={{textAlign:"center"}}><span style={{fontSize:11,color:T.textMuted,background:"#f3f4f6",borderRadius:8,padding:"3px 10px"}}>{m.message_text}</span></div>;
+              if(isSys) return null; // 시스템 메시지 숨김 (__profile_requested__ 등)
               return <div key={i} style={{display:"flex",flexDirection:isOut?"row-reverse":"row",alignItems:"flex-end",gap:8}}>
                 {!isOut&&<div style={{width:28,height:28,borderRadius:14,background:T.primaryHover,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,flexShrink:0}}>{CH_ICON[m.channel||"naver"]}</div>}
                 <div style={{maxWidth:"70%"}}>
@@ -8195,6 +8197,11 @@ function AdminInbox({ sb, branches, data, onRead, userBranches=[], isMaster=fals
                     fontSize:T.fs.sm,lineHeight:1.5,boxShadow:"0 1px 2px rgba(0,0,0,.08)",
                     border:isOut?"none":"1px solid "+T.border,whiteSpace:"pre-wrap",wordBreak:"break-word"}}>
                     {m.message_text}
+                    {m.translated_text && !isOut && (
+                      <div style={{marginTop:5,paddingTop:5,borderTop:"1px solid rgba(0,0,0,0.1)",fontSize:11,color:"rgba(0,0,0,0.55)",lineHeight:1.4}}>
+                        🔤 {m.translated_text}
+                      </div>
+                    )}
                   </div>
                   <div style={{fontSize:10,color:T.textMuted,marginTop:3,textAlign:isOut?"right":"left"}}>{fmtTime(m.created_at)}</div>
                 </div>
