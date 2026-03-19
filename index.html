@@ -7900,11 +7900,14 @@ function AdminNoti({ data, sb, bizId, branches }) {
 // ═══════════════════════════════════════════
 // ADMIN — AI 설정
 // ═══════════════════════════════════════════
+const _INBOX_SB2 = "https://dpftlrsuqxqqeouwbfjd.supabase.co";
+const _INBOX_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwZnRscnN1cXhxcWVvdXdiZmpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5MDU4MjQsImV4cCI6MjA4NzQ4MTgyNH0.iydEkjtPjZ0jXpUUPJben4IWWneDqLomv-HDlcFayE4";
+const _INBOX_H = { apikey: _INBOX_KEY, Authorization: "Bearer " + _INBOX_KEY, "Content-Type": "application/json" };
 function AdminInbox({ sb, branches, data, onRead, userBranches=[], isMaster=false }) {
   const isMobile = window.innerWidth < 768;
-  const SB2 = "https://dpftlrsuqxqqeouwbfjd.supabase.co";
-  const KEY2 = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwZnRscnN1cXhxcWVvdXdiZmpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5MDU4MjQsImV4cCI6MjA4NzQ4MTgyNH0.iydEkjtPjZ0jXpUUPJben4IWWneDqLomv-HDlcFayE4";
-  const SB_H = { apikey: KEY2, Authorization: "Bearer " + KEY2, "Content-Type": "application/json" };
+  const SB2 = _INBOX_SB2;
+  const KEY2 = _INBOX_KEY;
+  const SB_H = _INBOX_H;
 
   const GEMINI_KEY = "AIzaSyAldNhYHtTYYIYJTw22zxIv1ozMI7teiSk";
 
@@ -7922,9 +7925,9 @@ function AdminInbox({ sb, branches, data, onRead, userBranches=[], isMaster=fals
   };
   // 접근 가능한 account_id 목록 (isMaster면 전체, 아니면 userBranches 기준)
   const allowedAccountIds = React.useMemo(() => {
-    if (isMaster) return []; // 빈 배열 = 전체 허용
-    return (userBranches||[]).map(bid => BRANCH_ACCOUNT[bid]).filter(Boolean);
-  }, [isMaster, userBranches]);
+    if (isMaster) return [];
+    return (userBranches||[]).map(bid => (BRANCH_ACCOUNT||{})[bid]).filter(Boolean);
+  }, [isMaster, JSON.stringify(userBranches)]);
   const ACCOUNT_BRANCH = {
     "101171979": "강남본점", "102071377": "왕십리점", "101988152": "천호점",
     "101521969": "마곡점",   "101517367": "위례점",   "101476019": "용산점",
