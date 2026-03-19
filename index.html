@@ -1065,20 +1065,6 @@ function App() {
 
   const isMaster = role === "owner" || role === "super";
   const isSuper = currentUser?.role === "super";
-
-  useEffect(() => {
-    if (!isMaster) return;
-    const SB2 = "https://dpftlrsuqxqqeouwbfjd.supabase.co";
-    const KEY2 = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwZnRscnN1cXhxcWVvdXdiZmpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5MDU4MjQsImV4cCI6MjA4NzQ4MTgyNH0.iydEkjtPjZ0jXpUUPJben4IWWneDqLomv-HDlcFayE4";
-    const H2 = { apikey:KEY2, Authorization:"Bearer "+KEY2, Prefer:"count=exact" };
-    const load = () => fetch(SB2+"/rest/v1/naver_messages?is_read=eq.false&direction=eq.in&select=id",{headers:H2})
-      .then(res=>{const cr=res.headers.get("content-range");setUnreadMsgCount(cr?parseInt(cr.split("/")[1])||0:0);})
-      .catch(()=>{});
-    load();
-    const t = setInterval(load, 30000);
-    return ()=>clearInterval(t);
-  }, [isMaster]);
-
   const nav = [
     { id:"timeline", label:"타임라인", icon:<I name="calendar" size={16}/> },
     { id:"reservations", label:"예약목록", icon:<I name="clipboard" size={16}/> },
@@ -1877,7 +1863,7 @@ function Sidebar({ nav, page, setPage, role, branchNames, onLogout, bizName="", 
               fontFamily:"inherit",width:"100%",textAlign:"left",transition:"all .1s"}}>
               <span style={{width:20,display:"inline-flex",alignItems:"center",justifyContent:"center"}}>{n.icon}</span>
               <span style={{flex:1}}>{n.label}</span>
-              {n.badge > 0 && <span style={{background:T.danger,color:"#fff",borderRadius:10,fontSize:10,fontWeight:700,padding:"1px 6px",minWidth:18,textAlign:"center"}}>{n.badge > 99 ? "99+" : n.badge}</span>}
+              {n.badge>0&&<span style={{background:T.danger,color:"#fff",borderRadius:10,fontSize:10,fontWeight:700,padding:"1px 6px",minWidth:18,textAlign:"center"}}>{n.badge>99?"99+":n.badge}</span>}
             </button>
           ))}
         </div>
@@ -2073,6 +2059,22 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       try { channel?.unsubscribe(); } catch(e) {}
     };
   }, []);
+
+  // 미읽음 메시지 카운트
+  useEffect(() => {
+    if (!currentUser) return;
+    const r2 = currentUser.role;
+    if (r2 !== "owner" && r2 !== "super") return;
+    const SB2 = "https://dpftlrsuqxqqeouwbfjd.supabase.co";
+    const KEY2 = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwZnRscnN1cXhxcWVvdXdiZmpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5MDU4MjQsImV4cCI6MjA4NzQ4MTgyNH0.iydEkjtPjZ0jXpUUPJben4IWWneDqLomv-HDlcFayE4";
+    const H2 = { apikey:KEY2, Authorization:"Bearer "+KEY2, Prefer:"count=exact" };
+    const load = () => fetch(SB2+"/rest/v1/naver_messages?is_read=eq.false&direction=eq.in&select=id",{headers:H2})
+      .then(res=>{const cr=res.headers.get("content-range");setUnreadMsgCount(cr?parseInt(cr.split("/")[1])||0:0);})
+      .catch(()=>{});
+    load();
+    const t = setInterval(load, 30000);
+    return ()=>clearInterval(t);
+  }, [currentUser]);
 
   // 선택 날짜의 지점별 출근자 계산
   // 직원 override 헬퍼: 해당 날짜에 어느 지점에 있는지
