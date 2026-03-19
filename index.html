@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.296";
+const BLISS_V = "2.69.297";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -8299,7 +8299,7 @@ ${lastMsgs}
   top: isMobile && selected ? 0 : "auto",
   left: isMobile && selected ? 0 : "auto",
   right: isMobile && selected ? 0 : "auto",
-  bottom: isMobile && selected ? 0 : "auto",
+  bottom: isMobile && selected ? "56px" : "auto",
   zIndex: isMobile && selected ? 500 : "auto"
 }}>
         {!selected ? (
