@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.19-e";
+const SCH_V = "v2026.03.19-e2";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -1001,7 +1001,7 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
   // 우선순위: ① 같은 branches 그룹 내 다른 지점 직원 (내부 로테이션)
   //           ② supportOrder 지정 외부 지점 직원
   //           ③ 나머지 지점 직원
-  const supportOrder = supportConfig.order || [];
+  const supportOrderRaw = supportConfig.order || {};
 
   for (const _day4 of allDates) {
     const ds = _day4.ds;
@@ -1011,6 +1011,10 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       if (targetBranch.id === "male") continue;
       const supportLabel = `지원(${targetBranch.name})`;
       const minS = rc.branchMinStaff[targetBranch.id] ?? targetBranch.minStaff ?? 1;
+      // 지점별 supportOrder: 객체면 해당 지점 배열, 배열이면 공통 적용
+      const supportOrder = Array.isArray(supportOrderRaw)
+        ? supportOrderRaw
+        : (Array.isArray(supportOrderRaw[targetBranch.id]) ? supportOrderRaw[targetBranch.id] : []);
 
       // 현재 이 지점 근무 인원 계산
       // 대표지점(branch)이 targetBranch인 직원: 근무/전체쉐어면 포함 (타지점 지원 나간 경우 제외)
@@ -2110,7 +2114,7 @@ function App() {
                 if(!empReqs) throw new Error("empReqs undefined");
                 if(!ACTIVE_EMPLOYEES?.length) throw new Error("ACTIVE_EMPLOYEES empty/undefined");
                 if(!ruleConfig) throw new Error("ruleConfig undefined");
-                if(!Array.isArray(supportOrder)) throw new Error("supportOrder not array: "+typeof supportOrder);
+                // supportOrder는 객체({branchId: [...]} 형식) 또는 배열 허용
                 const MAX_RETRY=30; let best=null, bestV=null;
                 for(let i=0;i<MAX_RETRY;i++){
                   const r=autoAssign(
