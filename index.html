@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.295";
+const BLISS_V = "2.69.296";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7902,6 +7902,7 @@ function AdminNoti({ data, sb, bizId, branches }) {
 // ADMIN — AI 설정
 // ═══════════════════════════════════════════
 function AdminInbox({ sb, branches, data, onRead }) {
+  const isMobile = window.innerWidth < 768;
   const SB2 = "https://dpftlrsuqxqqeouwbfjd.supabase.co";
   const KEY2 = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwZnRscnN1cXhxcWVvdXdiZmpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5MDU4MjQsImV4cCI6MjA4NzQ4MTgyNH0.iydEkjtPjZ0jXpUUPJben4IWWneDqLomv-HDlcFayE4";
   const SB_H = { apikey: KEY2, Authorization: "Bearer " + KEY2, "Content-Type": "application/json" };
