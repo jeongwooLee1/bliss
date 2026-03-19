@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.319";
+const BLISS_V = "2.69.320";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -2069,8 +2069,12 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
     const KEY2 = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwZnRscnN1cXhxcWVvdXdiZmpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5MDU4MjQsImV4cCI6MjA4NzQ4MTgyNH0.iydEkjtPjZ0jXpUUPJben4IWWneDqLomv-HDlcFayE4";
     const H2 = { apikey:KEY2, Authorization:"Bearer "+KEY2, Prefer:"count=exact" };
     const load = () => fetch(SB2+"/rest/v1/naver_messages?is_read=eq.false&direction=eq.in&select=id",{headers:H2})
-      .then(res=>{const cr=res.headers.get("content-range");setUnreadMsgCount(cr?parseInt(cr.split("/")[1])||0:0);})
-      .catch(()=>{});
+      .then(res=>{
+        const cr=res.headers.get("content-range")||"";
+        const parts=cr.split("/");
+        const cnt=parts.length>1?parseInt(parts[1].trim(),10):0;
+        setUnreadMsgCount(isNaN(cnt)?0:cnt);
+      }).catch(()=>{});
     load();
     const t = setInterval(load, 30000);
     // Realtime: 새 메시지 INSERT 시 즉시 +1
