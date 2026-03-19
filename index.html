@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.300";
+const BLISS_V = "2.69.301";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -1124,7 +1124,7 @@ function App() {
             {page==="stats" && <StatsPage data={data} userBranches={userBranches} isMaster={isMaster} role={role}/>}
             {page==="customers" && <CustomersPage data={data} setData={setData} userBranches={userBranches} isMaster={isMaster}/>}
             {page==="users" && <UsersPage data={data} setData={setData} bizId={currentBizId}/>}
-            {page==="messages" && <AdminInbox sb={sb} branches={data?.branches} data={data} onRead={()=>setUnreadMsgCount(0)}/>}
+            {page==="messages" && <AdminInbox sb={sb} branches={data?.branches} data={data} userBranches={userBranches} isMaster={isMaster} onRead={()=>setUnreadMsgCount(0)}/>}
             {page==="admin" && <AdminPage data={data} setData={setData} bizId={currentBizId} serverV={serverV} onLogout={handleLogout} currentUser={currentUser}/>}
           </div>
         </div>
@@ -7900,7 +7900,7 @@ function AdminNoti({ data, sb, bizId, branches }) {
 // ═══════════════════════════════════════════
 // ADMIN — AI 설정
 // ═══════════════════════════════════════════
-function AdminInbox({ sb, branches, data, onRead }) {
+function AdminInbox({ sb, branches, data, onRead, userBranches=[], isMaster=false }) {
   const isMobile = window.innerWidth < 768;
   const SB2 = "https://dpftlrsuqxqqeouwbfjd.supabase.co";
   const KEY2 = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwZnRscnN1cXhxcWVvdXdiZmpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5MDU4MjQsImV4cCI6MjA4NzQ4MTgyNH0.iydEkjtPjZ0jXpUUPJben4IWWneDqLomv-HDlcFayE4";
@@ -7909,6 +7909,21 @@ function AdminInbox({ sb, branches, data, onRead }) {
   const GEMINI_KEY = "AIzaSyAldNhYHtTYYIYJTw22zxIv1ozMI7teiSk";
 
   const CH_ICON = { naver: "🟢", kakao: "🟡", instagram: "🟣", whatsapp: "💚", telegram: "🔵" };
+  // branch_id → account_id 매핑
+  const BRANCH_ACCOUNT = {
+    "br_4bcauqvrb": "101171979",  // 강남본점
+    "br_wkqsxj6k1": "102071377",  // 왕십리점
+    "br_l6yzs2pkq": "102507795",  // 홍대점
+    "br_k57zpkbx1": "101521969",  // 마곡점
+    "br_lfv2wgdf1": "101522539",  // 잠실점
+    "br_ybo3rmuqx": "101988152",  // 천호점
+    "br_u5xk9p2m1": "101476019",  // 용산점
+    "br_m3nwire11": "101517367",  // 위례점
+  };
+  // 접근 가능한 account_id 목록 (isMaster면 전체, 아니면 userBranches 기준)
+  const allowedAccountIds = isMaster
+    ? Object.values(ACCOUNT_BRANCH)
+    : (userBranches||[]).map(bid => BRANCH_ACCOUNT[bid]).filter(Boolean);
   const ACCOUNT_BRANCH = {
     "101171979": "강남본점", "102071377": "왕십리점", "101988152": "천호점",
     "101521969": "마곡점",   "101517367": "위례점",   "101476019": "용산점",
@@ -7980,11 +7995,14 @@ function AdminInbox({ sb, branches, data, onRead }) {
   const threads = React.useMemo(() => {
     const map = {};
     msgs.forEach(m => {
+      // 권한 없는 지점 메시지 제외 (allowedAccountIds 비어있으면 전체 허용)
+      if (allowedAccountIds.length > 0 && m.account_id && m.account_id !== "unknown" &&
+          !allowedAccountIds.includes(m.account_id)) return;
       const key = (m.channel || "naver") + "_" + m.user_id;
       if (!map[key] || new Date(m.created_at) > new Date(map[key].created_at)) map[key] = m;
     });
     return Object.values(map).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-  }, [msgs]);
+  }, [msgs, allowedAccountIds]);
 
   // 현재 선택된 대화
   const convo = React.useMemo(() => {
