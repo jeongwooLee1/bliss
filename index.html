@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.287";
+const BLISS_V = "2.69.288";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -1124,7 +1124,7 @@ function App() {
             {page==="stats" && <StatsPage data={data} userBranches={userBranches} isMaster={isMaster} role={role}/>}
             {page==="customers" && <CustomersPage data={data} setData={setData} userBranches={userBranches} isMaster={isMaster}/>}
             {page==="users" && <UsersPage data={data} setData={setData} bizId={currentBizId}/>}
-            {page==="messages" && isMaster && <AdminInbox sb={sb} branches={data?.branches} onRead={()=>setUnreadMsgCount(0)}/>}
+            {page==="messages" && isMaster && <AdminInbox sb={sb} branches={data?.branches} data={data} onRead={()=>setUnreadMsgCount(0)}/>}
             {page==="admin" && <AdminPage data={data} setData={setData} bizId={currentBizId} serverV={serverV} onLogout={handleLogout} currentUser={currentUser}/>}
           </div>
         </div>
@@ -7900,184 +7900,337 @@ function AdminNoti({ data, sb, bizId, branches }) {
 // ═══════════════════════════════════════════
 // ADMIN — AI 설정
 // ═══════════════════════════════════════════
-function AdminInbox({ sb, branches }) {
-  const SB_URL = "https://dpftlrsuqxqqeouwbfjd.supabase.co";
-  const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwZnRscnN1cXhxcWVvdXdiZmpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5MDU4MjQsImV4cCI6MjA4NzQ4MTgyNH0.iydEkjtPjZ0jXpUUPJben4IWWneDqLomv-HDlcFayE4";
-  const hdrs = { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY, "Content-Type": "application/json" };
+function AdminInbox({ sb, branches, data, onRead }) {
+  const SB2 = "https://dpftlrsuqxqqeouwbfjd.supabase.co";
+  const KEY2 = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwZnRscnN1cXhxcWVvdXdiZmpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5MDU4MjQsImV4cCI6MjA4NzQ4MTgyNH0.iydEkjtPjZ0jXpUUPJben4IWWneDqLomv-HDlcFayE4";
+  const SB_H = { apikey: KEY2, Authorization: "Bearer " + KEY2, "Content-Type": "application/json" };
+
+  const GEMINI_KEY = "AIzaSyAldNhYHtTYYIYJTw22zxIv1ozMI7teiSk";
+
+  const CH_ICON = { naver: "🟢", kakao: "🟡", instagram: "🟣", whatsapp: "💚", telegram: "🔵" };
+  const CH_NAME = { naver: "네이버톡톡", kakao: "카카오", instagram: "인스타", whatsapp: "왓츠앱", telegram: "텔레그램" };
 
   const [msgs, setMsgs] = React.useState([]);
-  const [selected, setSelected] = React.useState(null);
+  const [selected, setSelected] = React.useState(null); // {user_id, channel}
   const [replyText, setReplyText] = React.useState("");
   const [sending, setSending] = React.useState(false);
   const [loading, setLoading] = React.useState(true);
+  const [aiLoading, setAiLoading] = React.useState(false);
+  const [aiDraft, setAiDraft] = React.useState("");
+  const [translating, setTranslating] = React.useState(false);
+  const [autoReply, setAutoReply] = React.useState(true);
+  const convoEndRef = React.useRef(null);
 
+  // 메시지 로드
   const loadMsgs = React.useCallback(async () => {
     setLoading(true);
     try {
-      const r = await fetch(SB_URL + "/rest/v1/naver_messages?order=created_at.desc&limit=200&select=*",
-        { headers: hdrs });
-      const data = await r.json();
-      setMsgs(Array.isArray(data) ? data : []);
-    } catch(e) { console.error(e); }
-    finally { setLoading(false); }
+      const r = await fetch(SB2 + "/rest/v1/naver_messages?order=created_at.desc&limit=300&select=*", { headers: SB_H });
+      const d = await r.json();
+      setMsgs(Array.isArray(d) ? d : []);
+    } catch(e) {} finally { setLoading(false); }
   }, []);
 
-  React.useEffect(() => { loadMsgs(); }, [loadMsgs]);
+  React.useEffect(() => { loadMsgs(); const t = setInterval(loadMsgs, 15000); return () => clearInterval(t); }, [loadMsgs]);
 
+  // 스크롤 하단 유지
+  React.useEffect(() => { convoEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs, selected]);
+
+  // 대화 스레드 목록 (user_id + channel 기준)
   const threads = React.useMemo(() => {
     const map = {};
     msgs.forEach(m => {
-      if (!map[m.user_id] || new Date(m.created_at) > new Date(map[m.user_id].created_at))
-        map[m.user_id] = m;
+      const key = (m.channel || "naver") + "_" + m.user_id;
+      if (!map[key] || new Date(m.created_at) > new Date(map[key].created_at)) map[key] = m;
     });
-    return Object.values(map).sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+    return Object.values(map).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
   }, [msgs]);
 
-  const convo = React.useMemo(() =>
-    selected ? msgs.filter(m => m.user_id === selected).sort((a,b) => new Date(a.created_at) - new Date(b.created_at)) : []
-  , [msgs, selected]);
+  // 현재 선택된 대화
+  const convo = React.useMemo(() => {
+    if (!selected) return [];
+    return msgs.filter(m => m.user_id === selected.user_id && (m.channel || "naver") === selected.channel)
+      .sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+  }, [msgs, selected]);
 
-  const unread = (uid) => msgs.filter(m => m.user_id === uid && !m.is_read && m.direction === "in").length;
+  const unreadCount = (userId, ch) => msgs.filter(m => m.user_id === userId && (m.channel||"naver") === ch && !m.is_read && m.direction === "in").length;
   const totalUnread = msgs.filter(m => !m.is_read && m.direction === "in").length;
 
-  const markRead = async (uid) => {
-    await fetch(SB_URL + "/rest/v1/naver_messages?user_id=eq." + uid + "&is_read=eq.false",
-      { method: "PATCH", headers: Object.assign({}, hdrs, { Prefer: "return=minimal" }), body: JSON.stringify({ is_read: true }) });
-    setMsgs(prev => prev.map(m => m.user_id === uid ? Object.assign({}, m, { is_read: true }) : m));
+  // 읽음 처리
+  const markRead = async (userId, ch) => {
+    await fetch(SB2 + `/rest/v1/naver_messages?user_id=eq.${userId}&is_read=eq.false`,
+      { method: "PATCH", headers: { ...SB_H, Prefer: "return=minimal" }, body: JSON.stringify({ is_read: true }) });
+    setMsgs(prev => prev.map(m => m.user_id === userId ? { ...m, is_read: true } : m));
+    if (onRead) onRead();
   };
 
-  const sendReply = async () => {
+  const selectThread = (m) => {
+    const ch = m.channel || "naver";
+    setSelected({ user_id: m.user_id, channel: ch });
+    setAiDraft("");
+    markRead(m.user_id, ch);
+  };
+
+  // ── AI 기능 ──────────────────────────────────────────
+  const getAiContext = () => {
+    const settings = (() => { try { return JSON.parse((data?.businesses||[])[0]?.settings||"{}"); } catch { return {}; } })();
+    const ctx = settings.ai_context || {};
+    const services = (data?.services||[]).map(s => `${s.name}: 여성 ${s.price_f?.toLocaleString()}원, 남성 ${s.price_m?.toLocaleString()}원, ${s.dur}분`).join("\n");
+    const branchList = (data?.branches||[]).map(b => `${b.name}: ${b.address} (${b.phone})`).join("\n");
+    return { ctx, services, branchList };
+  };
+
+  // 언어 감지 + 번역
+  const translateMsg = async (text, targetLang = "ko") => {
+    setTranslating(true);
+    try {
+      const { ctx } = getAiContext();
+      const prompt = `다음 텍스트를 ${targetLang === "ko" ? "자연스러운 한국어" : "자연스러운 " + targetLang}로 번역해줘. 직역 말고 맥락에 맞게 자연스럽게. 번역문만 출력해.\n\n"${text}"`;
+      const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + GEMINI_KEY, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+      });
+      const d = await res.json();
+      return d.candidates?.[0]?.content?.parts?.[0]?.text || text;
+    } catch { return text; } finally { setTranslating(false); }
+  };
+
+  // AI 답변 초안 생성
+  const generateAiDraft = async () => {
+    if (!selected || convo.length === 0) return;
+    setAiLoading(true);
+    try {
+      const { ctx, services, branchList } = getAiContext();
+      const lastMsgs = convo.slice(-5).map(m => `${m.direction === "in" ? "고객" : "직원"}: ${m.message_text}`).join("\n");
+      const faqText = (ctx.faq || []).map(f => `Q: ${f.q}\nA: ${f.a}`).join("\n\n");
+
+      const prompt = `당신은 하우스왁싱의 친절한 상담 직원입니다.
+
+[브랜드 정보]
+${ctx.description || "하우스왁싱 - 왁싱 전문 직영 살롱"}
+
+[지점 정보]
+${branchList}
+
+[시술 메뉴 및 가격]
+${services}
+
+[자주 묻는 질문]
+${faqText}
+
+[대화 내용]
+${lastMsgs}
+
+위 대화에서 고객의 마지막 메시지에 대해 답변해줘.
+- 친절하고 자연스러운 한국어로
+- 간결하게 (2-3문장)
+- 예약 유도 포함 (필요한 경우)
+- 답변 텍스트만 출력 (설명 없이)`;
+
+      const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + GEMINI_KEY, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+      });
+      const d = await res.json();
+      const draft = d.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      setAiDraft(draft);
+      setReplyText(draft);
+    } catch(e) { console.error(e); } finally { setAiLoading(false); }
+  };
+
+  // 번역 후 발송
+  const sendTranslated = async () => {
     if (!replyText.trim() || !selected) return;
     setSending(true);
     try {
-      const accId = (msgs.find(m => m.user_id === selected) || {}).account_id || "";
-      // branches noti_config에서 해당 지점 네이버톡톡 auth 토큰 동적 로드
-      var naverAuth = "";
-      if (branches && branches.length) {
-        for (var bi = 0; bi < branches.length; bi++) {
-          try {
-            var nc = JSON.parse(branches[bi].noti_config || "{}");
-            if (nc.naver_account_id && nc.naver_account_id === accId) {
-              naverAuth = nc.naver_auth || "";
-              break;
-            }
-          } catch(e) {}
-        }
-      }
-      if (!naverAuth) { alert("해당 지점의 네이버톡톡 설정이 없습니다. 관리자에게 문의하세요."); setSending(false); return; }
-      const payload = { event: "send", user: selected, textContent: { text: replyText.trim() } };
-      const resp = await fetch("https://gw.talk.naver.com/chatbot/v1/event", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: naverAuth },
-        body: JSON.stringify(payload)
-      });
-      if (resp.ok) {
-        await fetch(SB_URL + "/rest/v1/naver_messages", {
-          method: "POST",
-          headers: Object.assign({}, hdrs, { Prefer: "return=minimal" }),
-          body: JSON.stringify({ account_id: accId, user_id: selected, event_type: "send",
-            message_type: "text", message_text: replyText.trim(), direction: "out", is_read: true })
-        });
-        setReplyText("");
-        await loadMsgs();
-      } else {
-        alert("전송 실패: " + (await resp.text()));
-      }
-    } catch(e) { alert("오류: " + e.message); }
-    finally { setSending(false); }
+      const lastInMsg = [...convo].reverse().find(m => m.direction === "in");
+      const targetLang = lastInMsg ? await detectLang(lastInMsg.message_text) : "ko";
+      const translated = targetLang === "ko" ? replyText : await translateMsg(replyText, targetLang);
+      await sendMsg(translated);
+    } finally { setSending(false); }
   };
 
-  const fmt = (iso) => {
-    if (!iso) return "";
-    const d = new Date(iso), now = new Date(), diff = now - d;
+  const detectLang = async (text) => {
+    try {
+      const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + GEMINI_KEY, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contents: [{ parts: [{ text: `다음 텍스트의 언어 코드만 출력해 (예: ko, en, ja, zh, es 등): "${text}"` }] }] })
+      });
+      const d = await res.json();
+      return (d.candidates?.[0]?.content?.parts?.[0]?.text || "ko").trim().toLowerCase().substring(0, 2);
+    } catch { return "ko"; }
+  };
+
+  // 메시지 발송
+  const sendMsg = async (text) => {
+    if (!selected) return;
+    const ch = selected.channel;
+    if (ch === "naver") {
+      const NAVER_ACCOUNTS = {
+        "101171979": "TZdZQdfDT3uOTHdgYdpf", "102071377": "87H7GIgaSiOv5mOMjOq5",
+        "101988152": "CPbcU6kSTgaJMNv/7fuW", "101521969": "VuRINHWwThSMXcHMBffT",
+        "101517367": "RjBzV0BQTEG2wR/1uSbL", "101476019": "ljqsQyeMTgeHGM6Th6xg",
+        "102507795": "KMeMdxQfQJ+TGkot8cwc", "101522539": "OqBLqN1ZSoilzeh9rtdm"
+      };
+      const accId = (convo[0] || {}).account_id || "";
+      const auth = NAVER_ACCOUNTS[accId] || "";
+      if (!auth) { alert("해당 지점 네이버톡톡 설정이 없습니다."); return; }
+      const resp = await fetch("https://gw.talk.naver.com/chatbot/v1/event", {
+        method: "POST", headers: { "Content-Type": "application/json", Authorization: auth },
+        body: JSON.stringify({ event: "send", user: selected.user_id, textContent: { text } })
+      });
+      if (!resp.ok) { alert("발송 실패: " + resp.status); return; }
+    }
+    // DB 저장
+    await fetch(SB2 + "/rest/v1/naver_messages", {
+      method: "POST", headers: { ...SB_H, Prefer: "return=minimal" },
+      body: JSON.stringify({ account_id: (convo[0]||{}).account_id, user_id: selected.user_id,
+        channel: ch, event_type: "send", message_type: "text",
+        message_text: text, direction: "out", is_read: true })
+    });
+    setMsgs(prev => [...prev, { user_id: selected.user_id, channel: ch, direction: "out",
+      message_text: text, is_read: true, created_at: new Date().toISOString() }]);
+    setReplyText(""); setAiDraft("");
+  };
+
+  const handleSend = async () => {
+    if (!replyText.trim() || !selected || sending) return;
+    setSending(true);
+    try { await sendMsg(replyText.trim()); } finally { setSending(false); }
+  };
+
+  // 시간 포맷
+  const fmtTime = (ts) => {
+    const d = new Date(ts);
+    const now = new Date();
+    const diff = now - d;
     if (diff < 60000) return "방금";
-    if (diff < 3600000) return Math.floor(diff/60000) + "분전";
+    if (diff < 3600000) return Math.floor(diff/60000) + "분 전";
     if (diff < 86400000) return d.getHours() + ":" + String(d.getMinutes()).padStart(2,"0");
     return (d.getMonth()+1) + "/" + d.getDate();
   };
 
   return (
-    <div style={{display:"flex",height:"calc(100vh - 140px)",gap:10,minHeight:400}}>
-      <div style={{width:210,flexShrink:0,display:"flex",flexDirection:"column",gap:6}}>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",paddingBottom:6,borderBottom:"1px solid "+T.border}}>
-          <span style={{fontWeight:T.fw.black,fontSize:T.fs.md,color:T.text}}>
-            {"받은메시지함"}
-            {totalUnread > 0 && <span style={{marginLeft:6,background:T.danger,color:"#fff",borderRadius:10,fontSize:11,padding:"1px 6px"}}>{totalUnread}</span>}
-          </span>
-          <button onClick={loadMsgs} style={{background:"none",border:"none",cursor:"pointer",color:T.primary,fontSize:12}}>↻</button>
+    <div style={{display:"flex",height:"calc(100vh - 80px)",gap:0,background:T.bg,borderRadius:12,overflow:"hidden",border:"1px solid "+T.border}}>
+
+      {/* 좌측: 대화 목록 */}
+      <div style={{width:280,borderRight:"1px solid "+T.border,display:"flex",flexDirection:"column",background:T.bgCard,flexShrink:0}}>
+        <div style={{padding:"14px 16px",borderBottom:"1px solid "+T.border,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <span style={{fontWeight:T.fw.bolder,fontSize:T.fs.md,color:T.text}}>메시지함</span>
+          {totalUnread > 0 && <span style={{background:T.danger,color:"#fff",borderRadius:10,fontSize:11,fontWeight:700,padding:"2px 7px"}}>{totalUnread}</span>}
         </div>
-        <div style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column",gap:3}}>
-          {loading && <div style={{color:T.textMuted,textAlign:"center",padding:20,fontSize:T.fs.sm}}>로딩중...</div>}
-          {!loading && threads.length === 0 && <div style={{color:T.textMuted,textAlign:"center",padding:20,fontSize:T.fs.sm}}>메시지 없음</div>}
-          {threads.map(function(m) {
-            var uc = unread(m.user_id);
-            var isActive = selected === m.user_id;
+        <div style={{flex:1,overflowY:"auto"}}>
+          {loading ? <div style={{padding:20,color:T.textMuted,fontSize:T.fs.sm,textAlign:"center"}}>로딩 중...</div>
+          : threads.length === 0 ? <div style={{padding:20,color:T.textMuted,fontSize:T.fs.sm,textAlign:"center"}}>메시지 없음</div>
+          : threads.map(m => {
+            const ch = m.channel || "naver";
+            const key = ch + "_" + m.user_id;
+            const isSelected = selected?.user_id === m.user_id && selected?.channel === ch;
+            const uc = unreadCount(m.user_id, ch);
             return (
-              <div key={m.user_id} onClick={function(){ setSelected(m.user_id); markRead(m.user_id); }}
-                style={{padding:"7px 9px",borderRadius:8,cursor:"pointer",
-                  background:isActive ? T.primary+"18" : "#fff",
-                  border:"1px solid "+(isActive ? T.primary : T.border),
-                  borderLeft:uc>0 ? "3px solid "+T.primary : "1px solid "+(isActive?T.primary:T.border)}}>
-                <div style={{display:"flex",justifyContent:"space-between",marginBottom:2}}>
-                  <span style={{fontSize:T.fs.sm,fontWeight:uc>0?T.fw.bolder:T.fw.normal,color:T.text,
-                    maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                    {(m.user_id||"").slice(0,14)}
+              <div key={key} onClick={() => selectThread(m)}
+                style={{padding:"12px 16px",cursor:"pointer",borderBottom:"1px solid "+T.border,
+                  background: isSelected ? T.primaryHover : "transparent",
+                  borderLeft: isSelected ? "3px solid "+T.primary : "3px solid transparent",
+                  transition:"all .1s"}}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
+                  <span style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder,color:T.text}}>
+                    {CH_ICON[ch]} {m.user_id?.substring(0,8)}...
                   </span>
-                  <span style={{fontSize:10,color:T.textMuted}}>{fmt(m.created_at)}</span>
+                  <span style={{fontSize:10,color:T.textMuted}}>{fmtTime(m.created_at)}</span>
                 </div>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                  <span style={{fontSize:11,color:T.textMuted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:140}}>
-                    {m.direction==="out"?"↑ ":""}{(m.message_text||"").slice(0,28)}
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                  <span style={{fontSize:T.fs.xs,color:T.textSub,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:160}}>
+                    {m.message_text}
                   </span>
-                  {uc>0 && <span style={{background:T.danger,color:"#fff",borderRadius:10,fontSize:10,padding:"1px 5px",flexShrink:0}}>{uc}</span>}
+                  {uc > 0 && <span style={{background:T.danger,color:"#fff",borderRadius:8,fontSize:10,fontWeight:700,padding:"1px 5px",flexShrink:0}}>{uc}</span>}
                 </div>
               </div>
             );
           })}
         </div>
       </div>
-      <div style={{flex:1,display:"flex",flexDirection:"column",background:"#fff",borderRadius:10,border:"1px solid "+T.border,overflow:"hidden"}}>
+
+      {/* 우측: 채팅창 */}
+      <div style={{flex:1,display:"flex",flexDirection:"column",background:"#f8f9fb"}}>
         {!selected ? (
-          <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:8,color:T.textMuted}}>
-            <div style={{fontSize:36}}>{"💬"}</div>
-            <div style={{fontSize:T.fs.sm}}>대화를 선택하세요</div>
+          <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",color:T.textMuted}}>
+            <I name="messageSquare" size={40}/><div style={{marginTop:12,fontSize:T.fs.sm}}>대화를 선택하세요</div>
           </div>
         ) : (
-          <React.Fragment>
-            <div style={{padding:"9px 14px",borderBottom:"1px solid "+T.border,display:"flex",alignItems:"center",gap:8}}>
-              <div style={{fontWeight:T.fw.bolder,fontSize:T.fs.sm,color:T.text,flex:1}}>{(selected||"").slice(0,18)}</div>
-              <button onClick={function(){ setSelected(null); }} style={{background:"none",border:"none",cursor:"pointer",color:T.textMuted,fontSize:16}}>{"✕"}</button>
+          <>
+            {/* 헤더 */}
+            <div style={{padding:"12px 16px",borderBottom:"1px solid "+T.border,background:T.bgCard,display:"flex",alignItems:"center",gap:10}}>
+              <span style={{fontSize:20}}>{CH_ICON[selected.channel]}</span>
+              <div style={{flex:1}}>
+                <div style={{fontWeight:T.fw.bolder,fontSize:T.fs.sm,color:T.text}}>{CH_NAME[selected.channel] || selected.channel}</div>
+                <div style={{fontSize:T.fs.xs,color:T.textMuted}}>{selected.user_id}</div>
+              </div>
+              <button onClick={generateAiDraft} disabled={aiLoading}
+                style={{padding:"5px 12px",background:aiLoading?"#e5e7eb":T.primary,color:"#fff",border:"none",borderRadius:6,fontSize:T.fs.xs,fontWeight:T.fw.bolder,cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>
+                {aiLoading ? "AI 생성 중..." : "✨ AI 초안"}
+              </button>
             </div>
-            <div style={{flex:1,overflowY:"auto",padding:"10px 14px",display:"flex",flexDirection:"column",gap:7}}>
-              {convo.map(function(m, idx) {
-                var isOut = m.direction === "out";
+
+            {/* 메시지 영역 */}
+            <div style={{flex:1,overflowY:"auto",padding:"16px 20px",display:"flex",flexDirection:"column",gap:10}}>
+              {convo.map((m, i) => {
+                const isOut = m.direction === "out";
                 return (
-                  <div key={m.id||idx} style={{display:"flex",justifyContent:isOut?"flex-end":"flex-start"}}>
-                    <div style={{maxWidth:"72%",padding:"7px 11px",
-                      borderRadius:isOut?"12px 12px 2px 12px":"12px 12px 12px 2px",
-                      background:isOut?T.primary:T.bg,color:isOut?"#fff":T.text,fontSize:T.fs.sm}}>
-                      <div>{m.message_text}</div>
-                      <div style={{fontSize:10,opacity:.6,marginTop:2,textAlign:isOut?"right":"left"}}>{fmt(m.created_at)}</div>
+                  <div key={i} style={{display:"flex",flexDirection:isOut?"row-reverse":"row",alignItems:"flex-end",gap:8}}>
+                    {!isOut && <div style={{width:28,height:28,borderRadius:14,background:T.primaryHover,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,flexShrink:0}}>{CH_ICON[m.channel||"naver"]}</div>}
+                    <div style={{maxWidth:"70%"}}>
+                      <div style={{padding:"10px 14px",borderRadius:isOut?"16px 16px 4px 16px":"16px 16px 16px 4px",
+                        background:isOut?T.primary:"#fff",color:isOut?"#fff":T.text,
+                        fontSize:T.fs.sm,lineHeight:1.5,boxShadow:"0 1px 2px rgba(0,0,0,0.08)",
+                        border:isOut?"none":"1px solid "+T.border,whiteSpace:"pre-wrap",wordBreak:"break-word"}}>
+                        {m.message_text}
+                        {m.translated_text && <div style={{marginTop:6,paddingTop:6,borderTop:"1px solid rgba(0,0,0,0.1)",fontSize:11,opacity:.8}}>🔤 {m.translated_text}</div>}
+                      </div>
+                      <div style={{fontSize:10,color:T.textMuted,marginTop:3,textAlign:isOut?"right":"left"}}>{fmtTime(m.created_at)}</div>
                     </div>
                   </div>
                 );
               })}
+              <div ref={convoEndRef}/>
             </div>
-            <div style={{padding:"8px 10px",borderTop:"1px solid "+T.border,display:"flex",gap:7,alignItems:"flex-end"}}>
-              <textarea value={replyText} onChange={function(e){ setReplyText(e.target.value); }}
-                onKeyDown={function(e){ if(e.key==="Enter"&&!e.shiftKey){ e.preventDefault(); sendReply(); } }}
-                placeholder={"메시지 입력... (Enter 전송)"}
-                style={{flex:1,resize:"none",border:"1px solid "+T.border,borderRadius:8,padding:"7px 9px",
-                  fontSize:T.fs.sm,fontFamily:"inherit",minHeight:38,maxHeight:90,outline:"none"}}
-                rows={2}/>
-              <button onClick={sendReply} disabled={sending||!replyText.trim()}
-                style={{padding:"7px 14px",background:T.primary,color:"#fff",border:"none",borderRadius:8,
-                  cursor:sending||!replyText.trim()?"not-allowed":"pointer",
-                  opacity:sending||!replyText.trim()?.5:1,fontSize:T.fs.sm,fontWeight:T.fw.bolder,whiteSpace:"nowrap"}}>
-                {sending?"전송중":"전송"}
-              </button>
+
+            {/* AI 초안 미리보기 */}
+            {aiDraft && aiDraft !== replyText && (
+              <div style={{margin:"0 16px 8px",padding:"10px 14px",background:"#f0f4ff",borderRadius:8,border:"1px solid #c7d2fe",fontSize:T.fs.xs,color:"#4338ca"}}>
+                <div style={{fontWeight:T.fw.bolder,marginBottom:4}}>✨ AI 초안</div>
+                <div style={{lineHeight:1.5}}>{aiDraft}</div>
+                <button onClick={() => setReplyText(aiDraft)}
+                  style={{marginTop:6,padding:"3px 10px",background:"#4338ca",color:"#fff",border:"none",borderRadius:4,fontSize:11,cursor:"pointer"}}>
+                  사용하기
+                </button>
+              </div>
+            )}
+
+            {/* 입력창 */}
+            <div style={{padding:"12px 16px",borderTop:"1px solid "+T.border,background:T.bgCard}}>
+              <div style={{display:"flex",gap:8,marginBottom:8}}>
+                <button onClick={generateAiDraft} disabled={aiLoading}
+                  style={{padding:"4px 10px",background:"#f0f4ff",color:"#4338ca",border:"1px solid #c7d2fe",borderRadius:6,fontSize:11,cursor:"pointer",fontWeight:600}}>
+                  {aiLoading ? "⏳" : "✨ AI"}
+                </button>
+                <button onClick={sendTranslated} disabled={sending||translating}
+                  style={{padding:"4px 10px",background:"#f0fdf4",color:"#166534",border:"1px solid #bbf7d0",borderRadius:6,fontSize:11,cursor:"pointer",fontWeight:600}}>
+                  {translating ? "번역 중..." : "🌐 번역발송"}
+                </button>
+              </div>
+              <div style={{display:"flex",gap:8}}>
+                <textarea value={replyText} onChange={e=>setReplyText(e.target.value)}
+                  onKeyDown={e=>{ if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();handleSend();} }}
+                  placeholder="메시지 입력... (Enter 발송, Shift+Enter 줄바꿈)"
+                  style={{flex:1,padding:"10px 14px",border:"1px solid "+T.border,borderRadius:8,fontSize:T.fs.sm,resize:"none",height:72,fontFamily:"inherit",outline:"none",background:"#fff"}}/>
+                <button onClick={handleSend} disabled={sending||!replyText.trim()}
+                  style={{padding:"0 20px",background:replyText.trim()?T.primary:"#e5e7eb",color:replyText.trim()?"#fff":"#9ca3af",border:"none",borderRadius:8,fontWeight:T.fw.bolder,cursor:replyText.trim()?"pointer":"default",fontSize:T.fs.sm,transition:"all .1s"}}>
+                  {sending?"..." : "발송"}
+                </button>
+              </div>
             </div>
-          </React.Fragment>
+          </>
         )}
       </div>
     </div>
@@ -9019,5 +9172,4 @@ const _obs=new MutationObserver(()=>{
 });
 _obs.observe(document.body,{childList:true,subtree:true});
 </script></body></html>
-
 
