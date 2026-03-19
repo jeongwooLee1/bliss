@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.314";
+const BLISS_V = "2.69.315";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -1134,7 +1134,7 @@ function App() {
         <span style={{fontSize:9,color:serverV?"#03C75A":T.textMuted,opacity:.85,textShadow:"0 0 4px #fff,0 0 4px #fff"}}>서버 {serverV?`v${serverV}`:"…"}</span>
         {scraperStatus && <span style={{fontSize:9,opacity:.85,textShadow:"0 0 4px #fff,0 0 4px #fff",color:scraperStatus.isWarning?"#E65100":T.textMuted,fontWeight:scraperStatus.isWarning?800:400}}>{scraperStatus.isWarning?"⚠️":"✅"}{scraperStatus.lastScraped?(()=>{const h=Math.floor(scraperStatus.scrapedDiffH);const m=Math.floor((scraperStatus.scrapedDiffH%1)*60);return h>0?`${h}h${m>0?` ${m}m`:""} 전`:`${m}m 전`;})():"스크래핑 기록없음"}</span>}
       </div>
-      <MobileBottomNav nav={nav} page={page} setPage={setPage}/>
+      <MobileBottomNav nav={nav} page={page} setPage={setPage} hideNav={page==="messages"}/>
     </div>
   );
 }
@@ -1813,7 +1813,8 @@ function Login({ users, onLogin, onSignup }) {
   );
 }
 
-function MobileBottomNav({ nav, page, setPage }) {
+function MobileBottomNav({ nav, page, setPage, hideNav=false }) {
+  if (hideNav) return null;
   const items = [
     ...(nav.find(n=>n.id==="timeline")    ? [{id:"timeline",   label:"타임라인", icon:"calendar"}]  : []),
     ...(nav.find(n=>n.id==="reservations")? [{id:"reservations",label:"예약목록",  icon:"clipboard"}] : []),
@@ -8223,7 +8224,7 @@ function AdminInbox({ sb, branches, data, onRead, userBranches=[], isMaster=fals
               <textarea value={reply} onChange={e=>setReply(e.target.value)}
                 onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMsg(reply.trim());}}}
                 placeholder="메시지 입력... (Enter 발송, Shift+Enter 줄바꿈)"
-                style={{flex:1,padding:"10px 14px",border:"1px solid "+T.border,borderRadius:8,fontSize:T.fs.sm,resize:"none",height:72,fontFamily:"inherit",outline:"none",background:"#fff"}}/>
+                style={{flex:1,padding:"10px 14px",border:"1px solid "+T.border,borderRadius:8,fontSize:16,resize:"none",height:72,fontFamily:"inherit",outline:"none",background:"#fff"}}/>
               <button onClick={()=>sendMsg(reply.trim())} disabled={sending||!reply.trim()}
                 style={{padding:"0 20px",background:reply.trim()?T.primary:"#e5e7eb",color:reply.trim()?"#fff":"#9ca3af",border:"none",borderRadius:8,fontWeight:T.fw.bolder,cursor:reply.trim()?"pointer":"default",fontSize:T.fs.sm}}>
                 {sending?"...":"발송"}
