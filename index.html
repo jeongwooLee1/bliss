@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.290";
+const BLISS_V = "2.69.291";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -8146,16 +8146,16 @@ ${lastMsgs}
     }
   };
 
-  // 번역 후 발송
+  // 번역 후 입력창에 채우기 (자동발송 X — 직원이 확인 후 수동 발송)
   const sendTranslated = async () => {
     if (!replyText.trim() || !selected) return;
-    setSending(true);
+    setTranslating(true);
     try {
       const lastInMsg = [...convo].reverse().find(m => m.direction === "in");
       const targetLang = lastInMsg ? await detectLang(lastInMsg.message_text) : "ko";
       const translated = targetLang === "ko" ? replyText : await translateMsg(replyText, targetLang);
-      await sendMsg(translated);
-    } finally { setSending(false); }
+      setReplyText(translated); // 입력창에만 채움 — 발송은 직원이 직접
+    } finally { setTranslating(false); }
   };
 
   const detectLang = async (text) => {
