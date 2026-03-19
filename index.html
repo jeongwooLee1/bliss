@@ -660,6 +660,7 @@ function _mc(cb) {
 function App() {
   const [phase, setPhase] = useState("loading"); // loading, login, super, app
   const [pageHistory, setPageHistory] = React.useState([]);
+  const [unreadMsgCount, setUnreadMsgCount] = useState(0);
   const [allUsers, setAllUsers] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [currentBizId, setCurrentBizId] = useState(null);
@@ -1955,7 +1956,6 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   const PROD_LIST = (data?.products || []);
   const [selDate, setSelDate] = useState(todayStr());
   const [schHistory, setSchHistory] = useState(null);
-  const [unreadMsgCount, setUnreadMsgCount] = useState(0);
   // 직원 당일 지점 오버라이드: {empId_date: branchId}
   const [empBranchOverride, setEmpBranchOverride] = useState({});
 
