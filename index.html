@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.309";
+const BLISS_V = "2.69.310";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -8036,7 +8036,7 @@ function AdminInbox({ sb, branches, data, onRead, userBranches=[], isMaster=fals
     }
   };
 
-  // 발송
+  // 발송 — Supabase send_queue 방식 (CORS 우회)
   const sendMsg = async(text)=>{
     if(!sel||!text.trim()) return;
     setSending(true);
@@ -8044,22 +8044,19 @@ function AdminInbox({ sb, branches, data, onRead, userBranches=[], isMaster=fals
       const accId = sel.account_id && sel.account_id!=="unknown"
         ? sel.account_id
         : (allowedIds[0]||Object.keys(_ACC_AUTH)[0]);
-      const r = await fetch(_SERVER+"/send-message",{
-        method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({account_id:accId,user_id:sel.user_id,text})
+      // send_queue에 삽입 → 서버가 2초 내 처리
+      const r = await fetch(_SB2+"/rest/v1/send_queue",{
+        method:"POST",headers:{..._SH2,Prefer:"return=representation"},
+        body:JSON.stringify({account_id:accId,user_id:sel.user_id,message_text:text,status:"pending"})
       });
       if(!r.ok){
         setMsgs(prev=>[...prev,{user_id:sel.user_id,channel:sel.channel,direction:"system",
           message_text:"⚠️ 발송 실패 ("+r.status+")",is_read:true,created_at:new Date().toISOString()}]);
         return;
       }
-      await fetch(_SB2+"/rest/v1/naver_messages",{
-        method:"POST",headers:{..._SH2,Prefer:"return=minimal"},
-        body:JSON.stringify({account_id:accId,user_id:sel.user_id,channel:sel.channel,
-          event_type:"send",message_type:"text",message_text:text,direction:"out",is_read:true})
-      });
+      // UI에 즉시 반영
       setMsgs(prev=>[...prev,{user_id:sel.user_id,channel:sel.channel,direction:"out",
-        message_text:text,is_read:true,created_at:new Date().toISOString()}]);
+        account_id:accId,message_text:text,is_read:true,created_at:new Date().toISOString()}]);
       setReply("");
     }finally{setSending(false);}
   };
