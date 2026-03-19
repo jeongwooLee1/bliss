@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.317";
+const BLISS_V = "2.69.318";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -1124,7 +1124,7 @@ function App() {
             {page==="stats" && <StatsPage data={data} userBranches={userBranches} isMaster={isMaster} role={role}/>}
             {page==="customers" && <CustomersPage data={data} setData={setData} userBranches={userBranches} isMaster={isMaster}/>}
             {page==="users" && <UsersPage data={data} setData={setData} bizId={currentBizId}/>}
-            {page==="messages" && <AdminInbox sb={sb} branches={data?.branches} data={data} userBranches={userBranches} isMaster={isMaster} onRead={()=>setUnreadMsgCount(0)}/>}
+            {page==="messages" && <AdminInbox sb={sb} branches={data?.branches} data={data} userBranches={userBranches} isMaster={isMaster} onRead={(n)=>setUnreadMsgCount(prev=>Math.max(0,prev-(n||1)))}/>}
             {page==="admin" && <AdminPage data={data} setData={setData} bizId={currentBizId} serverV={serverV} onLogout={handleLogout} currentUser={currentUser}/>}
           </div>
         </div>
@@ -8044,10 +8044,11 @@ function AdminInbox({ sb, branches, data, onRead, userBranches=[], isMaster=fals
 
   // 읽음 처리
   const markRead = async(uid,ch)=>{
+    const cnt = msgs.filter(m=>m.user_id===uid&&!m.is_read&&m.direction==="in").length;
     await fetch(_SB2+"/rest/v1/naver_messages?user_id=eq."+uid+"&is_read=eq.false",
       {method:"PATCH",headers:{..._SH2,Prefer:"return=minimal"},body:JSON.stringify({is_read:true})});
     setMsgs(prev=>prev.map(m=>m.user_id===uid?{...m,is_read:true}:m));
-    if(onRead) onRead();
+    if(onRead) onRead(cnt);
   };
 
   const selectThread = (m)=>{
