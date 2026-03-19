@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>휴무 신청</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap');
+
+  :root {
+    --bg: #f5f0eb;
+    --card: #fff;
+    --primary: #c87832;
+    --primary-lt: #fff3e8;
+    --primary-dk: #a05c20;
+    --off: #9060d0;
+    --off-lt: #f3eeff;
+    --border: #e8ddd4;
+    --text: #2d1a08;
+    --text-sub: #8a7060;
+    --text-muted: #b09880;
+    --danger: #d04040;
+    --success: #2a9a5a;
+    --radius: 12px;
+    --shadow: 0 4px 20px rgba(0,0,0,.08);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Noto Sans KR', sans-serif;
+    background: var(--bg);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px 48px;
+    color: var(--text);
+  }
+
+  /* ── 헤더 ── */
+  .header {
+    width: 100%;
+    max-width: 480px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+  .logo {
+    width: 36px; height: 36px;
+    background: var(--primary);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .header-title { font-size: 15px; font-weight: 700; color: var(--text); }
+  .header-sub { font-size: 11px; color: var(--text-muted); }
+
+  /* ── PIN 화면 ── */
+  .pin-screen {
+    width: 100%; max-width: 360px;
+    background: var(--card);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 36px 28px;
+    text-align: center;
+  }
+  .pin-icon { font-size: 48px; margin-bottom: 16px; }
+  .pin-title { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+  .pin-desc { font-size: 13px; color: var(--text-sub); margin-bottom: 28px; line-height: 1.6; }
+  .pin-dots {
+    display: flex; gap: 12px; justify-content: center; margin-bottom: 28px;
+  }
+  .pin-dot {
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    background: transparent;
+    transition: all .15s;
+  }
+  .pin-dot.filled { background: var(--primary); border-color: var(--primary); }
+  .pin-dot.error { background: var(--danger); border-color: var(--danger); }
+  .pin-keypad {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+  }
+  .pin-key {
+    background: var(--bg);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 0;
+    font-size: 18px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all .1s;
+    font-family: inherit;
+    color: var(--text);
+  }
+  .pin-key:active { transform: scale(.95); background: var(--primary-lt); }
+  .pin-key.del { font-size: 14px; color: var(--text-sub); }
+  .pin-key.empty { visibility: hidden; }
+  .pin-error {
+    font-size: 12px; color: var(--danger);
+    margin-top: -16px; margin-bottom: 16px;
+    min-height: 18px;
+  }
+
+  /* ── 메인 화면 ── */
+  .main-screen { width: 100%; max-width: 480px; }
+
+  .emp-badge {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--primary-lt);
+    border: 1.5px solid var(--primary);
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 20px;
+  }
+  .emp-avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: var(--primary);
+    color: #fff; font-weight: 700; font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .emp-name { font-weight: 700; font-size: 14px; }
+  .emp-branch { font-size: 11px; color: var(--text-sub); }
+  .emp-badge .month-tag {
+    margin-left: auto;
+    font-size: 11px; font-weight: 700;
+    background: var(--primary);
+    color: #fff; border-radius: 6px;
+    padding: 3px 8px;
+  }
+
+  /* ── 안내 ── */
+  .guide {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-bottom: 16px;
+    border: 1.5px solid var(--border);
+  }
+  .guide-title { font-size: 12px; font-weight: 700; color: var(--primary); margin-bottom: 6px; }
+  .guide ul { padding-left: 16px; }
+  .guide li { font-size: 11px; color: var(--text-sub); line-height: 1.8; }
+
+  /* ── 달력 ── */
+  .calendar-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  .cal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .cal-title { font-size: 16px; font-weight: 700; }
+  .cal-nav button {
+    width: 28px; height: 28px; border-radius: 7px;
+    border: 1.5px solid var(--border);
+    background: transparent; cursor: pointer;
+    font-size: 13px; color: var(--text-sub);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .cal-nav { display: flex; gap: 6px; }
+
+  .dow-row {
+    display: grid; grid-template-columns: repeat(7, 1fr);
+    gap: 4px; margin-bottom: 6px;
+  }
+  .dow-cell {
+    text-align: center; font-size: 10px; font-weight: 700;
+    color: var(--text-muted); padding: 4px 0;
+  }
+  .dow-cell.sun { color: #d04040; }
+  .dow-cell.sat { color: #4070d0; }
+
+  .cal-grid {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px;
+  }
+  .cal-day {
+    aspect-ratio: 1;
+    border-radius: 8px;
+    border: 1.5px solid transparent;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: all .12s;
+    font-size: 12px; font-weight: 500;
+    position: relative;
+  }
+  .cal-day:hover:not(.disabled):not(.empty) { border-color: var(--primary); background: var(--primary-lt); }
+  .cal-day.empty { cursor: default; }
+  .cal-day.disabled { opacity: .35; cursor: not-allowed; }
+  .cal-day.today { border-color: var(--primary); }
+  .cal-day.today .day-num { color: var(--primary); font-weight: 900; }
+  .cal-day.off-req {
+    background: var(--off-lt);
+    border-color: var(--off);
+  }
+  .cal-day.off-req .day-num { color: var(--off); font-weight: 700; }
+  .cal-day.off-req::after {
+    content: '휴무';
+    font-size: 8px; font-weight: 700;
+    color: var(--off);
+    position: absolute; bottom: 3px;
+  }
+  .cal-day.sun .day-num { color: #d04040; }
+  .cal-day.sat .day-num { color: #4070d0; }
+
+  /* ── 신청 현황 ── */
+  .summary-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 18px 20px;
+    margin-bottom: 20px;
+    border: 1.5px solid var(--border);
+  }
+  .summary-title { font-size: 13px; font-weight: 700; margin-bottom: 12px; color: var(--text); }
+  .summary-list { display: flex; flex-wrap: wrap; gap: 8px; }
+  .summary-chip {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--off-lt);
+    border: 1.5px solid var(--off);
+    border-radius: 20px;
+    padding: 4px 10px 4px 8px;
+    font-size: 11px; font-weight: 600; color: var(--off);
+    cursor: pointer;
+    transition: all .1s;
+  }
+  .summary-chip:hover { background: #e8d8ff; }
+  .summary-chip .chip-x { font-size: 13px; color: var(--off); line-height: 1; }
+  .summary-empty { font-size: 12px; color: var(--text-muted); }
+
+  /* ── 제출 버튼 ── */
+  .submit-btn {
+    width: 100%;
+    padding: 14px 0;
+    background: var(--primary);
+    color: #fff;
+    border: none; border-radius: 10px;
+    font-size: 14px; font-weight: 700;
+    cursor: pointer; font-family: inherit;
+    box-shadow: 0 3px 12px rgba(200,120,50,.3);
+    transition: all .15s;
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+  }
+  .submit-btn:hover { background: var(--primary-dk); transform: translateY(-1px); }
+  .submit-btn:disabled { background: #ccc; box-shadow: none; cursor: default; transform: none; }
+
+  /* ── 완료 화면 ── */
+  .done-screen {
+    width: 100%; max-width: 360px;
+    background: var(--card);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 48px 28px;
+    text-align: center;
+  }
+  .done-icon { font-size: 56px; margin-bottom: 20px; }
+  .done-title { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+  .done-desc { font-size: 13px; color: var(--text-sub); line-height: 1.7; }
+  .done-dates {
+    margin-top: 20px; display: flex; flex-wrap: wrap; gap: 6px; justify-content: center;
+  }
+  .done-chip {
+    background: var(--off-lt); color: var(--off);
+    border: 1.5px solid var(--off);
+    border-radius: 20px; padding: 4px 10px;
+    font-size: 11px; font-weight: 700;
+  }
+  .done-back {
+    margin-top: 24px;
+    font-size: 12px; color: var(--text-muted);
+    cursor: pointer; text-decoration: underline;
+  }
+
+  .hidden { display: none !important; }
+  .shake { animation: shake .3s; }
+  @keyframes shake {
+    0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 75%{transform:translateX(6px)}
+  }
+</style>
+</head>
+<body>
+
+<!-- 헤더 -->
+<div class="header">
+  <div class="logo">💆</div>
+  <div>
+    <div class="header-title">하우스왁싱</div>
+    <div class="header-sub">휴무 신청 시스템</div>
+  </div>
+</div>
+
+<!-- PIN 화면 -->
+<div class="pin-screen" id="pinScreen">
+  <div class="pin-icon">🔐</div>
+  <div class="pin-title">본인 인증</div>
+  <div class="pin-desc">개인 PIN 번호 4자리를 입력해<br>본인 확인 후 휴무를 신청하세요.</div>
+  <div class="pin-dots" id="pinDots">
+    <div class="pin-dot" id="d0"></div>
+    <div class="pin-dot" id="d1"></div>
+    <div class="pin-dot" id="d2"></div>
+    <div class="pin-dot" id="d3"></div>
+  </div>
+  <div class="pin-error" id="pinError"></div>
+  <div class="pin-keypad">
+    <button class="pin-key" onclick="pinInput('1')">1</button>
+    <button class="pin-key" onclick="pinInput('2')">2</button>
+    <button class="pin-key" onclick="pinInput('3')">3</button>
+    <button class="pin-key" onclick="pinInput('4')">4</button>
+    <button class="pin-key" onclick="pinInput('5')">5</button>
+    <button class="pin-key" onclick="pinInput('6')">6</button>
+    <button class="pin-key" onclick="pinInput('7')">7</button>
+    <button class="pin-key" onclick="pinInput('8')">8</button>
+    <button class="pin-key" onclick="pinInput('9')">9</button>
+    <button class="pin-key empty"></button>
+    <button class="pin-key" onclick="pinInput('0')">0</button>
+    <button class="pin-key del" onclick="pinDel()">⌫</button>
+  </div>
+</div>
+
+<!-- 메인 화면 -->
+<div class="main-screen hidden" id="mainScreen">
+  <div class="emp-badge">
+    <div class="emp-avatar" id="empAvatar">경</div>
+    <div>
+      <div class="emp-name" id="empName">경아</div>
+      <div class="emp-branch" id="empBranch">강남 · 왕십리</div>
+    </div>
+    <div class="month-tag" id="monthTag">2026년 4월</div>
+  </div>
+
+  <div class="guide">
+    <div class="guide-title">📌 휴무 신청 방법</div>
+    <ul>
+      <li>날짜를 탭하면 휴무 신청 / 다시 탭하면 취소</li>
+      <li>신청 가능 기간: 이번 달 말일까지</li>
+      <li>최대 <strong>3일</strong>까지 신청 가능합니다</li>
+      <li>신청 후 반드시 <strong>제출하기</strong>를 눌러주세요</li>
+    </ul>
+  </div>
+
+  <div class="calendar-card">
+    <div class="cal-header">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="cal-title" id="calTitle">2026년 4월</div>
+        <span id="offCounter" style="font-size:11px;font-weight:700;background:#f3eeff;color:#9060d0;border-radius:20px;padding:2px 10px;border:1.5px solid #9060d0;">0/3일</span>
+      </div>
+  
+    </div>
+    <div class="dow-row">
+      <div class="dow-cell sun">일</div>
+      <div class="dow-cell">월</div>
+      <div class="dow-cell">화</div>
+      <div class="dow-cell">수</div>
+      <div class="dow-cell">목</div>
+      <div class="dow-cell">금</div>
+      <div class="dow-cell sat">토</div>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+  </div>
+
+  <div class="summary-card">
+    <div class="summary-title">✅ 신청한 휴무일</div>
+    <div class="summary-list" id="summaryList">
+      <div class="summary-empty" id="summaryEmpty">신청한 날짜가 없습니다.</div>
+    </div>
+  </div>
+
+  <button class="submit-btn" onclick="submitRequest()" id="submitBtn">
+    📤 제출하기
+  </button>
+</div>
+
+<!-- 완료 화면 -->
+<div class="done-screen hidden" id="doneScreen">
+  <div class="done-icon">✅</div>
+  <div class="done-title">신청 완료!</div>
+  <div class="done-desc" id="doneDesc">휴무 신청이 완료되었습니다.<br>관리자 확인 후 배치에 반영됩니다.</div>
+  <div class="done-dates" id="doneDates"></div>
+  <div class="done-back" onclick="resetToPin()">← 처음으로 돌아가기</div>
+</div>
+
+<script>
+// ── 데이터 ──
+const EMPLOYEES = {
+  '1234': { name:'경아', branch:'강남 · 왕십리', avatar:'경' },
+  '2345': { name:'서현', branch:'강남 · 왕십리', avatar:'서' },
+  '3456': { name:'소연', branch:'강남 · 왕십리', avatar:'소' },
+  '4567': { name:'현아', branch:'홍대 · 마곡',   avatar:'현' },
+  '5678': { name:'희서', branch:'용산',          avatar:'희' },
+};
+
+let pin = '';
+let currentEmp = null;
+let currentYear = 2026;
+let currentMonth = 3; // 0-indexed → 4월
+let offDates = new Set();
+
+// ── PIN 입력 ──
+function pinInput(n) {
+  if (pin.length >= 4) return;
+  pin += n;
+  updateDots();
+  if (pin.length === 4) verifyPin();
+}
+function pinDel() {
+  pin = pin.slice(0, -1);
+  updateDots();
+  document.getElementById('pinError').textContent = '';
+}
+function updateDots() {
+  for (let i = 0; i < 4; i++) {
+    const d = document.getElementById('d'+i);
+    d.classList.toggle('filled', i < pin.length);
+    d.classList.remove('error');
+  }
+}
+function verifyPin() {
+  setTimeout(() => {
+    const emp = EMPLOYEES[pin];
+    if (emp) {
+      currentEmp = emp;
+      showMain();
+    } else {
+      for (let i = 0; i < 4; i++) document.getElementById('d'+i).classList.add('error');
+      document.getElementById('pinError').textContent = '❌ PIN이 올바르지 않습니다';
+      document.getElementById('pinDots').classList.add('shake');
+      setTimeout(() => {
+        pin = '';
+        updateDots();
+        document.getElementById('pinDots').classList.remove('shake');
+      }, 500);
+    }
+  }, 150);
+}
+
+// ── 메인 화면 ──
+function showMain() {
+  document.getElementById('pinScreen').classList.add('hidden');
+  document.getElementById('mainScreen').classList.remove('hidden');
+  document.getElementById('empAvatar').textContent = currentEmp.avatar;
+  document.getElementById('empName').textContent = currentEmp.name;
+  document.getElementById('empBranch').textContent = currentEmp.branch;
+  // 다음달만 표시
+  const now = new Date();
+  currentYear = now.getMonth() === 11 ? now.getFullYear() + 1 : now.getFullYear();
+  currentMonth = (now.getMonth() + 1) % 12;
+  renderCalendar();
+}
+
+// ── 달력 ──
+function changeMonth(delta) {
+  currentMonth += delta;
+  if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+  if (currentMonth < 0)  { currentMonth = 11; currentYear--; }
+  renderCalendar();
+}
+
+function renderCalendar() {
+  const title = `${currentYear}년 ${currentMonth+1}월`;
+  document.getElementById('calTitle').textContent = title;
+  document.getElementById('monthTag').textContent = title;
+
+  const grid = document.getElementById('calGrid');
+  grid.innerHTML = '';
+
+  const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+  const lastDate = new Date(currentYear, currentMonth+1, 0).getDate();
+  const today = new Date();
+
+  for (let i = 0; i < firstDay; i++) {
+    const el = document.createElement('div');
+    el.className = 'cal-day empty';
+    grid.appendChild(el);
+  }
+
+  for (let d = 1; d <= lastDate; d++) {
+    const date = new Date(currentYear, currentMonth, d);
+    const ds = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dow = date.getDay();
+    const isPast = false; // 다음달 날짜는 모두 신청 가능
+
+    const el = document.createElement('div');
+    el.className = 'cal-day';
+    if (dow === 0) el.classList.add('sun');
+    if (dow === 6) el.classList.add('sat');
+    if (isPast) el.classList.add('disabled');
+
+    if (offDates.has(ds)) el.classList.add('off-req');
+
+    const num = document.createElement('span');
+    num.className = 'day-num';
+    num.textContent = d;
+    el.appendChild(num);
+
+    if (!isPast) {
+      el.addEventListener('click', () => toggleDate(ds, el));
+    }
+    grid.appendChild(el);
+  }
+  renderSummary();
+}
+
+function toggleDate(ds, el) {
+  if (offDates.has(ds)) {
+    offDates.delete(ds);
+    el.classList.remove('off-req');
+  } else {
+    if (offDates.size >= 3) {
+      // 살짝 흔들어서 알림
+      el.classList.add('shake');
+      setTimeout(() => el.classList.remove('shake'), 300);
+      showToast('휴무 신청은 최대 3일까지 가능합니다');
+      return;
+    }
+    offDates.add(ds);
+    el.classList.add('off-req');
+  }
+  renderSummary();
+}
+
+function showToast(msg) {
+  let t = document.getElementById('toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'toast';
+    t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:10px 18px;border-radius:20px;font-size:12px;font-weight:600;z-index:999;opacity:0;transition:opacity .2s;white-space:nowrap;';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.opacity = '1';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { t.style.opacity = '0'; }, 2000);
+}
+
+function renderSummary() {
+  const list = document.getElementById('summaryList');
+  const empty = document.getElementById('summaryEmpty');
+  const sorted = [...offDates].sort();
+  const counter = document.getElementById('offCounter');
+  if (counter) { counter.textContent = `${sorted.length}/3일`; counter.style.opacity = sorted.length >= 3 ? '1' : '0.6'; }
+  list.innerHTML = '';
+  if (sorted.length === 0) {
+    list.innerHTML = '<div class="summary-empty">신청한 날짜가 없습니다.</div>';
+    return;
+  }
+  sorted.forEach(ds => {
+    const [y,m,d] = ds.split('-');
+    const date = new Date(ds);
+    const dows = ['일','월','화','수','목','금','토'];
+    const chip = document.createElement('div');
+    chip.className = 'summary-chip';
+    chip.innerHTML = `${m}/${d}(${dows[date.getDay()]}) <span class="chip-x" onclick="removeDate('${ds}')">×</span>`;
+    list.appendChild(chip);
+  });
+  document.getElementById('submitBtn').disabled = sorted.length === 0;
+}
+
+function removeDate(ds) {
+  offDates.delete(ds);
+  renderCalendar();
+}
+
+// ── Supabase 설정 ──
+const SB_URL = 'https://dpftlrsuqxqqeouwbfjd.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwZnRscnN1cXhxcWVvdXdiZmpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5MDU4MjQsImV4cCI6MjA4NzQ4MTgyNH0.iydEkjtPjZ0jXpUUPJben4IWWneDqLomv-HDlcFayE4';
+
+async function sbGet(key) {
+  const res = await fetch(`${SB_URL}/rest/v1/schedule_data?key=eq.${key}&select=value`, {
+    headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}` }
+  });
+  const data = await res.json();
+  if (!data.length) return {};
+  const v = data[0].value;
+  return typeof v === 'string' ? JSON.parse(v) : (v || {});
+}
+
+async function sbSet(key, value) {
+  await fetch(`${SB_URL}/rest/v1/schedule_data`, {
+    method: 'POST',
+    headers: {
+      apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`,
+      'Content-Type': 'application/json',
+      Prefer: 'resolution=merge-duplicates,return=minimal'
+    },
+    body: JSON.stringify({ id: key, key, value })
+  });
+}
+
+// ── 제출 ──
+async function submitRequest() {
+  const sorted = [...offDates].sort();
+  if (sorted.length === 0) return;
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.innerHTML = '⏳ 저장 중...';
+
+  try {
+    // 기존 empReqs 가져오기
+    const existing = await sbGet('empReqs_v1');
+
+    // 이번달(다음달) 해당 직원 기존 신청 삭제 후 새로 덮어쓰기
+    const monthStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}`;
+    const cleaned = Object.fromEntries(
+      Object.entries(existing).filter(([k]) =>
+        !(k.startsWith(currentEmp.name + '__') && k.includes('__' + monthStr))
+      )
+    );
+
+    // 새 신청 추가
+    sorted.forEach(ds => { cleaned[`${currentEmp.name}__${ds}`] = '휴무(꼭)'; });
+
+    await sbSet('empReqs_v1', cleaned);
+
+    // 완료 화면
+    document.getElementById('mainScreen').classList.add('hidden');
+    document.getElementById('doneScreen').classList.remove('hidden');
+    document.getElementById('doneDesc').innerHTML =
+      `<strong>${currentEmp.name}</strong>님의 휴무 신청이 완료되었습니다.<br>관리자 확인 후 배치에 반영됩니다.`;
+
+    const doneDates = document.getElementById('doneDates');
+    doneDates.innerHTML = '';
+    const dows = ['일','월','화','수','목','금','토'];
+    sorted.forEach(ds => {
+      const [y,m,d] = ds.split('-');
+      const date = new Date(ds + 'T00:00:00');
+      const chip = document.createElement('div');
+      chip.className = 'done-chip';
+      chip.textContent = `${m}/${d}(${dows[date.getDay()]})`;
+      doneDates.appendChild(chip);
+    });
+
+  } catch(e) {
+    showToast('❌ 저장 실패: ' + e.message);
+    btn.disabled = false;
+    btn.innerHTML = '📤 제출하기';
+  }
+}
+
+function resetToPin() {
+  pin = ''; offDates.clear(); currentEmp = null;
+  updateDots();
+  document.getElementById('pinError').textContent = '';
+  document.getElementById('doneScreen').classList.add('hidden');
+  document.getElementById('pinScreen').classList.remove('hidden');
+}
+
+// 초기화
+document.getElementById('submitBtn').disabled = true;
+</script>
+</body>
+</html>
