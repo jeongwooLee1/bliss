@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.288";
+const BLISS_V = "2.69.289";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7931,7 +7931,23 @@ function AdminInbox({ sb, branches, data, onRead }) {
     } catch(e) {} finally { setLoading(false); }
   }, []);
 
-  React.useEffect(() => { loadMsgs(); const t = setInterval(loadMsgs, 15000); return () => clearInterval(t); }, [loadMsgs]);
+  React.useEffect(() => {
+    loadMsgs();
+    // Realtime 구독 — 새 메시지 즉시 반영
+    const channel = window._sbClient?.channel("inbox_rt")
+      ?.on("postgres_changes", { event: "INSERT", schema: "public", table: "naver_messages" },
+        (payload) => {
+          if (payload?.new) {
+            setMsgs(prev => {
+              const exists = prev.some(m => m.id === payload.new.id);
+              if (exists) return prev;
+              return [...prev, payload.new];
+            });
+          }
+        }
+      )?.subscribe();
+    return () => { try { channel?.unsubscribe(); } catch(e) {} };
+  }, [loadMsgs]);
 
   // 스크롤 하단 유지
   React.useEffect(() => { convoEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs, selected]);
