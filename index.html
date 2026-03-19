@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.293";
+const BLISS_V = "2.69.294";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7916,7 +7916,16 @@ function AdminInbox({ sb, branches, data, onRead }) {
   };
   const getBranchName = (msgs) => {
     const accId = (msgs[0]||{}).account_id || "";
-    return ACCOUNT_BRANCH[accId] || accId || "알 수 없음";
+    return ACCOUNT_BRANCH[accId] || (accId !== "unknown" ? accId : "");
+  };
+  const getDisplayName = (m) => {
+    // user_name 있으면 우선 사용
+    if (m.user_name) return m.user_name;
+    // 메시지에서 이름 추출 시도 (한국 이름 패턴)
+    const nameMatch = m.message_text?.match(/^([가-힣]{2,4})\s+0\d{1,2}-\d{3,4}-\d{4}/);
+    if (nameMatch) return nameMatch[1];
+    // user_id 앞 6자
+    return (m.user_id||"").substring(0,6) + "...";
   };
   const CH_NAME = { naver: "네이버톡톡", kakao: "카카오", instagram: "인스타", whatsapp: "왓츠앱", telegram: "텔레그램" };
 
@@ -8229,10 +8238,17 @@ ${lastMsgs}
   };
 
   return (
-    <div style={{display:"flex",flexDirection:window.innerWidth<768&&selected?"column":"row",height:"calc(100vh - 120px)",gap:0,background:T.bg,borderRadius:12,overflow:"hidden",border:"1px solid "+T.border}}>
+    <div style={{display:"flex",flexDirection:"row",height:"calc(100vh - 120px)",gap:0,background:T.bg,borderRadius:12,overflow:"hidden",border:"1px solid "+T.border}}>
 
       {/* 좌측: 대화 목록 */}
-      <div style={{width:window.innerWidth<768?(selected?"0":"100%"):280,borderRight:"1px solid "+T.border,display:"flex",flexDirection:"column",background:T.bgCard,flexShrink:0,overflow:"hidden",transition:"width .2s"}}>
+      <div style={{
+  width: window.innerWidth < 768 ? (selected ? "0" : "100%") : 300,
+  minWidth: window.innerWidth < 768 ? (selected ? "0" : "100%") : 300,
+  borderRight: "1px solid "+T.border,
+  display: "flex", flexDirection: "column",
+  background: T.bgCard, flexShrink: 0,
+  overflow: "hidden", transition: "all .25s ease"
+}}>
         <div style={{padding:"14px 16px",borderBottom:"1px solid "+T.border,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
           <span style={{fontWeight:T.fw.bolder,fontSize:T.fs.md,color:T.text}}>메시지함</span>
           {totalUnread > 0 && <span style={{background:T.danger,color:"#fff",borderRadius:10,fontSize:11,fontWeight:700,padding:"2px 7px"}}>{totalUnread}</span>}
@@ -8253,7 +8269,7 @@ ${lastMsgs}
                   transition:"all .1s"}}>
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
                   <span style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder,color:T.text}}>
-                    {CH_ICON[ch]} {ACCOUNT_BRANCH[m.account_id]||"알 수 없음"}
+                    {CH_ICON[ch]} {getDisplayName(m)}{getBranchName([m])?" · "+getBranchName([m]):""}
                   </span>
                   <span style={{fontSize:10,color:T.textMuted}}>{fmtTime(m.created_at)}</span>
                 </div>
@@ -8270,7 +8286,16 @@ ${lastMsgs}
       </div>
 
       {/* 우측: 채팅창 */}
-      <div style={{flex:1,display:"flex",flexDirection:"column",background:"#f8f9fb"}}>
+      <div style={{
+  flex: 1, display: "flex", flexDirection: "column",
+  background: "#f8f9fb",
+  position: window.innerWidth < 768 && selected ? "fixed" : "relative",
+  top: window.innerWidth < 768 && selected ? 0 : "auto",
+  left: window.innerWidth < 768 && selected ? 0 : "auto",
+  right: window.innerWidth < 768 && selected ? 0 : "auto",
+  bottom: window.innerWidth < 768 && selected ? 0 : "auto",
+  zIndex: window.innerWidth < 768 && selected ? 500 : "auto"
+}}>
         {!selected ? (
           <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",color:T.textMuted}}>
             <I name="msgSq" size={40}/><div style={{marginTop:12,fontSize:T.fs.sm}}>대화를 선택하세요</div>
@@ -8282,8 +8307,12 @@ ${lastMsgs}
               {window.innerWidth<768&&<button onClick={()=>setSelected(null)} style={{background:"none",border:"none",cursor:"pointer",padding:"4px 8px 4px 0",color:T.primary}}><I name="arrowL" size={20}/></button>}
               <span style={{fontSize:20}}>{CH_ICON[selected.channel]}</span>
               <div style={{flex:1}}>
-                <div style={{fontWeight:T.fw.bolder,fontSize:T.fs.sm,color:T.text}}>{getBranchName(convo)} · {CH_NAME[selected.channel]||selected.channel}</div>
-                <div style={{fontSize:T.fs.xs,color:T.textMuted,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{selected.user_id}</div>
+                <div style={{fontWeight:T.fw.bolder,fontSize:T.fs.sm,color:T.text}}>
+                  {getDisplayName(convo[0]||{})}
+                </div>
+                <div style={{fontSize:T.fs.xs,color:T.textMuted}}>
+                  {getBranchName(convo) && getBranchName(convo)+" · "}{CH_NAME[selected.channel]||selected.channel}
+                </div>
               </div>
               <button onClick={generateAiDraft} disabled={aiLoading}
                 style={{padding:"5px 12px",background:aiLoading?"#e5e7eb":T.primary,color:"#fff",border:"none",borderRadius:6,fontSize:T.fs.xs,fontWeight:T.fw.bolder,cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>
