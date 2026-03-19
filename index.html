@@ -175,7 +175,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.284";
+const BLISS_V = "2.69.285";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -6883,11 +6883,35 @@ function AdminMyPage({ currentUser, onLogout }) {
 // ═══════════════════════════════════════════
 // ADMIN — 직원 근무표
 // ═══════════════════════════════════════════
-function AdminSchedule() {
-  React.useEffect(()=>{
-    window.open("https://jeongwoolee1.github.io/bliss/schedule.html","_blank");
-  },[]);
-  return null;
+function AdminSchedule({ currentUser, isMaster }) {
+  const iframeRef = React.useRef(null);
+
+  const onLoad = React.useCallback(function() {
+    var frame = iframeRef.current;
+    if (!frame) return;
+    frame.contentWindow.postMessage({
+      type: "BLISS_AUTH",
+      role: currentUser ? currentUser.role : "staff",
+      userId: currentUser ? currentUser.id : "",
+      branchId: currentUser ? (currentUser.branch_id || currentUser.bid || "") : "",
+      isMaster: !!isMaster,
+      canWrite: !!isMaster,
+      canRead: true
+    }, "https://jeongwoolee1.github.io");
+  }, [currentUser, isMaster]);
+
+  return (
+    <div style={{width:"100%",height:"calc(100vh - 120px)",borderRadius:12,overflow:"hidden",
+      border:"1px solid "+T.border,background:"#fff"}}>
+      <iframe
+        ref={iframeRef}
+        src="https://jeongwoolee1.github.io/bliss/schedule.html"
+        onLoad={onLoad}
+        style={{width:"100%",height:"100%",border:"none"}}
+        title="직원 근무표"
+      />
+    </div>
+  );
 }
 
 function AdminPage({ data, setData, bizId, serverV, onLogout, currentUser }) {
@@ -6967,7 +6991,7 @@ function AdminPage({ data, setData, bizId, serverV, onLogout, currentUser }) {
     {tab==="aisettings"   && isMaster &&<AdminAISettings   data={data} sb={sb} bizId={bizId}/>}
     {tab==="brandmembers" && isMaster &&<AdminBrandMembers data={data} setData={setData} bizId={bizId} currentUser={currentUser}/>}
     {tab==="mypage"       &&<AdminMyPage       currentUser={currentUser} onLogout={onLogout}/>}
-    {tab==="schedule"    && isMaster &&<AdminSchedule/>}
+    {tab==="schedule"    && isMaster &&<AdminSchedule currentUser={currentUser} isMaster={isMaster}/>}
     {tab==="joinbrand"    && !isMaster &&<AdminJoinBrand   currentUser={currentUser} onBack={back}/>}
     {tab && !["mypage"].includes(tab) && !isMaster && <div style={{textAlign:"center",padding:"60px 20px",color:T.textMuted}}>
       <div style={{fontSize:32,marginBottom:12}}>🔒</div>
@@ -7905,11 +7929,25 @@ function AdminInbox({ sb, branches }) {
     if (!replyText.trim() || !selected) return;
     setSending(true);
     try {
-      const accId = (msgs.find(m => m.user_id === selected) || {}).account_id || "101171979";
+      const accId = (msgs.find(m => m.user_id === selected) || {}).account_id || "";
+      // branches noti_config에서 해당 지점 네이버톡톡 auth 토큰 동적 로드
+      var naverAuth = "";
+      if (branches && branches.length) {
+        for (var bi = 0; bi < branches.length; bi++) {
+          try {
+            var nc = JSON.parse(branches[bi].noti_config || "{}");
+            if (nc.naver_account_id && nc.naver_account_id === accId) {
+              naverAuth = nc.naver_auth || "";
+              break;
+            }
+          } catch(e) {}
+        }
+      }
+      if (!naverAuth) { alert("해당 지점의 네이버톡톡 설정이 없습니다. 관리자에게 문의하세요."); setSending(false); return; }
       const payload = { event: "send", user: selected, textContent: { text: replyText.trim() } };
       const resp = await fetch("https://gw.talk.naver.com/chatbot/v1/event", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: "oF9f3IwiT8KUVdQYuB0Y" },
+        headers: { "Content-Type": "application/json", Authorization: naverAuth },
         body: JSON.stringify(payload)
       });
       if (resp.ok) {
