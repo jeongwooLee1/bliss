@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.311";
+const BLISS_V = "2.69.312";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -8042,13 +8042,7 @@ function AdminInbox({ sb, branches, data, onRead, userBranches=[], isMaster=fals
     setSel({user_id:m.user_id,channel:ch,account_id:m.account_id});
     setReply("");
     markRead(m.user_id,ch);
-    // 이름 요청 (account_id 있으면)
-    if(m.account_id && m.account_id!=="unknown" && !names[m.user_id]){
-      fetch(_SERVER+"/request-profile",{
-        method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({account_id:m.account_id,user_id:m.user_id})
-      }).catch(()=>{});
-    }
+
   };
 
   // 발송 — Supabase send_queue 방식 (CORS 우회)
@@ -8172,7 +8166,7 @@ function AdminInbox({ sb, branches, data, onRead, userBranches=[], isMaster=fals
       </div>
       {/* 채팅창 */}
       <div style={{flex:1,display:sel?"flex":"none",flexDirection:"column",background:"#f8f9fb",
-        ...(isMobile&&sel?{position:"fixed",top:"env(safe-area-inset-top, 0px)",left:0,right:0,bottom:"56px",zIndex:500}:{})}}>
+        ...(isMobile&&sel?{position:"fixed",top:0,left:0,right:0,bottom:"56px",zIndex:500}:{})}}>
         {sel&&<>
           <div style={{padding:"12px 16px",borderBottom:"1px solid "+T.border,background:T.bgCard,display:"flex",alignItems:"center",gap:10}}>
             {isMobile&&<button onClick={()=>setSel(null)} style={{background:"none",border:"none",cursor:"pointer",color:T.primary,padding:"4px 8px 4px 0"}}><I name="arrowL" size={20}/></button>}
