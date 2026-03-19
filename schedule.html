@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.19-g";
+const SCH_V = "v2026.03.19-h";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -1578,6 +1578,24 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
 
 function App() {
   const isMobile = /iPhone|iPad|Android/i.test(navigator.userAgent);
+
+  // ── Bliss 앱으로부터 권한 정보 수신 (iframe postMessage)
+  const [authInfo, setAuthInfo] = React.useState(null);
+  React.useEffect(function() {
+    function onMessage(e) {
+      if (e.origin !== "https://jeongwoolee1.github.io") return;
+      if (e.data && e.data.type === "BLISS_AUTH") {
+        setAuthInfo(e.data);
+      }
+    }
+    window.addEventListener("message", onMessage);
+    return function() { window.removeEventListener("message", onMessage); };
+  }, []);
+
+  // 권한 헬퍼
+  var isMaster = authInfo ? authInfo.isMaster : true; // 직접 열면 기본 마스터
+  var canWrite = authInfo ? authInfo.canWrite : true;
+  var canRead  = authInfo ? authInfo.canRead  : true;
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
