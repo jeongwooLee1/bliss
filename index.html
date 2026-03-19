@@ -1858,7 +1858,7 @@ function Sidebar({ nav, page, setPage, role, branchNames, onLogout, bizName="", 
     { label:"예약 관리", items: nav.filter(n=>["timeline","reservations"].includes(n.id)) },
     { label:"고객 관리", items: nav.filter(n=>["customers"].includes(n.id)) },
     { label:"매출 관리", items: nav.filter(n=>["sales","stats"].includes(n.id)) },
-    ...(nav.find(n=>n.id==="admin") ? [{ label:"시스템", items: nav.filter(n=>["users","admin"].includes(n.id)) }] : []),
+    ...(nav.find(n=>n.id==="admin") ? [{ label:"시스템", items: nav.filter(n=>["users","messages","admin"].includes(n.id)) }] : []),
   ];
   return <>
     <div style={{padding:`${T.sp.lg}px ${T.sp.lg}px ${T.sp.md}px`,borderBottom:`1px solid ${T.border}`}}>
@@ -1875,7 +1875,9 @@ function Sidebar({ nav, page, setPage, role, branchNames, onLogout, bizName="", 
               background:page===n.id?T.primaryHover:"transparent",color:page===n.id?T.primaryDk:T.gray700,
               borderLeft:page===n.id?`3px solid ${T.primary}`:"3px solid transparent",
               fontFamily:"inherit",width:"100%",textAlign:"left",transition:"all .1s"}}>
-              <span style={{width:20,display:"inline-flex",alignItems:"center",justifyContent:"center"}}>{n.icon}</span>{n.label}
+              <span style={{width:20,display:"inline-flex",alignItems:"center",justifyContent:"center"}}>{n.icon}</span>
+              <span style={{flex:1}}>{n.label}</span>
+              {n.badge > 0 && <span style={{background:T.danger,color:"#fff",borderRadius:10,fontSize:10,fontWeight:700,padding:"1px 6px",minWidth:18,textAlign:"center"}}>{n.badge > 99 ? "99+" : n.badge}</span>}
             </button>
           ))}
         </div>
