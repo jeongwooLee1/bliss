@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.19-i";
+const SCH_V = "v2026.03.19-j";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -1218,6 +1218,8 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
         if (!canAssignOff(emp, day, branchEmps, branch)) continue;
         if (wouldMakeAltPattern(day.ds)) continue; // 퐁당퐁당 패턴 방지
         const totalWorking = employees.filter(e => {
+          if (e.isMale) return false;
+          if (e.isFreelancer || empSettings[e.id]?.isFreelancer) return false;
           const s = sch[e.id][day.ds];
           return s===STATUS.WORK||isSupport(s)||s===STATUS.SHARE;
         }).length;
