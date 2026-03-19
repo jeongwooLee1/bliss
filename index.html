@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.323";
+const BLISS_V = "2.69.324";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7934,7 +7934,7 @@ function AdminInbox({ sb, branches, data, onRead, userBranches=[], isMaster=fals
   const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
   const CH_ICON = {naver:"🟢",kakao:"🟡",instagram:"🟣",whatsapp:"💚",telegram:"🔵"};
   const CH_NAME = {naver:"네이버톡톡",kakao:"카카오",instagram:"인스타",whatsapp:"왓츠앱",telegram:"텔레그램"};
-  const GEMINI_KEY = "AIzaSyCEboiSrS3mfF00ibz9jyejt1D5IpD6Hvs";
+  const getGeminiKey = () => window.__geminiKey || localStorage.getItem("bliss_gemini_key") || "";
 
   const [msgs, setMsgs] = useState([]);
   const [sel, setSel] = useState(null); // {user_id, channel, account_id}
@@ -8092,7 +8092,7 @@ function AdminInbox({ sb, branches, data, onRead, userBranches=[], isMaster=fals
     try{
       const lastMsgs = convo.slice(-6).map(m=>(m.direction==="in"?"고객":"직원")+": "+m.message_text).join("\n");
       const prompt = `당신은 하우스왁싱 상담 직원입니다. 왁싱 전문샵으로 서울 8개 직영점이 있습니다.\n\n대화:\n${lastMsgs}\n\n위 대화에서 고객 마지막 메시지에 친절하고 자연스럽게 2-3문장으로 답변해줘. 답변 텍스트만 출력.`;
-      const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key="+GEMINI_KEY,{
+      const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key="+getGeminiKey(),{
         method:"POST",headers:{"Content-Type":"application/json"},
         body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})
       });
@@ -8110,14 +8110,14 @@ function AdminInbox({ sb, branches, data, onRead, userBranches=[], isMaster=fals
       const lastIn = [...convo].reverse().find(m=>m.direction==="in");
       let text = reply.trim();
       if(lastIn){
-        const lRes = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key="+GEMINI_KEY,{
+        const lRes = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key="+getGeminiKey(),{
           method:"POST",headers:{"Content-Type":"application/json"},
           body:JSON.stringify({contents:[{parts:[{text:"다음 텍스트의 언어 코드만 출력(ko,en,ja,zh,es 등): \""+lastIn.message_text+"\""}]}]})
         });
         const ld=await lRes.json();
         const lang=(ld.candidates?.[0]?.content?.parts?.[0]?.text||"ko").trim().toLowerCase().substring(0,2);
         if(lang!=="ko"){
-          const tRes=await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key="+GEMINI_KEY,{
+          const tRes=await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key="+getGeminiKey(),{
             method:"POST",headers:{"Content-Type":"application/json"},
             body:JSON.stringify({contents:[{parts:[{text:"다음을 "+lang+" 언어로 자연스럽게 번역. 번역문만 출력: \""+reply+"\""}]}]})
           });
