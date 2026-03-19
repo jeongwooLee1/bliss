@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.289";
+const BLISS_V = "2.69.290";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -8011,47 +8011,139 @@ function AdminInbox({ sb, branches, data, onRead }) {
     } catch { return text; } finally { setTranslating(false); }
   };
 
-  // AI 답변 초안 생성
+  // 빈 슬롯 확인
+  const checkAvailableSlots = async (branchId, date) => {
+    try {
+      const r = await fetch(SB2 + `/rest/v1/reservations?bid=eq.${branchId}&date=eq.${date}&status=in.(confirmed,pending)&select=time,dur`, { headers: SB_H });
+      const booked = await r.json();
+      const slots = [];
+      for (let h = 10; h <= 20; h++) {
+        for (let m = 0; m < 60; m += 30) {
+          const t = `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
+          const conflict = booked.some(b => {
+            const bs = b.time; const dur = b.dur || 60;
+            const bStart = parseInt(bs.split(":")[0])*60 + parseInt(bs.split(":")[1]);
+            const bEnd = bStart + dur;
+            const ts = h*60+m;
+            return ts >= bStart && ts < bEnd;
+          });
+          if (!conflict) slots.push(t);
+        }
+      }
+      return slots.slice(0, 8);
+    } catch { return []; }
+  };
+
+  // 자동 예약 등록
+  const autoCreateReservation = async (bookingInfo) => {
+    const { branchId, branchName, serviceId, serviceName, date, time, dur, custName, custPhone, channel, userId } = bookingInfo;
+    try {
+      const newRsv = {
+        business_id: "biz_khvurgshb", bid: branchId, source: "chat",
+        status: "confirmed", cust_name: custName || "채팅예약", cust_phone: custPhone || "",
+        date, time, dur: dur || 60,
+        selected_services: serviceId ? [serviceId] : [],
+        memo: `${CH_NAME[channel]||channel} 채팅으로 예약 (user: ${userId})`
+      };
+      const r = await fetch(SB2 + "/rest/v1/reservations", {
+        method: "POST", headers: { ...SB_H, Prefer: "return=representation" },
+        body: JSON.stringify(newRsv)
+      });
+      const created = await r.json();
+      return Array.isArray(created) ? created[0] : created;
+    } catch(e) { console.error("예약 등록 오류:", e); return null; }
+  };
+
+  // AI 답변 초안 생성 (예약 앙케이트 포함)
   const generateAiDraft = async () => {
     if (!selected || convo.length === 0) return;
     setAiLoading(true);
     try {
       const { ctx, services, branchList } = getAiContext();
-      const lastMsgs = convo.slice(-5).map(m => `${m.direction === "in" ? "고객" : "직원"}: ${m.message_text}`).join("\n");
+      const lastMsgs = convo.slice(-8).map(m => `${m.direction === "in" ? "고객" : "직원"}: ${m.message_text}`).join("\n");
       const faqText = (ctx.faq || []).map(f => `Q: ${f.q}\nA: ${f.a}`).join("\n\n");
+      const branchNames = (data?.branches||[]).map(b => b.name.replace("하우스왁싱 ","")).join(", ");
+      const serviceList = (data?.services||[]).map(s => `${s.name}(${s.dur}분, 여${(s.price_f||0).toLocaleString()}원)`).join(", ");
 
-      const prompt = `당신은 하우스왁싱의 친절한 상담 직원입니다.
+      const prompt = `당신은 하우스왁싱의 AI 예약 상담사입니다.
 
-[브랜드 정보]
-${ctx.description || "하우스왁싱 - 왁싱 전문 직영 살롱"}
+[브랜드]
+하우스왁싱 - 서울 8개 직영점 왁싱 전문샵
 
-[지점 정보]
-${branchList}
+[지점 목록]
+${branchNames}
 
-[시술 메뉴 및 가격]
-${services}
+[시술 메뉴]
+${serviceList || services}
 
-[자주 묻는 질문]
+[FAQ]
 ${faqText}
 
 [대화 내용]
 ${lastMsgs}
 
-위 대화에서 고객의 마지막 메시지에 대해 답변해줘.
-- 친절하고 자연스러운 한국어로
-- 간결하게 (2-3문장)
-- 예약 유도 포함 (필요한 경우)
-- 답변 텍스트만 출력 (설명 없이)`;
+[지시사항]
+1. 고객이 예약을 원하면 순서대로 정보를 수집해:
+   - 지점 선택 (아직 모르면 질문)
+   - 시술 종류 (아직 모르면 질문)
+   - 원하는 날짜 (아직 모르면 질문, YYYY-MM-DD 형식으로 파악)
+   - 원하는 시간 (아직 모르면 질문)
+2. 가격/위치/FAQ 질문은 바로 답변
+3. 예약에 필요한 정보가 모두 모이면 마지막 줄에 반드시 이 형식으로 출력:
+   [BOOKING:지점명|시술명|날짜|시간]
+   예: [BOOKING:강남본점|브라질리언 왁싱 35분|2026-03-25|14:00]
+4. 친절하고 자연스럽게, 2-3문장으로 간결하게
+5. 답변 텍스트만 출력`;
 
       const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + GEMINI_KEY, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
       });
-      const d = await res.json();
-      const draft = d.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      const d2 = await res.json();
+      let draft = d2.candidates?.[0]?.content?.parts?.[0]?.text || "";
+
+      // BOOKING 태그 파싱 → 빈 슬롯 확인
+      const bookingMatch = draft.match(/\[BOOKING:([^|]+)\|([^|]+)\|([^|]+)\|([^\]]+)\]/);
+      if (bookingMatch) {
+        const [, bName, sName, bDate, bTime] = bookingMatch;
+        const branch = (data?.branches||[]).find(b => b.name.includes(bName.trim()) || bName.includes(b.name.replace("하우스왁싱 ","")));
+        if (branch) {
+          const slots = await checkAvailableSlots(branch.id, bDate.trim());
+          const reqTime = bTime.trim();
+          const isAvail = slots.includes(reqTime);
+          draft = draft.replace(/\[BOOKING:[^\]]+\]/, "").trim();
+          if (isAvail) {
+            draft += `\n\n✅ ${bDate} ${reqTime} 예약 가능합니다! 예약을 확정할까요?`;
+            setAiDraft(draft + `\n\n[CONFIRM:${branch.id}|${sName}|${bDate}|${reqTime}]`);
+          } else {
+            const altSlots = slots.slice(0,4).join(", ");
+            draft += `\n\n죄송합니다. ${bDate} ${reqTime}은 이미 예약이 찼어요.\n가능한 시간: ${altSlots}`;
+          }
+        }
+      }
+
       setAiDraft(draft);
-      setReplyText(draft);
+      setReplyText(draft.replace(/\[CONFIRM:[^\]]+\]/g, "").trim());
     } catch(e) { console.error(e); } finally { setAiLoading(false); }
+  };
+
+  // 예약 확정 처리
+  const confirmBooking = async () => {
+    const confirmMatch = aiDraft?.match(/\[CONFIRM:([^|]+)\|([^|]+)\|([^|]+)\|([^\]]+)\]/);
+    if (!confirmMatch || !selected) return;
+    const [, branchId, sName, date, time] = confirmMatch;
+    const service = (data?.services||[]).find(s => s.name.includes(sName) || sName.includes(s.name));
+    const created = await autoCreateReservation({
+      branchId, branchName: sName, serviceId: service?.id, serviceName: sName,
+      date: date.trim(), time: time.trim(), dur: service?.dur || 60,
+      channel: selected.channel, userId: selected.user_id
+    });
+    if (created) {
+      const confirmMsg = `✅ 예약이 확정되었습니다!\n📅 ${date} ${time}\n💆 ${sName}\n예약 번호: ${created.id?.substring(0,8)}`;
+      setReplyText(confirmMsg);
+      setAiDraft("");
+      alert("예약이 등록되었습니다!");
+    }
   };
 
   // 번역 후 발송
@@ -8212,14 +8304,22 @@ ${lastMsgs}
             </div>
 
             {/* AI 초안 미리보기 */}
-            {aiDraft && aiDraft !== replyText && (
+            {aiDraft && (
               <div style={{margin:"0 16px 8px",padding:"10px 14px",background:"#f0f4ff",borderRadius:8,border:"1px solid #c7d2fe",fontSize:T.fs.xs,color:"#4338ca"}}>
                 <div style={{fontWeight:T.fw.bolder,marginBottom:4}}>✨ AI 초안</div>
-                <div style={{lineHeight:1.5}}>{aiDraft}</div>
-                <button onClick={() => setReplyText(aiDraft)}
-                  style={{marginTop:6,padding:"3px 10px",background:"#4338ca",color:"#fff",border:"none",borderRadius:4,fontSize:11,cursor:"pointer"}}>
-                  사용하기
-                </button>
+                <div style={{lineHeight:1.5,whiteSpace:"pre-wrap"}}>{aiDraft.replace(/\[CONFIRM:[^\]]+\]/g,"")}</div>
+                <div style={{display:"flex",gap:6,marginTop:6,flexWrap:"wrap"}}>
+                  <button onClick={() => setReplyText(aiDraft.replace(/\[CONFIRM:[^\]]+\]/g,"").trim())}
+                    style={{padding:"3px 10px",background:"#4338ca",color:"#fff",border:"none",borderRadius:4,fontSize:11,cursor:"pointer"}}>
+                    사용하기
+                  </button>
+                  {aiDraft.includes("[CONFIRM:") && (
+                    <button onClick={confirmBooking}
+                      style={{padding:"3px 10px",background:"#16a34a",color:"#fff",border:"none",borderRadius:4,fontSize:11,cursor:"pointer",fontWeight:700}}>
+                      📅 예약 확정 등록
+                    </button>
+                  )}
+                </div>
               </div>
             )}
 
