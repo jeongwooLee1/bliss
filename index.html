@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.298";
+const BLISS_V = "2.69.299";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -8241,7 +8241,15 @@ ${lastMsgs}
       };
       const accId = (convo[0] || {}).account_id || "";
       const auth = NAVER_ACCOUNTS[accId] || "";
-      if (!auth) { alert("해당 지점 네이버톡톡 설정이 없습니다."); return; }
+      if (!auth) {
+        // 발송 실패 메시지를 채팅창에 표시
+        setMsgs(prev => [...prev, {
+          user_id: selected.user_id, channel: ch, direction: "system",
+          message_text: "⚠️ 발송 실패: 해당 지점 네이버톡톡 설정 미완료",
+          is_read: true, created_at: new Date().toISOString()
+        }]);
+        return;
+      }
       const resp = await fetch("https://gw.talk.naver.com/chatbot/v1/event", {
         method: "POST", headers: { "Content-Type": "application/json", Authorization: auth },
         body: JSON.stringify({ event: "send", user: selected.user_id, textContent: { text } })
@@ -8364,6 +8372,12 @@ ${lastMsgs}
             <div style={{flex:1,overflowY:"auto",padding:"16px 20px",display:"flex",flexDirection:"column",gap:10}}>
               {convo.map((m, i) => {
                 const isOut = m.direction === "out";
+                const isSys = m.direction === "system";
+                if (isSys) return (
+                  <div key={i} style={{textAlign:"center",padding:"4px 0"}}>
+                    <span style={{fontSize:11,color:T.textMuted,background:"#f3f4f6",borderRadius:8,padding:"3px 10px"}}>{m.message_text}</span>
+                  </div>
+                );
                 return (
                   <div key={i} style={{display:"flex",flexDirection:isOut?"row-reverse":"row",alignItems:"flex-end",gap:8}}>
                     {!isOut && <div style={{width:28,height:28,borderRadius:14,background:T.primaryHover,display:"flex",alignItems:"center",justifyContent:"center",fontSize:14,flexShrink:0}}>{CH_ICON[m.channel||"naver"]}</div>}
