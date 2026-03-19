@@ -8240,12 +8240,17 @@ ${lastMsgs}
     if (Object.keys(updates).length > 0) {
       setAutoTranslations(prev => ({ ...prev, ...updates }));
     }
-  }, [autoTranslations]);
+  }, []);
 
-  // 대화 선택 시 자동번역 실행
+  // 대화 선택 시 자동번역 실행 (convo 변경 시만)
+  const prevConvoRef = React.useRef([]);
   React.useEffect(() => {
-    if (convo.length > 0) autoTranslateIncoming(convo);
-  }, [convo]);
+    const newMsgs = convo.filter(m => !prevConvoRef.current.find(p => p.id === m.id));
+    if (newMsgs.length > 0) {
+      prevConvoRef.current = convo;
+      autoTranslateIncoming(convo);
+    }
+  }, [convo.length, selected?.user_id]);
 
   // 메시지 발송
   const sendMsg = async (text) => {
