@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.286";
+const BLISS_V = "2.69.287";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -1065,6 +1065,20 @@ function App() {
 
   const isMaster = role === "owner" || role === "super";
   const isSuper = currentUser?.role === "super";
+
+  useEffect(() => {
+    if (!isMaster) return;
+    const SB2 = "https://dpftlrsuqxqqeouwbfjd.supabase.co";
+    const KEY2 = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwZnRscnN1cXhxcWVvdXdiZmpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5MDU4MjQsImV4cCI6MjA4NzQ4MTgyNH0.iydEkjtPjZ0jXpUUPJben4IWWneDqLomv-HDlcFayE4";
+    const H2 = { apikey:KEY2, Authorization:"Bearer "+KEY2, Prefer:"count=exact" };
+    const load = () => fetch(SB2+"/rest/v1/naver_messages?is_read=eq.false&direction=eq.in&select=id",{headers:H2})
+      .then(res=>{const cr=res.headers.get("content-range");setUnreadMsgCount(cr?parseInt(cr.split("/")[1])||0:0);})
+      .catch(()=>{});
+    load();
+    const t = setInterval(load, 30000);
+    return ()=>clearInterval(t);
+  }, [isMaster]);
+
   const nav = [
     { id:"timeline", label:"타임라인", icon:<I name="calendar" size={16}/> },
     { id:"reservations", label:"예약목록", icon:<I name="clipboard" size={16}/> },
@@ -1072,6 +1086,7 @@ function App() {
     { id:"stats", label:"매출통계", icon:<I name="chart" size={16}/> },
     { id:"customers", label:"고객관리", icon:<I name="users" size={16}/> },
     ...(isMaster?[{ id:"users", label:"사용자관리", icon:<I name="user" size={16}/> }]:[]),
+    ...(isMaster?[{ id:"messages", label:"받은메시지함", icon:<I name="messageSquare" size={16}/>, badge:unreadMsgCount }]:[]),
     { id:"admin", label:"관리설정", icon:<I name="settings" size={16}/> },
   ];
 
@@ -1122,6 +1137,7 @@ function App() {
             {page==="stats" && <StatsPage data={data} userBranches={userBranches} isMaster={isMaster} role={role}/>}
             {page==="customers" && <CustomersPage data={data} setData={setData} userBranches={userBranches} isMaster={isMaster}/>}
             {page==="users" && <UsersPage data={data} setData={setData} bizId={currentBizId}/>}
+            {page==="messages" && isMaster && <AdminInbox sb={sb} branches={data?.branches} onRead={()=>setUnreadMsgCount(0)}/>}
             {page==="admin" && <AdminPage data={data} setData={setData} bizId={currentBizId} serverV={serverV} onLogout={handleLogout} currentUser={currentUser}/>}
           </div>
         </div>
@@ -1951,6 +1967,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   const PROD_LIST = (data?.products || []);
   const [selDate, setSelDate] = useState(todayStr());
   const [schHistory, setSchHistory] = useState(null);
+  const [unreadMsgCount, setUnreadMsgCount] = useState(0);
   // 직원 당일 지점 오버라이드: {empId_date: branchId}
   const [empBranchOverride, setEmpBranchOverride] = useState({});
 
@@ -6987,7 +7004,6 @@ function AdminPage({ data, setData, bizId, serverV, onLogout, currentUser }) {
     {tab==="prodmgmt"     && isMaster &&<AdminProductItems data={data} setData={setData}/>}
     {tab==="svctags"      && isMaster &&<AdminServiceTags  data={data} setData={setData}/>}
     {tab==="ressrc"       && isMaster &&<AdminResSources   data={data} setData={setData}/>}
-    {tab==="messages"     && isMaster &&<AdminInbox  sb={sb} branches={data?.branches}/>}
     {tab==="notiSettings" && isMaster &&<AdminNoti         data={data} setData={setData} sb={sb} bizId={bizId} branches={data?.branches||[]}/>}
     {tab==="aisettings"   && isMaster &&<AdminAISettings   data={data} sb={sb} bizId={bizId}/>}
     {tab==="brandmembers" && isMaster &&<AdminBrandMembers data={data} setData={setData} bizId={bizId} currentUser={currentUser}/>}
