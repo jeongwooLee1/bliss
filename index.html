@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.294";
+const BLISS_V = "2.69.295";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7918,15 +7918,20 @@ function AdminInbox({ sb, branches, data, onRead }) {
     const accId = (msgs[0]||{}).account_id || "";
     return ACCOUNT_BRANCH[accId] || (accId !== "unknown" ? accId : "");
   };
-  const getDisplayName = (m) => {
-    // user_name 있으면 우선 사용
+  const getDisplayName = React.useCallback((m, allMsgs) => {
+    if (!m) return "고객";
     if (m.user_name) return m.user_name;
-    // 메시지에서 이름 추출 시도 (한국 이름 패턴)
-    const nameMatch = m.message_text?.match(/^([가-힣]{2,4})\s+0\d{1,2}-\d{3,4}-\d{4}/);
-    if (nameMatch) return nameMatch[1];
-    // user_id 앞 6자
-    return (m.user_id||"").substring(0,6) + "...";
-  };
+    // 대화 중 이름+전화번호 패턴 추출
+    const convMsgs = (allMsgs||msgs).filter(x => x.user_id === m.user_id && x.direction === "in");
+    for (const msg of convMsgs) {
+      const nm = (msg.message_text||"").match(/([가-힣]{2,4})\s*(0\d{1,2}[-\s]\d{3,4}[-\s]\d{4})/);
+      if (nm) return nm[1];
+    }
+    // 고객 번호 (전체 unique user 중 몇 번째)
+    const uniqueUsers = [...new Set((allMsgs||msgs).map(x=>x.user_id))];
+    const idx = uniqueUsers.indexOf(m.user_id);
+    return "고객" + (idx >= 0 ? idx+1 : "");
+  }, [msgs]);
   const CH_NAME = { naver: "네이버톡톡", kakao: "카카오", instagram: "인스타", whatsapp: "왓츠앱", telegram: "텔레그램" };
 
   const [msgs, setMsgs] = React.useState([]);
@@ -8242,8 +8247,8 @@ ${lastMsgs}
 
       {/* 좌측: 대화 목록 */}
       <div style={{
-  width: window.innerWidth < 768 ? (selected ? "0" : "100%") : 300,
-  minWidth: window.innerWidth < 768 ? (selected ? "0" : "100%") : 300,
+  width: isMobile ? (selected ? "0" : "100%") : 300,
+  minWidth: isMobile ? (selected ? "0" : "100%") : 300,
   borderRight: "1px solid "+T.border,
   display: "flex", flexDirection: "column",
   background: T.bgCard, flexShrink: 0,
@@ -8269,7 +8274,7 @@ ${lastMsgs}
                   transition:"all .1s"}}>
                 <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
                   <span style={{fontSize:T.fs.sm,fontWeight:T.fw.bolder,color:T.text}}>
-                    {CH_ICON[ch]} {getDisplayName(m)}{getBranchName([m])?" · "+getBranchName([m]):""}
+                    {CH_ICON[ch]} {getDisplayName(m, msgs)}{getBranchName([m])?" · "+getBranchName([m]):""}
                   </span>
                   <span style={{fontSize:10,color:T.textMuted}}>{fmtTime(m.created_at)}</span>
                 </div>
@@ -8287,14 +8292,14 @@ ${lastMsgs}
 
       {/* 우측: 채팅창 */}
       <div style={{
-  flex: 1, display: "flex", flexDirection: "column",
-  background: "#f8f9fb",
-  position: window.innerWidth < 768 && selected ? "fixed" : "relative",
-  top: window.innerWidth < 768 && selected ? 0 : "auto",
-  left: window.innerWidth < 768 && selected ? 0 : "auto",
-  right: window.innerWidth < 768 && selected ? 0 : "auto",
-  bottom: window.innerWidth < 768 && selected ? 0 : "auto",
-  zIndex: window.innerWidth < 768 && selected ? 500 : "auto"
+  flex: 1, display: selected ? "flex" : (isMobile ? "none" : "flex"),
+  flexDirection: "column", background: "#f8f9fb",
+  position: isMobile && selected ? "fixed" : "relative",
+  top: isMobile && selected ? 0 : "auto",
+  left: isMobile && selected ? 0 : "auto",
+  right: isMobile && selected ? 0 : "auto",
+  bottom: isMobile && selected ? 0 : "auto",
+  zIndex: isMobile && selected ? 500 : "auto"
 }}>
         {!selected ? (
           <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",color:T.textMuted}}>
@@ -8304,11 +8309,11 @@ ${lastMsgs}
           <>
             {/* 헤더 */}
             <div style={{padding:"12px 16px",borderBottom:"1px solid "+T.border,background:T.bgCard,display:"flex",alignItems:"center",gap:10}}>
-              {window.innerWidth<768&&<button onClick={()=>setSelected(null)} style={{background:"none",border:"none",cursor:"pointer",padding:"4px 8px 4px 0",color:T.primary}}><I name="arrowL" size={20}/></button>}
+              {isMobile&&<button onClick={()=>setSelected(null)} style={{background:"none",border:"none",cursor:"pointer",padding:"4px 8px 4px 0",color:T.primary}}><I name="arrowL" size={20}/></button>}
               <span style={{fontSize:20}}>{CH_ICON[selected.channel]}</span>
               <div style={{flex:1}}>
                 <div style={{fontWeight:T.fw.bolder,fontSize:T.fs.sm,color:T.text}}>
-                  {getDisplayName(convo[0]||{})}
+                  {getDisplayName(convo[0]||{}, msgs)}
                 </div>
                 <div style={{fontSize:T.fs.xs,color:T.textMuted}}>
                   {getBranchName(convo) && getBranchName(convo)+" · "}{CH_NAME[selected.channel]||selected.channel}
