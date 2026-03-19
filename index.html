@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.297";
+const BLISS_V = "2.69.298";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -8189,10 +8189,44 @@ ${lastMsgs}
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ contents: [{ parts: [{ text: `다음 텍스트의 언어 코드만 출력해 (예: ko, en, ja, zh, es 등): "${text}"` }] }] })
       });
-      const d = await res.json();
-      return (d.candidates?.[0]?.content?.parts?.[0]?.text || "ko").trim().toLowerCase().substring(0, 2);
+      const d2 = await res.json();
+      return (d2.candidates?.[0]?.content?.parts?.[0]?.text || "ko").trim().toLowerCase().substring(0, 2);
     } catch { return "ko"; }
   };
+
+  // 수신 메시지 자동번역 캐시
+  const [autoTranslations, setAutoTranslations] = React.useState({});
+
+  // 수신 메시지 자동번역
+  const autoTranslateIncoming = React.useCallback(async (msgList) => {
+    const toTranslate = msgList.filter(m =>
+      m.direction === "in" && m.message_text &&
+      !/^[가-힯ᄀ-ᇿ㄰-㆏ꥠ-꥿ힰ-퟿\s.,!?]+$/.test(m.message_text) &&
+      m.message_text.length > 2
+    );
+    if (toTranslate.length === 0) return;
+
+    const updates = {};
+    for (const m of toTranslate) {
+      if (autoTranslations[m.id]) continue;
+      try {
+        const lang = await detectLang(m.message_text);
+        if (lang === "ko") continue;
+        const translated = await translateMsg(m.message_text, "ko");
+        if (translated && translated !== m.message_text) {
+          updates[m.id] = translated;
+        }
+      } catch {}
+    }
+    if (Object.keys(updates).length > 0) {
+      setAutoTranslations(prev => ({ ...prev, ...updates }));
+    }
+  }, [autoTranslations]);
+
+  // 대화 선택 시 자동번역 실행
+  React.useEffect(() => {
+    if (convo.length > 0) autoTranslateIncoming(convo);
+  }, [convo]);
 
   // 메시지 발송
   const sendMsg = async (text) => {
@@ -8340,6 +8374,11 @@ ${lastMsgs}
                         border:isOut?"none":"1px solid "+T.border,whiteSpace:"pre-wrap",wordBreak:"break-word"}}>
                         {m.message_text}
                         {m.translated_text && <div style={{marginTop:6,paddingTop:6,borderTop:"1px solid rgba(0,0,0,0.1)",fontSize:11,opacity:.8}}>🔤 {m.translated_text}</div>}
+                      {!m.translated_text && autoTranslations[m.id] && (
+                        <div style={{marginTop:6,paddingTop:6,borderTop:"1px solid rgba(0,0,0,0.15)",fontSize:11,color:"rgba(0,0,0,0.55)"}}>
+                          🔤 {autoTranslations[m.id]}
+                        </div>
+                      )}
                       </div>
                       <div style={{fontSize:10,color:T.textMuted,marginTop:3,textAlign:isOut?"right":"left"}}>{fmtTime(m.created_at)}</div>
                     </div>
