@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.322";
+const BLISS_V = "2.69.323";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -2083,7 +2083,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
         p=>{ if(p?.new?.is_read===true && p?.old?.is_read===false) setUnreadMsgCount(prev=>Math.max(0,prev-1)); }
       )?.subscribe();
     return ()=>{ clearInterval(t); try{rt?.unsubscribe();}catch(e){} };
-  }, []);
+  }, [currentUser]);
 
   // 선택 날짜의 지점별 출근자 계산
   // 직원 override 헬퍼: 해당 날짜에 어느 지점에 있는지
