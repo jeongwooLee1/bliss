@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.19-j";
+const SCH_V = "v2026.03.19-g";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -1218,8 +1218,6 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
         if (!canAssignOff(emp, day, branchEmps, branch)) continue;
         if (wouldMakeAltPattern(day.ds)) continue; // 퐁당퐁당 패턴 방지
         const totalWorking = employees.filter(e => {
-          if (e.isMale) return false;
-          if (e.isFreelancer || empSettings[e.id]?.isFreelancer) return false;
           const s = sch[e.id][day.ds];
           return s===STATUS.WORK||isSupport(s)||s===STATUS.SHARE;
         }).length;
@@ -1559,6 +1557,20 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
           added++;
         }
       });
+    });
+  }
+
+
+  // 디버그: window.__debugDate 설정 시 해당 날짜 canAssignOff 원인 로깅
+  if (typeof window !== 'undefined' && window.__debugDate) {
+    const dd = window.__debugDate;
+    console.log(`=== 디버그: ${dd} canAssignOff 차단 원인 ===`);
+    employees.forEach(emp => {
+      const be2 = employees.filter(e=>(e.branches||[e.branch]).some(b=>(emp.branches||[emp.branch]).includes(b)));
+      const br2 = BRANCHES.find(b=>b.id===emp.branch);
+      const fday = {ds:dd, dow:0, d:0};
+      const ok = canAssignOff(emp, fday, be2, br2, true);
+      if(ok) console.log(`[canOff OK] ${emp.id} ${dd}: 가능`);
     });
   }
   return sch;
@@ -2414,7 +2426,7 @@ function App() {
                               .filter(([ds,s])=>ds.startsWith(curMs2)&&(s===STATUS.OFF||s===STATUS.MUST_OFF))
                               .length;
                             if(!workDays && !offDays) return null;
-                            const violations_ = workDays < ruleConfig.minWork || workDays > ruleConfig.maxWork;
+                            const violations_ = workDays < 11 || workDays > 15;
                             return <>
                               <span style={{fontSize:9,fontWeight:700,color:violations_?T.danger:T.textSub,background:violations_?T.dangerLt:T.gray100,borderRadius:3,padding:"0 3px"}}>
                                 근{workDays}·휴{offDays}
