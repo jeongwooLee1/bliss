@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.307";
+const BLISS_V = "2.69.308";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -8230,10 +8230,10 @@ ${lastMsgs}
         body: JSON.stringify({ account_id: accId, user_id: selected.user_id, text })
       });
       if (!serverResp.ok) {
-        const errData = await serverResp.json().catch(() => ({}));
+        const errText = await serverResp.text().catch(() => "");
         setMsgs(prev => [...prev, {
           user_id: selected.user_id, channel: ch, direction: "system",
-          message_text: "⚠️ 발송 실패: " + (errData.error || serverResp.status),
+          message_text: "⚠️ 발송 실패 " + serverResp.status + ": " + errText.substring(0,100),
           is_read: true, created_at: new Date().toISOString()
         }]);
         return;
@@ -8324,7 +8324,7 @@ ${lastMsgs}
   top: isMobile && selected ? 0 : "auto",
   left: isMobile && selected ? 0 : "auto",
   right: isMobile && selected ? 0 : "auto",
-  bottom: isMobile && selected ? "56px" : "auto",
+  bottom: isMobile && selected ? "calc(56px + env(safe-area-inset-bottom))" : "auto",
   zIndex: isMobile && selected ? 500 : "auto"
 }}>
         {!selected ? (
@@ -8402,7 +8402,7 @@ ${lastMsgs}
             )}
 
             {/* 입력창 */}
-            <div style={{padding:"12px 16px",borderTop:"1px solid "+T.border,background:T.bgCard}}>
+            <div style={{padding:"12px 16px",paddingBottom:"calc(12px + env(safe-area-inset-bottom))",borderTop:"1px solid "+T.border,background:T.bgCard}}>
               <div style={{display:"flex",gap:8,marginBottom:8}}>
                 <button onClick={generateAiDraft} disabled={aiLoading}
                   style={{padding:"4px 10px",background:"#f0f4ff",color:"#4338ca",border:"1px solid #c7d2fe",borderRadius:6,fontSize:11,cursor:"pointer",fontWeight:600}}>
