@@ -169,7 +169,7 @@ function getDow0Mon(y,m,d){ const w=new Date(y,m,d).getDay(); return w===0?6:w-1
 function addDays(ds, n){ const d=new Date(ds); d.setDate(d.getDate()+n); return fmtDs(d.getFullYear(),d.getMonth(),d.getDate()); }
 const DNAMES=["월","화","수","목","금","토","일"];
 
-function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, supportConfig={}, ruleConfig={}, ownerRepeat={}, employees=employees, empReqs={}, seed=null) {
+function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, supportConfig={}, ruleConfig={}, ownerRepeat={}, employees=employees, empReqs={}, seed=null, empReqsTs={}) {
   const dim = getDim(year, month);
   const rc = {
     minWork:         Number(ruleConfig.minWork)         || 11,
@@ -238,12 +238,30 @@ function autoAssign(year, month, ownerReqs, prevSchData, empSettings={}, support
       // seededDates에 추가하지 않음 — 원장 휴무 날짜에 다른 직원 휴무 배정 허용
     }
   });
-  // 1-a-2) 일반직원 휴무(꼭) 우선 적용 — seededDates에 추가해 이후 단계에서 건드리지 않음
+  // 1-a-2) 일반직원 휴무(꼭) 우선 적용 — 선착순(타임스탬프 기준) maxDailyOff 제한
+  // 날짜별로 신청자를 타임스탬프 순 정렬 후 maxDailyOff명까지만 적용
+  const empReqsByDay = {}; // { ds: [{eid, ts}] }
   Object.entries(empReqs||{}).forEach(([key, status]) => {
-    const [eid, ds] = key.split("__");
-    if (sch[eid] && (ds.startsWith(monthStr) || ds.startsWith(nextMonthStr))) {
-      sch[eid][ds] = status;
-    }
+    const parts = key.split("__");
+    const eid = parts[0], ds = parts[1];
+    if (!ds) return;
+    if (!(ds.startsWith(monthStr) || ds.startsWith(nextMonthStr))) return;
+    if (!empReqsByDay[ds]) empReqsByDay[ds] = [];
+    const ts = (empReqsTs||{})[key] || 0;
+    empReqsByDay[ds].push({ eid, ts, status });
+  });
+  // 날짜별 타임스탬프 정렬 후 maxDailyOff 이내만 적용, 나머지는 WORK 유지
+  Object.entries(empReqsByDay).forEach(([ds, reqs]) => {
+    reqs.sort((a, b) => a.ts - b.ts); // 빠른 순
+    let offCount = 0;
+    reqs.forEach(({ eid, ts, status }) => {
+      if (!sch[eid]) return;
+      if (offCount < rc.maxDailyOff) {
+        sch[eid][ds] = status;
+        offCount++;
+      }
+      // maxDailyOff 초과 신청자는 WORK 유지 (선착순 탈락)
+    });
   });
 
   // 1-b) 반복 설정: ownerRepeat dows → 이번달 + 이월(isNext) 날짜 자동 적용 (ownerReqs 우선)
@@ -1578,8 +1596,10 @@ function App() {
   // 현재 월 키
   const mkKey = (y, m) => `${y}-${String(m+1).padStart(2,"0")}`;
   const [ownerReqs, setOwnerReqs] = useState({});
-  const [empReqs, setEmpReqs] = useState({});  // 일반직원 휴무(꼭): { "empId__ds": "휴무(꼭)" }
+  const [empReqs, setEmpReqs] = useState({});
+  const [empReqsTs, setEmpReqsTs] = useState({});  // 일반직원 휴무(꼭): { "empId__ds": "휴무(꼭)" }
   const EMP_REQS_KEY = "empReqs_v1";
+  const EMP_REQS_TS_KEY = "empReqs_ts_v1";
   const RULE_CONFIG_KEY = "ruleConfig_v1";
   const SUPPORT_ORDER_KEY = "supportOrder_v1";
   const ownerDragRef = React.useRef({active:false, empId:null, mode:null}); // mode: 'on'|'off'
@@ -1604,6 +1624,10 @@ function App() {
       try {
         const r3 = await window.storage.get(EMP_REQS_KEY);
         if (r3?.value) setEmpReqs(JSON.parse(r3.value));
+      } catch(e) {}
+      try {
+        const r3ts = await window.storage.get(EMP_REQS_TS_KEY);
+        if (r3ts?.value) setEmpReqsTs(JSON.parse(r3ts.value));
       } catch(e) {}
       try {
         const r4 = await window.storage.get(RULES_KEY);
@@ -2111,13 +2135,16 @@ function App() {
             // 배치 전 최신 empReqs/ownerReqs Supabase에서 갱신 (직원 신청 반영)
             let freshEmpReqs = empReqs;
             let freshOwnerReqs = ownerReqs;
+            let freshEmpReqsTs = empReqsTs;
             try {
-              const [latestEmp, latestOwner] = await Promise.all([
+              const [latestEmp, latestOwner, latestTs] = await Promise.all([
                 window.storage.get("empReqs_v1"),
                 window.storage.get("ownerReqs_v1"),
+                window.storage.get("empReqs_ts_v1"),
               ]);
               if (latestEmp?.value) { freshEmpReqs = JSON.parse(latestEmp.value); setEmpReqs(freshEmpReqs); }
               if (latestOwner?.value) { freshOwnerReqs = JSON.parse(latestOwner.value); setOwnerReqs(freshOwnerReqs); }
+              if (latestTs?.value) { freshEmpReqsTs = JSON.parse(latestTs.value); setEmpReqsTs(freshEmpReqsTs); }
             } catch(e) {}
             setTimeout(()=>{
               try {
@@ -2139,7 +2166,8 @@ function App() {
                     ownerRepeat||{},
                     ACTIVE_EMPLOYEES||[],
                     freshEmpReqs||{},
-                    Date.now()+i*997
+                    Date.now()+i*997,
+                    freshEmpReqsTs||{}
                   );
                   const v=validateSch(r,ACTIVE_EMPLOYEES||[]);
                   if(v.length===0){best=r;bestV=[];break;}
