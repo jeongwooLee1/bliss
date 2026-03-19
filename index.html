@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.308";
+const BLISS_V = "2.69.309";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -8219,11 +8219,13 @@ ${lastMsgs}
     if (!selected) return;
     const ch = selected.channel;
     if (ch === "naver") {
-      // account_id unknown이면 allowedAccountIds 첫번째 or 강남본점
-      let accId = (convo[0] || {}).account_id || "";
-      if (!accId || accId === "unknown") {
-        accId = (allowedAccountIds||[])[0] || "101171979";
+      // accId 결정 - 모든 convo 메시지에서 known account_id 찾기
+      let accId = "";
+      for (const m of convo) {
+        if (m.account_id && m.account_id !== "unknown") { accId = m.account_id; break; }
       }
+      // account_id unknown이면 allowedAccountIds 첫번째 or 강남본점
+      if (!accId) accId = (allowedAccountIds||[])[0] || "101171979";
       // 서버 경유 발송 (CORS 우회)
       const serverResp = await fetch("https://158.179.174.30.nip.io/send-message", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -8254,7 +8256,15 @@ ${lastMsgs}
   const handleSend = async () => {
     if (!replyText.trim() || !selected || sending) return;
     setSending(true);
-    try { await sendMsg(replyText.trim()); } finally { setSending(false); }
+    try {
+      await sendMsg(replyText.trim());
+    } catch(e) {
+      setMsgs(prev => [...prev, {
+        user_id: selected.user_id, channel: selected.channel, direction: "system",
+        message_text: "⚠️ 오류: " + e.message,
+        is_read: true, created_at: new Date().toISOString()
+      }]);
+    } finally { setSending(false); }
   };
 
   // 시간 포맷
