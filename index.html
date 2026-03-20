@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.358";
+const BLISS_V = "2.69.359";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -1839,7 +1839,7 @@ function MobileBottomNav({ nav, page, setPage }) {
     ...(nav.find(n=>n.id==="admin")       ? [{id:"admin",      label:"메뉴",       icon:"settings"}]  : []),
   ];
   return (
-    <nav className="mob-bottom-nav" style={{position:"fixed",bottom:0,left:0,right:0,background:T.bgCard,borderTop:`1px solid ${T.border}`,zIndex:200,display:"flex",alignItems:"flex-start",paddingTop:8,paddingBottom:"env(safe-area-inset-bottom)"}}>
+    <nav className="mob-bottom-nav" style={{position:"fixed",bottom:0,left:0,right:0,background:T.bgCard,borderTop:`1px solid ${T.border}`,zIndex:100,display:"flex",alignItems:"flex-start",paddingTop:8,paddingBottom:"env(safe-area-inset-bottom)"}}>
       {items.map(item=>{
         const active = page===item.id;
         return (
@@ -8195,7 +8195,7 @@ function AdminInbox({ sb, branches, data, onRead, userBranches=[], isMaster=fals
       </div>
       {/* 채팅창 */}
       <div style={{flex:1,display:sel?"flex":"none",flexDirection:"column",background:"#f8f9fb",
-        ...(isMobile&&sel?{position:"fixed",top:0,left:0,right:0,bottom:"56px",zIndex:500}:{})}}>
+        ...(isMobile&&sel?{position:"fixed",top:0,left:0,right:0,bottom:0,zIndex:600}:{})}}>
         {sel&&<>
           <div style={{padding:"12px 16px",borderBottom:"1px solid "+T.border,background:T.bgCard,display:"flex",alignItems:"center",gap:10}}>
             {isMobile&&<button onClick={()=>setSel(null)} style={{background:"none",border:"none",cursor:"pointer",color:T.primary,padding:"4px 8px 4px 0"}}><I name="arrowL" size={20}/></button>}
@@ -8218,7 +8218,7 @@ function AdminInbox({ sb, branches, data, onRead, userBranches=[], isMaster=fals
                 <div style={{maxWidth:"70%"}}>
                   <div style={{padding:"10px 14px",borderRadius:isOut?"16px 16px 4px 16px":"16px 16px 16px 4px",
                     background:isOut?T.primary:"#fff",color:isOut?"#fff":T.text,
-                    fontSize:T.fs.sm,lineHeight:1.5,boxShadow:"0 1px 2px rgba(0,0,0,.08)",
+                    fontSize:16,lineHeight:1.5,boxShadow:"0 1px 2px rgba(0,0,0,.08)",
                     border:isOut?"none":"1px solid "+T.border,whiteSpace:"pre-wrap",wordBreak:"break-word"}}>
                     {m.message_text}
                     {m.translated_text && !isOut && (
@@ -8244,8 +8244,8 @@ function AdminInbox({ sb, branches, data, onRead, userBranches=[], isMaster=fals
                 placeholder="메시지 입력..."
                 style={{flex:1,padding:"10px 14px",border:"1px solid "+T.border,borderRadius:8,fontSize:16,resize:"none",height:72,fontFamily:"inherit",outline:"none",background:"#fff"}}/>
               <button onClick={()=>autoTranslate?sendTranslated():sendMsg(reply.trim())} disabled={sending||!reply.trim()}
-                style={{padding:"0 20px",background:reply.trim()?T.primary:"#e5e7eb",color:reply.trim()?"#fff":"#9ca3af",border:"none",borderRadius:8,fontWeight:T.fw.bolder,cursor:reply.trim()?"pointer":"default",fontSize:T.fs.sm}}>
-                {sending?"...":autoTranslate?"번역발송":"발송"}
+                style={{width:44,height:44,flexShrink:0,background:reply.trim()?T.primary:"#e5e7eb",color:reply.trim()?"#fff":"#9ca3af",border:"none",borderRadius:"50%",cursor:reply.trim()?"pointer":"default",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                {sending?<span style={{fontSize:12}}>⏳</span>:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>}
               </button>
             </div>
           </div>
