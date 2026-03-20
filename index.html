@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.347";
+const BLISS_V = "2.69.348";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -2079,7 +2079,17 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
     };
   }, []);
 
-  // 미읽음 메시지 카운트
+  // AI 키 로드 (DB에서)
+  useEffect(()=>{
+    fetch(SB_URL+"/rest/v1/businesses?id=eq.biz_khvurgshb&select=settings",{headers:sbHeaders})
+      .then(r=>r.json())
+      .then(d=>{
+        try {
+          const cfg = JSON.parse(d[0]?.settings||"{}");
+          if(cfg.gemini_key) window.__geminiKey = cfg.gemini_key;
+        } catch(e){}
+      }).catch(()=>{});
+  }, []);
   useEffect(() => {
     const load = () => fetch(SB_URL+"/rest/v1/naver_messages?select=id,is_read,direction&limit=500&order=created_at.desc",
         {headers:{apikey:SB_KEY, Authorization:"Bearer "+SB_KEY}})
