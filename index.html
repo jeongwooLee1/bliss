@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.391";
+const BLISS_V = "2.69.392";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -5560,8 +5560,8 @@ function ReservationList({ data, setData, userBranches, isMaster, setPage, setPe
   };
 
   // ── 필터 상태 (localStorage 유지) ──────────────────
-  const _ls = () => { try { return JSON.parse(localStorage.getItem("bliss_res_filter")||"null")||{}; } catch(e){return{};} };
-  const _save = (patch) => { try { localStorage.setItem("bliss_res_filter", JSON.stringify({..._ls(),...patch})); } catch(e){} };
+  const _ls = () => { try { return JSON.parse(sessionStorage.getItem("bliss_res_filter")||"null")||{}; } catch(e){return{};} };
+  const _save = (patch) => { try { sessionStorage.setItem("bliss_res_filter", JSON.stringify({..._ls(),...patch})); } catch(e){} };
   const [startDate, setStartDateRaw] = useState(()=>_ls().startDate||today);
   const [endDate,   setEndDateRaw]   = useState(()=>{ const f=_ls(); if(f.endDate)return f.endDate; const d=new Date(); d.setDate(d.getDate()+6); return fmtLocal(d); });
   const [periodKey, setPeriodKeyRaw] = useState(()=>_ls().periodKey||"7days");
