@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.346";
+const BLISS_V = "2.69.347";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -8007,7 +8007,7 @@ function AdminInbox({ sb, branches, data, onRead, userBranches=[], isMaster=fals
       if(!map[key]||new Date(m.created_at)>new Date(map[key].created_at)) map[key]=m;
     });
     return Object.values(map).sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
-  },[msgs, allowedIds.join(",")]);
+  },[msgs, allowedIds.length]);
 
   // 현재 대화
   const convo = useMemo(()=>{
