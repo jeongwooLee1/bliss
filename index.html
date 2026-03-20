@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.371";
+const BLISS_V = "2.69.372";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -663,12 +663,11 @@ function App() {
   const [unreadMsgCount, setUnreadMsgCount] = useState(0);
   const [isChatOpen, setIsChatOpen] = useState(false);
   useEffect(() => {
+    const BR_ACC = {"br_4bcauqvrb":"101171979","br_wkqsxj6k1":"102071377","br_l6yzs2pkq":"102507795",
+      "br_k57zpkbx1":"101521969","br_lfv2wgdf1":"101522539","br_g768xdu4w":"101517367",
+      "br_ybo3rmulv":"101476019","br_xu60omgdf":"101988152"};
+    const accIds = (userBranches||[]).map(b=>BR_ACC[b]).filter(Boolean);
     const load = () => {
-      const accIds = (userBranches||[]).map(b=>({
-        "br_4bcauqvrb":"101171979","br_wkqsxj6k1":"102071377","br_l6yzs2pkq":"102507795",
-        "br_k57zpkbx1":"101521969","br_lfv2wgdf1":"101522539","br_g768xdu4w":"101517367",
-        "br_ybo3rmulv":"101476019","br_xu60omgdf":"101988152"
-      })[b]).filter(Boolean);
       let url = SB_URL+"/rest/v1/naver_messages?is_read=eq.false&direction=eq.in&select=id&limit=999";
       if(accIds.length>0) url += "&account_id=in.("+accIds.join(",")+")";
       fetch(url,{headers:{apikey:SB_KEY, Authorization:"Bearer "+SB_KEY}})
@@ -677,13 +676,13 @@ function App() {
         .catch(()=>{});
     };
     load();
-    // Realtime: 새 메시지 즉시 반영
+    // Realtime: INSERT/UPDATE 시 지점 필터 후 재카운트
     const rt = window._sbClient?.channel("unread_badge")
       ?.on("postgres_changes",{event:"INSERT",schema:"public",table:"naver_messages"},
-        p=>{ if(p?.new?.direction==="in"&&!p?.new?.is_read) load(); }
+        p=>{ if(p?.new?.direction==="in"&&!p?.new?.is_read&&(accIds.length===0||accIds.includes(p.new.account_id))) load(); }
       )
       ?.on("postgres_changes",{event:"UPDATE",schema:"public",table:"naver_messages"},
-        p=>{ if(p?.new?.is_read===true) load(); }
+        p=>{ if(p?.new?.is_read===true&&(accIds.length===0||accIds.includes(p.new.account_id))) load(); }
       )?.subscribe();
     return ()=>{ try{rt?.unsubscribe();}catch(e){} };
   }, [userBranches]);
