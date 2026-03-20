@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.377";
+const BLISS_V = "2.69.378";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7973,6 +7973,20 @@ function AdminInbox({ sb, branches, data, onRead, onChatOpen, userBranches=[], i
   const convoEndRef = useRef(null);
   const inputAreaRef = useRef(null);
   const chatWrapRef = useRef(null);
+  useEffect(()=>{
+    if(!isMobile) return;
+    const vv = window.visualViewport;
+    if(!vv) return;
+    const update = ()=>{
+      if(!chatWrapRef.current) return;
+      chatWrapRef.current.style.height = vv.height + 'px';
+      chatWrapRef.current.style.top = vv.offsetTop + 'px';
+    };
+    vv.addEventListener('resize', update);
+    vv.addEventListener('scroll', update);
+    if(sel) update();
+    return ()=>{ vv.removeEventListener('resize', update); vv.removeEventListener('scroll', update); };
+  }, [isMobile, sel]);
 
   // 허용 account_id 목록
   const allowedIds = (userBranches&&userBranches.length>0) ? (userBranches||[]).map(b=>_BR_ACC[b]).filter(Boolean) : [];
@@ -8208,7 +8222,7 @@ function AdminInbox({ sb, branches, data, onRead, onChatOpen, userBranches=[], i
       </div>
       {/* 채팅창 */}
       <div ref={chatWrapRef} style={{flex:1,display:sel?"flex":"none",flexDirection:"column",background:"#f8f9fb",
-        ...(isMobile&&sel?{position:"fixed",top:0,left:0,right:0,height:"100dvh",zIndex:600}:{})}}>
+        ...(isMobile&&sel?{position:"fixed",top:0,left:0,right:0,zIndex:600}:{})}}>
         {sel&&<>
           <div style={{padding:"12px 16px",borderBottom:"1px solid "+T.border,background:T.bgCard,display:"flex",alignItems:"center",gap:10}}>
             {isMobile&&<button onClick={()=>{ setSel(null); if(onChatOpen) onChatOpen(false); }} style={{background:"none",border:"none",cursor:"pointer",color:T.primary,padding:"4px 8px 4px 0"}}><I name="arrowL" size={20}/></button>}
