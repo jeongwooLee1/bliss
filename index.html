@@ -7952,8 +7952,8 @@ function AdminInbox({ sb, branches, data, onRead, userBranches=[], isMaster=fals
   const convoEndRef = useRef(null);
   const loadedRef = useRef(false);
 
-  // 허용 account_id 목록
-  const allowedIds = isMaster ? [] : (userBranches||[]).map(b=>_BR_ACC[b]).filter(Boolean);
+  // 허용 account_id 목록 - super만 전체 허용, 나머지는 userBranches 기준
+  const allowedIds = (userBranches||[]).map(b=>_BR_ACC[b]).filter(Boolean);
   const allowedIdsRef = useRef(allowedIds);
   useEffect(()=>{ allowedIdsRef.current = allowedIds; });
 
