@@ -33,7 +33,7 @@ const sb = {
   async get(table, filter="") { 
     const hasSortCol = ["services","products","service_tags","service_categories","reservation_sources","branches"].includes(table);
     const hasCreatedAt = !["rooms","services","products","service_categories","service_tags"].includes(table);
-    const order = hasSortCol ? "order=sort.asc.nullsfirst" : (hasCreatedAt ? "order=created_at.asc.nullsfirst" : "order=id.asc");
+    const order = hasSortCol ? "order=sort.asc.nullslast" : (hasCreatedAt ? "order=created_at.asc.nullslast" : "order=id.asc");
     const r=await fetch(`${SB_URL}/rest/v1/${table}?select=*&${order}${filter}`,{headers:sbHeaders}); 
     if(!r.ok){const e=await r.text();console.error(`DB get ${table} failed:`,r.status,e);}
     return r.ok?r.json():[]; 
@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.392";
+const BLISS_V = "2.69.393";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -8093,6 +8093,7 @@ function AdminInbox({ sb, branches, data, onRead, onChatOpen, userBranches=[], i
           method:"POST",headers:{"Content-Type":"application/json"},
           body:JSON.stringify({contents:[{parts:[{text:"다음 텍스트의 언어 코드만 출력(ko,en,ja,zh,es 등): \""+lastIn.message_text+"\""}]}]})
         });
+        if(lRes.status===429){ alert("번역 요청이 너무 많습니다. 잠시 후 다시 시도해주세요."); setSending(false); return; }
         const ld=await lRes.json();
         const lang=(ld.candidates?.[0]?.content?.parts?.[0]?.text||"ko").trim().toLowerCase().substring(0,2);
         if(lang!=="ko"){
@@ -8100,6 +8101,7 @@ function AdminInbox({ sb, branches, data, onRead, onChatOpen, userBranches=[], i
             method:"POST",headers:{"Content-Type":"application/json"},
             body:JSON.stringify({contents:[{parts:[{text:"다음을 "+lang+" 언어로 자연스럽게 번역. 번역문만 출력: \""+reply+"\""}]}]})
           });
+          if(tRes.status===429){ alert("번역 요청이 너무 많습니다. 잠시 후 다시 시도해주세요."); setSending(false); return; }
           const td=await tRes.json();
           text=td.candidates?.[0]?.content?.parts?.[0]?.text||reply;
         }
