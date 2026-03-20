@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.353";
+const BLISS_V = "2.69.354";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -1141,7 +1141,7 @@ function App() {
             {page==="stats" && <StatsPage data={data} userBranches={userBranches} isMaster={isMaster} role={role}/>}
             {page==="customers" && <CustomersPage data={data} setData={setData} userBranches={userBranches} isMaster={isMaster}/>}
             {page==="users" && <UsersPage data={data} setData={setData} bizId={currentBizId}/>}
-            {page==="messages" && <AdminInbox sb={sb} branches={data?.branches} data={data} userBranches={userBranches} isMaster={isMaster} onRead={(cnt)=>setUnreadMsgCount(prev=>Math.max(0,prev-(cnt||1)))}/>}
+            {page==="messages" && <AdminInbox sb={sb} branches={data?.branches} data={data} userBranches={userBranches} isMaster={isMaster} onRead={(cnt)=>{ if(cnt<0) setUnreadMsgCount(-cnt); else setUnreadMsgCount(prev=>Math.max(0,prev-cnt)); }}/>}
             {page==="admin" && <AdminPage data={data} setData={setData} bizId={currentBizId} serverV={serverV} onLogout={handleLogout} currentUser={currentUser}/>}
           </div>
         </div>
@@ -7977,9 +7977,13 @@ function AdminInbox({ sb, branches, data, onRead, userBranches=[], isMaster=fals
           if (m.user_name && !nm[m.user_id]) nm[m.user_id] = m.user_name;
         });
         if (Object.keys(nm).length > 0) setNames(prev => ({...prev,...nm}));
+        // App 레벨 배지 정확히 sync (allowedIds 필터 적용)
+        const allowed = (userBranches&&userBranches.length>0) ? userBranches.map(b=>_BR_ACC[b]).filter(Boolean) : [];
+        const freshUnread = d2.filter(m=>!m.is_read&&m.direction==="in"&&(allowed.length===0||allowed.includes(m.account_id))).length;
+        if(onRead) onRead(-freshUnread); // 음수로 전달 → App에서 절대값으로 set
       }
     } catch(e){} finally{setLoading(false);}
-  }, []);
+  }, [userBranches]);
 
   useEffect(()=>{
     loadMsgs();
