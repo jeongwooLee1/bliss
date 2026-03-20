@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.351";
+const BLISS_V = "2.69.352";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -674,7 +674,7 @@ function App() {
         p=>{ if(p?.new?.direction==="in"&&!p?.new?.is_read) setUnreadMsgCount(prev=>prev+1); }
       )
       ?.on("postgres_changes",{event:"UPDATE",schema:"public",table:"naver_messages"},
-        p=>{ if(p?.new?.is_read===true&&p?.old?.is_read===false) setUnreadMsgCount(prev=>Math.max(0,prev-1)); }
+        p=>{ if(p?.new?.is_read===true) setUnreadMsgCount(prev=>Math.max(0,prev-1)); }
       )?.subscribe();
     return ()=>{ try{rt?.unsubscribe();}catch(e){} };
   }, []);
@@ -7959,7 +7959,6 @@ function AdminInbox({ sb, branches, data, onRead, userBranches=[], isMaster=fals
   const [aiLoading, setAiLoading] = useState(false);
   const [names, setNames] = useState({}); // {user_id: displayName}
   const convoEndRef = useRef(null);
-  const loadedRef = useRef(false);
 
   // 허용 account_id 목록
   const allowedIds = (userBranches&&userBranches.length>0) ? (userBranches||[]).map(b=>_BR_ACC[b]).filter(Boolean) : [];
@@ -7983,7 +7982,7 @@ function AdminInbox({ sb, branches, data, onRead, userBranches=[], isMaster=fals
   }, []);
 
   useEffect(()=>{
-    if(!loadedRef.current){ loadedRef.current=true; loadMsgs(); }
+    loadMsgs();
     // Realtime - 채널명 고유하게 생성
     const chName = "inbox_rt_"+Date.now();
     const ch = window._sbClient?.channel(chName)
