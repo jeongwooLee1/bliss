@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.326";
+const BLISS_V = "2.69.327";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -1823,7 +1823,7 @@ function MobileBottomNav({ nav, page, setPage, unreadMsg=0 }) {
   ];
   return (
     <nav className="mob-bottom-nav" style={{position:"fixed",bottom:0,left:0,right:0,background:T.bgCard,borderTop:`1px solid ${T.border}`,zIndex:200,display:"flex",alignItems:"flex-start",paddingTop:8,paddingBottom:"env(safe-area-inset-bottom)"}}>
-      {/* DEBUG: {unreadMsg} */}
+      <span style={{position:"absolute",top:0,left:0,fontSize:8,color:"red",zIndex:999}}>u:{unreadMsg}</span>
       {items.map(item=>{
         const active = page===item.id;
         return (
