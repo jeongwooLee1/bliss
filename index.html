@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.368";
+const BLISS_V = "2.69.369";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -8252,6 +8252,7 @@ function AdminInbox({ sb, branches, data, onRead, onChatOpen, userBranches=[], i
             <div style={{position:"relative",display:"flex",alignItems:"flex-end"}}>
               <textarea value={reply} onChange={e=>setReply(e.target.value)}
                 onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();autoTranslate?sendTranslated():sendMsg(reply.trim());}}}
+                onFocus={e=>{ setTimeout(()=>{ e.target.scrollIntoView({block:"end",behavior:"smooth"}); inputAreaRef.current?.scrollIntoView({block:"end",behavior:"smooth"}); },300); }}
                 placeholder="메시지 입력..."
                 style={{flex:1,padding:"10px "+(reply.trim()?"44px":"14px")+" 10px 14px",border:"1px solid "+T.border,borderRadius:22,fontSize:16,resize:"none",height:44,fontFamily:"inherit",outline:"none",background:"#fff",color:T.text,lineHeight:"24px"}}
               />
