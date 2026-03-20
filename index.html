@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.349";
+const BLISS_V = "2.69.350";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7984,10 +7984,10 @@ function AdminInbox({ sb, branches, data, onRead, userBranches=[], isMaster=fals
   }, []);
 
   useEffect(()=>{
-    if(!loadedRef.current) {
-      loadedRef.current = true;
-      loadMsgs();
-    }
+    // 마운트 시 항상 로드 (탭 재진입 시 새 메시지 반영)
+    loadMsgs();
+    // 30초 폴링 (Realtime 백업)
+    const _poll = setInterval(loadMsgs, 30000);
     // Realtime - 채널명 고유하게 생성
     const chName = "inbox_rt_"+Date.now();
     const ch = window._sbClient?.channel(chName)
@@ -8002,7 +8002,7 @@ function AdminInbox({ sb, branches, data, onRead, userBranches=[], isMaster=fals
           setMsgs(prev=>prev.map(m=>m.id===p.new.id?{...m,...p.new}:m));
         }}
       )?.subscribe();
-    return ()=>{ try{ch?.unsubscribe(); window._sbClient?.removeChannel(ch);}catch(e){} };
+    return ()=>{ clearInterval(_poll); try{ch?.unsubscribe(); window._sbClient?.removeChannel(ch);}catch(e){} };
   }, []);
 
   // 스크롤
