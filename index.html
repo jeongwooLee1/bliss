@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.328";
+const BLISS_V = "2.69.329";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -1823,14 +1823,14 @@ function MobileBottomNav({ nav, page, setPage, unreadMsg=0 }) {
   ];
   return (
     <nav className="mob-bottom-nav" style={{position:"fixed",bottom:0,left:0,right:0,background:T.bgCard,borderTop:`1px solid ${T.border}`,zIndex:200,display:"flex",alignItems:"flex-start",paddingTop:8,paddingBottom:"env(safe-area-inset-bottom)"}}>
-      <span style={{position:"absolute",top:0,left:0,fontSize:8,color:"red",zIndex:999}}>u:{unreadMsg}</span>
       {items.map(item=>{
         const active = page===item.id;
         return (
           <button key={item.id} onClick={()=>setPage(item.id)} style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-start",gap:4,flex:1,paddingTop:0,border:"none",background:"none",cursor:"pointer",fontFamily:"inherit",color:active?T.primary:T.textMuted,transition:"color .15s"}}>
             <div style={{width:24,height:24,display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}>
               <I name={item.icon} size={22} style={{strokeWidth: active ? 2.5 : 1.8}}/>
-              {item.badge>0 && item.id!==page && <span style={{position:"absolute",top:-4,right:-6,background:T.danger,color:"#fff",borderRadius:8,fontSize:9,fontWeight:700,padding:"1px 4px",minWidth:14,textAlign:"center"}}>{item.badge>99?"99+":item.badge}</span>}
+              {item.id==="messages" && <span style={{position:"absolute",top:-6,right:-8,background:"blue",color:"#fff",borderRadius:8,fontSize:8,fontWeight:700,padding:"1px 3px"}}>{unreadMsg}</span>}
+              {item.badge>0 && item.id!==page && item.id!=="messages" && <span style={{position:"absolute",top:-4,right:-6,background:T.danger,color:"#fff",borderRadius:8,fontSize:9,fontWeight:700,padding:"1px 4px",minWidth:14,textAlign:"center"}}>{item.badge>99?"99+":item.badge}</span>}
             </div>
             <span style={{fontSize:10,fontWeight:active?T.fw.bolder:T.fw.medium,letterSpacing:-0.2}}>{item.label}</span>
           </button>
@@ -2066,11 +2066,11 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   useEffect(() => {
     const SB2 = "https://dpftlrsuqxqqeouwbfjd.supabase.co";
     const KEY2 = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwZnRscnN1cXhxcWVvdXdiZmpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5MDU4MjQsImV4cCI6MjA4NzQ4MTgyNH0.iydEkjtPjZ0jXpUUPJben4IWWneDqLomv-HDlcFayE4";
-    const load = () => fetch(SB2+"/rest/v1/naver_messages?is_read=eq.false&direction=eq.in&select=id,message_text&limit=999",
+    const load = () => fetch(SB2+"/rest/v1/naver_messages?is_read=eq.false&direction=eq.in&select=id&limit=999",
         {headers:{apikey:KEY2,Authorization:"Bearer "+KEY2}})
       .then(r=>r.json())
-      .then(arr=>{ if(Array.isArray(arr)) setUnreadMsgCount(arr.length); else console.warn('[badge] unexpected:', arr); })
-      .catch(e=>console.warn('[badge] err:', e));
+      .then(arr=>setUnreadMsgCount(Array.isArray(arr)?arr.length:0))
+      .catch(()=>setUnreadMsgCount(0));
     load();
     const t = setInterval(load, 10000);
     return ()=>clearInterval(t);
