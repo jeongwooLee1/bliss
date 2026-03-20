@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.350";
+const BLISS_V = "2.69.351";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -668,7 +668,6 @@ function App() {
       .then(arr=>{ if(Array.isArray(arr)) setUnreadMsgCount(arr.length); })
       .catch(()=>{});
     load();
-    const t = setInterval(load, 30000);
     // Realtime: 새 메시지 즉시 반영
     const rt = window._sbClient?.channel("unread_badge")
       ?.on("postgres_changes",{event:"INSERT",schema:"public",table:"naver_messages"},
@@ -677,7 +676,7 @@ function App() {
       ?.on("postgres_changes",{event:"UPDATE",schema:"public",table:"naver_messages"},
         p=>{ if(p?.new?.is_read===true&&p?.old?.is_read===false) setUnreadMsgCount(prev=>Math.max(0,prev-1)); }
       )?.subscribe();
-    return ()=>{ clearInterval(t); try{rt?.unsubscribe();}catch(e){} };
+    return ()=>{ try{rt?.unsubscribe();}catch(e){} };
   }, []);
   const [allUsers, setAllUsers] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
@@ -7984,10 +7983,7 @@ function AdminInbox({ sb, branches, data, onRead, userBranches=[], isMaster=fals
   }, []);
 
   useEffect(()=>{
-    // 마운트 시 항상 로드 (탭 재진입 시 새 메시지 반영)
-    loadMsgs();
-    // 30초 폴링 (Realtime 백업)
-    const _poll = setInterval(loadMsgs, 30000);
+    if(!loadedRef.current){ loadedRef.current=true; loadMsgs(); }
     // Realtime - 채널명 고유하게 생성
     const chName = "inbox_rt_"+Date.now();
     const ch = window._sbClient?.channel(chName)
@@ -8002,7 +7998,7 @@ function AdminInbox({ sb, branches, data, onRead, userBranches=[], isMaster=fals
           setMsgs(prev=>prev.map(m=>m.id===p.new.id?{...m,...p.new}:m));
         }}
       )?.subscribe();
-    return ()=>{ clearInterval(_poll); try{ch?.unsubscribe(); window._sbClient?.removeChannel(ch);}catch(e){} };
+    return ()=>{ try{ch?.unsubscribe(); window._sbClient?.removeChannel(ch);}catch(e){} };
   }, []);
 
   // 스크롤
