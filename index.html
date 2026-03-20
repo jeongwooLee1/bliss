@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.338";
+const BLISS_V = "2.69.339";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7977,6 +7977,17 @@ function AdminInbox({ sb, branches, data, onRead, userBranches=[], isMaster=fals
     if(loadedRef.current) return;
     loadedRef.current = true;
     loadMsgs();
+    // 5초 폴링 (Realtime 보조)
+    const pollT = setInterval(()=>{
+      fetch(_SB2+"/rest/v1/naver_messages?order=created_at.desc&limit=300&select=*",{headers:_SH2})
+        .then(r=>r.json())
+        .then(d2=>{ if(Array.isArray(d2)) {
+          setMsgs(d2);
+          const nm={};
+          d2.forEach(m=>{if(m.user_name&&!nm[m.user_id])nm[m.user_id]=m.user_name;});
+          if(Object.keys(nm).length>0) setNames(prev=>({...prev,...nm}));
+        }}).catch(()=>{});
+    }, 5000);
     // Realtime
     const ch = window._sbClient?.channel("inbox_rt2")
       ?.on("postgres_changes",{event:"INSERT",schema:"public",table:"naver_messages"},
@@ -7990,7 +8001,7 @@ function AdminInbox({ sb, branches, data, onRead, userBranches=[], isMaster=fals
           setMsgs(prev=>prev.map(m=>m.id===p.new.id?{...m,...p.new}:m));
         }}
       )?.subscribe();
-    return ()=>{ try{ch?.unsubscribe();}catch(e){} };
+    return ()=>{ clearInterval(pollT); try{ch?.unsubscribe();}catch(e){} };
   }, []);
 
   // 스크롤
