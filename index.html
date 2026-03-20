@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.365";
+const BLISS_V = "2.69.366";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -8265,12 +8265,10 @@ function AdminInbox({ sb, branches, data, onRead, onChatOpen, userBranches=[], i
               <button onClick={()=>setAutoTranslate(v=>!v)} style={{padding:"4px 10px",background:autoTranslate?"#166534":"#f0fdf4",color:autoTranslate?"#fff":"#166534",border:"1px solid #bbf7d0",borderRadius:6,fontSize:11,cursor:"pointer",fontWeight:600}}>🌐 자동번역 {autoTranslate?"ON":"OFF"}</button>
             </div>
             <div style={{position:"relative",display:"flex",alignItems:"flex-end"}}>
-              <textarea value={reply} onChange={e=>setReply(e.target.value)}
+              <textarea value={reply} onChange={e=>{setReply(e.target.value); e.target.style.height="44px"; e.target.style.height=Math.min(e.target.scrollHeight,120)+"px";}}
                 onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();autoTranslate?sendTranslated():sendMsg(reply.trim());}}}
                 placeholder="메시지 입력..."
-                style={{flex:1,padding:"10px 44px 10px 14px",border:"1px solid "+T.border,borderRadius:22,fontSize:16,resize:"none",minHeight:44,maxHeight:120,height:"auto",fontFamily:"inherit",outline:"none",background:"#fff",lineHeight:1.5,overflowY:"auto"}}
-                rows={1}
-                onInput={e=>{e.target.style.height="auto";e.target.style.height=Math.min(e.target.scrollHeight,120)+"px";}}
+                style={{flex:1,padding:"10px "+(reply.trim()?"44px":"14px")+" 10px 14px",border:"1px solid "+T.border,borderRadius:22,fontSize:16,resize:"none",height:44,maxHeight:120,fontFamily:"inherit",outline:"none",background:"#fff",lineHeight:"24px",overflowY:"hidden"}}
               />
               {reply.trim()&&<button onClick={()=>autoTranslate?sendTranslated():sendMsg(reply.trim())} disabled={sending}
                 style={{position:"absolute",right:8,bottom:6,width:32,height:32,background:T.primary,color:"#fff",border:"none",borderRadius:"50%",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
