@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.364";
+const BLISS_V = "2.69.365";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7970,6 +7970,22 @@ function AdminInbox({ sb, branches, data, onRead, onChatOpen, userBranches=[], i
   const [autoTranslate, setAutoTranslate] = useState(false);
   const [names, setNames] = useState({}); // {user_id: displayName}
   const convoEndRef = useRef(null);
+  const inputAreaRef = useRef(null);
+  // iOS 키보드 올라올 때 입력창 바로 위로 붙이기
+  useEffect(()=>{
+    if(!isMobile) return;
+    const vv = window.visualViewport;
+    if(!vv) return;
+    const handler = ()=>{
+      if(inputAreaRef.current){
+        const offset = window.innerHeight - vv.height;
+        inputAreaRef.current.style.transform = `translateY(-${offset}px)`;
+      }
+    };
+    vv.addEventListener('resize', handler);
+    vv.addEventListener('scroll', handler);
+    return ()=>{ vv.removeEventListener('resize', handler); vv.removeEventListener('scroll', handler); };
+  }, [isMobile]);
 
   // 허용 account_id 목록
   const allowedIds = (userBranches&&userBranches.length>0) ? (userBranches||[]).map(b=>_BR_ACC[b]).filter(Boolean) : [];
@@ -8205,7 +8221,7 @@ function AdminInbox({ sb, branches, data, onRead, onChatOpen, userBranches=[], i
       </div>
       {/* 채팅창 */}
       <div style={{flex:1,display:sel?"flex":"none",flexDirection:"column",background:"#f8f9fb",
-        ...(isMobile&&sel?{position:"fixed",top:0,left:0,right:0,bottom:0,zIndex:600,paddingBottom:"env(safe-area-inset-bottom)"}:{})}}>
+        ...(isMobile&&sel?{position:"fixed",top:0,left:0,right:0,bottom:0,zIndex:600}:{})}}>
         {sel&&<>
           <div style={{padding:"12px 16px",borderBottom:"1px solid "+T.border,background:T.bgCard,display:"flex",alignItems:"center",gap:10}}>
             {isMobile&&<button onClick={()=>{ setSel(null); if(onChatOpen) onChatOpen(false); }} style={{background:"none",border:"none",cursor:"pointer",color:T.primary,padding:"4px 8px 4px 0"}}><I name="arrowL" size={20}/></button>}
@@ -8243,20 +8259,23 @@ function AdminInbox({ sb, branches, data, onRead, onChatOpen, userBranches=[], i
             })}
             <div ref={convoEndRef}/>
           </div>
-          <div style={{padding:"12px 16px",paddingBottom:"calc(12px + env(safe-area-inset-bottom))",borderTop:"1px solid "+T.border,background:T.bgCard}}>
+          <div ref={inputAreaRef} style={{padding:"12px 16px",paddingBottom:"12px",borderTop:"1px solid "+T.border,background:T.bgCard}}>
             <div style={{display:"flex",gap:8,marginBottom:8}}>
               <button onClick={genAI} disabled={aiLoading} style={{padding:"4px 10px",background:"#f0f4ff",color:"#4338ca",border:"1px solid #c7d2fe",borderRadius:6,fontSize:11,cursor:"pointer",fontWeight:600}}>{aiLoading?"⏳":"✨ AI"}</button>
               <button onClick={()=>setAutoTranslate(v=>!v)} style={{padding:"4px 10px",background:autoTranslate?"#166534":"#f0fdf4",color:autoTranslate?"#fff":"#166534",border:"1px solid #bbf7d0",borderRadius:6,fontSize:11,cursor:"pointer",fontWeight:600}}>🌐 자동번역 {autoTranslate?"ON":"OFF"}</button>
             </div>
-            <div style={{display:"flex",gap:8}}>
+            <div style={{position:"relative",display:"flex",alignItems:"flex-end"}}>
               <textarea value={reply} onChange={e=>setReply(e.target.value)}
                 onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();autoTranslate?sendTranslated():sendMsg(reply.trim());}}}
                 placeholder="메시지 입력..."
-                style={{flex:1,padding:"10px 14px",border:"1px solid "+T.border,borderRadius:8,fontSize:16,resize:"none",height:72,fontFamily:"inherit",outline:"none",background:"#fff"}}/>
-              <button onClick={()=>autoTranslate?sendTranslated():sendMsg(reply.trim())} disabled={sending||!reply.trim()}
-                style={{width:44,height:44,flexShrink:0,background:reply.trim()?T.primary:"#e5e7eb",color:reply.trim()?"#fff":"#9ca3af",border:"none",borderRadius:"50%",cursor:reply.trim()?"pointer":"default",display:"flex",alignItems:"center",justifyContent:"center"}}>
-                {sending?<span style={{fontSize:12}}>⏳</span>:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>}
-              </button>
+                style={{flex:1,padding:"10px 44px 10px 14px",border:"1px solid "+T.border,borderRadius:22,fontSize:16,resize:"none",minHeight:44,maxHeight:120,height:"auto",fontFamily:"inherit",outline:"none",background:"#fff",lineHeight:1.5,overflowY:"auto"}}
+                rows={1}
+                onInput={e=>{e.target.style.height="auto";e.target.style.height=Math.min(e.target.scrollHeight,120)+"px";}}
+              />
+              {reply.trim()&&<button onClick={()=>autoTranslate?sendTranslated():sendMsg(reply.trim())} disabled={sending}
+                style={{position:"absolute",right:8,bottom:6,width:32,height:32,background:T.primary,color:"#fff",border:"none",borderRadius:"50%",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                {sending?<span style={{fontSize:10}}>⏳</span>:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>}
+              </button>}
             </div>
           </div>
         </>}
