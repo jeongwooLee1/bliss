@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.370";
+const BLISS_V = "2.69.371";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -686,7 +686,7 @@ function App() {
         p=>{ if(p?.new?.is_read===true) load(); }
       )?.subscribe();
     return ()=>{ try{rt?.unsubscribe();}catch(e){} };
-  }, []);
+  }, [userBranches]);
   const [allUsers, setAllUsers] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [currentBizId, setCurrentBizId] = useState(null);
