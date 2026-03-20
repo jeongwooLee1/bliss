@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.331";
+const BLISS_V = "2.69.332";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -1823,6 +1823,7 @@ function MobileBottomNav({ nav, page, setPage, unreadMsg=0 }) {
   ];
   return (
     <nav className="mob-bottom-nav" style={{position:"fixed",bottom:0,left:0,right:0,background:T.bgCard,borderTop:`1px solid ${T.border}`,zIndex:200,display:"flex",alignItems:"flex-start",paddingTop:8,paddingBottom:"env(safe-area-inset-bottom)"}}>
+      <span style={{position:"absolute",top:0,left:0,fontSize:7,color:"red",zIndex:999,maxWidth:200,wordBreak:"break-all"}}>{dbgMsg}</span>
       {items.map(item=>{
         const active = page===item.id;
         return (
@@ -2063,12 +2064,13 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   }, []);
 
   // 미읽음 메시지 카운트
+  const [dbgMsg, setDbgMsg] = React.useState("...");
   useEffect(() => {
     const H = {apikey: SB_KEY, Authorization: "Bearer "+SB_KEY};
     const load = () => fetch(SB_URL+"/rest/v1/naver_messages?is_read=eq.false&direction=eq.in&select=id&limit=999", {headers: H})
       .then(r=>r.json())
-      .then(arr=>{ setUnreadMsgCount(Array.isArray(arr)?arr.length:0); })
-      .catch(()=>{});
+      .then(arr=>{ setDbgMsg(JSON.stringify(arr).slice(0,60)); setUnreadMsgCount(Array.isArray(arr)?arr.length:0); })
+      .catch(e=>setDbgMsg("ERR:"+e));
     load();
     const t = setInterval(load, 10000);
     return ()=>clearInterval(t);
