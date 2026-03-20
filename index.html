@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.329";
+const BLISS_V = "2.69.330";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -2064,13 +2064,11 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
 
   // 미읽음 메시지 카운트
   useEffect(() => {
-    const SB2 = "https://dpftlrsuqxqqeouwbfjd.supabase.co";
-    const KEY2 = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwZnRscnN1cXhxcWVvdXdiZmpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5MDU4MjQsImV4cCI6MjA4NzQ4MTgyNH0.iydEkjtPjZ0jXpUUPJben4IWWneDqLomv-HDlcFayE4";
-    const load = () => fetch(SB2+"/rest/v1/naver_messages?is_read=eq.false&direction=eq.in&select=id&limit=999",
-        {headers:{apikey:KEY2,Authorization:"Bearer "+KEY2}})
+    const load = () => fetch(SB_URL+"/rest/v1/naver_messages?is_read=eq.false&direction=eq.in&select=id&limit=999",
+        {headers:sbHeaders})
       .then(r=>r.json())
       .then(arr=>setUnreadMsgCount(Array.isArray(arr)?arr.length:0))
-      .catch(()=>setUnreadMsgCount(0));
+      .catch(()=>{});
     load();
     const t = setInterval(load, 10000);
     return ()=>clearInterval(t);
