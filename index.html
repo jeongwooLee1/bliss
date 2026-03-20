@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.343";
+const BLISS_V = "2.69.344";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7953,7 +7953,9 @@ function AdminInbox({ sb, branches, data, onRead, userBranches=[], isMaster=fals
   const loadedRef = useRef(false);
 
   // 허용 account_id 목록
-  const allowedIds = (isMaster && userBranches?.length === 0) ? [] : (userBranches||[]).map(b=>_BR_ACC[b]).filter(Boolean);
+  const allowedIds = isMaster ? [] : (userBranches||[]).map(b=>_BR_ACC[b]).filter(Boolean);
+  const allowedIdsRef = useRef(allowedIds);
+  useEffect(()=>{ allowedIdsRef.current = allowedIds; }, [allowedIds.join(',')]);
 
   // 메시지 로드 (1회)
   const loadMsgs = useCallback(async () => {
@@ -7983,7 +7985,7 @@ function AdminInbox({ sb, branches, data, onRead, userBranches=[], isMaster=fals
     const ch = window._sbClient?.channel(chName)
       ?.on("postgres_changes",{event:"INSERT",schema:"public",table:"naver_messages"},
         p=>{ if(p?.new) {
-          if(allowedIds.length>0 && p.new.account_id && p.new.account_id!=="unknown" && !allowedIds.includes(p.new.account_id)) return;
+          if(allowedIdsRef.current.length>0 && p.new.account_id && p.new.account_id!=="unknown" && !allowedIdsRef.current.includes(p.new.account_id)) return;
           setMsgs(prev=>prev.some(m=>m.id===p.new.id)?prev:[...prev,p.new]);
           if(p.new.user_name) setNames(prev=>({...prev,[p.new.user_id]:p.new.user_name}));
         }}
