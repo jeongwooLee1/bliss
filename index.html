@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.384";
+const BLISS_V = "2.69.385";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7977,16 +7977,16 @@ function AdminInbox({ sb, branches, data, onRead, onChatOpen, userBranches=[], i
   useEffect(()=>{
     const vv = window.visualViewport;
     if(!vv || !isMobile) return;
+    // baseline: 키보드 없을 때 vv.height 최대값
+    let baseline = vv.height;
     const update = ()=>{
-      const kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
-      document.documentElement.style.setProperty('--kb', kb+'px');
+      if(vv.height > baseline) baseline = vv.height;
+      const kb = Math.max(0, baseline - vv.height);
+      document.documentElement.style.setProperty('--kb', kb + 'px');
     };
     vv.addEventListener('resize', update);
-    vv.addEventListener('scroll', update);
-    update();
     return ()=>{ 
-      vv.removeEventListener('resize', update); 
-      vv.removeEventListener('scroll', update);
+      vv.removeEventListener('resize', update);
       document.documentElement.style.setProperty('--kb','0px');
     };
   }, [isMobile]);
