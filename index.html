@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.372";
+const BLISS_V = "2.69.373";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -668,6 +668,8 @@ function App() {
       "br_ybo3rmulv":"101476019","br_xu60omgdf":"101988152"};
     const accIds = (userBranches||[]).map(b=>BR_ACC[b]).filter(Boolean);
     const load = () => {
+      // userBranches 아직 안 로드됐으면 스킵 (isMaster는 전체 허용)
+      if(accIds.length===0 && !isMaster) { setUnreadMsgCount(0); return; }
       let url = SB_URL+"/rest/v1/naver_messages?is_read=eq.false&direction=eq.in&select=id&limit=999";
       if(accIds.length>0) url += "&account_id=in.("+accIds.join(",")+")";
       fetch(url,{headers:{apikey:SB_KEY, Authorization:"Bearer "+SB_KEY}})
@@ -685,7 +687,7 @@ function App() {
         p=>{ if(p?.new?.is_read===true&&(accIds.length===0||accIds.includes(p.new.account_id))) load(); }
       )?.subscribe();
     return ()=>{ try{rt?.unsubscribe();}catch(e){} };
-  }, [userBranches]);
+  }, [userBranches, isMaster]);
   const [allUsers, setAllUsers] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [currentBizId, setCurrentBizId] = useState(null);
