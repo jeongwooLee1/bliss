@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.373";
+const BLISS_V = "2.69.374";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7973,21 +7973,6 @@ function AdminInbox({ sb, branches, data, onRead, onChatOpen, userBranches=[], i
   const convoEndRef = useRef(null);
   const inputAreaRef = useRef(null);
   const chatWrapRef = useRef(null);
-  useEffect(()=>{
-    if(!isMobile) return;
-    const vv = window.visualViewport;
-    if(!vv) return;
-    const update = ()=>{
-      if(chatWrapRef.current){
-        chatWrapRef.current.style.height = vv.height + "px";
-        chatWrapRef.current.style.top = vv.offsetTop + "px";
-      }
-    };
-    vv.addEventListener("resize", update);
-    vv.addEventListener("scroll", update);
-    update();
-    return ()=>{ vv.removeEventListener("resize", update); vv.removeEventListener("scroll", update); };
-  }, [isMobile, sel]);
 
   // 허용 account_id 목록
   const allowedIds = (userBranches&&userBranches.length>0) ? (userBranches||[]).map(b=>_BR_ACC[b]).filter(Boolean) : [];
@@ -8223,7 +8208,7 @@ function AdminInbox({ sb, branches, data, onRead, onChatOpen, userBranches=[], i
       </div>
       {/* 채팅창 */}
       <div ref={chatWrapRef} style={{flex:1,display:sel?"flex":"none",flexDirection:"column",background:"#f8f9fb",
-        ...(isMobile&&sel?{position:"fixed",top:0,left:0,right:0,height:"100dvh",zIndex:600}:{})}}>
+        ...(isMobile&&sel?{position:"fixed",top:0,left:0,right:0,bottom:0,zIndex:600,overflow:"hidden"}:{})}}>
         {sel&&<>
           <div style={{padding:"12px 16px",borderBottom:"1px solid "+T.border,background:T.bgCard,display:"flex",alignItems:"center",gap:10}}>
             {isMobile&&<button onClick={()=>{ setSel(null); if(onChatOpen) onChatOpen(false); }} style={{background:"none",border:"none",cursor:"pointer",color:T.primary,padding:"4px 8px 4px 0"}}><I name="arrowL" size={20}/></button>}
@@ -8236,7 +8221,7 @@ function AdminInbox({ sb, branches, data, onRead, onChatOpen, userBranches=[], i
             </div>
 
           </div>
-          <div style={{flex:1,overflowY:"auto",padding:"16px 20px",display:"flex",flexDirection:"column",gap:10}}>
+          <div style={{flex:1,overflowY:"auto",overflowX:"hidden",padding:"16px 20px",display:"flex",flexDirection:"column",gap:10,WebkitOverflowScrolling:"touch"}}>
             {convo.map((m,i)=>{
               const isOut=m.direction==="out";
               const isSys=m.direction==="system";
@@ -8261,7 +8246,7 @@ function AdminInbox({ sb, branches, data, onRead, onChatOpen, userBranches=[], i
             })}
             <div ref={convoEndRef}/>
           </div>
-          <div ref={inputAreaRef} style={{padding:"12px 16px",paddingBottom:"env(safe-area-inset-bottom, 12px)",borderTop:"1px solid "+T.border,background:T.bgCard,position:"sticky",bottom:0,flexShrink:0}}>
+          <div ref={inputAreaRef} style={{padding:"12px 16px",paddingBottom:"max(12px, env(safe-area-inset-bottom))",borderTop:"1px solid "+T.border,background:T.bgCard,flexShrink:0}}>
             <div style={{display:"flex",gap:8,marginBottom:8}}>
               <button onClick={genAI} disabled={aiLoading} style={{padding:"4px 10px",background:"#f0f4ff",color:"#4338ca",border:"1px solid #c7d2fe",borderRadius:6,fontSize:11,cursor:"pointer",fontWeight:600}}>{aiLoading?"⏳":"✨ AI"}</button>
               <button onClick={()=>setAutoTranslate(v=>!v)} style={{padding:"4px 10px",background:autoTranslate?"#166534":"#f0fdf4",color:autoTranslate?"#fff":"#166534",border:"1px solid #bbf7d0",borderRadius:6,fontSize:11,cursor:"pointer",fontWeight:600}}>🌐 자동번역 {autoTranslate?"ON":"OFF"}</button>
