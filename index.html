@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.357";
+const BLISS_V = "2.69.358";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7957,6 +7957,7 @@ function AdminInbox({ sb, branches, data, onRead, userBranches=[], isMaster=fals
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
   const [aiLoading, setAiLoading] = useState(false);
+  const [autoTranslate, setAutoTranslate] = useState(false);
   const [names, setNames] = useState({}); // {user_id: displayName}
   const convoEndRef = useRef(null);
 
@@ -8205,12 +8206,7 @@ function AdminInbox({ sb, branches, data, onRead, userBranches=[], isMaster=fals
               </div>
               <div style={{fontSize:T.fs.xs,color:T.textMuted}}>{CH_NAME[sel.channel]||sel.channel}</div>
             </div>
-            <div style={{display:"flex",gap:6,alignItems:"center"}}>
-              <button onClick={genAI} disabled={aiLoading}
-                style={{padding:"5px 10px",background:aiLoading?"#e5e7eb":T.primary,color:"#fff",border:"none",borderRadius:6,fontSize:T.fs.xs,fontWeight:T.fw.bolder,cursor:"pointer"}}>
-                {aiLoading?"..." :"✨ AI"}
-              </button>
-            </div>
+
           </div>
           <div style={{flex:1,overflowY:"auto",padding:"16px 20px",display:"flex",flexDirection:"column",gap:10}}>
             {convo.map((m,i)=>{
@@ -8240,16 +8236,16 @@ function AdminInbox({ sb, branches, data, onRead, userBranches=[], isMaster=fals
           <div style={{padding:"12px 16px",borderTop:"1px solid "+T.border,background:T.bgCard}}>
             <div style={{display:"flex",gap:8,marginBottom:8}}>
               <button onClick={genAI} disabled={aiLoading} style={{padding:"4px 10px",background:"#f0f4ff",color:"#4338ca",border:"1px solid #c7d2fe",borderRadius:6,fontSize:11,cursor:"pointer",fontWeight:600}}>{aiLoading?"⏳":"✨ AI"}</button>
-              <button onClick={sendTranslated} disabled={sending} style={{padding:"4px 10px",background:"#f0fdf4",color:"#166534",border:"1px solid #bbf7d0",borderRadius:6,fontSize:11,cursor:"pointer",fontWeight:600}}>🌐 번역발송</button>
+              <button onClick={()=>setAutoTranslate(v=>!v)} style={{padding:"4px 10px",background:autoTranslate?"#166534":"#f0fdf4",color:autoTranslate?"#fff":"#166534",border:"1px solid #bbf7d0",borderRadius:6,fontSize:11,cursor:"pointer",fontWeight:600}}>🌐 자동번역 {autoTranslate?"ON":"OFF"}</button>
             </div>
             <div style={{display:"flex",gap:8}}>
               <textarea value={reply} onChange={e=>setReply(e.target.value)}
-                onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMsg(reply.trim());}}}
-                placeholder="메시지 입력... (Enter 발송, Shift+Enter 줄바꿈)"
+                onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();autoTranslate?sendTranslated():sendMsg(reply.trim());}}}
+                placeholder="메시지 입력..."
                 style={{flex:1,padding:"10px 14px",border:"1px solid "+T.border,borderRadius:8,fontSize:16,resize:"none",height:72,fontFamily:"inherit",outline:"none",background:"#fff"}}/>
-              <button onClick={()=>sendMsg(reply.trim())} disabled={sending||!reply.trim()}
+              <button onClick={()=>autoTranslate?sendTranslated():sendMsg(reply.trim())} disabled={sending||!reply.trim()}
                 style={{padding:"0 20px",background:reply.trim()?T.primary:"#e5e7eb",color:reply.trim()?"#fff":"#9ca3af",border:"none",borderRadius:8,fontWeight:T.fw.bolder,cursor:reply.trim()?"pointer":"default",fontSize:T.fs.sm}}>
-                {sending?"...":"발송"}
+                {sending?"...":autoTranslate?"번역발송":"발송"}
               </button>
             </div>
           </div>
