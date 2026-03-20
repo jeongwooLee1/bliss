@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.393";
+const BLISS_V = "2.69.394";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -8151,8 +8151,8 @@ function AdminInbox({ sb, branches, data, onRead, onChatOpen, userBranches=[], i
         <div ref={convoEndRef}/>
       </div>
       {/* 입력창 */}
-      <div style={{background:T.bgCard,borderTop:"1px solid "+T.border,padding:"8px 12px",flexShrink:0}}>
-        <div style={{display:"flex",gap:8,marginBottom:8}}>
+      <div style={{background:T.bgCard,borderTop:"1px solid "+T.border,padding:"8px 8px",flexShrink:0}}>
+        <div style={{display:"flex",gap:6,marginBottom:6}}>
           <button onClick={genAI} disabled={aiLoading} style={{padding:"4px 10px",background:"#f0f4ff",color:"#4338ca",border:"1px solid #c7d2fe",borderRadius:6,fontSize:12,cursor:"pointer",fontWeight:600}}>{aiLoading?"⏳":"✨ AI"}</button>
           <button onClick={()=>setAutoTranslate(v=>!v)} style={{padding:"4px 10px",background:autoTranslate?"#166534":"#f0fdf4",color:autoTranslate?"#fff":"#166534",border:"1px solid #bbf7d0",borderRadius:6,fontSize:12,cursor:"pointer",fontWeight:600}}>🌐 자동번역 {autoTranslate?"ON":"OFF"}</button>
         </div>
@@ -8160,7 +8160,7 @@ function AdminInbox({ sb, branches, data, onRead, onChatOpen, userBranches=[], i
           <textarea value={reply} onChange={e=>{ setReply(e.target.value); e.target.style.height="44px"; e.target.style.height=Math.min(e.target.scrollHeight,120)+"px"; }}
             onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();autoTranslate?sendTranslated():sendMsg(reply.trim());}}}
             placeholder="메시지 입력..."
-            style={{flex:1,padding:"10px 14px",border:"1px solid "+T.border,borderRadius:20,fontSize:16,resize:"none",minHeight:44,maxHeight:120,height:44,fontFamily:"inherit",outline:"none",background:"#fff",color:"#1f2937",lineHeight:"24px",overflowY:"auto"}}
+            style={{flex:1,padding:"10px 12px",border:"1px solid "+T.border,borderRadius:20,fontSize:16,resize:"none",minHeight:44,maxHeight:120,height:44,fontFamily:"inherit",outline:"none",background:"#fff",color:"#1f2937",lineHeight:"24px",overflowY:"auto",width:"100%"}}
           />
           <button onClick={()=>autoTranslate?sendTranslated():sendMsg(reply.trim())} disabled={sending||!reply.trim()}
             style={{width:44,height:44,flexShrink:0,background:reply.trim()?"#7C3AED":"#e5e7eb",color:reply.trim()?"#fff":"#9ca3af",border:"none",borderRadius:"50%",cursor:reply.trim()?"pointer":"default",display:"flex",alignItems:"center",justifyContent:"center"}}>
