@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.335";
+const BLISS_V = "2.69.336";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -2063,10 +2063,10 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
 
   // 미읽음 메시지 카운트
   useEffect(() => {
-    const H = {apikey: SB_KEY, Authorization: "Bearer "+SB_KEY};
-    const load = () => fetch(SB_URL+"/rest/v1/naver_messages?is_read=eq.false&direction=eq.in&select=id&limit=999", {headers: H})
+    const load = () => fetch(SB_URL+"/rest/v1/naver_messages?select=id,is_read,direction&limit=500&order=created_at.desc",
+        {headers:{apikey:SB_KEY, Authorization:"Bearer "+SB_KEY}})
       .then(r=>r.json())
-      .then(arr=>setUnreadMsgCount(Array.isArray(arr)?arr.length:0))
+      .then(arr=>{ if(Array.isArray(arr)) setUnreadMsgCount(arr.filter(m=>m.direction==="in"&&!m.is_read).length); })
       .catch(()=>{});
     load();
     const t = setInterval(load, 10000);
