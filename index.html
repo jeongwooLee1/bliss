@@ -4,7 +4,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
   <meta name="apple-mobile-web-app-title" content="Bliss"/>
   <link rel="apple-touch-icon" href="/bliss/icon-192.png"/>
-  <meta name="theme-color" content="#7c7cc8"/><meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
+  <meta name="theme-color" content="#7c7cc8"/><meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover,interactive-widget=resizes-content"/>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate"/><meta http-equiv="Pragma" content="no-cache"/><meta http-equiv="Expires" content="0"/>
 <title>Bliss 관리시스템</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.376";
+const BLISS_V = "2.69.377";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -8208,7 +8208,7 @@ function AdminInbox({ sb, branches, data, onRead, onChatOpen, userBranches=[], i
       </div>
       {/* 채팅창 */}
       <div ref={chatWrapRef} style={{flex:1,display:sel?"flex":"none",flexDirection:"column",background:"#f8f9fb",
-        ...(isMobile&&sel?{position:"fixed",top:0,left:0,right:0,bottom:0,zIndex:600}:{})}}>
+        ...(isMobile&&sel?{position:"fixed",top:0,left:0,right:0,height:"100dvh",zIndex:600}:{})}}>
         {sel&&<>
           <div style={{padding:"12px 16px",borderBottom:"1px solid "+T.border,background:T.bgCard,display:"flex",alignItems:"center",gap:10}}>
             {isMobile&&<button onClick={()=>{ setSel(null); if(onChatOpen) onChatOpen(false); }} style={{background:"none",border:"none",cursor:"pointer",color:T.primary,padding:"4px 8px 4px 0"}}><I name="arrowL" size={20}/></button>}
@@ -8254,7 +8254,6 @@ function AdminInbox({ sb, branches, data, onRead, onChatOpen, userBranches=[], i
             <div style={{position:"relative",display:"flex",alignItems:"flex-end"}}>
               <textarea value={reply} onChange={e=>setReply(e.target.value)}
                 onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();autoTranslate?sendTranslated():sendMsg(reply.trim());}}}
-                onFocus={e=>{ setTimeout(()=>{ e.target.scrollIntoView({block:"end",behavior:"smooth"}); inputAreaRef.current?.scrollIntoView({block:"end",behavior:"smooth"}); },300); }}
                 placeholder="메시지 입력..."
                 style={{flex:1,padding:"10px "+(reply.trim()?"44px":"14px")+" 10px 14px",border:"1px solid "+T.border,borderRadius:22,fontSize:16,resize:"none",height:44,fontFamily:"inherit",outline:"none",background:"#fff",color:T.text,lineHeight:"24px"}}
               />
