@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.333";
+const BLISS_V = "2.69.334";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -1134,7 +1134,7 @@ function App() {
         <span style={{fontSize:9,color:serverV?"#03C75A":T.textMuted,opacity:.85,textShadow:"0 0 4px #fff,0 0 4px #fff"}}>서버 {serverV?`v${serverV}`:"…"}</span>
         {scraperStatus && <span style={{fontSize:9,opacity:.85,textShadow:"0 0 4px #fff,0 0 4px #fff",color:scraperStatus.isWarning?"#E65100":T.textMuted,fontWeight:scraperStatus.isWarning?800:400}}>{scraperStatus.isWarning?"⚠️":"✅"}{scraperStatus.lastScraped?(()=>{const h=Math.floor(scraperStatus.scrapedDiffH);const m=Math.floor((scraperStatus.scrapedDiffH%1)*60);return h>0?`${h}h${m>0?` ${m}m`:""} 전`:`${m}m 전`;})():"스크래핑 기록없음"}</span>}
       </div>
-      <MobileBottomNav nav={nav} page={page} setPage={setPage} unreadMsg={unreadMsgCount} dbgMsg={dbgMsg}/>
+      <MobileBottomNav nav={nav} page={page} setPage={setPage} unreadMsg={unreadMsgCount}/>
     </div>
   );
 }
@@ -1813,7 +1813,7 @@ function Login({ users, onLogin, onSignup }) {
   );
 }
 
-function MobileBottomNav({ nav, page, setPage, unreadMsg=0, dbgMsg="" }) {
+function MobileBottomNav({ nav, page, setPage, unreadMsg=0 }) {
   const items = [
     ...(nav.find(n=>n.id==="timeline")    ? [{id:"timeline",   label:"타임라인", icon:"calendar"}]  : []),
     ...(nav.find(n=>n.id==="reservations")? [{id:"reservations",label:"예약목록",  icon:"clipboard"}] : []),
@@ -1823,15 +1823,14 @@ function MobileBottomNav({ nav, page, setPage, unreadMsg=0, dbgMsg="" }) {
   ];
   return (
     <nav className="mob-bottom-nav" style={{position:"fixed",bottom:0,left:0,right:0,background:T.bgCard,borderTop:`1px solid ${T.border}`,zIndex:200,display:"flex",alignItems:"flex-start",paddingTop:8,paddingBottom:"env(safe-area-inset-bottom)"}}>
-      <span style={{position:"absolute",top:0,left:0,fontSize:7,color:"red",zIndex:999,maxWidth:200,wordBreak:"break-all"}}>{dbgMsg}</span>
       {items.map(item=>{
         const active = page===item.id;
         return (
           <button key={item.id} onClick={()=>setPage(item.id)} style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"flex-start",gap:4,flex:1,paddingTop:0,border:"none",background:"none",cursor:"pointer",fontFamily:"inherit",color:active?T.primary:T.textMuted,transition:"color .15s"}}>
             <div style={{width:24,height:24,display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}>
               <I name={item.icon} size={22} style={{strokeWidth: active ? 2.5 : 1.8}}/>
-              {item.id==="messages" && <span style={{position:"absolute",top:-6,right:-8,background:"blue",color:"#fff",borderRadius:8,fontSize:8,fontWeight:700,padding:"1px 3px"}}>{unreadMsg}</span>}
-              {item.badge>0 && item.id!==page && item.id!=="messages" && <span style={{position:"absolute",top:-4,right:-6,background:T.danger,color:"#fff",borderRadius:8,fontSize:9,fontWeight:700,padding:"1px 4px",minWidth:14,textAlign:"center"}}>{item.badge>99?"99+":item.badge}</span>}
+              {item.id==="messages" && unreadMsg>0 && page!=="messages" && <span style={{position:"absolute",top:-4,right:-6,background:T.danger,color:"#fff",borderRadius:8,fontSize:9,fontWeight:700,padding:"1px 4px",minWidth:14,textAlign:"center"}}>{unreadMsg>99?"99+":unreadMsg}</span>}
+              {item.id!=="messages" && item.badge>0 && page!==item.id && <span style={{position:"absolute",top:-4,right:-6,background:T.danger,color:"#fff",borderRadius:8,fontSize:9,fontWeight:700,padding:"1px 4px",minWidth:14,textAlign:"center"}}>{item.badge>99?"99+":item.badge}</span>}
             </div>
             <span style={{fontSize:10,fontWeight:active?T.fw.bolder:T.fw.medium,letterSpacing:-0.2}}>{item.label}</span>
           </button>
@@ -2064,13 +2063,12 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   }, []);
 
   // 미읽음 메시지 카운트
-  const [dbgMsg, setDbgMsg] = React.useState("...");
   useEffect(() => {
     const H = {apikey: SB_KEY, Authorization: "Bearer "+SB_KEY};
     const load = () => fetch(SB_URL+"/rest/v1/naver_messages?is_read=eq.false&direction=eq.in&select=id&limit=999", {headers: H})
       .then(r=>r.json())
-      .then(arr=>{ setDbgMsg(JSON.stringify(arr).slice(0,60)); setUnreadMsgCount(Array.isArray(arr)?arr.length:0); })
-      .catch(e=>setDbgMsg("ERR:"+e));
+      .then(arr=>setUnreadMsgCount(Array.isArray(arr)?arr.length:0))
+      .catch(()=>{});
     load();
     const t = setInterval(load, 10000);
     return ()=>clearInterval(t);
