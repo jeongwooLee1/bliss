@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.382";
+const BLISS_V = "2.69.383";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -658,7 +658,13 @@ function _mc(cb) {
 
 // ─── App ───
 function App() {
-  const [phase, setPhase] = useState("loading"); // loading, login, super, app
+  const [phase, setPhase] = useState("loading");
+  useEffect(()=>{
+    const setVh = () => document.documentElement.style.setProperty('--vh', window.innerHeight+'px');
+    setVh();
+    window.addEventListener('resize', setVh);
+    return ()=>window.removeEventListener('resize', setVh);
+  }, []); // loading, login, super, app
   const [pageHistory, setPageHistory] = React.useState([]);
   const [unreadMsgCount, setUnreadMsgCount] = useState(0);
   const [isChatOpen, setIsChatOpen] = useState(false);
@@ -8208,7 +8214,7 @@ function AdminInbox({ sb, branches, data, onRead, onChatOpen, userBranches=[], i
       </div>
       {/* 채팅창 */}
       <div ref={chatWrapRef} style={{flex:1,display:sel?"flex":"none",flexDirection:"column",background:"#f8f9fb",
-        ...(isMobile&&sel?{position:"fixed",top:0,left:0,right:0,bottom:0,zIndex:600}:{})}}>
+        ...(isMobile&&sel?{position:"fixed",top:0,left:0,right:0,height:"var(--vh, 100vh)",zIndex:600}:{})}}>
         {sel&&<>
           <div style={{padding:"12px 16px",borderBottom:"1px solid "+T.border,background:T.bgCard,display:"flex",alignItems:"center",gap:10}}>
             {isMobile&&<button onClick={()=>{ setSel(null); if(onChatOpen) onChatOpen(false); }} style={{background:"none",border:"none",cursor:"pointer",color:T.primary,padding:"4px 8px 4px 0"}}><I name="arrowL" size={20}/></button>}
