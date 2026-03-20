@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.337";
+const BLISS_V = "2.69.338";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -668,8 +668,16 @@ function App() {
       .then(arr=>{ if(Array.isArray(arr)) setUnreadMsgCount(arr.length); })
       .catch(()=>{});
     load();
-    const t = setInterval(load, 10000);
-    return ()=>clearInterval(t);
+    const t = setInterval(load, 30000);
+    // Realtime: 새 메시지 즉시 반영
+    const rt = window._sbClient?.channel("unread_badge")
+      ?.on("postgres_changes",{event:"INSERT",schema:"public",table:"naver_messages"},
+        p=>{ if(p?.new?.direction==="in"&&!p?.new?.is_read) setUnreadMsgCount(prev=>prev+1); }
+      )
+      ?.on("postgres_changes",{event:"UPDATE",schema:"public",table:"naver_messages"},
+        p=>{ if(p?.new?.is_read===true&&p?.old?.is_read===false) setUnreadMsgCount(prev=>Math.max(0,prev-1)); }
+      )?.subscribe();
+    return ()=>{ clearInterval(t); try{rt?.unsubscribe();}catch(e){} };
   }, []);
   const [allUsers, setAllUsers] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
