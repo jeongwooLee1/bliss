@@ -8061,7 +8061,7 @@ function AdminInbox({ sb, branches, data, onRead, onChatOpen, userBranches=[], i
       const accId = sel.account_id && sel.account_id!=="unknown" ? sel.account_id : (allowedIds[0]||Object.keys(_ACC_AUTH)[0]);
       const r = await fetch(_SB2+"/rest/v1/send_queue",{
         method:"POST",headers:{..._SH2,Prefer:"return=representation"},
-        body:JSON.stringify({account_id:accId,user_id:sel.user_id,message_text:text,status:"pending"})
+        body:JSON.stringify({account_id:accId,user_id:sel.user_id,message_text:text,status:"pending",channel:sel.channel||"naver"})
       });
       if(r.ok){
         setMsgs(prev=>[...prev,{user_id:sel.user_id,channel:sel.channel,direction:"out",account_id:accId,message_text:text,is_read:true,created_at:new Date().toISOString()}]);
