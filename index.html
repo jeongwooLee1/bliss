@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.396";
+const BLISS_V = "2.69.397";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7961,6 +7961,8 @@ function AdminInbox({ sb, branches, data, onRead, onChatOpen, userBranches=[], i
   const isMobile = window.innerWidth < 768;
   const CH_ICON = {naver:"🟢",kakao:"🟡",instagram:"🟣",whatsapp:"💚",telegram:"🔵"};
   const CH_NAME = {naver:"네이버톡톡",kakao:"카카오",instagram:"인스타",whatsapp:"왓츠앱",telegram:"텔레그램"};
+  const CH_COLOR = {naver:"#03C75A",kakao:"#FEE500",instagram:"#E1306C",whatsapp:"#25D366",telegram:"#2AABEE"};
+  const CH_LABEL = {naver:"N",kakao:"K",instagram:"I",whatsapp:"W",telegram:"T"};
   const getGeminiKey = () => window.__geminiKey || localStorage.getItem("bliss_gemini_key") || "";
 
   const [msgs, setMsgs] = useState([]);
@@ -8187,14 +8189,39 @@ function AdminInbox({ sb, branches, data, onRead, onChatOpen, userBranches=[], i
             const ch=m.channel||"naver"; const key=ch+"_"+m.user_id;
             const isS=sel?.user_id===m.user_id&&sel?.channel===ch;
             const uc=unread(m.user_id,ch);
-            return <div key={key} onClick={()=>selectThread(m)} style={{padding:"12px 16px",cursor:"pointer",borderBottom:"1px solid "+T.border,background:isS?T.primaryHover:"transparent",borderLeft:isS?"3px solid "+T.primary:"3px solid transparent"}}>
-              <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
-                <span style={{fontWeight:T.fw.bolder,fontSize:T.fs.sm}}>{CH_ICON[ch]} {getDisplayName(m)}{branchName(m)?" · "+branchName(m):""}</span>
-                <span style={{fontSize:10,color:T.textMuted}}>{fmtTime(m.created_at)}</span>
+            const name=getDisplayName(m); const branch=branchName(m);
+            const initials=name.slice(0,1);
+            return <div key={key} onClick={()=>selectThread(m)}
+              style={{padding:"12px 16px",cursor:"pointer",display:"flex",alignItems:"center",gap:12,
+                background:isS?"rgba(124,58,237,0.06)":"transparent",
+                borderBottom:"1px solid "+T.border}}>
+              {/* 아바타 */}
+              <div style={{position:"relative",flexShrink:0}}>
+                <div style={{width:48,height:48,borderRadius:"50%",background:"linear-gradient(135deg,"+CH_COLOR[ch]+"44,"+CH_COLOR[ch]+"22)",
+                  display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,fontWeight:700,color:CH_COLOR[ch],
+                  border:uc>0?"2px solid "+T.primary:"2px solid transparent"}}>
+                  {initials}
+                </div>
+                <div style={{position:"absolute",bottom:0,right:0,width:16,height:16,borderRadius:"50%",
+                  background:CH_COLOR[ch],border:"2px solid #fff",
+                  display:"flex",alignItems:"center",justifyContent:"center",fontSize:8,color:"#fff",fontWeight:800}}>
+                  {CH_LABEL[ch]}
+                </div>
               </div>
-              <div style={{display:"flex",justifyContent:"space-between"}}>
-                <span style={{fontSize:T.fs.xs,color:T.textSub,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:180}}>{m.message_text}</span>
-                {uc>0&&<span style={{background:T.danger,color:"#fff",borderRadius:8,fontSize:10,fontWeight:700,padding:"1px 5px"}}>{uc}</span>}
+              {/* 텍스트 */}
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:2}}>
+                  <span style={{fontWeight:uc>0?800:600,fontSize:14,color:T.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:160}}>
+                    {name}{branch?" · "+branch:""}
+                  </span>
+                  <span style={{fontSize:11,color:uc>0?T.primary:T.textMuted,fontWeight:uc>0?600:400,flexShrink:0,marginLeft:4}}>{fmtTime(m.created_at)}</span>
+                </div>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                  <span style={{fontSize:13,color:uc>0?T.text:T.textMuted,fontWeight:uc>0?500:400,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:190}}>
+                    {m.direction==="out"?"나: ":""}{m.message_text}
+                  </span>
+                  {uc>0&&<div style={{width:20,height:20,borderRadius:"50%",background:T.primary,color:"#fff",fontSize:11,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginLeft:4}}>{uc>9?"9+":uc}</div>}
+                </div>
               </div>
             </div>;
           })}
