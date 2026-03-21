@@ -7959,9 +7959,9 @@ const _ACC_AUTH = {
 
 function AdminInbox({ sb, branches, data, onRead, onChatOpen, userBranches=[], isMaster=false }) {
   const isMobile = window.innerWidth < 768;
-  const CH_ICON = {naver:"🟢",kakao:"🟡",instagram:"🟣",whatsapp:"💚",telegram:"🔵"};
+  const CH_ICON = {naver:"N",kakao:"K",instagram:"I",whatsapp:"W",telegram:"T"};
   const CH_NAME = {naver:"네이버톡톡",kakao:"카카오",instagram:"인스타",whatsapp:"왓츠앱",telegram:"텔레그램"};
-  const CH_COLOR = {naver:"#03C75A",kakao:"#FEE500",instagram:"#E1306C",whatsapp:"#25D366",telegram:"#2AABEE"};
+  const CH_COLOR = {naver:"#03C75A",kakao:"#F9E000",instagram:"#E1306C",whatsapp:"#128C7E",telegram:"#2AABEE"};
   const CH_LABEL = {naver:"N",kakao:"K",instagram:"I",whatsapp:"W",telegram:"T"};
   const getGeminiKey = () => window.__geminiKey || localStorage.getItem("bliss_gemini_key") || "";
 
@@ -8147,7 +8147,7 @@ function AdminInbox({ sb, branches, data, onRead, onChatOpen, userBranches=[], i
                 fontSize:20,fontWeight:700,color:CH_COLOR[ch],
                 border:uc>0?"2.5px solid "+T.primary:"2.5px solid transparent",
                 boxSizing:"border-box"}}>
-                {initials}
+                {ch==="naver"?initials:ch==="whatsapp"?"💬":ch==="telegram"?"✈":ch==="instagram"?"📷":initials}
               </div>
               <div style={{position:"absolute",bottom:1,right:1,width:18,height:18,borderRadius:"50%",
                 background:CH_COLOR[ch],border:"2px solid #fff",
@@ -8256,7 +8256,7 @@ function AdminInbox({ sb, branches, data, onRead, onChatOpen, userBranches=[], i
                 <div style={{width:48,height:48,borderRadius:"50%",background:"linear-gradient(135deg,"+CH_COLOR[ch]+"44,"+CH_COLOR[ch]+"22)",
                   display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,fontWeight:700,color:CH_COLOR[ch],
                   border:uc>0?"2px solid "+T.primary:"2px solid transparent"}}>
-                  {initials}
+                  {ch==="naver"?initials:ch==="whatsapp"?"💬":ch==="telegram"?"✈":ch==="instagram"?"📷":initials}
                 </div>
                 <div style={{position:"absolute",bottom:0,right:0,width:16,height:16,borderRadius:"50%",
                   background:CH_COLOR[ch],border:"2px solid #fff",
