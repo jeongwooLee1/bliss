@@ -8013,7 +8013,8 @@ function AdminInbox({ sb, branches, data, onRead, onChatOpen, userBranches=[], i
   const threads = useMemo(()=>{
     const map = {};
     msgs.forEach(m=>{
-      if(allowedIds.length>0 && m.account_id && m.account_id!=="unknown" && !allowedIds.includes(m.account_id)) return;
+      const _socialCh=["whatsapp","telegram","instagram","kakao"];
+      if(allowedIds.length>0 && m.account_id && m.account_id!=="unknown" && !allowedIds.includes(m.account_id) && !_socialCh.includes(m.channel)) return;
       const key=(m.channel||"naver")+"_"+m.user_id;
       if(!map[key]||new Date(m.created_at)>new Date(map[key].created_at)) map[key]=m;
     });
