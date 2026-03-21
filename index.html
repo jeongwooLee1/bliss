@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.399";
+const BLISS_V = "2.69.400";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7997,33 +7997,17 @@ function AdminInbox({ sb, branches, data, onRead, onChatOpen, userBranches=[], i
 
   useEffect(()=>{
     loadMsgs();
-    let ch = null;
-    let retryTimer = null;
-
-    const subscribe = () => {
-      if(!window._sbClient) { retryTimer = setTimeout(subscribe, 3000); return; }
-      try { ch?.unsubscribe(); window._sbClient?.removeChannel(ch); } catch(e) {}
-      const chName = "inbox_rt_"+Date.now();
-      ch = window._sbClient.channel(chName)
-        .on("postgres_changes",{event:"INSERT",schema:"public",table:"naver_messages"},
-          p=>{ if(p?.new) { setMsgs(prev=>prev.some(m=>m.id===p.new.id)?prev:[...prev,p.new]); if(p.new.user_name) setNames(prev=>({...prev,[p.new.user_id]:p.new.user_name})); }}
-        )
-        .on("postgres_changes",{event:"UPDATE",schema:"public",table:"naver_messages"},
-          p=>{ if(p?.new?.id) setMsgs(prev=>prev.map(m=>m.id===p.new.id?{...m,...p.new}:m)); }
-        )
-        .subscribe(status=>{
-          if(status==="CLOSED"||status==="CHANNEL_ERROR") { retryTimer = setTimeout(subscribe, 5000); }
-        });
-    };
-
-    subscribe();
-
-    // 백그라운드→포그라운드 시 loadMsgs만 (subscribe 재호출 X)
-    const onVisible = () => { if(document.visibilityState==="visible") { loadMsgs(); } };
+    const chName = "inbox_rt_"+Date.now();
+    const ch = window._sbClient?.channel(chName)
+      ?.on("postgres_changes",{event:"INSERT",schema:"public",table:"naver_messages"},
+        p=>{ if(p?.new) { setMsgs(prev=>prev.some(m=>m.id===p.new.id)?prev:[...prev,p.new]); if(p.new.user_name) setNames(prev=>({...prev,[p.new.user_id]:p.new.user_name})); }}
+      )
+      ?.on("postgres_changes",{event:"UPDATE",schema:"public",table:"naver_messages"},
+        p=>{ if(p?.new?.id) setMsgs(prev=>prev.map(m=>m.id===p.new.id?{...m,...p.new}:m)); }
+      )?.subscribe();
+    const onVisible = () => { if(document.visibilityState==="visible") loadMsgs(); };
     document.addEventListener("visibilitychange", onVisible);
-
     return ()=>{
-      clearTimeout(retryTimer);
       document.removeEventListener("visibilitychange", onVisible);
       try{ch?.unsubscribe(); window._sbClient?.removeChannel(ch);}catch(e){}
     };
