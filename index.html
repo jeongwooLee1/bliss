@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.405";
+const BLISS_V = "2.69.394";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7972,6 +7972,7 @@ function AdminInbox({ sb, branches, data, onRead, onChatOpen, userBranches=[], i
   const [loading, setLoading] = useState(true);
   const [aiLoading, setAiLoading] = useState(false);
   const [autoTranslate, setAutoTranslate] = useState(true);
+  const [aiKoDraft, setAiKoDraft] = useState("");
   const [names, setNames] = useState({});
   const convoEndRef = useRef(null);
   const inputAreaRef = useRef(null);
@@ -8070,17 +8071,19 @@ function AdminInbox({ sb, branches, data, onRead, onChatOpen, userBranches=[], i
 
   const genAI = async()=>{
     if(!sel||convo.length===0) return;
-    setAiLoading(true);
+    setAiLoading(true); setAiKoDraft("");
     try{
-      const lastMsgs = convo.slice(-6).map(m=>(m.direction==="in"?"고객":"직원")+": "+m.message_text).join("\n");
-      const prompt = `당신은 하우스왁싱 상담 직원입니다. 왁싱 전문샵으로 서울 8개 직영점이 있습니다.\n\n대화:\n${lastMsgs}\n\n위 대화에서 고객 마지막 메시지에 친절하고 자연스럽게 2-3문장으로 답변해줘. 답변 텍스트만 출력.`;
-      const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key="+getGeminiKey(),{
-        method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})
-      });
-      const dd = await res.json();
-      const draft = dd.candidates?.[0]?.content?.parts?.[0]?.text||"";
-      if(draft) setReply(draft);
+      const lastIn=[...convo].reverse().find(m=>m.direction==="in");
+      const hasKo=lastIn?/[가-힣]/.test(lastIn.message_text):true;
+      const langName=hasKo?"한국어":"영어";
+      const lastMsgs=convo.slice(-6).map(m=>(m.direction==="in"?"고객":"직원")+": "+m.message_text).join("\n");
+      const prompt=`당신은 하우스왁싱 상담 직원입니다.\n\n대화:\n${lastMsgs}\n\n고객 마지막 메시지에 친절하게 2-3문장으로 답변하세요. JSON만 출력(마크다운 없이):\n{"reply":"${langName}로 작성한 답변","ko":"한국어 번역"}`;
+      const res=await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key="+getGeminiKey(),{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})});
+      if(res.status===429){alert("AI 요청 한도 초과. 잠시 후 시도해주세요.");return;}
+      const dd=await res.json();
+      let raw=(dd.candidates?.[0]?.content?.parts?.[0]?.text||"").replace(/```json|```/g,"").trim();
+      try{const p=JSON.parse(raw);if(p.reply){setReply(p.reply);setAiKoDraft(p.ko||"");}}
+      catch{if(raw)setReply(raw);}
     }catch(e){}finally{setAiLoading(false);}
   };
 
@@ -8209,8 +8212,9 @@ function AdminInbox({ sb, branches, data, onRead, onChatOpen, userBranches=[], i
           <button onClick={genAI} disabled={aiLoading} style={{padding:"4px 10px",background:"#f0f4ff",color:"#4338ca",border:"1px solid #c7d2fe",borderRadius:6,fontSize:12,cursor:"pointer",fontWeight:600}}>{aiLoading?"⏳":"✨ AI"}</button>
           <button onClick={()=>setAutoTranslate(v=>!v)} style={{padding:"4px 10px",background:autoTranslate?"#166534":"#f0fdf4",color:autoTranslate?"#fff":"#166534",border:"1px solid #bbf7d0",borderRadius:6,fontSize:12,cursor:"pointer",fontWeight:600}}>🌐 자동번역 {autoTranslate?"ON":"OFF"}</button>
         </div>
+        {aiKoDraft&&<div style={{fontSize:12,color:"#4338ca",padding:"4px 8px",background:"#eff6ff",borderRadius:6,marginBottom:6,borderLeft:"3px solid #818cf8"}}>🇰🇷 {aiKoDraft}</div>}
         <div style={{position:"relative"}}>
-          <textarea value={reply} onChange={e=>{ setReply(e.target.value); e.target.style.height="44px"; e.target.style.height=Math.min(e.target.scrollHeight,120)+"px"; }}
+          <textarea value={reply} onChange={e=>{ setReply(e.target.value); setAiKoDraft(""); e.target.style.height="44px"; e.target.style.height=Math.min(e.target.scrollHeight,120)+"px"; }}
             onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();autoTranslate?sendTranslated():sendMsg(reply.trim());}}}
             placeholder="메시지 입력..."
             style={{width:"100%",padding:"12px 52px 12px 16px",border:"none",borderRadius:16,fontSize:16,resize:"none",minHeight:80,maxHeight:200,height:80,fontFamily:"inherit",outline:"none",background:"#fff",color:"#1f2937",lineHeight:"24px",overflowY:"auto",boxSizing:"border-box",boxShadow:"0 4px 20px rgba(0,0,0,0.12),0 1px 4px rgba(0,0,0,0.08)",WebkitAppearance:"none",appearance:"none"}}
@@ -8310,6 +8314,7 @@ function AdminInbox({ sb, branches, data, onRead, onChatOpen, userBranches=[], i
               <button onClick={genAI} disabled={aiLoading} style={{padding:"4px 10px",background:"#f0f4ff",color:"#4338ca",border:"1px solid #c7d2fe",borderRadius:6,fontSize:11,cursor:"pointer",fontWeight:600}}>{aiLoading?"⏳":"✨ AI"}</button>
               <button onClick={()=>setAutoTranslate(v=>!v)} style={{padding:"4px 10px",background:autoTranslate?"#166534":"#f0fdf4",color:autoTranslate?"#fff":"#166534",border:"1px solid #bbf7d0",borderRadius:6,fontSize:11,cursor:"pointer",fontWeight:600}}>🌐 자동번역 {autoTranslate?"ON":"OFF"}</button>
             </div>
+            {aiKoDraft&&<div style={{fontSize:11,color:"#4338ca",padding:"3px 8px",background:"#eff6ff",borderRadius:6,marginBottom:4,borderLeft:"3px solid #818cf8"}}>🇰🇷 {aiKoDraft}</div>}
             <div style={{display:"flex",gap:8}}>
               <textarea value={reply} onChange={e=>setReply(e.target.value)}
                 onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();autoTranslate?sendTranslated():sendMsg(reply.trim());}}}
