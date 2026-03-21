@@ -1,4 +1,4 @@
-const CACHE = "bliss-v2.69.397";
+const CACHE = "bliss-v2.69.398";
 const ASSETS = ["/bliss/", "/bliss/index.html"];
 
 self.addEventListener("install", e => {
