@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.399";
+const BLISS_V = "2.69.400";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -8208,7 +8208,7 @@ function AdminInbox({ sb, branches, data, onRead, onChatOpen, userBranches=[], i
         <div ref={convoEndRef}/>
       </div>
       {/* 입력창 */}
-      <div style={{background:"transparent",padding:"8px 12px",paddingBottom:"max(16px, env(safe-area-inset-bottom))",flexShrink:0}}>
+      <div style={{background:"transparent",padding:"6px 10px 6px",flexShrink:0}}>
         <div style={{display:"flex",gap:6,marginBottom:6}}>
           <button onClick={genAI} disabled={aiLoading} style={{padding:"4px 10px",background:"#f0f4ff",color:"#4338ca",border:"1px solid #c7d2fe",borderRadius:6,fontSize:12,cursor:"pointer",fontWeight:600}}>{aiLoading?"⏳":"✨ AI"}</button>
           <button onClick={()=>setAutoTranslate(v=>!v)} style={{padding:"4px 10px",background:autoTranslate?"#166534":"#f0fdf4",color:autoTranslate?"#fff":"#166534",border:"1px solid #bbf7d0",borderRadius:6,fontSize:12,cursor:"pointer",fontWeight:600}}>🌐 자동번역 {autoTranslate?"ON":"OFF"}</button>
