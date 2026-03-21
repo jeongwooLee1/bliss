@@ -8178,7 +8178,7 @@ function AdminInbox({ sb, branches, data, onRead, onChatOpen, userBranches=[], i
 
   // 모바일 채팅창 렌더
   if(isMobile && sel) return (
-    <div style={{position:"fixed",inset:0,zIndex:600,display:"flex",flexDirection:"column",background:"#f8f9fb"}}>
+    <div style={{position:"fixed",inset:0,zIndex:600,display:"flex",flexDirection:"column",background:"#f5f5f7"}}>
       {/* 헤더 */}
       <div style={{padding:"12px 16px",borderBottom:"1px solid "+T.border,background:T.bgCard,display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
         <button onClick={()=>{ setSel(null); if(onChatOpen) onChatOpen(false); }} style={{background:"none",border:"none",cursor:"pointer",color:T.primary,padding:"4px 8px 4px 0"}}><I name="arrowL" size={20}/></button>
@@ -8190,7 +8190,7 @@ function AdminInbox({ sb, branches, data, onRead, onChatOpen, userBranches=[], i
         <button onClick={genAI} disabled={aiLoading} style={{padding:"5px 12px",background:T.primary,color:"#fff",border:"none",borderRadius:6,fontSize:12,cursor:"pointer",fontWeight:600}}>{aiLoading?"...":"✨ AI"}</button>
       </div>
       {/* 메시지 */}
-      <div style={{flex:1,overflowY:"auto",padding:"16px",display:"flex",flexDirection:"column",gap:10,WebkitOverflowScrolling:"touch"}}>
+      <div style={{flex:1,overflowY:"auto",padding:"16px 16px 4px",display:"flex",flexDirection:"column",gap:10,WebkitOverflowScrolling:"touch",background:"#f5f5f7"}}>
         {convo.map((m,i)=>{
           if(m.direction==="system") return null;
           const isOut=m.direction==="out";
@@ -8208,7 +8208,7 @@ function AdminInbox({ sb, branches, data, onRead, onChatOpen, userBranches=[], i
         <div ref={convoEndRef}/>
       </div>
       {/* 입력창 */}
-      <div style={{background:T.bgCard,borderTop:"1px solid "+T.border,padding:"8px 8px",flexShrink:0}}>
+      <div style={{background:"transparent",padding:"8px 12px 12px",flexShrink:0}}>
         <div style={{display:"flex",gap:6,marginBottom:6}}>
           <button onClick={genAI} disabled={aiLoading} style={{padding:"4px 10px",background:"#f0f4ff",color:"#4338ca",border:"1px solid #c7d2fe",borderRadius:6,fontSize:12,cursor:"pointer",fontWeight:600}}>{aiLoading?"⏳":"✨ AI"}</button>
           <button onClick={()=>setAutoTranslate(v=>!v)} style={{padding:"4px 10px",background:autoTranslate?"#166534":"#f0fdf4",color:autoTranslate?"#fff":"#166534",border:"1px solid #bbf7d0",borderRadius:6,fontSize:12,cursor:"pointer",fontWeight:600}}>🌐 자동번역 {autoTranslate?"ON":"OFF"}</button>
@@ -8217,7 +8217,7 @@ function AdminInbox({ sb, branches, data, onRead, onChatOpen, userBranches=[], i
           <textarea value={reply} onChange={e=>{ setReply(e.target.value); e.target.style.height="44px"; e.target.style.height=Math.min(e.target.scrollHeight,120)+"px"; }}
             onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();autoTranslate?sendTranslated():sendMsg(reply.trim());}}}
             placeholder="메시지 입력..."
-            style={{width:"100%",padding:"10px 52px 10px 16px",border:"1px solid "+T.border,borderRadius:24,fontSize:16,resize:"none",minHeight:80,maxHeight:200,height:80,fontFamily:"inherit",outline:"none",background:"#fff",color:"#1f2937",lineHeight:"24px",overflowY:"auto",boxSizing:"border-box"}}
+            style={{width:"100%",padding:"12px 52px 12px 16px",border:"none",borderRadius:16,fontSize:16,resize:"none",minHeight:80,maxHeight:200,height:80,fontFamily:"inherit",outline:"none",background:"#fff",color:"#1f2937",lineHeight:"24px",overflowY:"auto",boxSizing:"border-box",boxShadow:"0 4px 20px rgba(0,0,0,0.12),0 1px 4px rgba(0,0,0,0.08)"}}
           />
           {(reply.trim()||sending)&&<button onClick={()=>autoTranslate?sendTranslated():sendMsg(reply.trim())} disabled={sending||!reply.trim()}
             style={{position:"absolute",right:8,bottom:6,width:32,height:32,background:"#7C3AED",color:"#fff",border:"none",borderRadius:"50%",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
