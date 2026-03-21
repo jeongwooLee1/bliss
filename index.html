@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.395";
+const BLISS_V = "2.69.396";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -8160,7 +8160,7 @@ function AdminInbox({ sb, branches, data, onRead, onChatOpen, userBranches=[], i
           <textarea value={reply} onChange={e=>{ setReply(e.target.value); e.target.style.height="44px"; e.target.style.height=Math.min(e.target.scrollHeight,120)+"px"; }}
             onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();autoTranslate?sendTranslated():sendMsg(reply.trim());}}}
             placeholder="메시지 입력..."
-            style={{width:"100%",padding:"10px 52px 10px 16px",border:"1px solid "+T.border,borderRadius:24,fontSize:16,resize:"none",minHeight:44,maxHeight:120,height:44,fontFamily:"inherit",outline:"none",background:"#fff",color:"#1f2937",lineHeight:"24px",overflowY:"auto",boxSizing:"border-box"}}
+            style={{width:"100%",padding:"10px 52px 10px 16px",border:"1px solid "+T.border,borderRadius:24,fontSize:16,resize:"none",minHeight:80,maxHeight:200,height:80,fontFamily:"inherit",outline:"none",background:"#fff",color:"#1f2937",lineHeight:"24px",overflowY:"auto",boxSizing:"border-box"}}
           />
           {(reply.trim()||sending)&&<button onClick={()=>autoTranslate?sendTranslated():sendMsg(reply.trim())} disabled={sending||!reply.trim()}
             style={{position:"absolute",right:8,bottom:6,width:32,height:32,background:"#7C3AED",color:"#fff",border:"none",borderRadius:"50%",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
