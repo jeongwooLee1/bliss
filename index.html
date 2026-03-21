@@ -8121,6 +8121,61 @@ function AdminInbox({ sb, branches, data, onRead, onChatOpen, userBranches=[], i
   };
   const branchName=(m)=>_ACC_NAME[m?.account_id]||"";
 
+  // 모바일 목록 렌더 (인스타 스타일)
+  if(isMobile && !sel) return (
+    <div style={{display:"flex",flexDirection:"column",background:"#fff",minHeight:"60vh"}}>
+      <div style={{padding:"16px 16px 8px",borderBottom:"1px solid "+T.border,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+        <span style={{fontWeight:800,fontSize:18,color:T.text}}>메시지</span>
+        {totalUnread>0&&<span style={{background:T.danger,color:"#fff",borderRadius:10,fontSize:11,fontWeight:700,padding:"2px 8px"}}>{totalUnread}</span>}
+      </div>
+      <div style={{overflowY:"auto"}}>
+        {loading?<div style={{padding:40,textAlign:"center",color:T.textMuted}}>로딩 중...</div>
+        :threads.length===0?<div style={{padding:40,textAlign:"center",color:T.textMuted}}>메시지 없음</div>
+        :threads.map(m=>{
+          const ch=m.channel||"naver"; const key=ch+"_"+m.user_id;
+          const uc=unread(m.user_id,ch);
+          const name=getDisplayName(m); const branch=branchName(m);
+          const initials=name.slice(0,2);
+          const isOut=m.direction==="out";
+          return <div key={key} onClick={()=>selectThread(m)}
+            style={{padding:"12px 16px",display:"flex",alignItems:"center",gap:14,borderBottom:"1px solid #f0f0f0",background:"#fff",cursor:"pointer"}}>
+            {/* 아바타 */}
+            <div style={{position:"relative",flexShrink:0}}>
+              <div style={{width:56,height:56,borderRadius:"50%",
+                background:"linear-gradient(135deg,"+CH_COLOR[ch]+"66,"+CH_COLOR[ch]+"33)",
+                display:"flex",alignItems:"center",justifyContent:"center",
+                fontSize:20,fontWeight:700,color:CH_COLOR[ch],
+                border:uc>0?"2.5px solid "+T.primary:"2.5px solid transparent",
+                boxSizing:"border-box"}}>
+                {initials}
+              </div>
+              <div style={{position:"absolute",bottom:1,right:1,width:18,height:18,borderRadius:"50%",
+                background:CH_COLOR[ch],border:"2px solid #fff",
+                display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,color:"#fff",fontWeight:800}}>
+                {CH_LABEL[ch]}
+              </div>
+            </div>
+            {/* 텍스트 */}
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
+                <span style={{fontWeight:uc>0?700:600,fontSize:15,color:"#111",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:200}}>
+                  {name}{branch?" · "+branch:""}
+                </span>
+                <span style={{fontSize:12,color:uc>0?T.primary:"#999",fontWeight:uc>0?600:400,flexShrink:0,marginLeft:6}}>{fmtTime(m.created_at)}</span>
+              </div>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                <span style={{fontSize:13,color:uc>0?"#111":"#999",fontWeight:uc>0?500:400,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:220}}>
+                  {isOut?"나: ":""}{m.message_text}
+                </span>
+                {uc>0&&<div style={{width:20,height:20,borderRadius:"50%",background:T.primary,color:"#fff",fontSize:11,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginLeft:4}}>{uc>9?"9+":uc}</div>}
+              </div>
+            </div>
+          </div>;
+        })}
+      </div>
+    </div>
+  );
+
   // 모바일 채팅창 렌더
   if(isMobile && sel) return (
     <div style={{position:"fixed",inset:0,zIndex:600,display:"flex",flexDirection:"column",background:"#f8f9fb"}}>
