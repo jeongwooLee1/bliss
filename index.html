@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.404";
+const BLISS_V = "2.69.405";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -8091,19 +8091,15 @@ function AdminInbox({ sb, branches, data, onRead, onChatOpen, userBranches=[], i
       const lastIn = [...convo].reverse().find(m=>m.direction==="in");
       let text = reply.trim();
       if(lastIn){
-        const lRes = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key="+getGeminiKey(),{
-          method:"POST",headers:{"Content-Type":"application/json"},
-          body:JSON.stringify({contents:[{parts:[{text:"다음 텍스트의 언어 코드만 출력(ko,en,ja,zh,es 등): \""+lastIn.message_text+"\""}]}]})
-        });
-        if(lRes.status===429){ await sendMsg(reply.trim()); return; } // 429: 원문 발송
-        const ld=await lRes.json();
-        const lang=(ld.candidates?.[0]?.content?.parts?.[0]?.text||"ko").trim().toLowerCase().substring(0,2);
+        // 로컬 언어 감지 (한글 유니코드 범위)
+        const hasKorean = /[\uAC00-\uD7A3\u1100-\u11FF]/.test(lastIn.message_text);
+        const lang = hasKorean ? "ko" : "en"; // 한글 없으면 영어로 간주
         if(lang!=="ko"){
           const tRes=await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key="+getGeminiKey(),{
             method:"POST",headers:{"Content-Type":"application/json"},
-            body:JSON.stringify({contents:[{parts:[{text:"다음을 "+lang+" 언어로 자연스럽게 번역. 번역문만 출력: \""+reply+"\""}]}]})
+            body:JSON.stringify({contents:[{parts:[{text:"Translate the following Korean text to "+lang+" naturally. Output translation only: \""+reply+"\""}]}]})
           });
-          if(tRes.status===429){ await sendMsg(reply.trim()); return; } // 429: 원문 발송
+          if(tRes.status===429){ await sendMsg(reply.trim()); return; }
           const td=await tRes.json();
           text=td.candidates?.[0]?.content?.parts?.[0]?.text||reply;
         }
