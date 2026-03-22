@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.404";
+const BLISS_V = "2.69.405";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -689,6 +689,18 @@ function App() {
       )?.subscribe();
     return ()=>{ try{rt?.unsubscribe();}catch(e){} };
   }, [userBranches, isMaster]);
+  // App Badge API — 홈화면 아이콘 배지 (미읽 메시지 + 확정대기 예약)
+  useEffect(() => {
+    if (!('setAppBadge' in navigator)) return;
+    const pendingRes = (data?.reservations||[]).filter(r => {
+      if (r.status !== 'pending') return false;
+      if (isMaster) return true;
+      return (userBranches||[]).includes(r.branch_id);
+    }).length;
+    const total = unreadMsgCount + pendingRes;
+    if (total > 0) navigator.setAppBadge(total).catch(()=>{});
+    else navigator.clearAppBadge().catch(()=>{});
+  }, [unreadMsgCount, data, userBranches, isMaster]);
   const [allUsers, setAllUsers] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [currentBizId, setCurrentBizId] = useState(null);
