@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.402";
+const BLISS_V = "2.69.403";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -8119,10 +8119,11 @@ function AdminInbox({ sb, branches, data, onRead, onChatOpen, userBranches=[], i
 
   const fmtTime=(ts)=>{
     const d=new Date(ts),now=new Date(),diff=now-d;
+    const isToday=d.toDateString()===now.toDateString();
     if(diff<60000) return "방금";
     if(diff<3600000) return Math.floor(diff/60000)+"분 전";
-    if(diff<86400000) return d.getHours()+":"+String(d.getMinutes()).padStart(2,"0");
-    return (d.getMonth()+1)+"/"+d.getDate();
+    if(isToday) return d.getHours()+":"+String(d.getMinutes()).padStart(2,"0");
+    return (d.getMonth()+1)+"."+(d.getDate());
   };
   const branchName=(m)=>_ACC_NAME[m?.account_id]||"";
 
@@ -8163,7 +8164,7 @@ function AdminInbox({ sb, branches, data, onRead, onChatOpen, userBranches=[], i
             {/* 텍스트 */}
             <div style={{flex:1,minWidth:0}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
-                <span style={{fontWeight:uc>0?700:600,fontSize:15,color:"#111",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:200}}>
+                <span style={{fontWeight:uc>0?700:600,fontSize:16,color:"#111",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:200}}>
                   {name}{branch?" · "+branch:""}
                 </span>
                 <span style={{fontSize:12,color:uc>0?T.primary:"#999",fontWeight:uc>0?600:400,flexShrink:0,marginLeft:6}}>{fmtTime(m.created_at)}</span>
