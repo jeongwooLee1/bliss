@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.400";
+const BLISS_V = "2.69.401";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -8190,7 +8190,7 @@ function AdminInbox({ sb, branches, data, onRead, onChatOpen, userBranches=[], i
         <span style={{fontSize:18}}>{CH_ICON[sel.channel]}</span>
         <div style={{flex:1}}>
           <div style={{fontWeight:T.fw.bolder,fontSize:16}}>{getDisplayName(convo[0]||{user_id:sel.user_id})}{branchName(convo[0])?" · "+branchName(convo[0]):""}</div>
-          <div style={{fontSize:12,color:T.textMuted}}>{CH_NAME[sel.channel]||sel.channel}</div>
+          <div style={{fontSize:12,color:T.textMuted}}>{CH_NAME[sel.channel]||sel.channel}{sel.cust_phone?" · "+sel.cust_phone:""}</div>
         </div>
         <button onClick={genAI} disabled={aiLoading} style={{padding:"5px 12px",background:T.primary,color:"#fff",border:"none",borderRadius:6,fontSize:12,cursor:"pointer",fontWeight:600}}>{aiLoading?"...":"✨ AI"}</button>
       </div>
