@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.19-e3";
+const SCH_V = "v2026.03.23-a";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -2126,8 +2126,7 @@ function App() {
 
         {/* 오른쪽: 액션 */}
         <div style={{display:"flex",alignItems:"center",gap:4}}>
-          {/* 버전 */}
-          <span style={{fontSize:T.fs.nano,color:T.textMuted,fontWeight:T.fw.bold,whiteSpace:"nowrap",marginRight:2}}>{SCH_V}</span>
+
           {/* ⚡ 자동배치 - 주 CTA */}
           <button onClick={async ()=>{
             if(isAssigning || isConfirmed) return;
@@ -2434,11 +2433,11 @@ function App() {
               const emps=ALL_EMPLOYEES.filter(e=>e.branch===branch.id);
               return emps.map((emp,ei)=>(
                 <tr key={emp.id}>
-                  <td style={{...stickyCol,padding:"5px 10px",borderLeft:`3px solid ${branch.color}`,borderBottom:"1px solid "+T.border,borderRight:"1px solid "+T.border,background:ei===0?branch.color+"18":T.bgCard,borderTop:ei===0?`2px solid ${branch.color}55`:"none"}}>
+                  <td style={{...stickyCol,padding:"3px 8px",borderLeft:`3px solid ${branch.color}`,borderBottom:"1px solid "+T.border,borderRight:"1px solid "+T.border,background:ei===0?branch.color+"18":T.bgCard,borderTop:ei===0?`2px solid ${branch.color}55`:"none"}}>
                     <div style={{display:"flex",alignItems:"center",gap:6}}>
                       <div style={{width:7,height:7,borderRadius:"50%",background:branch.color,flexShrink:0}}/>
                       <div>
-                        <div style={{fontSize:12,fontWeight:emp.isOwner?700:500,lineHeight:1.2,display:"flex",alignItems:"center",gap:4,overflow:"hidden"}}>
+                        <div style={{fontSize:11,fontWeight:emp.isOwner?700:500,lineHeight:1.2,display:"flex",alignItems:"center",gap:4,overflow:"hidden"}}>
                           {emp.name}
                           {(()=>{
                             // 지원 횟수 집계 (지점별)
@@ -2456,7 +2455,7 @@ function App() {
                             </span>;
                           })()}
                         </div>
-                        <div style={{fontSize:9,color:"#b8a898",display:"flex",gap:4,alignItems:"center"}}>
+                        <div style={{fontSize:8,color:"#b8a898",display:"flex",gap:3,alignItems:"center"}}>
                           {branch.name}
                           {(()=>{
                             const curMs2 = `${year}-${String(month+1).padStart(2,"0")}`;
@@ -3216,7 +3215,7 @@ function App() {
   );
 }
 
-const stickyCol = { position:"sticky",left:0,zIndex:10,width:170,minWidth:170,padding:"6px 10px",verticalAlign:"middle",background:T.bgCard,boxShadow:"2px 0 4px rgba(0,0,0,.07)" };
+const stickyCol = { position:"sticky",left:0,zIndex:10,width:140,minWidth:140,padding:"4px 8px",verticalAlign:"middle",background:T.bgCard,boxShadow:"2px 0 4px rgba(0,0,0,.07)" };
 const navBtn = { background:"none",border:"1px solid #e4ddd0",borderRadius:6,padding:"5px 10px",cursor:"pointer",fontSize:13,fontFamily:"inherit",color:T.textSub };
 
 function Btn({label,onClick,primary,outline,danger,style={}}){
