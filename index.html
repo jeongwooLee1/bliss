@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.407";
+const BLISS_V = "2.69.408";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -2085,19 +2085,32 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       }
     }, 60000); // 1분마다 체크
 
-    // Realtime 구독
-    const channel = window._sbClient?.channel("schedule_data_rt")
-      ?.on("postgres_changes", { event:"UPDATE", schema:"public", table:"schedule_data", filter:"key=eq.schHistory_v1" },
-        (payload) => {
-          if (payload?.new?.value) {
-            const newSch = parseSchHistory(payload.new.value);
-            setSchHistory(mergeWithLock(newSch));
+    // Realtime 구독 (_sbClient 있으면 Realtime, 없으면 30초 폴링)
+    let channel = null;
+    let pollTimer = null;
+    if (window._sbClient) {
+      channel = window._sbClient.channel("schedule_data_rt")
+        .on("postgres_changes", { event:"UPDATE", schema:"public", table:"schedule_data", filter:"key=eq.schHistory_v1" },
+          (payload) => {
+            if (payload?.new?.value) {
+              const newSch = parseSchHistory(payload.new.value);
+              setSchHistory(p => mergeWithLock(newSch));
+            }
           }
-        }
-      )?.subscribe();
+        ).subscribe();
+    } else {
+      pollTimer = setInterval(() => {
+        fetch(`${SB_URL_SCH}/rest/v1/schedule_data?key=eq.schHistory_v1&select=value`, { headers: H })
+          .then(r=>r.json()).then(rows=>{
+            if (!rows?.length) return;
+            setSchHistory(p => mergeWithLock(parseSchHistory(rows[0].value)));
+          }).catch(()=>{});
+      }, 30000);
+    }
 
     return () => {
       clearInterval(timer);
+      clearInterval(pollTimer);
       try { channel?.unsubscribe(); } catch(e) {}
     };
   }, []);
