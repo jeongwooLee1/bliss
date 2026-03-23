@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.23-a";
+const SCH_V = "v2026.03.23-b";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -1713,6 +1713,8 @@ function App() {
   const [lockedDates, setLockedDates] = useState(new Set());
   const [isConfirmed, setIsConfirmed] = useState(false);
   // 커스텀 직원 (동적 추가) — storage 영속
+  // 직원 목록: Supabase employees_v1에서 로드 (없으면 하드코딩 기본값 사용)
+  const [employees, setEmployees] = useState(EMPLOYEES);
   const CUSTOM_EMP_KEY = "customEmployees_v1";
   const [customEmployees, setCustomEmployees] = useState([]);
   const [showAddEmp, setShowAddEmp] = useState(false);
@@ -1730,9 +1732,25 @@ function App() {
     try { await window.storage.set(DELETED_EMP_KEY, JSON.stringify([...ids])); } catch(e) {}
   };
   const [newEmp, setNewEmp] = useState({name:"",branch:"gangnam",isOwner:false,weeklyOff:2,isMale:false,mustStay:false,isFreelancer:false});
-  // 커스텀 직원 로드
+  // 직원 목록(employees_v1) + 커스텀 직원 로드
   React.useEffect(() => {
     (async () => {
+      try {
+        // employees_v1 먼저 로드 (Supabase)
+        const SB_URL_E = "https://dpftlrsuqxqqeouwbfjd.supabase.co";
+        const SB_KEY_E = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwZnRscnN1cXhxcWVvdXdiZmpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5MDU4MjQsImV4cCI6MjA4NzQ4MTgyNH0.iydEkjtPjZ0jXpUUPJben4IWWneDqLomv-HDlcFayE4";
+        try {
+          const re = await fetch(`${SB_URL_E}/rest/v1/schedule_data?key=eq.employees_v1&select=value`, {
+            headers: { apikey: SB_KEY_E, Authorization: "Bearer " + SB_KEY_E }
+          });
+          const rowsE = await re.json();
+          if (rowsE && rowsE[0]?.value) {
+            const loaded = typeof rowsE[0].value === "string" ? JSON.parse(rowsE[0].value) : rowsE[0].value;
+            const maleEmps = EMPLOYEES.filter(e => e.isMale);
+            setEmployees([...loaded, ...maleEmps]);
+          }
+        } catch(e) { console.warn("employees_v1 로드 실패 (기본값 사용):", e); }
+      } catch(e2) {}
       try {
         const r = await window.storage.get(CUSTOM_EMP_KEY);
         if (r?.value) {
@@ -1763,7 +1781,7 @@ function App() {
   };
   // 전체 직원 = 기본 + 커스텀
   // 근무표 표시용: 삭제된 직원도 포함 (기존 근무표 유지)
-  const ALL_EMPLOYEES = React.useMemo(() => [...EMPLOYEES, ...customEmployees], [customEmployees]);
+  const ALL_EMPLOYEES = React.useMemo(() => [...employees, ...customEmployees], [employees, customEmployees]);
   // 자동배치용: 삭제된 직원 제외
   const ACTIVE_EMPLOYEES = React.useMemo(() => ALL_EMPLOYEES.filter(e => !deletedEmpIds.has(e.id)), [ALL_EMPLOYEES, deletedEmpIds]);
   // 배정 규칙 설정
@@ -1856,7 +1874,7 @@ function App() {
       });
     });
     return base;
-  }, [schHistory, curKey, prevKey, year, month]);
+  }, [schHistory, curKey, prevKey, year, month, ALL_EMPLOYEES]);
 
   const setSch = (updater) => setSchHistory(prev => {
     const cur = prev[curKey] || {};
