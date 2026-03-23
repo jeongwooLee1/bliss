@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.406";
+const BLISS_V = "2.69.407";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -2059,6 +2059,9 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
     });
     return merged;
   };
+
+  // employees_v1 초기 로드 (한 번만)
+  React.useEffect(()=>{ loadSchEmployees(); },[]);
 
   // schHistory_v1 초기 로드 + Realtime 구독
   const SB_URL_SCH = "https://dpftlrsuqxqqeouwbfjd.supabase.co";
