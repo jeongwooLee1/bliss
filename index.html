@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.405";
+const BLISS_V = "2.69.406";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -2002,15 +2002,16 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   const [empBranchOverride, setEmpBranchOverride] = useState({});
 
   // 직원-지점 매핑
-  const SCH_BRANCH_MAP = {"nonhyeon":"br_4bcauqvrb","gang":"br_4bcauqvrb","hongdae":"br_l6yzs2pkq","yongsan":"br_ybo3rmulv","jamsil":"br_lfv2wgdf1","cheonho":"br_xu60omgdf","wirye":"br_g768xdu4w","wangsimni":"br_wkqsxj6k1","magok":"br_k57zpkbx1"};
-  const BASE_EMP_LIST = [
-    {id:"소연",branch:"nonhyeon"},{id:"경아",branch:"nonhyeon"},{id:"수연",branch:"nonhyeon"},{id:"서현",branch:"nonhyeon"},
-    {id:"지은",branch:"hongdae"},{id:"현아",branch:"hongdae"},{id:"혜경",branch:"hongdae"},{id:"민아",branch:"hongdae"},
-    {id:"보령",branch:"yongsan"},{id:"희서",branch:"yongsan"},{id:"민정",branch:"yongsan"},
-    {id:"유라",branch:"jamsil"},{id:"소이",branch:"jamsil"},{id:"다해",branch:"jamsil"},
-    {id:"미진",branch:"cheonho"},{id:"수민",branch:"cheonho"},
-    {id:"재윤",branch:"male"},{id:"주용",branch:"male"},
-  ];
+  // SCH_BRANCH_MAP, BASE_EMP_LIST → Supabase employees_v1 동적 로드
+  const SCH_BRANCH_MAP = {"nonhyeon":"br_4bcauqvrb","gang":"br_4bcauqvrb","gangnam":"br_4bcauqvrb","hongdae":"br_l6yzs2pkq","yongsan":"br_ybo3rmulv","jamsil":"br_lfv2wgdf1","cheonho":"br_xu60omgdf","wirye":"br_g768xdu4w","wangsimni":"br_wkqsxj6k1","magok":"br_k57zpkbx1"};
+  let BASE_EMP_LIST = [];
+  const loadSchEmployees = async () => {
+    try {
+      const r = await fetch(SB_URL+"/rest/v1/schedule_data?key=eq.employees_v1&select=value",{headers:{apikey:SB_KEY,"Authorization":"Bearer "+SB_KEY}});
+      const rows = await r.json();
+      if(rows&&rows[0]?.value){const loaded=typeof rows[0].value==="string"?JSON.parse(rows[0].value):rows[0].value;BASE_EMP_LIST=loaded.map(e=>({id:e.id,branch:e.branch,branches:e.branches||[e.branch]}));}
+    }catch(e){console.error("loadSchEmployees 실패:",e);}
+  };
 
   // schHistory 파싱 함수
   const parseSchHistory = (val) => {
