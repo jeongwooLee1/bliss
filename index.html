@@ -176,7 +176,7 @@ async function loadAllFromDb(bizId) {
 }
 
 // ─── Constants ───
-const BLISS_V = "2.69.405";
+const BLISS_V = "2.69.406";
 
 // ─── 시술 수량 헬퍼 ────────────────────────
 const svcAllowQty = (svc) => !!(svc?.note?.includes('[qty]'));
@@ -7062,7 +7062,7 @@ function AdminPage({ data, setData, bizId, serverV, onLogout, currentUser }) {
     {tab==="mypage"       &&<AdminMyPage       currentUser={currentUser} onLogout={onLogout}/>}
     {tab==="schedule"    && isMaster &&<AdminSchedule currentUser={currentUser} isMaster={isMaster}/>}
     {tab==="joinbrand"    && !isMaster &&<AdminJoinBrand   currentUser={currentUser} onBack={back}/>}
-    {tab && !["mypage"].includes(tab) && !isMaster && <div style={{textAlign:"center",padding:"60px 20px",color:T.textMuted}}>
+    {tab && !["mypage","schedule"].includes(tab) && !isMaster && <div style={{textAlign:"center",padding:"60px 20px",color:T.textMuted}}>
       <div style={{fontSize:32,marginBottom:12}}>🔒</div>
       <div style={{fontSize:T.fs.md,fontWeight:T.fw.bolder,color:T.text,marginBottom:8}}>접근 권한이 없어요</div>
       <div style={{fontSize:T.fs.sm}}>브랜드 어드민에게 문의해주세요</div>
