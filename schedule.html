@@ -66,7 +66,7 @@ window.storage = {
 const { useState, useEffect, useRef, useCallback, useMemo } = React;
 
 
-const SCH_V = "v2026.03.23-a";
+const SCH_V = "v2026.03.23-b";
 
 const T = {
   primary:"#7c7cc8", primaryLt:"#ede9fe", primaryDk:"#5b5bb8", primaryHover:"#f5f5ff",
@@ -121,30 +121,26 @@ const BRANCHES = [
   { id: "cheonho",  name: "천호",   color: "#a07040", minStaff: 1 },
 ];
 
-const EMPLOYEES = [
-  // branches: 소속 지점 목록 (복수 지점 소속 가능), branch: 대표 지점(UI 표시용)
-  { id:"경아", name:"경아", branch:"gangnam",   branches:["gangnam","wangsimni"], isOwner:false, weeklyOff:2 },
-  { id:"서현", name:"서현", branch:"gangnam",   branches:["gangnam","wangsimni"], isOwner:false, weeklyOff:2 },
-  { id:"소연", name:"소연", branch:"wangsimni", branches:["gangnam","wangsimni"], isOwner:false, weeklyOff:2 },
-  { id:"수연", name:"수연", branch:"wangsimni", branches:["gangnam","wangsimni"], isOwner:false, weeklyOff:2 },
-  { id:"현아", name:"현아",       branch:"hongdae", branches:["hongdae","magok"], isOwner:false, weeklyOff:2, mustStay:true },
-  { id:"혜경", name:"혜경",       branch:"hongdae", branches:["hongdae","magok"], isOwner:false, weeklyOff:2 },
-  { id:"지은", name:"지은(원장)", branch:"magok",   branches:["hongdae","magok"], isOwner:true,  weeklyOff:1, mustStay:true },
-  { id:"민아", name:"민아",       branch:"magok",   branches:["hongdae","magok"], isOwner:false, weeklyOff:2 },
-  { id:"보령", name:"보령(원장)", branch:"yongsan", branches:["yongsan"],         isOwner:true,  weeklyOff:1, mustStay:true },
-  { id:"희서", name:"희서",       branch:"yongsan", branches:["yongsan"],         isOwner:false, weeklyOff:2 },
-  { id:"민정", name:"민정",       branch:"yongsan", branches:["yongsan"],         isOwner:false, weeklyOff:2 },
-  { id:"소이", name:"소이",       branch:"jamsil",  branches:["jamsil","wirye"],  isOwner:false, weeklyOff:2 },
-  { id:"유라", name:"유라(원장)", branch:"wirye",   branches:["jamsil","wirye"],  isOwner:true,  weeklyOff:1, mustStay:true },
-  { id:"다해", name:"다해",       branch:"wirye",   branches:["jamsil","wirye"],  isOwner:false, weeklyOff:2 },
-  { id:"미진", name:"미진(원장)", branch:"cheonho", branches:["cheonho"],         isOwner:true,  weeklyOff:1, mustStay:true },
-  { id:"수민", name:"수민",       branch:"cheonho", branches:["cheonho"],         isOwner:false, weeklyOff:2 },
-  // 남자 직원 (일 근무 인원 미포함, 일요일 중 1명만 출근, 휴무 중복 불가)
+// EMPLOYEES는 Supabase employees_v1에서 로드 (하드코딩 금지)
+let EMPLOYEES = [];
+const MALE_EMPLOYEES = [
   { id:"재윤", name:"재윤", branch:"male", branches:["male"], isOwner:false, weeklyOff:2, isMale:true },
   { id:"주용", name:"주용", branch:"male", branches:["male"], isOwner:false, weeklyOff:2, isMale:true },
-  // 프리랜서 (일 근무 인원 미포함, 이동 근무 가능, 휴무 자동 배정 없음)
-  // { id:"프리랜서1", name:"프리랜서1", branch:"gangnam", branches:["gangnam","wangsimni"], isOwner:false, isFreelancer:true, weeklyOff:0 },
 ];
+async function loadEmployees() {
+  try {
+    const SB_URL = "https://dpftlrsuqxqqeouwbfjd.supabase.co";
+    const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRwZnRscnN1cXhxcWVvdXdiZmpkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE5MDU4MjQsImV4cCI6MjA4NzQ4MTgyNH0.iydEkjtPjZ0jXpUUPJben4IWWneDqLomv-HDlcFayE4";
+    const r = await fetch(`${SB_URL}/rest/v1/schedule_data?key=eq.employees_v1&select=value`, {
+      headers: { apikey: SB_KEY, Authorization: "Bearer " + SB_KEY }
+    });
+    const rows = await r.json();
+    if (rows && rows[0]?.value) {
+      const loaded = typeof rows[0].value === "string" ? JSON.parse(rows[0].value) : rows[0].value;
+      EMPLOYEES = [...loaded, ...MALE_EMPLOYEES];
+    }
+  } catch(e) { console.error("loadEmployees 실패:", e); }
+}
 
 const STATUS = { WORK:"근무", OFF:"휴무", MUST_OFF:"휴무(꼭)", SUPPORT:"지원", SHARE:"전체쉐어" };
 const S_COLOR = {
@@ -1613,6 +1609,7 @@ function App() {
   const [dataLoaded, setDataLoaded] = React.useState(false);
   React.useEffect(() => {
     (async () => {
+      await loadEmployees();
       try {
         const r = await window.storage.get(OWNER_STORAGE_KEY);
         if (r?.value) setOwnerReqs(JSON.parse(r.value));
