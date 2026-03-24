@@ -2524,6 +2524,16 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   }, []);
   const [startHour, setStartHourRaw] = useState(() => tlDef("sh", 8));
   const [endHour, setEndHourRaw] = useState(() => tlDef("eh", 22));
+  // 연장근무: 예약 endTime이 설정된 종료시간을 넘으면 타임라인 자동 연장 (localStorage 설정값은 유지)
+  const effectiveEndHour = useMemo(() => {
+    if (!blocks?.length) return endHour;
+    const maxH = blocks.reduce((mx, r) => {
+      if (!r.endTime) return mx;
+      const [h, m] = r.endTime.split(':').map(Number);
+      return Math.max(mx, m > 0 ? h + 1 : h);
+    }, endHour);
+    return Math.min(24, maxH);
+  }, [blocks, endHour]);
   const [rowH, setRowHRaw] = useState(() => tlDef("rh", 14));
   const [colW, setColWRaw] = useState(() => tlDef("cw", 160));
   const [timeUnit, setTimeUnitRaw] = useState(() => tlDef("tu", 5));
@@ -2552,7 +2562,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
   // Sync status colors to localStorage for other components using getStatusClr()
   useEffect(() => { try{localStorage.setItem("tl_sc",JSON.stringify(statusClr))}catch(e){} }, [statusClr]);
   const slotsPerHour = 60 / timeUnit;
-  const totalRows = (endHour - startHour) * slotsPerHour;
+  const totalRows = (effectiveEndHour - startHour) * slotsPerHour;
   const headerH = 40;
 
   // CSS grid background
@@ -2581,7 +2591,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
       labels.push({ i, isHour, m, text: isHour ? (isMob ? `${h12}:00` : `${ampm} ${String(h12).padStart(2,"0")}:00`) : `${String(m).padStart(2,"0")}` });
     }
     return labels;
-  }, [startHour, endHour, timeUnit, totalRows]);
+  }, [startHour, effectiveEndHour, timeUnit, totalRows]);
 
   const timeToY = (timeStr) => {
     const [h, m] = timeStr.split(":").map(Number);
@@ -3052,7 +3062,7 @@ function Timeline({ data, setData, userBranches, viewBranches=[], isMaster, curr
     setData(prev => ({...prev, reservations: (prev?.reservations||[]).map(r => mismatched.some(m => m.id === r.id) ? {...r, status: "confirmed"} : r)}));
   }, [data?.reservations?.filter(r => r.status === "pending").length]);
   const now = new Date(nowTick);
-  const nowY = (selDate === todayStr() && now.getHours() >= startHour && now.getHours() < endHour) ? timeToY(`${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`) : -1;
+  const nowY = (selDate === todayStr() && now.getHours() >= startHour && now.getHours() < effectiveEndHour) ? timeToY(`${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}`) : -1;
 
   // Date helpers
   const DAYS_KR = ["일","월","화","수","목","금","토"];
@@ -4038,7 +4048,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
       const dur = (tagSum + svcSum) || itemDur;
       const [sh, sm] = p.time.split(":").map(Number);
       const endMin = sh * 60 + sm + dur;
-      const endTime = `${String(Math.min(22, Math.floor(endMin/60))).padStart(2,"0")}:${String(endMin%60).padStart(2,"0")}`;
+      const endTime = `${String(Math.min(24, Math.floor(endMin/60))).padStart(2,"0")}:${String(endMin%60).padStart(2,"0")}`;
       return { ...p, selectedTags: newTags, dur, endTime };
     });
   };
@@ -4078,7 +4088,7 @@ function TimelineModal({ item, onSave, onDelete, onDeleteRequest, onClose, selBr
       const dur = (svcSum + tagSum) || itemDur;
       const [sh, sm] = p.time.split(":").map(Number);
       const endMin = sh * 60 + sm + dur;
-      const endTime = `${String(Math.min(22, Math.floor(endMin/60))).padStart(2,"0")}:${String(endMin%60).padStart(2,"0")}`;
+      const endTime = `${String(Math.min(24, Math.floor(endMin/60))).padStart(2,"0")}:${String(endMin%60).padStart(2,"0")}`;
       return { ...p, selectedServices: newSvcs, dur, endTime };
     });
   };
@@ -4188,7 +4198,7 @@ ${naverText}
         const dur = (tagSum+svcSum) || p.dur || itemDur;
         const [sh,sm] = p.time.split(":").map(Number);
         const endMin = sh*60+sm+dur;
-        const endTime = `${String(Math.min(22,Math.floor(endMin/60))).padStart(2,"0")}:${String(endMin%60).padStart(2,"0")}`;
+        const endTime = `${String(Math.min(24, Math.floor(endMin/60))).padStart(2,"0")}:${String(endMin%60).padStart(2,"0")}`;
         return {...p, selectedTags:newTags, selectedServices:newSvcs, dur, endTime, custGender: aiGender || p.custGender};
       });
       if (parsed.reason) alert(`✅ AI 분석 완료\n${parsed.reason}`);
@@ -4326,7 +4336,7 @@ ${naverText}
                 {/* 시간 */}
                 <TimeSelect value={f.time} times={TIMES.filter(t=>{const h=parseInt(t);return h>=8&&h<=21;})} onChange={nt=>{set("time",nt);set("endTime",addMin(nt,f.dur));}}/>
                 <span style={{color:T.gray400,fontSize:T.fs.sm,padding:"0 8px",userSelect:"none",fontWeight:T.fw.normal}}>–</span>
-                <TimeSelect value={f.endTime} times={TIMES.filter(t=>{const h=parseInt(t);return h>=8&&h<=22;})} onChange={t=>{set("endTime",t);set("dur",calcDur(f.time,t));}}/>
+                <TimeSelect value={f.endTime} times={TIMES.filter(t=>{const h=parseInt(t);return h>=8&&h<=24;})} onChange={t=>{set("endTime",t);set("dur",calcDur(f.time,t));}}/>
                 <span style={{color:T.gray300,fontSize:T.fs.sm,padding:"0 8px",userSelect:"none"}}>|</span>
                 {/* 지점 */}
                 <I name="mapPin" size={11} color={T.gray400}/>
@@ -4447,7 +4457,7 @@ ${naverText}
                 </select>
                 <span style={{color:T.gray400,fontSize:T.fs.sm,userSelect:"none"}}>~</span>
                 <select className="fld-sel" value={f.endTime} onChange={e=>{set("endTime",e.target.value);set("dur",calcDur(f.time,e.target.value))}}>
-                  {TIMES.filter(t=>{const h=parseInt(t);return h>=8&&h<=22}).map(t=><option key={t} value={t}>{t}</option>)}
+                  {TIMES.filter(t=>{const h=parseInt(t);return h>=8&&h<=24}).map(t=><option key={t} value={t}>{t}</option>)}
                 </select>
                 <span style={{color:T.gray300,fontSize:T.fs.sm,padding:"0 8px",userSelect:"none"}}>|</span>
                 {/* 지점 */}
