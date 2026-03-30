@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173/bliss-app/)",
+      "Bash(ls *.html)",
+      "Bash(npx vite:*)",
+      "Bash(xargs grep:*)",
+      "Read(//c/Users/TP005/.ssh/**)",
+      "Bash(ssh bliss-server:*)",
+      "Bash(curl:*)",
+      "Bash(scp -r /c/Users/TP005/bliss-app/dist/* bliss-server:/tmp/bliss-app/)",
+      "Bash(scp -r dist/* bliss-server:/tmp/bliss-app/)",
+      "Bash(python3 -m json.tool)",
+      "Bash(tr '{' '\\\\n')"
+    ]
+  }
+}

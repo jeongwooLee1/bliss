@@ -105,6 +105,7 @@ const I = ({name,size=16,color="currentColor",style={},...p}) => {
     user:<svg {...a}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
     building:<svg {...a}><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/></svg>,
     chevD:<svg {...a}><polyline points="6 9 12 15 18 9"/></svg>,
+    "check-square":<svg {...a}><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>,
   };
   return icons[name] || null;
 };
@@ -1655,6 +1656,19 @@ function App() {
         const r7 = await window.storage.get(SUPPORT_ORDER_KEY);
         if (r7?.value) setSupportOrder(JSON.parse(r7.value));
       } catch(e) {}
+      try {
+        const rLock = await window.storage.get(LOCK_STATUS_KEY);
+        if (rLock?.value) {
+          const lockData = JSON.parse(rLock.value);
+          lockStatusRef.current = lockData;
+          const curKey = mkKey(year, month);
+          const cur = lockData[curKey];
+          if (cur?.confirmed) {
+            setIsConfirmed(true);
+            setLockedDates(new Set(cur.lockedDates || []));
+          }
+        }
+      } catch(e) {}
       setDataLoaded(true);
     })();
   }, []);
@@ -1711,7 +1725,63 @@ function App() {
   );
   // 잠금 날짜 Set (전달저장 시 이월 주 날짜 잠금)
   const [lockedDates, setLockedDates] = useState(new Set());
+  // 복수 선택 (드래그/Shift)
+  const [selectedCells, setSelectedCells] = useState(new Set()); // "empId__ds"
+  const [showBulkModal, setShowBulkModal] = useState(false);
+  const gridDragRef = React.useRef({ active: false, startEmpIdx: -1, startDayIdx: -1 });
+  const lastClickRef = React.useRef(null); // { empIdx, dayIdx }
   const [isConfirmed, setIsConfirmed] = useState(false);
+  const LOCK_STATUS_KEY = "lockStatus_v1";
+  const lockStatusRef = React.useRef({}); // { "YYYY-MM": { confirmed, lockedDates:[] } }
+  // 월 변경 시 해당 월의 락 상태 로드 + 이전달 이월 락 보호
+  React.useEffect(() => {
+    const curKey = mkKey(year, month);
+    const cur = lockStatusRef.current[curKey];
+    const curMonthPrefix = `${year}-${String(month+1).padStart(2,"0")}`;
+    // 이전달 락에서 현재 월에 해당하는 이월 날짜 가져오기
+    const prevY = month === 0 ? year - 1 : year;
+    const prevM = month === 0 ? 11 : month - 1;
+    const prevKey = mkKey(prevY, prevM);
+    const prev = lockStatusRef.current[prevKey];
+    const carryOverLocked = new Set();
+    if (prev?.confirmed && prev.lockedDates) {
+      prev.lockedDates.forEach(ds => {
+        if (ds.startsWith(curMonthPrefix)) carryOverLocked.add(ds);
+      });
+    }
+    if (cur?.confirmed) {
+      setIsConfirmed(true);
+      const merged = new Set([...(cur.lockedDates || []), ...carryOverLocked]);
+      setLockedDates(merged);
+    } else {
+      setIsConfirmed(false);
+      setLockedDates(carryOverLocked); // 이월 락은 확정 여부와 무관하게 보호
+    }
+  }, [year, month]);
+  // 드래그 선택 mouseup 리스너 + 빈 곳 클릭 시 선택 해제
+  const dragJustEndedRef = React.useRef(false);
+  React.useEffect(() => {
+    const onMouseUp = () => {
+      if (gridDragRef.current.active && gridDragRef.current.moved) {
+        gridDragRef.current.active = false;
+        dragJustEndedRef.current = true;
+        setShowBulkModal(true);
+        setTimeout(()=>{dragJustEndedRef.current=false;},200);
+      } else if (gridDragRef.current.active) {
+        gridDragRef.current.active = false;
+      }
+    };
+    const onClickOutside = (e) => {
+      if (dragJustEndedRef.current) return;
+      if (!e.target.closest('.cc') && !e.target.closest('[data-bulk-modal]') && !e.target.closest('[data-sel-bar]')) {
+        setSelectedCells(new Set());
+        setShowBulkModal(false);
+      }
+    };
+    document.addEventListener('mouseup', onMouseUp);
+    document.addEventListener('click', onClickOutside);
+    return () => { document.removeEventListener('mouseup', onMouseUp); document.removeEventListener('click', onClickOutside); };
+  }, []);
   // 커스텀 직원 (동적 추가) — storage 영속
   const CUSTOM_EMP_KEY = "customEmployees_v1";
   const [customEmployees, setCustomEmployees] = useState([]);
@@ -2019,6 +2089,17 @@ function App() {
   };
 
   const shownBranches = filterBranch==="all" ? BRANCHES : filterBranch==="male" ? [] : BRANCHES.filter(b=>b.id===filterBranch);
+  // 화면 렌더링 순서대로 flat 직원 배열 (드래그 범위 선택용)
+  const renderOrderEmps = React.useMemo(() => {
+    const list = [];
+    shownBranches.forEach(branch => {
+      ALL_EMPLOYEES.filter(e => e.branch === branch.id).forEach(emp => list.push(emp));
+    });
+    if (filterBranch === "all" || filterBranch === "male") {
+      ALL_EMPLOYEES.filter(e => e.isMale).forEach(emp => list.push(emp));
+    }
+    return list;
+  }, [shownBranches, ALL_EMPLOYEES, filterBranch]);
 
   if (!dataLoaded) return (
     <div style={{display:"flex",alignItems:"center",justifyContent:"center",minHeight:"100vh",background:"#f4f2ef",flexDirection:"column",gap:12}}>
@@ -2100,6 +2181,52 @@ function App() {
               })}
             </div>
             <button onClick={()=>setEditCell(null)} style={{marginTop:12,width:"100%",padding:"8px",border:"1px solid #ddd",borderRadius:8,background:"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:12,color:"#999"}}>닫기</button>
+          </div>
+        </>
+      )}
+
+      {/* 벌크 편집 모달 */}
+      {showBulkModal && selectedCells.size > 0 && (
+        <>
+          <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.3)",zIndex:200}} onMouseDown={()=>{setShowBulkModal(false);setSelectedCells(new Set());}}/>
+          <div data-bulk-modal style={{position:"fixed",top:"50%",left:"50%",transform:"translate(-50%,-50%)",background:"#fff",borderRadius:14,padding:22,zIndex:201,width:280,boxShadow:"0 10px 40px rgba(0,0,0,.2)"}}>
+            <div style={{marginBottom:14}}>
+              <div style={{fontWeight:700,fontSize:15,color:"#221810"}}>📋 {selectedCells.size}개 셀 선택됨</div>
+              <div style={{fontSize:11,color:T.textMuted,marginTop:4}}>상태를 선택하면 일괄 적용됩니다</div>
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:7}}>
+              {["근무","휴무","휴무(꼭)","전체쉐어"].map(st=>{
+                const sc=getSColor(st);
+                return (
+                  <button key={st} onClick={()=>{
+                    selectedCells.forEach(key=>{
+                      const [eid,ds]=key.split("__");
+                      setS(eid,ds,st);
+                    });
+                    setShowBulkModal(false);setSelectedCells(new Set());
+                    toast_(`✅ ${selectedCells.size}개 셀 → ${st}`,"ok");
+                  }} style={{padding:"9px 14px",borderRadius:8,border:`2px solid ${sc.border}`,background:sc.bg,color:sc.text,fontFamily:"inherit",fontSize:13,fontWeight:600,cursor:"pointer",textAlign:"left",transition:"all .12s"}}>
+                    {st}
+                  </button>
+                );
+              })}
+              {BRANCHES.map(b=>{
+                const sv=`지원(${b.name})`; const sc=getSColor(sv);
+                return (
+                  <button key={sv} onClick={()=>{
+                    selectedCells.forEach(key=>{
+                      const [eid,ds]=key.split("__");
+                      setS(eid,ds,sv);
+                    });
+                    setShowBulkModal(false);setSelectedCells(new Set());
+                    toast_(`✅ ${selectedCells.size}개 셀 → ${sv}`,"ok");
+                  }} style={{padding:"9px 14px",borderRadius:8,border:`2px solid #e4ddd6`,background:T.bgCard,color:"#c87020",fontFamily:"inherit",fontSize:13,fontWeight:400,cursor:"pointer",textAlign:"left",transition:"all .12s"}}>
+                    지원 → {b.name}
+                  </button>
+                );
+              })}
+            </div>
+            <button onClick={()=>{setShowBulkModal(false);setSelectedCells(new Set());}} style={{marginTop:12,width:"100%",padding:"8px",border:"1px solid #ddd",borderRadius:8,background:"transparent",cursor:"pointer",fontFamily:"inherit",fontSize:12,color:"#999"}}>취소</button>
           </div>
         </>
       )}
@@ -2266,7 +2393,21 @@ function App() {
 
           {/* 아이콘 버튼들 */}
           {[
-            {name:"lock", tip:isConfirmed?"잠금해제":"배치확정", confirmed:isConfirmed, fn:()=>{if(isConfirmed){setIsConfirmed(false);setLockedDates(new Set());toast_("배치 확정이 해제되었습니다","ok");}else{setIsConfirmed(true);setLockedDates(new Set(days.filter(d=>d.isNext).map(d=>d.ds)));toast_("✅ 배치가 확정되었습니다","ok");}}},
+            {name:"lock", tip:isConfirmed?"잠금해제":"배치확정", confirmed:isConfirmed, fn:()=>{
+              const curKey = mkKey(year, month);
+              if(isConfirmed){
+                setIsConfirmed(false);setLockedDates(new Set());
+                lockStatusRef.current = {...lockStatusRef.current, [curKey]: { confirmed: false, lockedDates: [] }};
+                window.storage.set(LOCK_STATUS_KEY, JSON.stringify(lockStatusRef.current)).catch(()=>{});
+                toast_("배치 확정이 해제되었습니다","ok");
+              }else{
+                const newLocked = days.filter(d=>d.isNext).map(d=>d.ds);
+                setIsConfirmed(true);setLockedDates(new Set(newLocked));
+                lockStatusRef.current = {...lockStatusRef.current, [curKey]: { confirmed: true, lockedDates: newLocked }};
+                window.storage.set(LOCK_STATUS_KEY, JSON.stringify(lockStatusRef.current)).catch(()=>{});
+                toast_("✅ 배치가 확정되었습니다","ok");
+              }
+            }},
             {name:"trash", tip:"초기화",   fn:()=>setShowResetConfirm(true), danger:true},
             {name:"download", tip:"CSV",   fn:exportCSV},
             {name:"printer",  tip:"인쇄",  fn:()=>window.print()},
@@ -2395,7 +2536,7 @@ function App() {
         <div style={{background:"#e8f8ee",borderBottom:"2px solid #2a9a5a",padding:"8px 16px",display:"flex",alignItems:"center",gap:8,flexShrink:0,zIndex:10}}>
           <I name="lock" size={14} color="#2a9a5a"/>
           <span style={{fontSize:12,fontWeight:700,color:"#1a7a4a"}}>✅ 배치 확정됨 — 자동배치가 비활성화되어 있습니다.</span>
-          <button onClick={()=>{setIsConfirmed(false);setLockedDates(new Set());}}
+          <button onClick={()=>{setIsConfirmed(false);setLockedDates(new Set());const curKey=mkKey(year,month);lockStatusRef.current={...lockStatusRef.current,[curKey]:{confirmed:false,lockedDates:[]}};window.storage.set(LOCK_STATUS_KEY,JSON.stringify(lockStatusRef.current)).catch(()=>{});}}
             style={{marginLeft:"auto",fontSize:11,padding:"2px 10px",borderRadius:5,border:"1px solid #2a9a5a",background:"transparent",color:"#2a9a5a",cursor:"pointer",fontFamily:"inherit",fontWeight:600}}>
             확정 해제
           </button>
@@ -2433,7 +2574,7 @@ function App() {
               const emps=ALL_EMPLOYEES.filter(e=>e.branch===branch.id);
               return emps.map((emp,ei)=>(
                 <tr key={emp.id}>
-                  <td style={{...stickyCol,padding:"3px 8px",borderLeft:`3px solid ${branch.color}`,borderBottom:"1px solid "+T.border,borderRight:"1px solid "+T.border,background:ei===0?branch.color+"18":T.bgCard,borderTop:ei===0?`2px solid ${branch.color}55`:"none"}}>
+                  <td style={{...stickyCol,padding:"3px 8px",borderLeft:`3px solid ${branch.color}`,borderBottom:"1px solid "+T.border,borderRight:"1px solid "+T.border,background:ei===0?T.gray100:T.bgCard,borderTop:ei===0?`2px solid ${branch.color}55`:"none"}}>
                     <div style={{display:"flex",alignItems:"center",gap:6}}>
                       <div style={{width:7,height:7,borderRadius:"50%",background:branch.color,flexShrink:0}}/>
                       <div>
@@ -2486,14 +2627,59 @@ function App() {
                       </div>
                     </div>
                   </td>
-                  {days.map(day=>{
+                  {days.map((day,dayIdx)=>{
                     const s=getS(emp.id,day.ds);
                     const sc=getSColor(s);
                     const wb=isWeekBoundary(day);
                     const isToday=day.ds===fmtDs(today.getFullYear(),today.getMonth(),today.getDate());
                     const supportLabel = isSupport(s) && s !== "지원" ? s.replace("지원(","").replace(")","") : null;
+                    const cellKey=`${emp.id}__${day.ds}`;
+                    const isSelected=selectedCells.has(cellKey);
+                    const empIdx=renderOrderEmps.findIndex(e=>e.id===emp.id);
                     return (
-                      <td key={day.ds} className="cc" onClick={()=>{ if(lockedDates.has(day.ds)) return; setEditCell({emp,day,cur:s}); }} style={{padding:"2px 1px",textAlign:"center",borderLeft:wb?`2px solid ${T.primary}55`:"1px solid "+T.border,borderBottom:"1px solid "+T.border,background:lockedDates.has(day.ds)?T.primaryLt:day.isNext?"#f0edf8":isToday?T.warningLt:"#fff",opacity:day.isNext?0.8:1,cursor:lockedDates.has(day.ds)?"not-allowed":"pointer"}}>
+                      <td key={day.ds} className="cc"
+                        onClick={(e)=>{
+                          if(dragJustEndedRef.current) return;
+                          if(lockedDates.has(day.ds)||isConfirmed) return;
+                          if(e.ctrlKey || e.metaKey){
+                            setSelectedCells(prev=>{
+                              const next=new Set(prev);
+                              if(next.has(cellKey)) next.delete(cellKey); else next.add(cellKey);
+                              return next;
+                            });
+                            return;
+                          }
+                          // 일반 클릭: 선택된 셀이 2개 이상이면 벌크 모달
+                          if(selectedCells.size > 1 && selectedCells.has(cellKey)){
+                            setShowBulkModal(true);
+                            return;
+                          }
+                          setSelectedCells(new Set());
+                          setShowBulkModal(false);
+                          setEditCell({emp,day,cur:s});
+                        }}
+                        onMouseDown={(e)=>{
+                          if(lockedDates.has(day.ds)||isConfirmed||e.ctrlKey||e.metaKey) return;
+                          e.preventDefault();
+                          gridDragRef.current={active:true,startEmpIdx:empIdx,startDayIdx:dayIdx,moved:false};
+                        }}
+                        onMouseEnter={()=>{
+                          if(!gridDragRef.current.active||lockedDates.has(day.ds)) return;
+                          gridDragRef.current.moved=true;
+                          const {startEmpIdx,startDayIdx}=gridDragRef.current;
+                          const minE=Math.min(startEmpIdx,empIdx), maxE=Math.max(startEmpIdx,empIdx);
+                          const minD=Math.min(startDayIdx,dayIdx), maxD=Math.max(startDayIdx,dayIdx);
+                          const sel=new Set();
+                          for(let ei=minE;ei<=maxE;ei++){
+                            const e2=renderOrderEmps[ei]; if(!e2) continue;
+                            for(let di=minD;di<=maxD;di++){
+                              const d2=days[di]; if(!d2||lockedDates.has(d2.ds)) continue;
+                              sel.add(`${e2.id}__${d2.ds}`);
+                            }
+                          }
+                          setSelectedCells(sel);
+                        }}
+                        style={{padding:"2px 1px",textAlign:"center",borderLeft:wb?`2px solid ${T.primary}55`:"1px solid "+T.border,borderBottom:"1px solid "+T.border,background:isSelected?"rgba(66,133,244,0.25)":lockedDates.has(day.ds)?T.primaryLt:day.isNext?"#f0edf8":isToday?T.warningLt:"#fff",opacity:day.isNext?0.8:1,cursor:lockedDates.has(day.ds)?"not-allowed":"pointer",userSelect:"none"}}>
                         <div style={{
                           background: s?sc.bg:"transparent",
                           color: s?sc.text:"#d8d0c8",
@@ -2529,7 +2715,7 @@ function App() {
               if (filterBranch !== "all" && filterBranch !== "male") return null;
               return maleEmps.map((emp, ei) => (
                 <tr key={emp.id}>
-                  <td style={{...stickyCol,padding:"5px 10px",borderLeft:`3px solid ${maleColor}`,borderBottom:"1px solid #d0e0f0",borderRight:"1px solid "+T.border,background:ei===0?maleColor+"18":T.gray100,borderTop:ei===0?`2px solid ${maleColor}55`:"none"}}>
+                  <td style={{...stickyCol,padding:"5px 10px",borderLeft:`3px solid ${maleColor}`,borderBottom:"1px solid #d0e0f0",borderRight:"1px solid "+T.border,background:T.gray100,borderTop:ei===0?`2px solid ${maleColor}55`:"none"}}>
                     <div style={{display:"flex",alignItems:"center",gap:6}}>
                       <div style={{width:7,height:7,borderRadius:"50%",background:maleColor,flexShrink:0}}/>
                       <div>
@@ -2553,20 +2739,65 @@ function App() {
                       </div>
                     </div>
                   </td>
-                  {days.map(day=>{
+                  {days.map((day,dayIdx)=>{
                     const s=getS(emp.id,day.ds);
                     const sc=getSColor(s);
                     const wb=isWeekBoundary(day);
                     const isSun=day.dow===6;
+                    const cellKey=`${emp.id}__${day.ds}`;
+                    const isSelected=selectedCells.has(cellKey);
+                    const empIdx=renderOrderEmps.findIndex(e=>e.id===emp.id);
                     return (
-                      <td key={day.ds} className="cc" onClick={()=>{ if(lockedDates.has(day.ds)) return; setEditCell({emp,day,cur:s}); }}
+                      <td key={day.ds} className="cc"
+                        onClick={(e)=>{
+                          if(lockedDates.has(day.ds)||isConfirmed) return;
+                          if(e.detail===2) return;
+                          if(e.ctrlKey || e.metaKey){
+                            setSelectedCells(prev=>{
+                              const next=new Set(prev);
+                              if(next.has(cellKey)) next.delete(cellKey); else next.add(cellKey);
+                              return next;
+                            });
+                            return;
+                          }
+                          // 일반 클릭: 선택된 셀이 2개 이상이면 벌크 모달
+                          if(selectedCells.size > 1 && selectedCells.has(cellKey)){
+                            setShowBulkModal(true);
+                            return;
+                          }
+                          setSelectedCells(new Set());
+                          setShowBulkModal(false);
+                          setEditCell({emp,day,cur:s});
+                        }}
+                        onMouseDown={(e)=>{
+                          if(lockedDates.has(day.ds)||isConfirmed||e.ctrlKey||e.metaKey) return;
+                          e.preventDefault();
+                          gridDragRef.current={active:true,startEmpIdx:empIdx,startDayIdx:dayIdx,moved:false};
+                        }}
+                        onMouseEnter={()=>{
+                          if(!gridDragRef.current.active||lockedDates.has(day.ds)) return;
+                          gridDragRef.current.moved=true;
+                          const {startEmpIdx,startDayIdx}=gridDragRef.current;
+                          const minE=Math.min(startEmpIdx,empIdx), maxE=Math.max(startEmpIdx,empIdx);
+                          const minD=Math.min(startDayIdx,dayIdx), maxD=Math.max(startDayIdx,dayIdx);
+                          const sel=new Set();
+                          for(let ei=minE;ei<=maxE;ei++){
+                            const e2=renderOrderEmps[ei]; if(!e2) continue;
+                            for(let di=minD;di<=maxD;di++){
+                              const d2=days[di]; if(!d2||lockedDates.has(d2.ds)) continue;
+                              sel.add(`${e2.id}__${d2.ds}`);
+                            }
+                          }
+                          setSelectedCells(sel);
+                        }}
                         style={{
                           padding:"2px 3px",textAlign:"center",
                           borderLeft:wb?"2px solid "+T.primary+"44":"1px solid "+T.border,
                           borderBottom:"1px solid "+T.border,
-                          background:day.isNext?T.gray200:T.bgCard,
+                          background:isSelected?"rgba(66,133,244,0.25)":day.isNext?T.gray200:T.bgCard,
                           cursor:lockedDates.has(day.ds)?"not-allowed":"pointer",
-                          opacity:day.isNext?0.5:1
+                          opacity:day.isNext?0.5:1,
+                          userSelect:"none"
                         }}>
                         <div style={{
                           background: s?sc.bg:"transparent",
